@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { House, Swords, Users, UserRound, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Wordmark } from "@/components/brand/Wordmark"
 
 type NavItem = { to: string; label: string; icon: LucideIcon }
 
@@ -11,14 +12,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/club", label: "Club", icon: Users },
   { to: "/profile", label: "Profile", icon: UserRound },
 ]
-
-export function Wordmark({ className }: { className?: string }) {
-  return (
-    <span className={cn("font-display text-xl font-bold tracking-tight text-brand-navy", className)}>
-      mombasa<span className="text-brand-blue">-tt</span>
-    </span>
-  )
-}
 
 export function AppShell() {
   return (
