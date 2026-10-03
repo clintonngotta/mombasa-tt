@@ -1,0 +1,23 @@
+# Local development services only. Production topology is TASK-058 (deployment.md).
+name: mombasa-tt-dev
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mombasa_tt
+      POSTGRES_USER: mombasa
+      POSTGRES_PASSWORD: mombasa-dev-only
+    ports:
+      # 5433 avoids clashing with a host PostgreSQL on 5432; bound to loopback only.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mombasa -d mombasa_tt"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:

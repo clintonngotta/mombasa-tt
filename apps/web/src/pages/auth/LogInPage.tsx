@@ -27,11 +27,9 @@ export function LogInPage() {
     if (!incomplete) mutation.mutate({ email: email.trim(), password })
   }
 
-  // One message for unknown email and wrong password, so the form never reveals which accounts exist.
-  const failure =
-    mutation.error instanceof ApiError && (mutation.error.status === 400 || mutation.error.status === 401)
-      ? "That email and password don't match an account."
-      : mutation.error && errorMessage(mutation.error)
+  // The API already returns one message for unknown email and wrong password (no enumeration).
+  const unverified = mutation.error instanceof ApiError && mutation.error.code === "email_unverified"
+  const failure = mutation.error && !unverified ? errorMessage(mutation.error) : undefined
 
   return (
     <AuthLayout
@@ -72,6 +70,18 @@ export function LogInPage() {
       )}
       <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
         {failure && <FormAlert>{failure}</FormAlert>}
+        {unverified && (
+          <FormAlert>
+            Verify your email before logging in.{" "}
+            <Link
+              to="/signup/check-email"
+              state={{ email: email.trim() }}
+              className="font-semibold underline underline-offset-4"
+            >
+              Resend the link
+            </Link>
+          </FormAlert>
+        )}
         {missing && <FormAlert>Enter your email and password.</FormAlert>}
         <Field
           label="Email"

@@ -7,6 +7,8 @@ import { SignUpPage } from "@/pages/auth/SignUpPage"
 import { CheckEmailPage } from "@/pages/auth/CheckEmailPage"
 import { LogInPage } from "@/pages/auth/LogInPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
+import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage"
+import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
 import { ProfileSetupPage } from "@/pages/onboarding/ProfileSetupPage"
 import { FindCommunityPage } from "@/pages/onboarding/FindCommunityPage"
 import { GoalsPage } from "@/pages/onboarding/GoalsPage"
@@ -31,6 +33,8 @@ function App() {
           <Route path="/signup/check-email" element={<CheckEmailPage />} />
           <Route path="/login" element={<LogInPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/onboarding" element={<Navigate to="/onboarding/profile" replace />} />
           <Route path="/onboarding/profile" element={<ProfileSetupPage />} />
           <Route path="/onboarding/community" element={<FindCommunityPage />} />

@@ -10,18 +10,37 @@ export class ApiError extends Error {
     this.body = body
   }
 
-  /** DRF-style `{ field: ["message"] }` validation errors. */
+  private get error(): Partial<ApiErrorBody> {
+    return typeof this.body === "object" && this.body !== null ? (this.body as Partial<ApiErrorBody>) : {}
+  }
+
+  /** Stable machine-readable code, e.g. "invalid_credentials" or "email_unverified". */
+  get code(): string | undefined {
+    return this.error.code
+  }
+
+  get serverMessage(): string | undefined {
+    return this.error.message
+  }
+
   fieldErrors(): Record<string, string> {
-    if (this.status !== 400 || typeof this.body !== "object" || this.body === null) return {}
-    return Object.fromEntries(
-      Object.entries(this.body).map(([field, value]) => [field, Array.isArray(value) ? String(value[0]) : String(value)])
-    )
+    return this.error.fields ?? {}
   }
 }
+
+/** Error envelope returned by every API error (spec REQ-032). */
+type ApiErrorBody = { code: string; message: string; fields: Record<string, string>; request_id: string }
 
 function csrfToken() {
   const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
   return match ? decodeURIComponent(match[1]) : undefined
+}
+
+async function ensureCsrfToken() {
+  const existing = csrfToken()
+  if (existing) return existing
+  await fetch(`${API_BASE}/auth/csrf/`, { credentials: "include" })
+  return csrfToken()
 }
 
 // Session cookies are HttpOnly (REQ-003); unsafe methods carry Django's CSRF header.
@@ -29,8 +48,10 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const method = init.method ?? (init.body === undefined ? "GET" : "POST")
   const headers: Record<string, string> = { Accept: "application/json" }
   if (init.body !== undefined) headers["Content-Type"] = "application/json"
-  const token = csrfToken()
-  if (token && method !== "GET") headers["X-CSRFToken"] = token
+  if (method !== "GET") {
+    const token = await ensureCsrfToken()
+    if (token) headers["X-CSRFToken"] = token
+  }
 
   const res = await fetch(`${API_BASE}${path}`, {
     method,
@@ -53,8 +74,7 @@ export function errorMessage(error: unknown, fallback = "Something went wrong. P
   if (error instanceof ApiError) {
     if (error.status === 429) return "Too many attempts. Wait a few minutes and try again."
     if (error.status >= 500) return "mombasa-tt is unavailable right now. Please try again shortly."
-    const detail = (error.body as { detail?: unknown } | null)?.detail
-    if (typeof detail === "string") return detail
+    if (error.serverMessage) return error.serverMessage
   }
   return fallback
 }
