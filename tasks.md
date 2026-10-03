@@ -55,6 +55,10 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 - [ ] **TASK-034** — Implement optional browser push with feature detection, opt-in, device setup guidance and expired-subscription cleanup. Depends: TASK-033, TASK-009. REQ-019 / EVAL-019. Done: supported real-device delivery tested; unsupported/denied permission does not break inbox or scheduling.
 - [ ] **TASK-035** — Finish public tournament/player views and organizer web dashboard. Depends: TASK-021, TASK-028, TASK-032, TASK-016. REQ-020 / EVAL-020. Done: unauthenticated tournament journey and authorized admin journey pass.
 
+## Phase 1: personal progress
+
+- [ ] **TASK-071** — Implement the private personal match log: records with free-text labels, sets/scores and notes, owner-only API, progress summary and mobile/web views. Depends: TASK-010. REQ-037 / EVAL-037. Done: owner-only access matrix, set validation and summary tests pass; official matches remain notes-only (REQ-025, TASK-041).
+
 ## Phase 2: reservations and finances
 
 - [ ] **TASK-036** — Implement opening hours, closures, booking requests, approval/rejection/cancellation and views. Depends: TASK-027, TASK-033. REQ-021 / EVAL-021. Done: approvals race safely against matches and other bookings.
@@ -65,7 +69,7 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 ## Phase 3: player development
 
-- [ ] **TASK-041** — Implement private match notes and recap entry point. Depends: TASK-032, TASK-016. REQ-025 / EVAL-025. Done: another player or club admin cannot access notes.
+- [ ] **TASK-041** — Implement private match notes and recap entry point. Depends: TASK-032, TASK-016. REQ-025 / EVAL-025. Done: another player or club admin cannot access notes; official sets/scores stay read-only to the player.
 - [ ] **TASK-042** — Implement equipment enrichment and personal/club drill libraries. Depends: TASK-015, TASK-013. REQ-026 / EVAL-026. Done: editing/sharing permissions and required drill fields pass.
 - [ ] **TASK-043** — Implement personal training plans, calendar commitments and completion. Depends: TASK-042, TASK-027. REQ-027 / EVAL-027. Done: calendar conflicts differ correctly from non-reserving checklist items.
 - [ ] **TASK-044** — Implement club sessions, invitations, accepted commitments, attendance and reminders. Depends: TASK-043, TASK-036, TASK-033. REQ-027 / EVAL-027. Done: acceptance and reservation are atomic and duplicate acceptance is harmless.
@@ -153,3 +157,4 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-034](spec.md#req-034) | [EVAL-034](test.md#eval-034) | TASK-058, TASK-059, TASK-060 |
 | [REQ-035](spec.md#req-035) | [EVAL-035](test.md#eval-035) | TASK-009, TASK-062; native later TASK-069, TASK-070 |
 | [REQ-036](spec.md#req-036) | [EVAL-036](test.md#eval-036) | TASK-001, TASK-002 |
+| [REQ-037](spec.md#req-037) | [EVAL-037](test.md#eval-037) | TASK-071 |

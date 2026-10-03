@@ -13,6 +13,11 @@ import { ProfileSetupPage } from "@/pages/onboarding/ProfileSetupPage"
 import { FindCommunityPage } from "@/pages/onboarding/FindCommunityPage"
 import { GoalsPage } from "@/pages/onboarding/GoalsPage"
 import { CompletionPage } from "@/pages/onboarding/CompletionPage"
+import { RequireAuth } from "@/components/auth/RequireAuth"
+import { MatchLogPage } from "@/pages/matches/MatchLogPage"
+import { MatchFormPage } from "@/pages/matches/MatchFormPage"
+import { MatchDetailPage } from "@/pages/matches/MatchDetailPage"
+import { ProfilePage } from "@/pages/profile/ProfilePage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,7 +51,13 @@ function App() {
             <Route path="/home" element={null} />
             <Route path="/play" element={null} />
             <Route path="/club" element={null} />
-            <Route path="/profile" element={null} />
+            <Route element={<RequireAuth />}>
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/matches" element={<MatchLogPage />} />
+              <Route path="/matches/new" element={<MatchFormPage />} />
+              <Route path="/matches/:id" element={<MatchDetailPage />} />
+              <Route path="/matches/:id/edit" element={<MatchFormPage />} />
+            </Route>
             {import.meta.env.DEV && <Route path="/dev/gallery" element={<GalleryPage />} />}
           </Route>
         </Routes>

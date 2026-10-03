@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-036 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-037 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -140,7 +140,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 ### REQ-025
 
-**Match analysis — Phase 3.** Player-owned private notes linked to a match, observations, improvement goals and timestamps. Only the owning player can read/edit through normal product APIs; club roles do not grant note access. No coach sharing in this phase. Casual and competitive match links supported.
+**Match analysis — Phase 3.** Player-owned private notes linked to a match, observations, improvement goals and timestamps. Only the owning player can read/edit through normal product APIs; club roles do not grant note access. No coach sharing in this phase. Casual and competitive match links supported. For official (umpire-confirmed) matches the player may add and edit only these private notes; the official sets, scores and result are read-only to them (user decision, 2026-10-03). Self-recorded matches are covered by REQ-037.
 
 ### REQ-026
 
@@ -186,6 +186,10 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 **Documentation and design gate — Phase 0.** Complete these five linked files, then generate/review Stitch screens before application code. Screen inventory records ID/title/device/phase/requirements and known gaps. Mark tasks complete only with evidence. Mock screenshots do not prove runtime behavior. Preserve future phases as designed/deferred, not launched. Content changes update linked tasks/evaluations in the same change.
 
+### REQ-037
+
+**Personal match log — Phase 1 (user decision, 2026-10-03).** An authenticated player can record matches they played outside official mombasa-tt scoring: date, a free-text label of their choosing (suggestions such as Friendly, Tournament, Practice, League; previously used labels offered again), singles/doubles, free-text opponent (and partner) names, optional venue, set-by-set points, and notes. The record is personal data owned by the recording player: only that player can list, read, edit or delete it; club roles, platform staff APIs, public pages, directories and other players never see it. Free-text names never link to, notify, or grant edit rights over another player's identity. Each set needs a winner; the match result is derived from sets won. Progress summaries (played/won/lost, win rate, by label, recent form) are computed only from the owner's records. Personal records never alter Elo, standings, official history, or reservations, and are always labeled as self-recorded. Matches scored officially on mombasa-tt are not re-entered here: their scores are read-only and the player adds private notes per REQ-025.
+
 ## Planned entity groups
 
 | Domain | Records and ownership |
@@ -196,7 +200,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 | Operations | Venue, Table, Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
 | Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal |
-| Development | MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |
+| Development | PersonalMatch/PersonalGame (REQ-037), MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |
 | Media later | RecordingSession/Segment, TimeMapping, Marker, Clip, ProcessingJob, Publication, Destination |
 | Billing later | OrganizationSubscription, PlanVersion, Entitlement, UsageRecord, BillingEvent |
 

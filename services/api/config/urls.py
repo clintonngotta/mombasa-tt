@@ -6,6 +6,7 @@ from core import views as core_views
 
 api_v1 = [
     path("auth/", include("accounts.urls")),
+    path("me/", include("matchlog.urls")),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
 ]
 

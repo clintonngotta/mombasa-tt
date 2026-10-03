@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "core",
     "accounts",
+    "matchlog",
 ]
 
 MIDDLEWARE = [
