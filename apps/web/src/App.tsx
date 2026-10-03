@@ -1,13 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { BrowserRouter, Route, Routes } from "react-router-dom"
-import { WelcomePage } from "@/pages/auth/WelcomePage"
-import { SignUpPage } from "@/pages/auth/SignUpPage"
-import { LogInPage } from "@/pages/auth/LogInPage"
-import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
-import { ProfileSetupPage } from "@/pages/onboarding/ProfileSetupPage"
-import { FindCommunityPage } from "@/pages/onboarding/FindCommunityPage"
-import { GoalsPage } from "@/pages/onboarding/GoalsPage"
-import { CompletionPage } from "@/pages/onboarding/CompletionPage"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+import { AppShell } from "@/components/layout/AppShell"
+import { GalleryPage } from "@/pages/dev/GalleryPage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,14 +17,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<WelcomePage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/login" element={<LogInPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/onboarding/profile" element={<ProfileSetupPage />} />
-          <Route path="/onboarding/community" element={<FindCommunityPage />} />
-          <Route path="/onboarding/goals" element={<GoalsPage />} />
-          <Route path="/onboarding/complete" element={<CompletionPage />} />
+          <Route element={<AppShell />}>
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            {/* Domain screens land here as their Stitch references are implemented. */}
+            <Route path="/home" element={null} />
+            <Route path="/play" element={null} />
+            <Route path="/club" element={null} />
+            <Route path="/profile" element={null} />
+            {import.meta.env.DEV && <Route path="/dev/gallery" element={<GalleryPage />} />}
+          </Route>
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
