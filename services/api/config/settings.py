@@ -39,11 +39,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "rest_framework",
     "drf_spectacular",
     "core",
     "accounts",
     "matchlog",
+    "profiles",
+    "organizations",
 ]
 
 MIDDLEWARE = [
@@ -148,6 +151,11 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    # Several models have a `status` field; give each choice set a stable component name.
+    "ENUM_NAME_OVERRIDES": {
+        "MembershipStatusEnum": "organizations.models.Membership.Status",
+        "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
+    },
 }
 
 LOGGING = {

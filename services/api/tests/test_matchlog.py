@@ -1,33 +1,10 @@
 import pytest
-from django.utils import timezone
 
-from accounts.models import User
-
-from .conftest import PASSWORD, BrowserClient
+from .conftest import BrowserClient
+from .helpers import logged_in, make_user
 
 pytestmark = pytest.mark.django_db
 URL = "/api/v1/me/matches/"
-
-
-def make_user(email, **extra):
-    return User.objects.create_user(
-        email=email,
-        password=PASSWORD,
-        display_name=email.split("@")[0],
-        email_verified_at=timezone.now(),
-        **extra,
-    )
-
-
-def logged_in(user):
-    client = BrowserClient()
-    assert (
-        client.post(
-            "/api/v1/auth/login/", {"email": user.email, "password": PASSWORD}, format="json"
-        ).status_code
-        == 200
-    )
-    return client
 
 
 def payload(**overrides):
