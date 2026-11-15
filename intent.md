@@ -60,6 +60,7 @@ Success means that confirmed results produce correct progression and ratings; co
 | Club activities | Clubs post social activities (nights out, fun days, visits) with RSVPs on a members-only club schedule (2026-11-15) |
 | Soda games | Players challenge each other to friendly unrated matches; the challenger may pledge a stake if they lose, the opponent may match it or play without staking. The app records pledges only, never handles money; stakes need legal sign-off before production (2026-11-15) |
 | Annual report | Officials record all expenses in the app; the club publishes a year-end report of how funds were used, frozen once published with visible amendments (2026-11-15) |
+| Match-day operations | Staff run the whole match day in the app: schedules, table board, check-in and calls, real-time scoring with timeouts, yellow/red penalty cards, injury breaks, walkovers, retirements and disqualifications, and generated results announcement posts (2026-11-15) |
 | Events calendar | Public listing of tournaments in the country, on and off mombasa-tt, including our club's; live events show their live link (2026-11-15) |
 | Facilities | Member requests with staff approval |
 | Development | Personal training plus club sessions; private post-match analysis |
