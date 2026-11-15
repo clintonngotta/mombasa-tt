@@ -26,6 +26,8 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,api
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:${WEB_PORT:-8080},http://127.0.0.1:${WEB_PORT:-8080}
       FRONTEND_URL: http://localhost:${WEB_PORT:-8080}
+      # The container runs as root over a bind mount; don't leave a root-owned .pytest_cache in the checkout.
+      PYTEST_ADDOPTS: -p no:cacheprovider
       # Emails (verification, password reset) print to `docker compose logs -f api`.
     ports:
       - "127.0.0.1:${API_PORT:-8020}:8000"
