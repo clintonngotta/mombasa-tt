@@ -1,0 +1,1752 @@
+openapi: 3.0.3
+info:
+  title: mombasa-tt API
+  version: 1.0.0
+paths:
+  /api/v1/auth/csrf/:
+    get:
+      operationId: auth_csrf_retrieve
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Anonymous endpoints. DRF skips CSRF for anonymous users, so enforce it explicitly
+        (prevents login CSRF).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogInRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      security:
+      - sessionAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/password-reset/:
+    post:
+      operationId: auth_password_reset_create
+      description: |-
+        Anonymous endpoints. DRF skips CSRF for anonymous users, so enforce it explicitly
+        (prevents login CSRF).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailOnlyRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/password-reset/confirm/:
+    post:
+      operationId: auth_password_reset_confirm_create
+      description: |-
+        Anonymous endpoints. DRF skips CSRF for anonymous users, so enforce it explicitly
+        (prevents login CSRF).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/signup/:
+    post:
+      operationId: auth_signup_create
+      description: |-
+        Anonymous endpoints. DRF skips CSRF for anonymous users, so enforce it explicitly
+        (prevents login CSRF).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/verification/confirm/:
+    post:
+      operationId: auth_verification_confirm_create
+      description: |-
+        Anonymous endpoints. DRF skips CSRF for anonymous users, so enforce it explicitly
+        (prevents login CSRF).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/verification/resend/:
+    post:
+      operationId: auth_verification_resend_create
+      description: |-
+        Anonymous endpoints. DRF skips CSRF for anonymous users, so enforce it explicitly
+        (prevents login CSRF).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailOnlyRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/goals/:
+    put:
+      operationId: me_goals_update
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoalsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goals'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/join-requests/:
+    get:
+      operationId: me_join_requests_list
+      description: The signed-in player's own join requests (REQ-004), newest first.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyJoinRequestList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/matches/:
+    get:
+      operationId: me_matches_list
+      description: |-
+        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
+        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+      parameters:
+      - in: query
+        name: label
+        schema:
+          type: string
+        description: Filter by label (case-insensitive)
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonalMatchList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_matches_create
+      description: |-
+        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
+        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonalMatchRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalMatch'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/matches/{id}/:
+    get:
+      operationId: me_matches_retrieve
+      description: |-
+        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
+        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this personal match.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalMatch'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: me_matches_update
+      description: |-
+        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
+        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this personal match.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonalMatchRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalMatch'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: me_matches_partial_update
+      description: |-
+        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
+        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this personal match.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonalMatchRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalMatch'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_matches_destroy
+      description: |-
+        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
+        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this personal match.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/matches/labels/:
+    get:
+      operationId: me_matches_labels_retrieve
+      description: The player's own labels, most used first, followed by default suggestions.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchLabels'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/matches/stats/:
+    get:
+      operationId: me_matches_stats_retrieve
+      description: |-
+        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
+        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+      parameters:
+      - in: query
+        name: label
+        schema:
+          type: string
+        description: Limit the summary to one label
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchStats'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/memberships/:
+    get:
+      operationId: me_memberships_list
+      description: 'Organizations the signed-in player belongs to: the basis for the
+        context switcher.'
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMembershipList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/onboarding/complete/:
+    post:
+      operationId: me_onboarding_complete_create
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/profile/:
+    get:
+      operationId: me_profile_retrieve
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: me_profile_partial_update
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/:
+    get:
+      operationId: organizations_list
+      description: Search, view and register organizations (REQ-004).
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Name or town
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrganizationList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_create
+      description: Search, view and register organizations (REQ-004).
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/join-requests/:
+    get:
+      operationId: organizations_join_requests_list
+      description: |-
+        Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
+        active admins of that organization can list or decide requests (TASK-013 replaces this check
+        with real permissions). Routes are mapped explicitly in urls.py.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJoinRequestList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_join_requests_create
+      description: |-
+        Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
+        active admins of that organization can list or decide requests (TASK-013 replaces this check
+        with real permissions). Routes are mapped explicitly in urls.py.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyJoinRequest'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyJoinRequest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/join-requests/{id}/approve/:
+    post:
+      operationId: organizations_join_requests_approve_create
+      description: |-
+        Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
+        active admins of that organization can list or decide requests (TASK-013 replaces this check
+        with real permissions). Routes are mapped explicitly in urls.py.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinRequest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/join-requests/{id}/reject/:
+    post:
+      operationId: organizations_join_requests_reject_create
+      description: |-
+        Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
+        active admins of that organization can list or decide requests (TASK-013 replaces this check
+        with real permissions). Routes are mapped explicitly in urls.py.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinRequest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{id}/:
+    get:
+      operationId: organizations_retrieve
+      description: Search, view and register organizations (REQ-004).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this organization.
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/players/:
+    get:
+      operationId: players_list
+      description: |-
+        Opted-in players only (REQ-006). Searching needs at least two characters so the
+        directory can't be dumped with an empty query.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Name or nickname
+      tags:
+      - players
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDirectoryPlayerList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+components:
+  schemas:
+    BlankEnum:
+      enum:
+      - ''
+    DirectoryPlayer:
+      type: object
+      description: 'Public directory card: name and organizations only. No email,
+        bio, location or other details.'
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        nickname:
+          type: string
+        clubs:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - clubs
+      - display_name
+      - id
+      - nickname
+    EmailOnlyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    ExperienceEnum:
+      enum:
+      - new
+      - casual
+      - club
+      - competitive
+      type: string
+      description: |-
+        * `new` - New
+        * `casual` - Casual
+        * `club` - Club
+        * `competitive` - Competitive
+    FormatEnum:
+      enum:
+      - singles
+      - doubles
+      type: string
+      description: |-
+        * `singles` - Singles
+        * `doubles` - Doubles
+    Game:
+      type: object
+      properties:
+        my_points:
+          type: integer
+          maximum: 99
+          minimum: 0
+        opponent_points:
+          type: integer
+          maximum: 99
+          minimum: 0
+      required:
+      - my_points
+      - opponent_points
+    GameRequest:
+      type: object
+      properties:
+        my_points:
+          type: integer
+          maximum: 99
+          minimum: 0
+        opponent_points:
+          type: integer
+          maximum: 99
+          minimum: 0
+      required:
+      - my_points
+      - opponent_points
+    Goals:
+      type: object
+      properties:
+        goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoalsEnum'
+          maxItems: 6
+      required:
+      - goals
+    GoalsEnum:
+      enum:
+      - compete
+      - rating
+      - train
+      - find_club
+      - umpire
+      - organize
+      type: string
+      description: |-
+        * `compete` - Compete
+        * `rating` - Rating
+        * `train` - Train
+        * `find_club` - Find Club
+        * `umpire` - Umpire
+        * `organize` - Organize
+    GoalsRequest:
+      type: object
+      properties:
+        goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoalsEnum'
+          maxItems: 6
+      required:
+      - goals
+    GripEnum:
+      enum:
+      - shakehand
+      - penhold
+      - other
+      type: string
+      description: |-
+        * `shakehand` - Shakehand
+        * `penhold` - Penhold
+        * `other` - Other
+    HandEnum:
+      enum:
+      - right
+      - left
+      type: string
+      description: |-
+        * `right` - Right
+        * `left` - Left
+    JoinRequest:
+      type: object
+      description: Staff view of a request. Shows the requester's display name only,
+        never their email.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/JoinRequestStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - decided_at
+      - display_name
+      - id
+      - status
+      - user
+    JoinRequestStatusEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `approved` - Approved
+        * `rejected` - Rejected
+    KindEnum:
+      enum:
+      - club
+      - facility
+      - club_facility
+      type: string
+      description: |-
+        * `club` - Club
+        * `facility` - Facility
+        * `club_facility` - Club Facility
+    LabelTally:
+      type: object
+      properties:
+        label:
+          type: string
+        played:
+          type: integer
+        won:
+          type: integer
+        lost:
+          type: integer
+      required:
+      - label
+      - lost
+      - played
+      - won
+    LogInRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    MatchLabels:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            type: string
+      required:
+      - labels
+    MatchResultEnum:
+      enum:
+      - win
+      - loss
+      - draw
+      type: string
+      description: |-
+        * `win` - Win
+        * `loss` - Loss
+        * `draw` - Draw
+    MatchStats:
+      type: object
+      properties:
+        played:
+          type: integer
+        won:
+          type: integer
+        lost:
+          type: integer
+        drawn:
+          type: integer
+        win_rate:
+          type: number
+          format: double
+          nullable: true
+        games_won:
+          type: integer
+        games_lost:
+          type: integer
+        recent_form:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchResultEnum'
+        by_label:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelTally'
+      required:
+      - by_label
+      - drawn
+      - games_lost
+      - games_won
+      - lost
+      - played
+      - recent_form
+      - win_rate
+      - won
+    Membership:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/Organization'
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MembershipStatusEnum'
+          readOnly: true
+        joined_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - joined_at
+      - organization
+      - role
+      - status
+    MembershipStatusEnum:
+      enum:
+      - active
+      - left
+      type: string
+      description: |-
+        * `active` - Active
+        * `left` - Left
+    MyJoinRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/JoinRequestStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - decided_at
+      - id
+      - organization
+      - status
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        town:
+          type: string
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+      required:
+      - id
+      - kind
+      - name
+      - town
+    OrganizationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+      required:
+      - name
+      - town
+    PaginatedDirectoryPlayerList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryPlayer'
+    PaginatedJoinRequestList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/JoinRequest'
+    PaginatedMembershipList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Membership'
+    PaginatedMyJoinRequestList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyJoinRequest'
+    PaginatedOrganizationList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organization'
+    PaginatedPersonalMatchList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonalMatch'
+    PasswordResetConfirmRequest:
+      type: object
+      properties:
+        uid:
+          type: string
+          minLength: 1
+        token:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - token
+      - uid
+    PatchedPersonalMatchRequest:
+      type: object
+      properties:
+        played_on:
+          type: string
+          format: date
+        label:
+          type: string
+          minLength: 1
+          maxLength: 40
+        format:
+          $ref: '#/components/schemas/FormatEnum'
+        opponent_name:
+          type: string
+          maxLength: 120
+        partner_name:
+          type: string
+          maxLength: 80
+        venue:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 5000
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameRequest'
+    PatchedProfileRequest:
+      type: object
+      description: The owner's own view of their profile. `display_name` is written
+        through to User.
+      properties:
+        display_name:
+          type: string
+          maxLength: 80
+        nickname:
+          type: string
+          maxLength: 40
+        hand:
+          oneOf:
+          - $ref: '#/components/schemas/HandEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        grip:
+          oneOf:
+          - $ref: '#/components/schemas/GripEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        style:
+          type: string
+          maxLength: 80
+        experience:
+          oneOf:
+          - $ref: '#/components/schemas/ExperienceEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        bio:
+          type: string
+          maxLength: 280
+        directory_opt_in:
+          type: boolean
+    PersonalMatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        played_on:
+          type: string
+          format: date
+        label:
+          type: string
+          maxLength: 40
+        format:
+          $ref: '#/components/schemas/FormatEnum'
+        opponent_name:
+          type: string
+          maxLength: 120
+        partner_name:
+          type: string
+          maxLength: 80
+        venue:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 5000
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/Game'
+        games_won:
+          type: integer
+          readOnly: true
+        games_lost:
+          type: integer
+          readOnly: true
+        result:
+          allOf:
+          - $ref: '#/components/schemas/MatchResultEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - format
+      - games
+      - games_lost
+      - games_won
+      - id
+      - label
+      - notes
+      - opponent_name
+      - partner_name
+      - played_on
+      - result
+      - updated_at
+      - venue
+    PersonalMatchRequest:
+      type: object
+      properties:
+        played_on:
+          type: string
+          format: date
+        label:
+          type: string
+          minLength: 1
+          maxLength: 40
+        format:
+          $ref: '#/components/schemas/FormatEnum'
+        opponent_name:
+          type: string
+          maxLength: 120
+        partner_name:
+          type: string
+          maxLength: 80
+        venue:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 5000
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameRequest'
+      required:
+      - games
+      - label
+      - played_on
+    Profile:
+      type: object
+      description: The owner's own view of their profile. `display_name` is written
+        through to User.
+      properties:
+        display_name:
+          type: string
+          maxLength: 80
+        nickname:
+          type: string
+          maxLength: 40
+        hand:
+          oneOf:
+          - $ref: '#/components/schemas/HandEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        grip:
+          oneOf:
+          - $ref: '#/components/schemas/GripEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        style:
+          type: string
+          maxLength: 80
+        experience:
+          oneOf:
+          - $ref: '#/components/schemas/ExperienceEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        bio:
+          type: string
+          maxLength: 280
+        directory_opt_in:
+          type: boolean
+        goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoalsEnum'
+          readOnly: true
+        onboarding_completed:
+          type: boolean
+          readOnly: true
+      required:
+      - bio
+      - directory_opt_in
+      - display_name
+      - experience
+      - goals
+      - grip
+      - hand
+      - nickname
+      - onboarding_completed
+      - style
+    RoleEnum:
+      enum:
+      - admin
+      - member
+      type: string
+      description: |-
+        * `admin` - Admin
+        * `member` - Member
+    SignUpRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - display_name
+      - email
+      - password
+    TokenRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+      required:
+      - token
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        email_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - display_name
+      - email
+      - email_verified_at
+      - id
+    ApiError:
+      type: object
+      description: Envelope of every API error (REQ-032); see core.exceptions.api_exception_handler.
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable code, e.g. `validation_error`
+        message:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+          description: Per-field messages for validation errors; empty otherwise
+        request_id:
+          type: string
+          nullable: true
+      required:
+      - code
+      - fields
+      - message
+      - request_id
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

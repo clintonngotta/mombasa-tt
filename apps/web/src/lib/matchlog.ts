@@ -1,44 +1,13 @@
 import { api } from "@/lib/api"
+import type { Schemas } from "@/lib/schema"
 
-export type MatchFormat = "singles" | "doubles"
-export type MatchResult = "win" | "loss" | "draw"
-export type Game = { my_points: number; opponent_points: number }
-
-export type PersonalMatch = {
-  id: string
-  played_on: string
-  label: string
-  format: MatchFormat
-  opponent_name: string
-  partner_name: string
-  venue: string
-  notes: string
-  games: Game[]
-  games_won: number
-  games_lost: number
-  result: MatchResult
-  created_at: string
-  updated_at: string
-}
-
-export type PersonalMatchInput = Pick<
-  PersonalMatch,
-  "played_on" | "label" | "format" | "opponent_name" | "partner_name" | "venue" | "notes" | "games"
->
-
-export type MatchStats = {
-  played: number
-  won: number
-  lost: number
-  drawn: number
-  win_rate: number | null
-  games_won: number
-  games_lost: number
-  recent_form: MatchResult[]
-  by_label: { label: string; played: number; won: number; lost: number }[]
-}
-
-type Page<T> = { count: number; next: string | null; previous: string | null; results: T[] }
+export type MatchFormat = Schemas["FormatEnum"]
+export type MatchResult = Schemas["MatchResultEnum"]
+export type Game = Schemas["Game"]
+export type PersonalMatch = Schemas["PersonalMatch"]
+// The form always sends every field, so treat the optional request fields as present.
+export type PersonalMatchInput = Required<Schemas["PersonalMatchRequest"]>
+export type MatchStats = Schemas["MatchStats"]
 
 const BASE = "/me/matches/"
 const labelQuery = (label?: string) => (label ? `label=${encodeURIComponent(label)}` : "")
@@ -52,10 +21,10 @@ export const matchKeys = {
 }
 
 export const listMatches = (label: string | undefined, page: number) =>
-  api<Page<PersonalMatch>>(`${BASE}?${[labelQuery(label), `page=${page}`].filter(Boolean).join("&")}`)
+  api<Schemas["PaginatedPersonalMatchList"]>(`${BASE}?${[labelQuery(label), `page=${page}`].filter(Boolean).join("&")}`)
 
 export const getMatchStats = (label?: string) => api<MatchStats>(`${BASE}stats/?${labelQuery(label)}`)
-export const getMatchLabels = () => api<{ labels: string[] }>(`${BASE}labels/`)
+export const getMatchLabels = () => api<Schemas["MatchLabels"]>(`${BASE}labels/`)
 export const getMatch = (id: string) => api<PersonalMatch>(`${BASE}${id}/`)
 export const createMatch = (input: PersonalMatchInput) => api<PersonalMatch>(BASE, { body: input })
 export const updateMatch = (id: string, input: PersonalMatchInput) =>

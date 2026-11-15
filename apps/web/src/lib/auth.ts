@@ -1,4 +1,5 @@
 import { api } from "@/lib/api"
+import type { Schemas } from "@/lib/schema"
 
 export type SignUpInput = { display_name: string; email: string; password: string }
 export type LogInInput = { email: string; password: string }
@@ -10,7 +11,7 @@ export const logIn = (input: LogInInput) => api<User>("/auth/login/", { body: in
 // The API answers identically whether or not the address exists (REQ-003: no enumeration).
 export const requestPasswordReset = (email: string) => api<void>("/auth/password-reset/", { body: { email } })
 
-export type User = { id: string; email: string; display_name: string; email_verified_at: string | null }
+export type User = Schemas["User"]
 
 export const verifyEmail = (token: string) => api<User>("/auth/verification/confirm/", { body: { token } })
 
