@@ -128,7 +128,7 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 
 ### EVAL-023
 
-**Contributions — clock-controlled integration.** Setup: selected members; monthly campaign due on day 31; weekly/quarterly/yearly and leap-day fixtures. Steps: run generator twice, advance across February, change amount, add new member, waive due, partially pay overdue item. Pass: one due per campaign/member/period; dates clamp correctly; prior dues unchanged; no old dues for new member; statuses and outstanding amounts correct. Evidence: period keys and expected ledger table.
+**Contributions — clock-controlled integration.** Setup: selected members; monthly campaign due on day 31; weekly/quarterly/yearly and leap-day fixtures. Steps: run generator twice, advance across February, change amount, add new member, waive due, partially pay overdue item. Pass: one due per campaign/member/period; dates clamp correctly; prior dues unchanged; no old dues for new member; a weekly and a monthly Club operations campaign bill every active member once per period with overrides/waivers honoured and none after a member leaves; statuses and outstanding amounts correct. Evidence: period keys and expected ledger table.
 
 ### EVAL-024
 
