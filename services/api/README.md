@@ -74,7 +74,7 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 
 | Method | Path | Notes |
 |---|---|---|
-| GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default) |
+| GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default), `published_details` (which of hand, grip, style, experience, bio show on the player page; empty by default) |
 | PUT | `goals/` | `{goals: [...]}` replaces the list. Goals only order Home shortcuts and never grant roles |
 | POST | `onboarding/complete/` | 204. Repeat calls keep the first completion time |
 | GET | `memberships/` | Active memberships with their organization (basis for the club switcher); paginated |
@@ -96,6 +96,7 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET | `/api/v1/organizations/{id}/invitations/` | Open (pending, unexpired) invitations, admins only; paginated |
 | POST | `/api/v1/organizations/{id}/invitations/{iid}/revoke/` | Admins only; 409 `already_decided` |
 | GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname and clubs, never email or bio |
+| GET | `/api/v1/players/{id}/` | One opted-in player: the directory card plus only the details they published (others null); 404 once they opt out |
 
 The admin/member role pair is a stand-in until the permission catalog and role templates arrive (TASK-013).
 Invitations, leaving an organization and the last-admin rule also come later.

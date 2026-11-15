@@ -23,6 +23,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "experience",
             "bio",
             "directory_opt_in",
+            "published_details",
             "goals",
             "onboarding_completed",
         ]
@@ -35,6 +36,9 @@ class ProfileSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("Enter the name other players will see.")
         return value
+
+    def validate_published_details(self, value):
+        return list(dict.fromkeys(value))
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})
@@ -63,3 +67,32 @@ class DirectoryPlayerSerializer(serializers.Serializer):
 
     def get_clubs(self, obj) -> list[str]:
         return [m.organization.name for m in obj.user.memberships.all()]
+
+
+class PublishedOnly:
+    """Reads the attribute only if the player published it and it isn't blank; otherwise null."""
+
+    def get_attribute(self, instance):
+        value = super().get_attribute(instance)
+        return value if value and self.field_name in instance.published_details else None
+
+
+class PublishedChoiceField(PublishedOnly, serializers.ChoiceField):
+    pass
+
+
+class PublishedCharField(PublishedOnly, serializers.CharField):
+    pass
+
+
+class PlayerSerializer(DirectoryPlayerSerializer):
+    """Public player page: the directory card plus only the extended details the player published.
+    Unpublished or blank details are null. Never email, location or contact details."""
+
+    hand = PublishedChoiceField(choices=PlayerProfile.Hand.choices, read_only=True, allow_null=True)
+    grip = PublishedChoiceField(choices=PlayerProfile.Grip.choices, read_only=True, allow_null=True)
+    style = PublishedCharField(read_only=True, allow_null=True)
+    experience = PublishedChoiceField(
+        choices=PlayerProfile.Experience.choices, read_only=True, allow_null=True
+    )
+    bio = PublishedCharField(read_only=True, allow_null=True)

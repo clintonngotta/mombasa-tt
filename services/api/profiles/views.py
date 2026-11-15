@@ -10,7 +10,7 @@ from core.pagination import StandardPagination, search_term
 from organizations.models import Membership
 
 from .models import PlayerProfile, profile_for
-from .serializers import DirectoryPlayerSerializer, GoalsSerializer, ProfileSerializer
+from .serializers import DirectoryPlayerSerializer, GoalsSerializer, PlayerSerializer, ProfileSerializer
 
 MIN_SEARCH_LENGTH = 2
 
@@ -49,6 +49,16 @@ class CompleteOnboardingView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def listed_players():
+    """Profiles that may be shown to other players: opted in and active (REQ-006)."""
+    active = Membership.objects.active().select_related("organization")
+    return (
+        PlayerProfile.objects.filter(directory_opt_in=True, user__is_active=True)
+        .select_related("user")
+        .prefetch_related(Prefetch("user__memberships", queryset=active))
+    )
+
+
 class PlayerDirectoryView(generics.ListAPIView):
     """Opted-in players only (REQ-006). Searching needs at least two characters so the
     directory can't be dumped with an empty query."""
@@ -65,11 +75,18 @@ class PlayerDirectoryView(generics.ListAPIView):
         term = search_term(self.request)
         if len(term) < MIN_SEARCH_LENGTH:
             return PlayerProfile.objects.none()
-        active = Membership.objects.active().select_related("organization")
         return (
-            PlayerProfile.objects.filter(directory_opt_in=True, user__is_active=True)
+            listed_players()
             .filter(Q(user__display_name__icontains=term) | Q(nickname__icontains=term))
-            .select_related("user")
-            .prefetch_related(Prefetch("user__memberships", queryset=active))
             .order_by("user__display_name")
         )
+
+
+class PlayerDetailView(generics.RetrieveAPIView):
+    """One listed player's page. 404 once they opt out, so opting out removes the page too."""
+
+    serializer_class = PlayerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return listed_players()
