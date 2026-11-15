@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-040 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-042 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -202,6 +202,14 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 **Soda games (friendly challenges) — Phase 1, stakes behind a policy gate (user decision, 2026-11-15).** A player challenges another player (same club or any player reachable through the opted-in directory) to a friendly singles or doubles match called a soda game. The challenge carries date/time or "next time we meet", optional venue, best-of, a message, and an optional stake: the amount the challenger pledges to pay if they lose (`{amount_minor,currency}`, e.g. KES 100, or a soda). The challenged player can accept and match the same stake, accept and play without staking, propose a new time, or decline; the challenger may withdraw before acceptance. When only the challenger staked, only the challenger owes on a loss. The match is scored through Quick Score (REQ-017) or recorded by both players; the result needs confirmation by both players (or an assigned umpire) before the stake outcome is shown, and a disputed result shows "disputed" with no amount owed. Soda games are unrated, never affect Elo, standings or official history, and do not reserve tables (REQ-014). mombasa-tt only records the pledge and lets the winner mark it "settled"; it never collects, holds or transfers money, sets odds, or lets anyone other than the two players stake, so no spectator or third-party betting. Stakes are visible only to the two players; club members see the challenge and result only if both players allow it. Organizations can disable stakes, or soda games entirely, for their members. Enabling stakes in production requires a recorded legal/policy sign-off (Kenyan betting and gaming law, minimum age 18, stake limits); until then the stake fields stay hidden and soda games run without stakes.
 
+### REQ-041
+
+**Annual financial report — Phase 2 (user decision, 2026-11-15).** Club officials with the finance permission record every club expense in mombasa-tt (purpose/campaign, category such as hall hire, equipment, welfare, events, transport, amount, date, payee, description, private receipt, recorder) as the single source for the club's accounts; corrections use REQ-024 reversals, never edits that erase history. At the end of the club's financial year (configurable year-end date, default 31 December, organization timezone) officials generate a report for the period: opening balance, receipts by campaign (operations dues, welfare projects, event fees, other), expenses by category and campaign, closing balance, outstanding dues total, waivers total, and deficits shown as negative. Officials review a draft, add a narrative summary, and publish it; publishing freezes a versioned snapshot with publisher and time. Members of the organization see published reports (aggregates only, no individual member balances, payer names or receipts); the club may optionally make a report public. A later correction to a reported period never changes the published snapshot silently: officials publish an amended version that lists the changes and keeps the original visible. Reports export to PDF/CSV. Arithmetic must reconcile exactly with the REQ-022/REQ-024 ledger for the period.
+
+### REQ-042
+
+**Events calendar and live links — Phase 1 (user decision, 2026-11-15).** A public events listing shows table tennis tournaments and events happening in the country, both those run on mombasa-tt (REQ-007, including our own club's) and external events run elsewhere. External events are listings only: name, organizer, dates and timezone, venue and town, categories (e.g. singles/doubles, juniors, open), entry information, official info link and optional live stream link; they carry no draws, entries or ratings in mombasa-tt. Club staff with the announcements permission submit external events; a platform curator reviews them before they appear publicly (members of the submitting club see them immediately, marked "awaiting review"). Listings offer list and month-calendar views, filters by town, category, host club and "our club", and a countdown for upcoming events. When an event is live (within its scheduled times, or marked live by its organizer/curator) it shows a "Live" badge and the live link: for mombasa-tt events the live tournament page and any REQ-030 broadcast; for external events the submitted live stream URL. Links must be https, open in a new tab with the destination domain shown, and can be reported and removed by curators. Past events stay listed with results links where available. Cancelled or postponed events stay visible with their status.
+
 ## Planned entity groups
 
 | Domain | Records and ownership |
@@ -211,8 +219,8 @@ On availability/result changes, rank ready matches by planned start, then ready-
 | Competition | Tournament, Event, Entry, Pair, TeamRoster, Tie/Rubber, Group, DrawVersion, Match, ResultRevision |
 | Operations | Venue, Table, Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
-| Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038) |
-| Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players |
+| Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038), FinancialYear, AnnualReport/ReportVersion (REQ-041) |
+| Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players. ExternalEvent listing and curation (REQ-042); platform scoped |
 | Development | PersonalMatch/PersonalGame (REQ-037), MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |
 | Media later | RecordingSession/Segment, TimeMapping, Marker, Clip, ProcessingJob, Publication, Destination |
 | Billing later | OrganizationSubscription, PlanVersion, Entitlement, UsageRecord, BillingEvent |
