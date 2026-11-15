@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import JoinRequest, Membership, Organization
+from .models import Invitation, JoinRequest, Membership, Organization
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -36,4 +36,32 @@ class MyJoinRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = JoinRequest
         fields = ["id", "organization", "status", "created_at", "decided_at"]
+        read_only_fields = fields
+
+
+class InvitationCreateSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value: str) -> str:
+        return value.strip().lower()
+
+
+class InvitationSerializer(serializers.ModelSerializer):
+    """Staff view of an invitation they sent."""
+
+    class Meta:
+        model = Invitation
+        fields = ["id", "email", "status", "created_at", "expires_at", "decided_at"]
+        read_only_fields = fields
+
+
+class MyInvitationSerializer(serializers.ModelSerializer):
+    """The invitee's view: which organization, and who invited them (display name only)."""
+
+    organization = OrganizationSerializer(read_only=True)
+    invited_by_name = serializers.CharField(source="invited_by.display_name", read_only=True, default="")
+
+    class Meta:
+        model = Invitation
+        fields = ["id", "organization", "invited_by_name", "status", "created_at", "expires_at"]
         read_only_fields = fields

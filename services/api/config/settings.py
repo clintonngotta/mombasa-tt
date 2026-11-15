@@ -160,6 +160,7 @@ SPECTACULAR_SETTINGS = {
         "MembershipStatusEnum": "organizations.models.Membership.Status",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
         "MatchResultEnum": "matchlog.models.MatchResult",
+        "InvitationStatusEnum": "organizations.models.Invitation.Status",
     },
 }
 

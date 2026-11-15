@@ -188,6 +188,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        get: operations["me_invitations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/invitations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        post: operations["me_invitations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/invitations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        post: operations["me_invitations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/join-requests/": {
         parameters: {
             query?: never;
@@ -359,6 +410,50 @@ export interface paths {
         put?: never;
         /** @description Search, view and register organizations (REQ-004). */
         post: operations["organizations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
+         *     whether it has an account: the reply is the same and the email goes out either way.
+         */
+        get: operations["organizations_invitations_list"];
+        put?: never;
+        /**
+         * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
+         *     whether it has an account: the reply is the same and the email goes out either way.
+         */
+        post: operations["organizations_invitations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/invitations/{id}/revoke/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
+         *     whether it has an account: the reply is the same and the email goes out either way.
+         */
+        post: operations["organizations_invitations_revoke_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -539,6 +634,32 @@ export interface components {
          * @enum {string}
          */
         HandEnum: "right" | "left";
+        /** @description Staff view of an invitation they sent. */
+        Invitation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: email */
+            readonly email: string;
+            readonly status: components["schemas"]["InvitationStatusEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly expires_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+        };
+        InvitationCreateRequest: {
+            /** Format: email */
+            email: string;
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `revoked` - Revoked
+         * @enum {string}
+         */
+        InvitationStatusEnum: "pending" | "accepted" | "declined" | "revoked";
         /** @description Staff view of a request. Shows the requester's display name only, never their email. */
         JoinRequest: {
             /** Format: uuid */
@@ -614,6 +735,19 @@ export interface components {
          * @enum {string}
          */
         MembershipStatusEnum: "active" | "left";
+        /** @description The invitee's view: which organization, and who invited them (display name only). */
+        MyInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["Organization"];
+            /** @default  */
+            readonly invited_by_name: string;
+            readonly status: components["schemas"]["InvitationStatusEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly expires_at: string;
+        };
         MyJoinRequest: {
             /** Format: uuid */
             readonly id: string;
@@ -652,6 +786,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["DirectoryPlayer"][];
         };
+        PaginatedInvitationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Invitation"][];
+        };
         PaginatedJoinRequestList: {
             /** @example 123 */
             count: number;
@@ -681,6 +830,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Membership"][];
+        };
+        PaginatedMyInvitationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyInvitation"][];
         };
         PaginatedMyJoinRequestList: {
             /** @example 123 */
@@ -1133,6 +1297,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Goals"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_invitations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyInvitationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_invitations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_invitations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyInvitation"];
                 };
             };
             /** @description Error envelope */
@@ -1610,6 +1869,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_invitations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedInvitationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_invitations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_invitations_revoke_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
                 };
             };
             /** @description Error envelope */
