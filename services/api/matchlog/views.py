@@ -8,8 +8,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import PersonalMatch
-from .serializers import RESULT_CHOICES, PersonalMatchSerializer
+from .models import MatchResult, PersonalMatch
+from .serializers import PersonalMatchSerializer
 
 SUGGESTED_LABELS = ["Friendly", "Tournament", "Practice", "League"]
 RECENT_FORM_SIZE = 10
@@ -74,7 +74,9 @@ class PersonalMatchViewSet(viewsets.ModelViewSet):
                 "win_rate": serializers.FloatField(allow_null=True),
                 "games_won": serializers.IntegerField(),
                 "games_lost": serializers.IntegerField(),
-                "recent_form": serializers.ListField(child=serializers.ChoiceField(choices=RESULT_CHOICES)),
+                "recent_form": serializers.ListField(
+                    child=serializers.ChoiceField(choices=MatchResult.choices)
+                ),
                 "by_label": inline_serializer(
                     "LabelTally",
                     {
@@ -93,7 +95,7 @@ class PersonalMatchViewSet(viewsets.ModelViewSet):
         matches = list(self.get_queryset())
         results = [m.result for m in matches]
         tallies = [m.tally() for m in matches]
-        decided = results.count("win") + results.count("loss")
+        decided = results.count(MatchResult.WIN) + results.count(MatchResult.LOSS)
 
         by_label: dict[str, dict] = {}
         for match, result in zip(matches, results, strict=True):
@@ -101,16 +103,16 @@ class PersonalMatchViewSet(viewsets.ModelViewSet):
                 match.label.lower(), {"label": match.label, "played": 0, "won": 0, "lost": 0}
             )
             row["played"] += 1
-            row["won"] += result == "win"
-            row["lost"] += result == "loss"
+            row["won"] += result == MatchResult.WIN
+            row["lost"] += result == MatchResult.LOSS
 
         return Response(
             {
                 "played": len(matches),
-                "won": results.count("win"),
-                "lost": results.count("loss"),
-                "drawn": results.count("draw"),
-                "win_rate": round(results.count("win") / decided, 3) if decided else None,
+                "won": results.count(MatchResult.WIN),
+                "lost": results.count(MatchResult.LOSS),
+                "drawn": results.count(MatchResult.DRAW),
+                "win_rate": round(results.count(MatchResult.WIN) / decided, 3) if decided else None,
                 "games_won": sum(w for w, _ in tallies),
                 "games_lost": sum(lost for _, lost in tallies),
                 # Newest first, matching the list order.

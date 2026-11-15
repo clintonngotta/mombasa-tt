@@ -8,8 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "gen:api": "openapi-typescript ../../services/api/openapi.yaml -o src/lib/api-schema.d.ts",
-    "typecheck": "tsc -b"
+    "gen:api": "openapi-typescript ../../services/api/openapi.yaml -o ../../packages/contracts/api-schema.d.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

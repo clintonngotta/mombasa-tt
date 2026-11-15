@@ -4,6 +4,14 @@ from django.conf import settings
 from django.db import models
 
 
+class MatchResult(models.TextChoices):
+    """Derived from the set tally; not stored."""
+
+    WIN = "win"
+    LOSS = "loss"
+    DRAW = "draw"
+
+
 class PersonalMatch(models.Model):
     """A match the player recorded themselves (REQ-037). Owner-only personal data: never feeds
     ratings, standings, public pages or other players' views."""
@@ -40,9 +48,9 @@ class PersonalMatch(models.Model):
         return won, len(games) - won
 
     @property
-    def result(self) -> str:
+    def result(self) -> MatchResult:
         won, lost = self.tally()
-        return "win" if won > lost else "loss" if lost > won else "draw"
+        return MatchResult.WIN if won > lost else MatchResult.LOSS if lost > won else MatchResult.DRAW
 
 
 class PersonalGame(models.Model):

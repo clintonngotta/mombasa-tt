@@ -55,7 +55,7 @@ jobs:
       - name: Tests
         run: uv run pytest
       - name: Dependency audit
-        run: uv export --locked --no-dev --no-hashes --format requirements-txt > /tmp/requirements.txt && uvx pip-audit --strict -r /tmp/requirements.txt
+        run: uv export --locked --no-dev --no-hashes --format requirements-txt > /tmp/requirements.txt && uvx pip-audit --strict --no-deps --disable-pip -r /tmp/requirements.txt
 
   web:
     name: Web (lint, types, build)
@@ -77,7 +77,7 @@ jobs:
       - name: Generated API types drift
         run: |
           pnpm gen:api
-          git diff --exit-code -- src/lib/api-schema.d.ts || { echo "::error::api-schema.d.ts is stale; run pnpm gen:api"; exit 1; }
+          git diff --exit-code -- ../../packages/contracts || { echo "::error::packages/contracts is stale; run pnpm gen:api"; exit 1; }
       - name: Lint
         run: pnpm lint
       - name: Typecheck and build
@@ -88,6 +88,9 @@ jobs:
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read  # gitleaks-action lists the PR's commits to scan
     steps:
       - uses: actions/checkout@v4
         with:

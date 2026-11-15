@@ -1,3 +1,5 @@
+import type { Schemas } from "@/lib/schema"
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
 
 export class ApiError extends Error {
@@ -29,7 +31,7 @@ export class ApiError extends Error {
 }
 
 /** Error envelope returned by every API error (spec REQ-032). */
-type ApiErrorBody = { code: string; message: string; fields: Record<string, string>; request_id: string }
+type ApiErrorBody = Schemas["ApiError"]
 
 function csrfToken() {
   const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)

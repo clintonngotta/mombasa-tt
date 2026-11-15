@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input"
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
-import { requestToJoin, saveDiscovery, searchClubs, useOnboardingDraft, type Club } from "@/lib/onboarding"
+import { requestToJoin, saveDiscovery, searchOrganizations, useOnboardingDraft, type Organization } from "@/lib/onboarding"
 
-const KIND_LABEL: Record<Club["kind"], string> = {
+const KIND_LABEL: Record<Organization["kind"], string> = {
   club: "Club",
   facility: "Facility",
   club_facility: "Club and facility",
@@ -23,12 +23,12 @@ export function FindCommunityPage() {
 
   const results = useQuery({
     queryKey: ["organizations", "search", term],
-    queryFn: () => searchClubs(term),
+    queryFn: () => searchOrganizations(term),
     enabled: term.length >= 2,
   })
 
   const join = useMutation({
-    mutationFn: (club: Club) => requestToJoin(club.id),
+    mutationFn: (club: Organization) => requestToJoin(club.id),
     onSuccess: (_data, club) => updateDraft({ joinRequests: [...draft.joinRequests, club] }),
   })
 

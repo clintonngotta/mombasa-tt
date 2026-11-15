@@ -1,5 +1,5 @@
 import { api } from "@/lib/api"
-import type { Page, Schemas } from "@/lib/schema"
+import type { Schemas } from "@/lib/schema"
 
 export type MatchFormat = Schemas["FormatEnum"]
 export type MatchResult = Schemas["MatchResultEnum"]
@@ -21,7 +21,7 @@ export const matchKeys = {
 }
 
 export const listMatches = (label: string | undefined, page: number) =>
-  api<Page<PersonalMatch>>(`${BASE}?${[labelQuery(label), `page=${page}`].filter(Boolean).join("&")}`)
+  api<Schemas["PaginatedPersonalMatchList"]>(`${BASE}?${[labelQuery(label), `page=${page}`].filter(Boolean).join("&")}`)
 
 export const getMatchStats = (label?: string) => api<MatchStats>(`${BASE}stats/?${labelQuery(label)}`)
 export const getMatchLabels = () => api<Schemas["MatchLabels"]>(`${BASE}labels/`)

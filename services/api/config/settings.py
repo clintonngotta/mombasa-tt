@@ -153,13 +153,13 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
-        "core.schema.require_response_fields",
+        "core.schema.contract_hook",
     ],
     # Several models have a `status` field; give each choice set a stable component name.
     "ENUM_NAME_OVERRIDES": {
         "MembershipStatusEnum": "organizations.models.Membership.Status",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
-        "MatchResultEnum": "matchlog.serializers.RESULT_CHOICES",
+        "MatchResultEnum": "matchlog.models.MatchResult",
     },
 }
 

@@ -1,3 +1,5 @@
+from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from rest_framework import exceptions, status
 from rest_framework.views import exception_handler as drf_exception_handler
 
@@ -20,6 +22,11 @@ def _flatten(detail) -> str:
 
 def api_exception_handler(exc, context):
     """Shape every API error as {code, message, fields, request_id} (spec REQ-032)."""
+    # DRF maps Django's Http404/PermissionDenied internally; map them here too so they keep their codes.
+    if isinstance(exc, Http404):
+        exc = exceptions.NotFound()
+    elif isinstance(exc, PermissionDenied):
+        exc = exceptions.PermissionDenied()
     response = drf_exception_handler(exc, context)
     if response is None:
         return None

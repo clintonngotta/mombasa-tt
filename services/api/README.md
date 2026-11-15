@@ -43,8 +43,8 @@ uv run --env-file .env manage.py makemigrations --check --dry-run
 
 ### API contract
 
-`openapi.yaml` is the committed schema, and the web app's types (`apps/web/src/lib/api-schema.d.ts`) are generated
-from it. After changing a serializer or view, regenerate both; CI fails when either is stale:
+`openapi.yaml` is the committed schema; `packages/contracts/api-schema.d.ts` is generated from it and used by the web
+app. Every operation documents the `ApiError` envelope as its 4XX reply (`core.schema.contract_hook`). After changing a serializer or view, regenerate both; CI fails when either is stale:
 
 ```sh
 uv run --env-file .env manage.py spectacular --fail-on-warn --file openapi.yaml

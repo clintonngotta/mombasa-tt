@@ -581,9 +581,9 @@ export interface components {
             labels: string[];
         };
         /**
-         * @description * `win` - win
-         *     * `loss` - loss
-         *     * `draw` - draw
+         * @description * `win` - Win
+         *     * `loss` - Loss
+         *     * `draw` - Draw
          * @enum {string}
          */
         MatchResultEnum: "win" | "loss" | "draw";
@@ -824,6 +824,17 @@ export interface components {
             /** Format: date-time */
             readonly date_joined: string;
         };
+        /** @description Envelope of every API error (REQ-032); see core.exceptions.api_exception_handler. */
+        ApiError: {
+            /** @description Stable machine-readable code, e.g. `validation_error` */
+            code: string;
+            message: string;
+            /** @description Per-field messages for validation errors; empty otherwise */
+            fields: {
+                [key: string]: string;
+            };
+            request_id: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -849,6 +860,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     auth_login_create: {
@@ -872,6 +892,15 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     auth_logout_create: {
@@ -890,6 +919,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     auth_me_retrieve: {
@@ -907,6 +945,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -931,6 +978,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     auth_password_reset_confirm_create: {
@@ -953,6 +1009,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     auth_signup_create: {
@@ -974,6 +1039,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };
@@ -998,6 +1072,15 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     auth_verification_resend_create: {
@@ -1019,6 +1102,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };
@@ -1043,6 +1135,15 @@ export interface operations {
                     "application/json": components["schemas"]["Goals"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     me_join_requests_list: {
@@ -1065,6 +1166,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedMyJoinRequestList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1093,6 +1203,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedPersonalMatchList"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     me_matches_create: {
@@ -1116,6 +1235,15 @@ export interface operations {
                     "application/json": components["schemas"]["PersonalMatch"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     me_matches_retrieve: {
@@ -1136,6 +1264,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonalMatch"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1164,6 +1301,15 @@ export interface operations {
                     "application/json": components["schemas"]["PersonalMatch"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     me_matches_destroy: {
@@ -1184,6 +1330,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };
@@ -1211,6 +1366,15 @@ export interface operations {
                     "application/json": components["schemas"]["PersonalMatch"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     me_matches_labels_retrieve: {
@@ -1228,6 +1392,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchLabels"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1250,6 +1423,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchStats"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1276,6 +1458,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedMembershipList"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     me_onboarding_complete_create: {
@@ -1294,6 +1485,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     me_profile_retrieve: {
@@ -1311,6 +1511,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1334,6 +1543,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1362,6 +1580,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedOrganizationList"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     organizations_create: {
@@ -1383,6 +1610,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1409,6 +1645,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedJoinRequestList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1440,6 +1685,15 @@ export interface operations {
                     "application/json": components["schemas"]["MyJoinRequest"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     organizations_join_requests_approve_create: {
@@ -1460,6 +1714,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JoinRequest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1484,6 +1747,15 @@ export interface operations {
                     "application/json": components["schemas"]["JoinRequest"];
                 };
             };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     organizations_retrieve: {
@@ -1504,6 +1776,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };
@@ -1530,6 +1811,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedDirectoryPlayerList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };

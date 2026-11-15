@@ -1,11 +1,10 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import PersonalGame, PersonalMatch
+from .models import MatchResult, PersonalGame, PersonalMatch
 
 MAX_GAMES = 7
 MAX_POINTS = 99
-RESULT_CHOICES = ["win", "loss", "draw"]
 
 
 class GameSerializer(serializers.ModelSerializer):
@@ -26,7 +25,7 @@ class PersonalMatchSerializer(serializers.ModelSerializer):
     games = GameSerializer(many=True)
     games_won = serializers.SerializerMethodField()
     games_lost = serializers.SerializerMethodField()
-    result = serializers.ChoiceField(choices=RESULT_CHOICES, read_only=True)
+    result = serializers.ChoiceField(choices=MatchResult.choices, read_only=True)
     label = serializers.CharField(max_length=40, trim_whitespace=True)
 
     class Meta:
