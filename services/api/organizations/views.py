@@ -1,5 +1,6 @@
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, When
+from django.db.models.functions import Lower
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -22,7 +23,7 @@ from .access import (
 )
 from .emails import send_invitation_email
 from .models import Invitation, JoinRequest, Membership, Organization, Role, invitation_expiry, seed_roles
-from .permissions import Permission, RoleKey
+from .permissions import ROLE_TEMPLATES, Permission, RoleKey
 from .serializers import (
     InvitationCreateSerializer,
     InvitationSerializer,
@@ -350,8 +351,14 @@ class RoleViewSet(viewsets.GenericViewSet):
         organization = self.get_organization()
         require_permission(request.user, organization, MANAGE_ROLES, MANAGE_MEMBERS)
         roles = organization.roles.annotate(
-            member_count=Count("memberships", filter=Q(memberships__status=Membership.Status.ACTIVE))
-        )
+            member_count=Count("memberships", filter=Q(memberships__status=Membership.Status.ACTIVE)),
+            # Templates in their usual order, custom roles by name, and Member (everyone) last.
+            position=Case(
+                *(When(key=key, then=index) for index, (key, _, _) in enumerate(ROLE_TEMPLATES)),
+                default=len(ROLE_TEMPLATES) - 1,
+                output_field=IntegerField(),
+            ),
+        ).order_by(Case(When(key=RoleKey.MEMBER, then=1), default=0), "position", Lower("name"))
         return Response(RoleSerializer(roles, many=True).data)
 
     @extend_schema(request=RoleSerializer, responses={201: RoleSerializer})

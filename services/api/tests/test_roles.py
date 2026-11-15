@@ -327,3 +327,11 @@ def test_two_admins_removing_each_other_concurrently_leave_one_admin():
     # The second request runs after the first commits: its actor is no longer an admin (403), or it would
     # remove the last admin (409). Either way it changes nothing.
     assert sorted(statuses)[0] == 200 and sorted(statuses)[1] in (403, 409)
+
+
+def test_roles_are_listed_templates_first_then_custom_then_member(admin, club):
+    client = logged_in(admin)
+    client.post(roles_url(club), {"name": "Treasurer"}, format="json")
+    client.post(roles_url(club), {"name": "coach"}, format="json")
+    names = [r["name"] for r in client.get(roles_url(club)).json()]
+    assert names == ["Admin", "Captain", "Assistant captain", "Committee", "coach", "Treasurer", "Member"]
