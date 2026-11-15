@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
 import { logOut } from "@/lib/auth"
+import { clearActiveOrganization } from "@/lib/clubs"
 import { useMe } from "@/lib/session"
 
 export function ProfilePage() {
@@ -15,6 +16,7 @@ export function ProfilePage() {
     mutationFn: logOut,
     onSuccess: () => {
       queryClient.clear()
+      clearActiveOrganization()
       navigate("/login", { replace: true })
     },
   })

@@ -22,7 +22,7 @@ export function OrganizationSwitcher({ className }: { className?: string }) {
         id={id}
         value={active.organization.id}
         onChange={(e) => setActiveOrganization(e.target.value)}
-        className="h-11 w-full appearance-none truncate rounded-lg border bg-card pr-9 pl-3 text-sm font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="h-12 w-full appearance-none truncate rounded-lg border bg-card pr-9 pl-3 text-sm font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         {all.map((m) => (
           <option key={m.organization.id} value={m.organization.id}>

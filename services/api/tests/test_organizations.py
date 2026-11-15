@@ -97,8 +97,11 @@ def test_rejected_player_may_ask_again(admin, player, club):
     assert not Membership.objects.filter(organization=club, user=player).exists()
     second = player_client.post(requests_url(club), {}, format="json")
     assert second.status_code == 201 and second.json()["id"] != first
-    statuses = [r["status"] for r in player_client.get("/api/v1/me/join-requests/").json()["results"]]
-    assert statuses == ["pending", "rejected"]
+    mine = player_client.get("/api/v1/me/join-requests/").json()["results"]
+    assert [(r["status"], r["organization"]["name"]) for r in mine] == [
+        ("pending", club.name),
+        ("rejected", club.name),
+    ]
 
 
 def test_outsider_and_requester_cannot_manage_requests(admin, player, club):

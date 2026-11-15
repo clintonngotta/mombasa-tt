@@ -752,11 +752,11 @@ export interface components {
             /** Format: date-time */
             readonly expires_at: string;
         };
+        /** @description The requester's view: which organization (name and town, so the app can list them) and the outcome. */
         MyJoinRequest: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: uuid */
-            readonly organization: string;
+            readonly organization: components["schemas"]["Organization"];
             readonly status: components["schemas"]["JoinRequestStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft } from "lucide-react"
+import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
@@ -18,7 +18,7 @@ export function RegisterOrganizationPage() {
   const create = useMutation({
     mutationFn: createOrganization,
     onSuccess: async (organization) => {
-      await queryClient.invalidateQueries({ queryKey: clubKeys.memberships })
+      await queryClient.invalidateQueries({ queryKey: clubKeys.all })
       setActiveOrganization(organization.id)
       navigate("/club")
     },
@@ -34,9 +34,7 @@ export function RegisterOrganizationPage() {
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">
-      <Link to="/club" className="flex items-center gap-1 self-start text-sm font-semibold text-muted-foreground hover:text-foreground">
-        <ArrowLeft aria-hidden className="size-4" /> Club
-      </Link>
+      <BackLink to="/club">Club</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Register an organization</h1>
         <p className="text-muted-foreground">You become its first admin and can then invite members and approve join requests.</p>

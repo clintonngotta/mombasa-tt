@@ -10,6 +10,8 @@ export type Membership = Schemas["Membership"]
 export type JoinRequest = Schemas["JoinRequest"]
 export type Invitation = Schemas["Invitation"]
 export type MyInvitation = Schemas["MyInvitation"]
+export type MyJoinRequest = Schemas["MyJoinRequest"]
+export type JoinDecision = "approve" | "reject"
 export type OrganizationInput = Required<Schemas["OrganizationRequest"]>
 
 export const KIND_LABEL: Record<OrganizationKind, string> = {
@@ -18,7 +20,10 @@ export const KIND_LABEL: Record<OrganizationKind, string> = {
   club_facility: "Club and facility",
 }
 
+// Every club query lives under "clubs", so one invalidation (or removal on sign-out) covers them all.
 export const clubKeys = {
+  all: ["clubs"] as const,
+  search: (term: string) => ["clubs", "search", term] as const,
   memberships: ["clubs", "memberships"] as const,
   myInvitations: ["clubs", "my-invitations"] as const,
   myJoinRequests: ["clubs", "my-join-requests"] as const,
@@ -26,7 +31,11 @@ export const clubKeys = {
   invitations: (orgId: string) => ["clubs", orgId, "invitations"] as const,
 }
 
-const org = (id: string) => `/organizations/${id}`
+const orgPath = (id: string) => `/organizations/${id}`
+
+export const searchOrganizations = (query: string) =>
+  api<Schemas["PaginatedOrganizationList"]>(`/organizations/?search=${encodeURIComponent(query)}`)
+export const requestToJoin = (organizationId: string) => api<MyJoinRequest>(`${orgPath(organizationId)}/join-requests/`, { body: {} })
 
 // A player belongs to a handful of organizations, so the first page (50) covers the switcher.
 export const listMyMemberships = () => api<Schemas["PaginatedMembershipList"]>("/me/memberships/?page_size=50")
@@ -37,19 +46,24 @@ export const declineInvitation = (id: string) => api<MyInvitation>(`/me/invitati
 
 export const createOrganization = (input: OrganizationInput) => api<Organization>("/organizations/", { body: input })
 
-export const listJoinRequests = (orgId: string) => api<Schemas["PaginatedJoinRequestList"]>(`${org(orgId)}/join-requests/`)
-export const decideJoinRequest = (orgId: string, id: string, outcome: "approve" | "reject") =>
-  api<JoinRequest>(`${org(orgId)}/join-requests/${id}/${outcome}/`, { body: {} })
+export const listJoinRequests = (orgId: string) => api<Schemas["PaginatedJoinRequestList"]>(`${orgPath(orgId)}/join-requests/`)
+export const decideJoinRequest = (orgId: string, id: string, outcome: JoinDecision) =>
+  api<JoinRequest>(`${orgPath(orgId)}/join-requests/${id}/${outcome}/`, { body: {} })
 
-export const listInvitations = (orgId: string) => api<Schemas["PaginatedInvitationList"]>(`${org(orgId)}/invitations/`)
-export const invite = (orgId: string, email: string) => api<Invitation>(`${org(orgId)}/invitations/`, { body: { email } })
+export const listInvitations = (orgId: string) => api<Schemas["PaginatedInvitationList"]>(`${orgPath(orgId)}/invitations/`)
+export const sendInvitation = (orgId: string, body: Schemas["InvitationCreateRequest"]) =>
+  api<Invitation>(`${orgPath(orgId)}/invitations/`, { body })
 export const revokeInvitation = (orgId: string, id: string) =>
-  api<Invitation>(`${org(orgId)}/invitations/${id}/revoke/`, { body: {} })
+  api<Invitation>(`${orgPath(orgId)}/invitations/${id}/revoke/`, { body: {} })
 
-/** The signed-in player's active memberships; disabled (and empty) for signed-out visitors. */
+/**
+ * The signed-in player's active memberships. Disabled for signed-out visitors, and `results` is empty
+ * whenever the session isn't confirmed, so a cached list never outlives a logout or expired session.
+ */
 export function useMemberships() {
   const me = useMe()
-  return useQuery({ queryKey: clubKeys.memberships, queryFn: listMyMemberships, enabled: me.isSuccess })
+  const query = useQuery({ queryKey: clubKeys.memberships, queryFn: listMyMemberships, enabled: me.isSuccess })
+  return { query, results: me.isSuccess ? (query.data?.results ?? []) : [] }
 }
 
 // The organization context the player last chose (REQ-004 switcher). Kept per device; the server
@@ -65,25 +79,37 @@ function readActive(): string | null {
   }
 }
 
-export function setActiveOrganization(id: string) {
+function writeActive(id: string | null) {
   try {
-    localStorage.setItem(ACTIVE_KEY, id)
+    if (id === null) localStorage.removeItem(ACTIVE_KEY)
+    else localStorage.setItem(ACTIVE_KEY, id)
   } catch {
     // Storage can be unavailable (private mode); the choice then lasts only for this page load.
   }
   listeners.forEach((notify) => notify())
 }
 
+export const setActiveOrganization = (id: string) => writeActive(id)
+/** Called on sign-out so the next player on a shared device doesn't inherit the choice. */
+export const clearActiveOrganization = () => writeActive(null)
+
 function subscribe(notify: () => void) {
   listeners.add(notify)
-  return () => listeners.delete(notify)
+  // Other tabs change localStorage too; follow their choice.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === ACTIVE_KEY || e.key === null) notify()
+  }
+  window.addEventListener("storage", onStorage)
+  return () => {
+    listeners.delete(notify)
+    window.removeEventListener("storage", onStorage)
+  }
 }
 
 /** The active membership: the stored choice if the player still belongs there, else their first. */
 export function useActiveMembership() {
-  const memberships = useMemberships()
+  const { query, results: all } = useMemberships()
   const stored = useSyncExternalStore(subscribe, readActive, () => null)
-  const all = memberships.data?.results ?? []
   const active = all.find((m) => m.organization.id === stored) ?? all[0]
-  return { memberships, all, active }
+  return { memberships: query, all, active }
 }

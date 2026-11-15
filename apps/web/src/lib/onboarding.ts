@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react"
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
+import type { Organization } from "@/lib/clubs"
 
 export type Hand = Schemas["HandEnum"]
 export type Grip = Schemas["GripEnum"]
@@ -24,8 +25,6 @@ export type OnboardingDraft = {
   goals: Goal[]
   joinRequests: Organization[]
 }
-
-export type Organization = Schemas["Organization"]
 
 const STORAGE_KEY = "mombasa-tt:onboarding-draft"
 
@@ -79,11 +78,5 @@ export const saveDiscovery = (directory_opt_in: boolean) =>
 
 // Goals only shape Home shortcuts; they never grant roles or touch ratings (REQ-006).
 export const saveGoals = (goals: Goal[]) => api<void>("/me/goals/", { method: "PUT", body: { goals } })
-
-export const searchOrganizations = (query: string) =>
-  api<Schemas["PaginatedOrganizationList"]>(`/organizations/?search=${encodeURIComponent(query)}`)
-
-export const requestToJoin = (organizationId: string) =>
-  api<void>(`/organizations/${organizationId}/join-requests/`, { body: {} })
 
 export const completeOnboarding = () => api<void>("/me/onboarding/complete/", { body: {} })

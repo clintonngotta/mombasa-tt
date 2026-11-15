@@ -33,6 +33,10 @@ class JoinRequestSerializer(serializers.ModelSerializer):
 
 
 class MyJoinRequestSerializer(serializers.ModelSerializer):
+    """The requester's view: which organization (name and town, so the app can list them) and the outcome."""
+
+    organization = OrganizationSerializer(read_only=True)
+
     class Meta:
         model = JoinRequest
         fields = ["id", "organization", "status", "created_at", "decided_at"]

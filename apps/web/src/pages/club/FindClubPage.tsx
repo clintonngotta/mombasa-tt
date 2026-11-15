@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Check, Clock, Search } from "lucide-react"
+import { Check, Clock, Search } from "lucide-react"
+import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FormAlert } from "@/components/forms/Field"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
 import { errorMessage } from "@/lib/api"
-import { clubKeys, listMyJoinRequests, useMemberships } from "@/lib/clubs"
-import { requestToJoin, searchOrganizations } from "@/lib/onboarding"
+import { clubKeys, listMyJoinRequests, requestToJoin, searchOrganizations, useMemberships } from "@/lib/clubs"
 
 export function FindClubPage() {
   const queryClient = useQueryClient()
@@ -16,7 +16,7 @@ export function FindClubPage() {
   const [term, setTerm] = useState("")
 
   const results = useQuery({
-    queryKey: ["organizations", "search", term],
+    queryKey: clubKeys.search(term),
     queryFn: () => searchOrganizations(term),
     enabled: term.length >= 2,
   })
@@ -24,11 +24,15 @@ export function FindClubPage() {
   const myRequests = useQuery({ queryKey: clubKeys.myJoinRequests, queryFn: listMyJoinRequests })
   const join = useMutation({
     mutationFn: requestToJoin,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.myJoinRequests }),
+    // Also on error: a 409 already_member means our membership list is out of date.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.all }),
   })
 
-  const memberOf = new Set(memberships.data?.results.map((m) => m.organization.id))
-  const pending = new Set(myRequests.data?.results.filter((r) => r.status === "pending").map((r) => r.organization))
+  const memberOf = new Set(memberships.results.map((m) => m.organization.id))
+  const pending = new Set(myRequests.data?.results.filter((r) => r.status === "pending").map((r) => r.organization.id))
+  // Until both lists load we can't tell "member" or "pending" from "can ask", so offer no join button.
+  const statusKnown = memberships.query.isSuccess && myRequests.isSuccess
+  const statusFailed = memberships.query.isError || myRequests.isError
 
   function onSearch(e: FormEvent) {
     e.preventDefault()
@@ -37,9 +41,7 @@ export function FindClubPage() {
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">
-      <Link to="/club" className="flex items-center gap-1 self-start text-sm font-semibold text-muted-foreground hover:text-foreground">
-        <ArrowLeft aria-hidden className="size-4" /> Club
-      </Link>
+      <BackLink to="/club">Club</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Find a club</h1>
         <p className="text-muted-foreground">Search by name or town. Club staff approve join requests.</p>
@@ -70,6 +72,7 @@ export function FindClubPage() {
             Nothing matches “{term}”. Try a town name, or <Link to="/club/new" className="font-semibold text-brand-blue underline">register your club</Link>.
           </p>
         )}
+        {statusFailed && <FormAlert>We couldn't check which clubs you've joined, so join requests are paused. Try again shortly.</FormAlert>}
         {join.isError && <FormAlert>{errorMessage(join.error, "We couldn't send that join request.")}</FormAlert>}
 
         <ul className="flex flex-col gap-3">
@@ -84,15 +87,16 @@ export function FindClubPage() {
                   <span className="flex items-center gap-1 text-sm font-semibold text-warning">
                     <Clock aria-hidden className="size-4" /> Pending
                   </span>
-                ) : (
+                ) : statusKnown ? (
                   <Button
                     variant="outline"
+                    aria-label={`Request to join ${club.name}`}
                     disabled={join.isPending && join.variables === club.id}
                     onClick={() => join.mutate(club.id)}
                   >
                     Request to join
                   </Button>
-                )}
+                ) : null}
               </OrganizationCard>
             </li>
           ))}
