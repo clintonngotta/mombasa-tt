@@ -108,6 +108,10 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 
 **Personal match log — integration/UI.** Setup: players A and B, a club admin of A's club, and a platform staff user; A has singles and doubles records under several labels. Steps: create/edit/delete as A; list/read/update/delete A's record IDs as B, admin and staff; submit tied, negative and empty sets; filter by label; compare summaries before/after; inspect ratings, standings and public pages. Pass: only A can access A's records (others get not-found, not forbidden); invalid sets are rejected with field errors; result and summaries match the recorded sets; labels are free text with prior labels suggested; no Elo/standing/public change; official-match scores stay read-only with notes as the only player edit (REQ-025). Evidence: API access matrix tests and UI screenshots.
 
+### EVAL-039
+
+**Club activities and schedule — integration/UI.** Setup: organization in Africa/Nairobi with an activities officer, members A–D, a non-member E and a published tournament plus training session. Steps: create a draft night out with capacity 2, publish it, RSVP going as A, B and C concurrently, change the venue, cancel with a reason; open the club schedule as A and E; export .ics; check notifications and attendee lists. Pass: drafts are invisible to members; at most two "going" RSVPs, the third is waitlisted and not auto-promoted; publish/change/cancel each notify the audience once; schedule merges activities, tournaments and sessions in organization-timezone order; E and the public cannot see member-only activities; attendee lists show display names only; Phase 1 cost notes never show paid status. Evidence: API access and capacity tests, notification records, schedule screenshots.
+
 ## Phase 2 evaluations
 
 ### EVAL-021
@@ -127,6 +131,10 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 **Expenses/transparency — integration.** Setup: campaign received 150000 minor units and expenses 30000+20000. Steps: inspect member/staff summaries, reverse 20000 expense, add expense exceeding remaining receipts. Pass: balance 100000 then 120000, deficits visibly negative; expected dues are not counted as receipts; member sees own balances and aggregate purposes, not other members' ledgers/private receipts. Evidence: arithmetic and access assertions.
 
 ## Phase 3 evaluations
+
+### EVAL-038
+
+**Welfare projects — integration.** Setup: club with treasurer, members A–E, A is the beneficiary; project "Support A" suggests KES 50 (5000 minor units) per member with target KES 200. Steps: record cash contributions from B, C and D (D anonymous), one partial and one reversed; record a visit-gift expense larger than the remaining balance; view as treasurer, as B, as E (no contribution), as A after asking staff to hide the project, and through notifications and public pages; close the project. Pass: totals and remaining/deficit reconcile with REQ-024 arithmetic; non-contributors show no overdue status unless the project was made a REQ-023 due; members see totals and their own amount only, D appears anonymous in any contributor list; hidden project disappears from member views; no beneficiary circumstances appear in notifications or public pages; closed project is read-only. Evidence: ledger arithmetic table and access assertions.
 
 ### EVAL-025
 

@@ -24,7 +24,7 @@ The platform is named **mombasa-tt**. **Coast Table Tennis Club, Mombasa** is a 
 |---|---|
 | Player | Register, know when/where to play, inspect ratings/history, pay club dues externally and track their status, plan training, and later receive highlights |
 | Umpire | Score assigned singles/doubles matches, recover after connectivity loss, and confirm official results |
-| Club administrator/captain/committee | Configure actual club responsibilities, manage membership, competitions, contributions, spending, and announcements |
+| Club administrator/captain/committee | Configure actual club responsibilities, manage membership, competitions, contributions, welfare projects, social activities, spending, and announcements |
 | Facility staff | Approve table reservations and coordinate tournaments, training, and casual use |
 | Organizer | Dispatch the next eligible match and explain idle tables or delayed fixtures |
 | Spectator | Open public tournament pages and watch social broadcasts without installing the mobile app |
@@ -56,6 +56,8 @@ Success means that confirmed results produce correct progression and ratings; co
 | Club governance | Editable role templates, custom permission bundles, custom member fields |
 | Payments | Manual records initially; no payment gateway at launch |
 | Contributions | Multiple purposes with descriptions, periodic dues, balances, and expenses |
+| Welfare projects | Clubs run welfare projects (e.g. a sick member) with a suggested per-member contribution such as KES 50, recorded manually, plus a planned visit (2026-11-15) |
+| Club activities | Clubs post social activities (nights out, fun days, visits) with RSVPs on a members-only club schedule (2026-11-15) |
 | Facilities | Member requests with staff approval |
 | Development | Personal training plus club sessions; private post-match analysis |
 | Notifications | Persistent in-app inbox and optional browser push where supported; native push later |
