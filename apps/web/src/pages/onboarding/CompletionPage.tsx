@@ -3,7 +3,8 @@ import { Link } from "react-router-dom"
 import { ChevronRight, CircleCheckBig, Clock, Trophy, Users, UserRound, type LucideIcon } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { Wordmark } from "@/components/brand/Wordmark"
-import { clearOnboardingDraft, useOnboardingDraft, type Goal } from "@/lib/onboarding"
+import { clearOnboardingDraft, useOnboardingDraft } from "@/lib/onboarding"
+import type { Goal } from "@/lib/profile"
 import { cn } from "@/lib/utils"
 
 type NextAction = { to: string; icon: LucideIcon; title: string; description: string; goals: Goal[] }

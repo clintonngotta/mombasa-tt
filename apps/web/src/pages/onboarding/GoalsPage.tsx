@@ -5,16 +5,8 @@ import { OnboardingLayout } from "@/components/layout/OnboardingLayout"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
-import { completeOnboarding, saveGoals, useOnboardingDraft, type Goal } from "@/lib/onboarding"
-
-const GOALS: { value: Goal; label: string; description: string }[] = [
-  { value: "compete", label: "Play in tournaments", description: "Find events and get match calls" },
-  { value: "rating", label: "Track my rating", description: "Follow singles and doubles Elo" },
-  { value: "train", label: "Train regularly", description: "Plan sessions and drills" },
-  { value: "find_club", label: "Find a club", description: "Join a club near me" },
-  { value: "umpire", label: "Umpire matches", description: "Score matches I'm assigned" },
-  { value: "organize", label: "Run a club or event", description: "Manage members and competitions" },
-]
+import { completeOnboarding, useOnboardingDraft } from "@/lib/onboarding"
+import { GOALS, saveGoals, type Goal } from "@/lib/profile"
 
 export function GoalsPage() {
   const navigate = useNavigate()
