@@ -15,15 +15,16 @@ import {
   GOALS,
   GRIPS,
   HANDS,
+  PUBLISHED_DETAILS,
   getProfile,
+  playerKeys,
   profileKeys,
   saveGoals,
   updateProfile,
   type Profile,
-  type PublishedDetail,
 } from "@/lib/profile"
 
-const DETAIL_OPTIONS = (Object.keys(DETAIL_LABEL) as PublishedDetail[]).map((value) => ({ value, label: DETAIL_LABEL[value] }))
+const DETAIL_OPTIONS = PUBLISHED_DETAILS.map((value) => ({ value, label: DETAIL_LABEL[value] }))
 
 export function ProfileEditPage() {
   const profile = useQuery({ queryKey: profileKeys.me, queryFn: getProfile })
@@ -50,23 +51,31 @@ function ProfileForm({ initial }: { initial: Profile }) {
 
   const save = useMutation({
     mutationFn: async (next: Profile) => {
-      const { goals, onboarding_completed: _done, ...fields } = next
+      // goals go through their own endpoint; onboarding_completed is read-only.
+      const { goals, onboarding_completed: _readOnly, ...fields } = next
       await updateProfile(fields)
       await saveGoals(goals)
     },
-    onSuccess: async () => {
-      await Promise.all([
+    // Refresh even on failure: the profile PATCH may have saved before the goals PUT failed.
+    onSettled: () =>
+      Promise.all([
         queryClient.invalidateQueries({ queryKey: profileKeys.me }),
         queryClient.invalidateQueries({ queryKey: meQueryKey }),
-        queryClient.invalidateQueries({ queryKey: ["players"] }),
-      ])
-      navigate("/profile")
-    },
+        queryClient.invalidateQueries({ queryKey: playerKeys.all }),
+      ]),
+    onSuccess: () => navigate("/profile"),
   })
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    save.mutate({ ...form, display_name: form.display_name.trim(), nickname: form.nickname.trim(), style: form.style.trim() })
+    save.mutate({
+      ...form,
+      display_name: form.display_name.trim(),
+      nickname: form.nickname.trim(),
+      style: form.style.trim(),
+      // Leaving the directory unpublishes everything, so opting back in never silently republishes (REQ-006).
+      published_details: form.directory_opt_in ? form.published_details : [],
+    })
   }
 
   const fields = save.error instanceof ApiError ? save.error.fieldErrors() : {}
@@ -83,8 +92,25 @@ function ProfileForm({ initial }: { initial: Profile }) {
         error={fields.display_name}
       />
       <Field label="Nickname" optional maxLength={40} value={form.nickname} onChange={(e) => set({ nickname: e.target.value })} error={fields.nickname} />
-      <ChoiceGroup legend="Playing hand" optional options={HANDS} value={form.hand ?? ""} onChange={(hand) => set({ hand })} />
-      <ChoiceGroup legend="Grip" optional columns={3} options={GRIPS} value={form.grip ?? ""} onChange={(grip) => set({ grip })} />
+      <ChoiceGroup
+        legend="Playing hand"
+        optional
+        options={HANDS}
+        value={form.hand}
+        onChange={(hand) => set({ hand })}
+        onClear={() => set({ hand: "" })}
+        error={fields.hand}
+      />
+      <ChoiceGroup
+        legend="Grip"
+        optional
+        columns={3}
+        options={GRIPS}
+        value={form.grip}
+        onChange={(grip) => set({ grip })}
+        onClear={() => set({ grip: "" })}
+        error={fields.grip}
+      />
       <Field
         label="Playing style"
         optional
@@ -94,7 +120,15 @@ function ProfileForm({ initial }: { initial: Profile }) {
         onChange={(e) => set({ style: e.target.value })}
         error={fields.style}
       />
-      <ChoiceGroup legend="Experience" optional options={EXPERIENCE} value={form.experience ?? ""} onChange={(experience) => set({ experience })} />
+      <ChoiceGroup
+        legend="Experience"
+        optional
+        options={EXPERIENCE}
+        value={form.experience}
+        onChange={(experience) => set({ experience })}
+        onClear={() => set({ experience: "" })}
+        error={fields.experience}
+      />
       <BioField value={form.bio} onChange={(bio) => set({ bio })} error={fields.bio} />
 
       <section aria-labelledby="visibility-heading" className="flex flex-col gap-4">
@@ -115,11 +149,20 @@ function ProfileForm({ initial }: { initial: Profile }) {
             options={DETAIL_OPTIONS}
             value={form.published_details}
             onChange={(published_details) => set({ published_details })}
+            error={fields.published_details}
           />
         )}
       </section>
 
-      <ChoiceGroup multiple legend="Your goals" optional options={GOALS} value={form.goals} onChange={(goals) => set({ goals })} />
+      <ChoiceGroup
+        multiple
+        legend="Your goals"
+        optional
+        options={GOALS}
+        value={form.goals}
+        onChange={(goals) => set({ goals })}
+        error={fields.goals}
+      />
       <p className="-mt-4 text-sm text-muted-foreground">Goals only arrange your Home shortcuts. They don't give you club roles or change your rating.</p>
 
       {save.isError && !hasFieldErrors && <FormAlert>{errorMessage(save.error, "We couldn't save your profile. Try again.")}</FormAlert>}

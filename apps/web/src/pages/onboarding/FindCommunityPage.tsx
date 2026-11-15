@@ -9,7 +9,8 @@ import { FormAlert } from "@/components/forms/Field"
 import { Toggle } from "@/components/forms/Toggle"
 import { errorMessage } from "@/lib/api"
 import { KIND_LABEL, clubKeys, requestToJoin, searchOrganizations, type Organization } from "@/lib/clubs"
-import { saveDiscovery, useOnboardingDraft } from "@/lib/onboarding"
+import { useOnboardingDraft } from "@/lib/onboarding"
+import { updateProfile } from "@/lib/profile"
 
 export function FindCommunityPage() {
   const navigate = useNavigate()
@@ -29,7 +30,7 @@ export function FindCommunityPage() {
   })
 
   const save = useMutation({
-    mutationFn: saveDiscovery,
+    mutationFn: (directory_opt_in: boolean) => updateProfile({ directory_opt_in }),
     onSuccess: () => navigate("/onboarding/goals"),
   })
 

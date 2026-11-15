@@ -65,9 +65,4 @@ export function clearOnboardingDraft() {
   }
 }
 
-export const saveProfile = (profile: ProfileDraft) => api<void>("/me/profile/", { method: "PATCH", body: profile })
-
-export const saveDiscovery = (directory_opt_in: boolean) =>
-  api<void>("/me/profile/", { method: "PATCH", body: { directory_opt_in } })
-
 export const completeOnboarding = () => api<void>("/me/onboarding/complete/", { body: {} })

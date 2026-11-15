@@ -4,16 +4,21 @@ import { Building2, UserRound } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { ApiError, errorMessage } from "@/lib/api"
-import { DETAIL_LABEL, detailText, getPlayer, profileKeys, type PublishedDetail } from "@/lib/profile"
-
-const DETAILS = Object.keys(DETAIL_LABEL) as PublishedDetail[]
+import { DETAIL_LABEL, PUBLISHED_DETAILS, detailText, getPlayer, playerKeys } from "@/lib/profile"
 
 /** A listed player's page: directory card plus only the details they published (REQ-006). */
 export function PlayerPage() {
   const { id = "" } = useParams()
-  const player = useQuery({ queryKey: profileKeys.player(id), queryFn: () => getPlayer(id) })
+  const player = useQuery({ queryKey: playerKeys.detail(id), queryFn: () => getPlayer(id) })
 
-  if (player.isPending) return <p className="text-muted-foreground">Loading player…</p>
+  if (player.isPending) {
+    return (
+      <div className="flex max-w-[640px] flex-col gap-4">
+        <BackLink to="/players">Players</BackLink>
+        <p className="text-muted-foreground">Loading player…</p>
+      </div>
+    )
+  }
   if (player.isError) {
     const gone = player.error instanceof ApiError && player.error.status === 404
     return (
@@ -27,7 +32,7 @@ export function PlayerPage() {
   }
 
   const data = player.data
-  const details = DETAILS.map((detail) => ({ detail, text: detailText(data, detail) })).filter((d) => d.text)
+  const details = PUBLISHED_DETAILS.map((detail) => ({ detail, text: detailText(data, detail) })).filter((d) => d.text)
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">

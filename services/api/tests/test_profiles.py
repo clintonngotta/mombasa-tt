@@ -172,3 +172,29 @@ def test_player_page_disappears_when_opted_out(ama):
 def test_player_page_requires_login(ama):
     PlayerProfile.objects.create(user=ama, directory_opt_in=True)
     assert BrowserClient().get(player_url(ama)).status_code in {401, 403}
+
+
+def test_player_page_with_nothing_published_shows_only_directory_fields(ama):
+    PlayerProfile.objects.create(
+        user=ama,
+        directory_opt_in=True,
+        hand="right",
+        grip="shakehand",
+        style="Chopper",
+        experience="club",
+        bio="Hi",
+    )
+    data = logged_in(make_user("zawadi@example.com")).get(player_url(ama)).json()
+    assert {k: v for k, v in data.items() if v is not None} == {
+        "id": str(ama.id),
+        "display_name": "Ama Wanjiru",
+        "nickname": "",
+        "clubs": [],
+    }
+
+
+def test_player_page_hides_deactivated_players(ama):
+    PlayerProfile.objects.create(user=ama, directory_opt_in=True)
+    ama.is_active = False
+    ama.save(update_fields=["is_active"])
+    assert logged_in(make_user("zawadi@example.com")).get(player_url(ama)).status_code == 404

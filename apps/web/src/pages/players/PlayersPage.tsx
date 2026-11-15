@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
-import { MIN_SEARCH_LENGTH, profileKeys, searchPlayers } from "@/lib/profile"
+import { MIN_SEARCH_LENGTH, playerKeys, searchPlayers } from "@/lib/profile"
 
 /** Opted-in player directory (REQ-006): name, nickname and clubs only. */
 export function PlayersPage() {
   const [input, setInput] = useState("")
   const [term, setTerm] = useState("")
   const results = useQuery({
-    queryKey: profileKeys.search(term),
+    queryKey: playerKeys.search(term),
     queryFn: () => searchPlayers(term),
     enabled: term.length >= MIN_SEARCH_LENGTH,
   })

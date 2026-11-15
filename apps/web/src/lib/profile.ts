@@ -1,5 +1,6 @@
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
+import type { Option } from "@/components/forms/ChoiceGroup"
 
 export type Profile = Schemas["Profile"]
 export type ProfileUpdate = Schemas["PatchedProfileRequest"]
@@ -10,8 +11,6 @@ export type Experience = Schemas["ExperienceEnum"]
 export type Goal = Schemas["GoalsEnum"]
 export type DirectoryPlayer = Schemas["DirectoryPlayer"]
 export type Player = Schemas["Player"]
-
-type Option<T extends string> = { value: T; label: string; description?: string }
 
 export const HANDS: Option<Hand>[] = [
   { value: "right", label: "Right-handed" },
@@ -48,6 +47,9 @@ export const DETAIL_LABEL: Record<PublishedDetail, string> = {
   bio: "Bio",
 }
 
+/** Every publishable detail, in display order. */
+export const PUBLISHED_DETAILS = Object.keys(DETAIL_LABEL) as PublishedDetail[]
+
 const labelOf = <T extends string>(options: Option<T>[], value: T) => options.find((o) => o.value === value)?.label ?? value
 
 /** Human text for a published detail value, e.g. "left" → "Left-handed". */
@@ -68,8 +70,13 @@ export function detailText(player: Player, detail: PublishedDetail): string | nu
 
 export const profileKeys = {
   me: ["profile", "me"] as const,
-  search: (term: string) => ["players", "search", term] as const,
-  player: (id: string) => ["players", id] as const,
+}
+
+/** Directory queries share one root, so a profile change invalidates every list and page at once. */
+export const playerKeys = {
+  all: ["players"] as const,
+  search: (term: string) => [...playerKeys.all, "search", term] as const,
+  detail: (id: string) => [...playerKeys.all, id] as const,
 }
 
 export const MIN_SEARCH_LENGTH = 2

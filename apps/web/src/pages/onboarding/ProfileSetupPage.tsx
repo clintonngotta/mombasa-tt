@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button"
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
-import { errorMessage } from "@/lib/api"
-import { saveProfile, useOnboardingDraft, type ProfileDraft } from "@/lib/onboarding"
-import { EXPERIENCE, GRIPS, HANDS } from "@/lib/profile"
 import { BioField } from "@/components/profile/BioField"
+import { errorMessage } from "@/lib/api"
+import { useOnboardingDraft, type ProfileDraft } from "@/lib/onboarding"
+import { EXPERIENCE, GRIPS, HANDS, updateProfile } from "@/lib/profile"
 
 export function ProfileSetupPage() {
   const navigate = useNavigate()
@@ -19,7 +19,7 @@ export function ProfileSetupPage() {
   const setProfile = (patch: Partial<ProfileDraft>) => updateDraft({ profile: { ...profile, ...patch } })
 
   const mutation = useMutation({
-    mutationFn: saveProfile,
+    mutationFn: (profile: ProfileDraft) => updateProfile(profile),
     onSuccess: () => navigate("/onboarding/community"),
   })
 
