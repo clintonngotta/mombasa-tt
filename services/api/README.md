@@ -80,7 +80,7 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET | `memberships/` | Active memberships with their organization (basis for the club switcher); paginated |
 | GET | `join-requests/` | The player's own join requests, newest first; paginated |
 | GET | `invitations/` | Open invitations addressed to the player's verified email; paginated |
-| POST | `invitations/{iid}/accept/` or `decline/` | Accepting joins as a member (an existing admin keeps their role) and settles an open join request; 404 for anyone else's, answered, revoked or expired invitation |
+| POST | `invitations/{iid}/accept/` or `decline/` | Accepting joins as a member (an existing admin keeps their role) and withdraws the player's open join request to that organization; 404 for anyone else's, answered, revoked or expired invitation |
 
 ## Organizations and directory
 
@@ -92,8 +92,8 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | POST | `/api/v1/organizations/{id}/join-requests/` | 201 new, 200 if one is already pending, 409 `already_member` |
 | GET | `/api/v1/organizations/{id}/join-requests/` | Pending requests, paginated; organization admins only (403 `not_organization_admin`) |
 | POST | `/api/v1/organizations/{id}/join-requests/{rid}/approve/` or `reject/` | Admins only; 409 `already_decided` |
-| POST | `/api/v1/organizations/{id}/invitations/` | `{email}`, admins only. 201 new, 200 if already pending (renews a lapsed one and resends), 409 `already_member`. Same reply and email whether or not the address has an account. Expires after 14 days |
-| GET | `/api/v1/organizations/{id}/invitations/` | Pending invitations, admins only; paginated |
+| POST | `/api/v1/organizations/{id}/invitations/` | `{email}`, admins only. 201 new, 200 if already pending (renews a lapsed one and resends). Same reply and email whether or not the address has an account or belongs to a member. Expires after 14 days; throttled per admin (`THROTTLE_INVITATIONS`, default 30/hour) |
+| GET | `/api/v1/organizations/{id}/invitations/` | Open (pending, unexpired) invitations, admins only; paginated |
 | POST | `/api/v1/organizations/{id}/invitations/{iid}/revoke/` | Admins only; 409 `already_decided` |
 | GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname and clubs, never email or bio |
 

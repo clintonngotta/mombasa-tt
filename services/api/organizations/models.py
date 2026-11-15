@@ -78,6 +78,7 @@ class JoinRequest(models.Model):
         PENDING = "pending"
         APPROVED = "approved"
         REJECTED = "rejected"
+        WITHDRAWN = "withdrawn"  # settled without a staff decision, e.g. the player accepted an invitation
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="join_requests")
@@ -144,6 +145,10 @@ class Invitation(models.Model):
 
     def __str__(self):
         return f"{self.email} -> {self.organization_id} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()  # the pending-unique constraint relies on this
+        super().save(*args, **kwargs)
 
     @property
     def is_open(self) -> bool:

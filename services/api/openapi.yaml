@@ -781,7 +781,8 @@ paths:
       operationId: organizations_invitations_list
       description: |-
         Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-        whether it has an account: the reply is the same and the email goes out either way.
+        whether it has an account or belongs to a member: the reply is the same and the email goes out
+        either way (an existing member who accepts keeps their role).
       parameters:
       - in: path
         name: organization_pk
@@ -822,7 +823,8 @@ paths:
       operationId: organizations_invitations_create
       description: |-
         Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-        whether it has an account: the reply is the same and the email goes out either way.
+        whether it has an account or belongs to a member: the reply is the same and the email goes out
+        either way (an existing member who accepts keeps their role).
       parameters:
       - in: path
         name: organization_pk
@@ -864,7 +866,8 @@ paths:
       operationId: organizations_invitations_revoke_create
       description: |-
         Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-        whether it has an account: the reply is the same and the email goes out either way.
+        whether it has an account or belongs to a member: the reply is the same and the email goes out
+        either way (an existing member who accepts keeps their role).
       parameters:
       - in: path
         name: id
@@ -1354,11 +1357,13 @@ components:
       - pending
       - approved
       - rejected
+      - withdrawn
       type: string
       description: |-
         * `pending` - Pending
         * `approved` - Approved
         * `rejected` - Rejected
+        * `withdrawn` - Withdrawn
     KindEnum:
       enum:
       - club

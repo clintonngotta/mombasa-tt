@@ -24,10 +24,11 @@ from .serializers import (
 )
 
 
-def require_admin(user, organization: Organization, action: str) -> None:
-    """Placeholder admin-only gate until the permission catalog lands (TASK-013)."""
+def require_admin(user, organization: Organization, what: str) -> None:
+    """Placeholder admin-only gate until the permission catalog lands (TASK-013). Call it inside the
+    transaction that does the work, so a concurrently removed admin can't still act."""
     if not Membership.objects.is_admin(user, organization):
-        raise ApiException("not_organization_admin", f"Only organization admins can {action}.", 403)
+        raise ApiException("not_organization_admin", f"Only organization admins can {what}.", 403)
 
 
 def join(organization: Organization, user) -> Membership:
@@ -86,13 +87,10 @@ class JoinRequestViewSet(viewsets.GenericViewSet):
     def get_organization(self) -> Organization:
         return get_object_or_404(Organization, pk=self.kwargs["organization_pk"])
 
-    def require_admin(self, organization):
-        require_admin(self.request.user, organization, "manage join requests")
-
     @extend_schema(responses={200: JoinRequestSerializer(many=True)})
     def list(self, request, organization_pk):
         organization = self.get_organization()
-        self.require_admin(organization)
+        require_admin(request.user, organization, "manage join requests")
         pending = organization.join_requests.filter(status=JoinRequest.Status.PENDING).select_related("user")
         page = self.paginate_queryset(pending)
         return self.get_paginated_response(JoinRequestSerializer(page, many=True).data)
@@ -122,7 +120,7 @@ class JoinRequestViewSet(viewsets.GenericViewSet):
         organization = self.get_organization()
         with transaction.atomic():
             # Checked inside the transaction so a concurrently removed admin can't still decide.
-            self.require_admin(organization)
+            require_admin(request.user, organization, "manage join requests")
             join_request = get_object_or_404(
                 JoinRequest.objects.select_for_update(), pk=pk, organization=organization
             )
@@ -147,21 +145,29 @@ class JoinRequestViewSet(viewsets.GenericViewSet):
 
 class InvitationViewSet(viewsets.GenericViewSet):
     """Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-    whether it has an account: the reply is the same and the email goes out either way."""
+    whether it has an account or belongs to a member: the reply is the same and the email goes out
+    either way (an existing member who accepts keeps their role)."""
 
     serializer_class = InvitationSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardPagination
 
+    @property
+    def throttle_scope(self):
+        # Each invite sends an email, so sending is rate-limited per admin.
+        return "invitations" if self.action == "create" else None
+
     def get_organization(self) -> Organization:
-        organization = get_object_or_404(Organization, pk=self.kwargs["organization_pk"])
-        require_admin(self.request.user, organization, "manage invitations")
-        return organization
+        return get_object_or_404(Organization, pk=self.kwargs["organization_pk"])
 
     @extend_schema(responses={200: InvitationSerializer(many=True)})
     def list(self, request, organization_pk):
         organization = self.get_organization()
-        pending = organization.invitations.filter(status=Invitation.Status.PENDING)
+        require_admin(request.user, organization, "manage invitations")
+        # Lapsed invitations can't be accepted, so they aren't shown as pending.
+        pending = organization.invitations.filter(
+            status=Invitation.Status.PENDING, expires_at__gt=timezone.now()
+        )
         page = self.paginate_queryset(pending)
         return self.get_paginated_response(InvitationSerializer(page, many=True).data)
 
@@ -173,10 +179,9 @@ class InvitationViewSet(viewsets.GenericViewSet):
         serializer = InvitationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        if organization.memberships.active().filter(user__email__iexact=email).exists():
-            raise ApiException("already_member", "That person is already a member.", 409)
 
         with transaction.atomic():
+            require_admin(request.user, organization, "manage invitations")
             invitation = (
                 Invitation.objects.select_for_update()
                 .filter(organization=organization, email=email, status=Invitation.Status.PENDING)
@@ -207,6 +212,7 @@ class InvitationViewSet(viewsets.GenericViewSet):
     def revoke(self, request, organization_pk, pk):
         organization = self.get_organization()
         with transaction.atomic():
+            require_admin(request.user, organization, "manage invitations")
             invitation = get_object_or_404(
                 Invitation.objects.select_for_update(), pk=pk, organization=organization
             )
@@ -243,16 +249,13 @@ class MyInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             if outcome == Invitation.Status.ACCEPTED:
                 invitation.accepted_by = self.request.user
                 join(invitation.organization, self.request.user)
-                # An open join request to the same organization is now settled.
+                # An open join request to the same organization is moot now. It is withdrawn, not
+                # approved, so the audit trail never shows a staff decision nobody made.
                 JoinRequest.objects.filter(
                     organization=invitation.organization,
                     user=self.request.user,
                     status=JoinRequest.Status.PENDING,
-                ).update(
-                    status=JoinRequest.Status.APPROVED,
-                    decided_at=invitation.decided_at,
-                    decided_by=invitation.invited_by,
-                )
+                ).update(status=JoinRequest.Status.WITHDRAWN, decided_at=invitation.decided_at)
             invitation.save(update_fields=["status", "decided_at", "accepted_by"])
         return Response(MyInvitationSerializer(invitation).data)
 

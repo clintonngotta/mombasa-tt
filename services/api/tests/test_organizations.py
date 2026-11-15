@@ -223,9 +223,51 @@ def test_inviting_is_idempotent_and_never_reveals_accounts(admin, club, mailoutb
     assert [i["email"] for i in staff.get(invitations_url(club)).json()["results"]] == ["nobody@example.com"]
 
 
-def test_cannot_invite_an_active_member(admin, club):
-    response = logged_in(admin).post(invitations_url(club), {"email": admin.email}, format="json")
-    assert response.status_code == 409 and response.json()["code"] == "already_member"
+def test_inviting_a_member_reveals_nothing(admin, player, club):
+    """The reply for a member's address matches any other, so admins can't probe who has which email."""
+    Membership.objects.create(organization=club, user=player)
+    response = logged_in(admin).post(invitations_url(club), {"email": player.email}, format="json")
+    assert response.status_code == 201
+    logged_in(player).post(f"{MY_INVITATIONS}{response.json()['id']}/accept/")
+    assert Membership.objects.get(organization=club, user=player).role == "member"
+
+
+def test_admin_of_another_org_cannot_touch_invitations(admin, player, club):
+    """EVAL-004: authority is per organization."""
+    invitation = logged_in(admin).post(invitations_url(club), {"email": player.email}, format="json").json()
+    other_admin = make_user("other@example.com")
+    other = logged_in(other_admin)
+    other.post(ORGS, {"name": "Other Club", "town": "Kilifi", "kind": "club"}, format="json")
+    assert other.get(invitations_url(club)).status_code == 403
+    assert other.post(invitations_url(club), {"email": "x@example.com"}, format="json").status_code == 403
+    assert other.post(f"{invitations_url(club)}{invitation['id']}/revoke/").status_code == 403
+    assert Invitation.objects.get(pk=invitation["id"]).status == "pending"
+
+
+def test_lapsed_invitations_are_not_listed_as_pending(admin, club):
+    staff = logged_in(admin)
+    invitation = staff.post(invitations_url(club), {"email": "late@example.com"}, format="json").json()
+    Invitation.objects.filter(pk=invitation["id"]).update(expires_at=timezone.now() - timedelta(minutes=1))
+    assert staff.get(invitations_url(club)).json()["results"] == []
+
+
+def test_sending_invitations_is_throttled(admin, club, monkeypatch):
+    from rest_framework.throttling import ScopedRateThrottle
+
+    monkeypatch.setitem(ScopedRateThrottle.THROTTLE_RATES, "invitations", "2/hour")
+    staff = logged_in(admin)
+    codes = [
+        staff.post(invitations_url(club), {"email": f"p{i}@example.com"}, format="json").status_code
+        for i in range(3)
+    ]
+    assert codes == [201, 201, 429]
+    assert staff.get(invitations_url(club)).status_code == 200  # listing isn't limited
+
+
+def test_email_is_stored_lower_cased(club):
+    assert (
+        Invitation.objects.create(organization=club, email=" Mixed@Example.COM ").email == "mixed@example.com"
+    )
 
 
 def test_revoked_and_expired_invitations_cannot_be_accepted(admin, player, club):
@@ -245,12 +287,15 @@ def test_revoked_and_expired_invitations_cannot_be_accepted(admin, player, club)
     assert invitee.post(f"{MY_INVITATIONS}{renewed['id']}/accept/").status_code == 200
 
 
-def test_accepting_settles_an_open_join_request_and_keeps_admin_role(admin, player, club):
+def test_accepting_withdraws_an_open_join_request_and_keeps_admin_role(admin, player, club):
     invitee = logged_in(player)
     invitee.post(requests_url(club))
     invitation = logged_in(admin).post(invitations_url(club), {"email": player.email}, format="json").json()
     invitee.post(f"{MY_INVITATIONS}{invitation['id']}/accept/")
-    assert JoinRequest.objects.get(organization=club, user=player).status == "approved"
+    join_request = JoinRequest.objects.get(organization=club, user=player)
+    # Withdrawn rather than approved: no admin decided it, so none is recorded.
+    assert (join_request.status, join_request.decided_by) == ("withdrawn", None)
+    assert logged_in(admin).get(requests_url(club)).json()["results"] == []
 
     # Accepting a stray invitation never demotes an existing admin.
     Invitation.objects.create(organization=club, email=admin.email)

@@ -425,13 +425,15 @@ export interface paths {
         };
         /**
          * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-         *     whether it has an account: the reply is the same and the email goes out either way.
+         *     whether it has an account or belongs to a member: the reply is the same and the email goes out
+         *     either way (an existing member who accepts keeps their role).
          */
         get: operations["organizations_invitations_list"];
         put?: never;
         /**
          * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-         *     whether it has an account: the reply is the same and the email goes out either way.
+         *     whether it has an account or belongs to a member: the reply is the same and the email goes out
+         *     either way (an existing member who accepts keeps their role).
          */
         post: operations["organizations_invitations_create"];
         delete?: never;
@@ -451,7 +453,8 @@ export interface paths {
         put?: never;
         /**
          * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-         *     whether it has an account: the reply is the same and the email goes out either way.
+         *     whether it has an account or belongs to a member: the reply is the same and the email goes out
+         *     either way (an existing member who accepts keeps their role).
          */
         post: operations["organizations_invitations_revoke_create"];
         delete?: never;
@@ -677,9 +680,10 @@ export interface components {
          * @description * `pending` - Pending
          *     * `approved` - Approved
          *     * `rejected` - Rejected
+         *     * `withdrawn` - Withdrawn
          * @enum {string}
          */
-        JoinRequestStatusEnum: "pending" | "approved" | "rejected";
+        JoinRequestStatusEnum: "pending" | "approved" | "rejected" | "withdrawn";
         /**
          * @description * `club` - Club
          *     * `facility` - Facility
