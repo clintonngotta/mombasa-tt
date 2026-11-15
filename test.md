@@ -108,6 +108,18 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 
 **Personal match log — integration/UI.** Setup: players A and B, a club admin of A's club, and a platform staff user; A has singles and doubles records under several labels. Steps: create/edit/delete as A; list/read/update/delete A's record IDs as B, admin and staff; submit tied, negative and empty sets; filter by label; compare summaries before/after; inspect ratings, standings and public pages. Pass: only A can access A's records (others get not-found, not forbidden); invalid sets are rejected with field errors; result and summaries match the recorded sets; labels are free text with prior labels suggested; no Elo/standing/public change; official-match scores stay read-only with notes as the only player edit (REQ-025). Evidence: API access matrix tests and UI screenshots.
 
+### EVAL-039
+
+**Club activities and schedule — integration/UI.** Setup: organization in Africa/Nairobi with an activities officer, members A–D, a non-member E and a published tournament plus training session. Steps: create a draft night out with capacity 2, publish it, RSVP going as A, B and C concurrently, change the venue, cancel with a reason; open the club schedule as A and E; export .ics; check notifications and attendee lists. Pass: drafts are invisible to members; at most two "going" RSVPs, the third is waitlisted and not auto-promoted; publish/change/cancel each notify the audience once; schedule merges activities, tournaments and sessions in organization-timezone order; E and the public cannot see member-only activities; attendee lists show display names only; Phase 1 cost notes never show paid status. Evidence: API access and capacity tests, notification records, schedule screenshots.
+
+### EVAL-040
+
+**Soda games — integration/UI.** Setup: players A, B and C in one club, club admin D, and a club with stakes disabled; policy gate off, then on. Steps: with the gate off, confirm stake fields are hidden and A can challenge B; with the gate on, A challenges B with a KES 100 stake, B accepts without staking, A loses, both confirm; repeat with B matching the stake and B losing; dispute a result; try staking from C on A–B; try challenging in the disabled club; check Elo, standings, table reservations and C/D views. Pass: only the loser who pledged owes the stake; no amount is owed while disputed; C cannot stake or see stakes; disabled club blocks stakes; no money movement or payment record is created; ratings, standings and reservations are unchanged; result visibility follows both players' choice. Evidence: API tests and UI screenshots.
+
+### EVAL-042
+
+**Events calendar and live links — integration/UI.** Setup: published mombasa-tt tournaments from our club and another club, one external event submitted by our club staff, one submitted with an http live link, and a cancelled event. Steps: view the listing as the public, a member of the submitting club and a curator; approve and reject submissions; move the clock into an event's live window; mark an external event live; report and remove a link. Pass: unreviewed external events are visible only to the submitting club's members with "awaiting review"; http links are rejected; live events show the badge and correct link (tournament page/broadcast for internal, stream URL for external); external events never gain draws, entries or ratings; filters and the "our club" view are correct; cancelled events show their status. Evidence: API tests and screenshots of list, calendar and live states.
+
 ## Phase 2 evaluations
 
 ### EVAL-021
@@ -120,13 +132,21 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 
 ### EVAL-023
 
-**Contributions — clock-controlled integration.** Setup: selected members; monthly campaign due on day 31; weekly/quarterly/yearly and leap-day fixtures. Steps: run generator twice, advance across February, change amount, add new member, waive due, partially pay overdue item. Pass: one due per campaign/member/period; dates clamp correctly; prior dues unchanged; no old dues for new member; statuses and outstanding amounts correct. Evidence: period keys and expected ledger table.
+**Contributions — clock-controlled integration.** Setup: selected members; monthly campaign due on day 31; weekly/quarterly/yearly and leap-day fixtures. Steps: run generator twice, advance across February, change amount, add new member, waive due, partially pay overdue item. Pass: one due per campaign/member/period; dates clamp correctly; prior dues unchanged; no old dues for new member; a weekly and a monthly Club operations campaign bill every active member once per period with overrides/waivers honoured and none after a member leaves; statuses and outstanding amounts correct. Evidence: period keys and expected ledger table.
 
 ### EVAL-024
 
 **Expenses/transparency — integration.** Setup: campaign received 150000 minor units and expenses 30000+20000. Steps: inspect member/staff summaries, reverse 20000 expense, add expense exceeding remaining receipts. Pass: balance 100000 then 120000, deficits visibly negative; expected dues are not counted as receipts; member sees own balances and aggregate purposes, not other members' ledgers/private receipts. Evidence: arithmetic and access assertions.
 
 ## Phase 3 evaluations
+
+### EVAL-038
+
+**Welfare projects — integration.** Setup: club with treasurer, members A–E, A is the beneficiary; project "Support A" suggests KES 50 (5000 minor units) per member with target KES 200. Steps: record cash contributions from B, C and D (D anonymous), one partial and one reversed; record a visit-gift expense larger than the remaining balance; view as treasurer, as B, as E (no contribution), as A after asking staff to hide the project, and through notifications and public pages; close the project. Pass: totals and remaining/deficit reconcile with REQ-024 arithmetic; non-contributors show no overdue status unless the project was made a REQ-023 due; members see totals and their own amount only, D appears anonymous in any contributor list; hidden project disappears from member views; no beneficiary circumstances appear in notifications or public pages; closed project is read-only. Evidence: ledger arithmetic table and access assertions.
+
+### EVAL-041
+
+**Annual financial report — integration.** Setup: club year ending 31 December with operations dues, a welfare project, event fees, categorised expenses, one reversal and one waiver. Steps: generate draft; compare to ledger; publish; view as member, as non-member and publicly (off, then on); record a correction dated in the reported year; publish an amendment; export PDF/CSV. Pass: totals reconcile exactly with ledger for the period, deficits negative; members see aggregates only, no individual balances, payers or receipts; non-members see nothing unless public; published snapshot unchanged by later corrections; amendment lists changes and keeps original. Evidence: arithmetic table, access assertions, exported files.
 
 ### EVAL-025
 

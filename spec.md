@@ -1,11 +1,11 @@
 # mombasa-tt — functional and technical specification
 
-Status: planning baseline, not an implementation claim. Updated 2026-09-08.
+Status: planning baseline, not an implementation claim. Updated 2026-11-15.
 Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acceptance: [test.md](test.md). Operations: [deployment.md](deployment.md).
 
 ## Requirement conventions
 
-REQ-001 through REQ-037 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-042 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -52,7 +52,7 @@ The PWA uses secure HttpOnly session cookies with CSRF protection. Revoke sessio
 
 ### REQ-005
 
-**Governance — Phase 1.** Editable admin/captain/assistant captain/committee/member templates plus custom role names and permission bundles. Permission domains: members, roles, competitions, results, assigned scoring, facilities, finances, announcements, training, and later media/billing. Users may hold multiple roles; effective grants are the union within that organization. Granting authority cannot exceed the acting user's delegable permissions. Keep one active admin. Enforce checks on API reads/writes, live events, files, and UI actions.
+**Governance — Phase 1.** Editable admin/captain/assistant captain/committee/member templates plus custom role names and permission bundles. Permission domains: members, roles, competitions, results, assigned scoring, facilities, finances, announcements, training, welfare projects, club activities, and later media/billing. Users may hold multiple roles; effective grants are the union within that organization. Granting authority cannot exceed the acting user's delegable permissions. Keep one active admin. Enforce checks on API reads/writes, live events, files, and UI actions.
 
 Custom member fields: text, number, date, boolean, single selection; required/optional; member-visible or staff-only. Field definitions belong to an organization, values to its membership. Field access does not override other privacy rules. Preserve historical values when retiring a field.
 
@@ -132,7 +132,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 ### REQ-023
 
-**Contributions — Phase 2.** Multiple purpose campaigns with title/description, amount, selected members and one-time/weekly/monthly/quarterly/yearly cadence. Snapshot each generated due; idempotent generation key campaign/member/period. Monthly dates clamp to the final valid day; edits affect future ungenerated periods. Track pending/partial/paid/overdue/waived; partial overdue amounts remain visibly overdue. Members see their own dues and purpose totals. Authorized staff record waivers with reasons. Joining a club does not retroactively create old dues.
+**Contributions — Phase 2.** Multiple purpose campaigns with title/description, amount, selected members and one-time/weekly/monthly/quarterly/yearly cadence. Snapshot each generated due; idempotent generation key campaign/member/period. Monthly dates clamp to the final valid day; edits affect future ungenerated periods. Track pending/partial/paid/overdue/waived; partial overdue amounts remain visibly overdue. Members see their own dues and purpose totals. Authorized staff record waivers with reasons. Joining a club does not retroactively create old dues. Club operations dues are the standard case (user decision, 2026-11-15): a club can run a weekly or monthly "Club operations" campaign (offered as a ready-made template) that all active members owe by default, with per-member amount overrides or waivers (e.g. juniors, honorary members), and its REQ-024 expenses cover running costs such as hall/table hire, balls, nets, repairs and utilities so members see what their dues paid for. New members start owing from the next period after joining; leaving stops future dues but keeps earlier ones.
 
 ### REQ-024
 
@@ -190,6 +190,26 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 **Personal match log — Phase 1 (user decision, 2026-10-03).** An authenticated player can record matches they played outside official mombasa-tt scoring: date, a free-text label of their choosing (suggestions such as Friendly, Tournament, Practice, League; previously used labels offered again), singles/doubles, free-text opponent (and partner) names, optional venue, set-by-set points, and notes. The record is personal data owned by the recording player: only that player can list, read, edit or delete it; club roles, platform staff APIs, public pages, directories and other players never see it. Free-text names never link to, notify, or grant edit rights over another player's identity. Each set needs a winner; the match result is derived from sets won. Progress summaries (played/won/lost, win rate, by label, recent form) are computed only from the owner's records. Personal records never alter Elo, standings, official history, or reservations, and are always labeled as self-recorded. Matches scored officially on mombasa-tt are not re-entered here: their scores are read-only and the player adds private notes per REQ-025.
 
+### REQ-038
+
+**Welfare projects — Phase 2 (user decision, 2026-11-15).** Club staff with the welfare permission set up a welfare project for a shared cause, for example supporting a sick or bereaved member, with a title, purpose description, optional beneficiary member, suggested contribution per member (e.g. KES 50 as `{amount_minor,currency}`), optional target and deadline, and audience (all active members or selected members). Contributions are voluntary unless staff explicitly make the project a due under REQ-023; a suggested amount never creates an overdue status on its own. Contributions are recorded manually through the REQ-022 ledger (cash/external, no payment processing) and allocated to the project; spending such as a hospital visit gift uses REQ-024 expenses, so received, spent and remaining amounts reconcile and show deficits. Members see the project, the total raised against the target, and their own contribution; per-member amounts are visible only to financial staff unless the club opts to show a contributor list, and each contributor may stay anonymous in it. The beneficiary's health or personal circumstances are sensitive: staff write only what the beneficiary (or their family) agreed to share, the beneficiary can ask staff to hide the project, and no medical detail appears in notifications, public pages or directories. A project can include a planned visit or support activity (date, meeting point, who is going) using REQ-039 activities. Projects close manually or at the deadline; closing keeps the ledger and summary read-only.
+
+### REQ-039
+
+**Club activities and schedule — Phase 1, cost sharing in Phase 2 (user decision, 2026-11-15).** Staff with the activities permission post club activities beyond competitions: social nights out, fun days, group visits (including REQ-038 welfare visits), meetings and practice nights. An activity has title, type, description, start/end in the organization timezone, venue or meeting point (free text, no precise member locations), audience (all members or selected members), optional capacity and RSVP deadline, and draft/published/cancelled state; cancellation keeps the record with a reason. Members RSVP going/maybe/not going; capacity applies transactionally to "going" and full activities offer a waitlist without automatic promotion. The club schedule lists published activities together with the organization's published tournaments and club training sessions (REQ-027) in date order, with upcoming/past views, type filters and an add-to-calendar (.ics) export; it is visible to members only, never public, unless an activity is explicitly marked public. Publishing, changing time/venue and cancelling notify the audience through REQ-019. Attendee lists are visible to members of the audience as display names only. In Phase 2 an activity can carry a per-person cost or shared expense tracked through a REQ-023 one-time campaign and REQ-024 expenses; Phase 1 shows a cost note only and never implies payment.
+
+### REQ-040
+
+**Soda games (friendly challenges) — Phase 1, stakes behind a policy gate (user decision, 2026-11-15).** A player challenges another player (same club or any player reachable through the opted-in directory) to a friendly singles or doubles match called a soda game. The challenge carries date/time or "next time we meet", optional venue, best-of, a message, and an optional stake: the amount the challenger pledges to pay if they lose (`{amount_minor,currency}`, e.g. KES 100, or a soda). The challenged player can accept and match the same stake, accept and play without staking, propose a new time, or decline; the challenger may withdraw before acceptance. When only the challenger staked, only the challenger owes on a loss. The match is scored through Quick Score (REQ-017) or recorded by both players; the result needs confirmation by both players (or an assigned umpire) before the stake outcome is shown, and a disputed result shows "disputed" with no amount owed. Soda games are unrated, never affect Elo, standings or official history, and do not reserve tables (REQ-014). mombasa-tt only records the pledge and lets the winner mark it "settled"; it never collects, holds or transfers money, sets odds, or lets anyone other than the two players stake, so no spectator or third-party betting. Stakes are visible only to the two players; club members see the challenge and result only if both players allow it. Organizations can disable stakes, or soda games entirely, for their members. Enabling stakes in production requires a recorded legal/policy sign-off (Kenyan betting and gaming law, minimum age 18, stake limits); until then the stake fields stay hidden and soda games run without stakes.
+
+### REQ-041
+
+**Annual financial report — Phase 2 (user decision, 2026-11-15).** Club officials with the finance permission record every club expense in mombasa-tt (purpose/campaign, category such as hall hire, equipment, welfare, events, transport, amount, date, payee, description, private receipt, recorder) as the single source for the club's accounts; corrections use REQ-024 reversals, never edits that erase history. At the end of the club's financial year (configurable year-end date, default 31 December, organization timezone) officials generate a report for the period: opening balance, receipts by campaign (operations dues, welfare projects, event fees, other), expenses by category and campaign, closing balance, outstanding dues total, waivers total, and deficits shown as negative. Officials review a draft, add a narrative summary, and publish it; publishing freezes a versioned snapshot with publisher and time. Members of the organization see published reports (aggregates only, no individual member balances, payer names or receipts); the club may optionally make a report public. A later correction to a reported period never changes the published snapshot silently: officials publish an amended version that lists the changes and keeps the original visible. Reports export to PDF/CSV. Arithmetic must reconcile exactly with the REQ-022/REQ-024 ledger for the period.
+
+### REQ-042
+
+**Events calendar and live links — Phase 1 (user decision, 2026-11-15).** A public events listing shows table tennis tournaments and events happening in the country, both those run on mombasa-tt (REQ-007, including our own club's) and external events run elsewhere. External events are listings only: name, organizer, dates and timezone, venue and town, categories (e.g. singles/doubles, juniors, open), entry information, official info link and optional live stream link; they carry no draws, entries or ratings in mombasa-tt. Club staff with the announcements permission submit external events; a platform curator reviews them before they appear publicly (members of the submitting club see them immediately, marked "awaiting review"). Listings offer list and month-calendar views, filters by town, category, host club and "our club", and a countdown for upcoming events. When an event is live (within its scheduled times, or marked live by its organizer/curator) it shows a "Live" badge and the live link: for mombasa-tt events the live tournament page and any REQ-030 broadcast; for external events the submitted live stream URL. Links must be https, open in a new tab with the destination domain shown, and can be reported and removed by curators. Past events stay listed with results links where available. Cancelled or postponed events stay visible with their status.
+
 ## Planned entity groups
 
 | Domain | Records and ownership |
@@ -199,7 +219,8 @@ On availability/result changes, rank ready matches by planned start, then ready-
 | Competition | Tournament, Event, Entry, Pair, TeamRoster, Tie/Rubber, Group, DrawVersion, Match, ResultRevision |
 | Operations | Venue, Table, Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
-| Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal |
+| Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038), FinancialYear, AnnualReport/ReportVersion (REQ-041) |
+| Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players. ExternalEvent listing and curation (REQ-042); platform scoped |
 | Development | PersonalMatch/PersonalGame (REQ-037), MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |
 | Media later | RecordingSession/Segment, TimeMapping, Marker, Clip, ProcessingJob, Publication, Destination |
 | Billing later | OrganizationSubscription, PlanVersion, Entitlement, UsageRecord, BillingEvent |
@@ -225,7 +246,7 @@ Project: [1275312862625402020](https://stitch.withgoogle.com/projects/1275312862
 | 63d6b49eeb6d43e394fb53dd1c3c5cee | Completion | Real next actions; no invented level/pro status |
 | 975d457e60b8469aae8549f8317232c7 | Match Highlights and Media | Separate Phase 1 recap and later reviewed video; remove unsupported metrics |
 
-Required new coverage: tournament creation/registration/check-in; selected Groups/Schedule/Standings; team lineup; desktop dispatch board; club administration/role editor/custom fields; notifications/preferences; score recovery/correction; booking/approval; campaign and member balances/expense detail; analysis/drills/training; later recording/highlight review/broadcast studio/organization-plan concept. Use suitable mobile and desktop layouts rather than squeezing every workflow into one screen. Store generated IDs here and evaluate through EVAL-036 before coding.
+Required new coverage: tournament creation/registration/check-in; selected Groups/Schedule/Standings; team lineup; desktop dispatch board; club administration/role editor/custom fields; notifications/preferences; score recovery/correction; booking/approval; campaign and member balances/expense detail; welfare project setup/progress (REQ-038); club activity, RSVP and club schedule (REQ-039); analysis/drills/training; later recording/highlight review/broadcast studio/organization-plan concept. Use suitable mobile and desktop layouts rather than squeezing every workflow into one screen. Store generated IDs here and evaluate through EVAL-036 before coding.
 
 ### Generated design inventory — 2026-09-08
 
@@ -259,6 +280,25 @@ Design system: `assets/4831977112676050334`, **mombasa-tt Coastal Club**. Explic
 The four tournament screenshots were visually reviewed. They establish the palette/layout direction but do not yet pass the full design gate. Stitch's screen-list response may lag generated screen IDs; use direct screen retrieval to verify artifacts. The four-screen organizer request timed out but its completed screens were subsequently recovered without duplicate generation.
 
 Review follow-ups: apply the mandatory left/right rule to every comparison; make all four tournament tab labels visible; align fictional rosters and dates; keep next-match calls prominent; remove online-payment implications from manual contribution tracking; review the recovered organizer and future concepts. The original tall umpire draft is superseded by scoring-deck refinement `fc592c651fa940a6ac2208f897d8175b`, superseded in turn by reference-driven revision `c48eab3033f14a959b32b52c87c79dc3` (mombasa-tt — Refined PWA Scoring Deck). Its screenshot was visually checked on 2026-09-08: players and scores remain left/right, with game history, service, horizontal controls and a compact event log. Responsive widths, text zoom and interaction behavior still require implementation evaluation; the screenshot alone does not establish those guarantees. TASK-002 remains open until coverage and visual checks pass.
+
+## Layout reference: WTT (guidance only, user decision 2026-11-15)
+
+The user shared World Table Tennis (worldtabletennis.com) screens as layout and information-design guidance. Follow the patterns below; do not replicate WTT pages exactly. Never use WTT names, logos, colours, photography, event branding or copy: mombasa-tt keeps its own REQ-002 tokens, wordmark and mobile-first layouts, and every screen is still generated and reviewed through Stitch (REQ-036).
+
+| Pattern seen in the reference | Where it applies in mombasa-tt |
+|---|---|
+| Live score strip above the navigation: compact cards per match with event/round, both sides, sets won, game scores, winner tick | Live tournament header on public and tournament pages (REQ-010, REQ-014); scroll horizontally on mobile |
+| Match cards: round title, venue/table line, sets-won headline (e.g. 3-2), per-game points with winner games emphasised, link to match detail | Completed matches list, Quick Score and personal match log cards (REQ-010, REQ-017, REQ-037); keep the mandatory left/right rule |
+| Matches tabs Completed / Scheduled / Draws with filters by event, sub-event, date and a search by player/round/table; "times are venue local" note | Tournament navigation (REQ-010); our four tabs Brackets, Groups, Schedule, Standings stay authoritative, filters and timezone note carry over |
+| Scheduled match cards: date-time, round, both sides with seed/WC markers, table/area, status chip | Schedule tab and dispatch board (REQ-010, REQ-014) |
+| Bracket columns per round with connector lines, winner row highlighted, date/table under each pair, empty future slots | Brackets tab (REQ-010); offer the round-list alternative on mobile |
+| Event list as large cards with dates, venue, town, sub-event chips and a countdown; calendar view grouped by month with date range, category colour bar and winners | Tournament list and the members-only club schedule month view (REQ-007, REQ-039) |
+| Event detail tabs Overview / Matches / Draws / Groups / Player list / Event info, with a provisional schedule grouped by day, then sessions (venue, tables, start time, rounds) | Tournament detail and published day schedule (REQ-007, REQ-010) |
+| Match centre: two sides with head-to-head table (hand, grip, style, matches won) and upcoming status | Pre-match detail using only REQ-006 fields players chose to show; no age or nationality unless the player published it |
+| Match page: final score hero, game-by-game table, point-by-point commentary timeline (point, serve change, game/match point, completion), per-game stats tabs (points won, on serve, biggest lead, most consecutive, deficit overcome), score-progression chart | Official match detail and recap (REQ-015, REQ-018), derived only from recorded score events; never infer shot types (REQ-018) |
+| Ranking table: rank with movement arrow, player, club, points; expandable row showing which results contribute | Ratings leaderboard (REQ-016) with expandable rating-change history per confirmed match |
+| Player list with search and filters; player profile hero with ranking, win/loss %, hand/style and related matches | Player directory and public player page (REQ-006, REQ-016), opted-in data only |
+| News cards with category tag, headline, excerpt | Club announcements and awards posts (REQ-018, REQ-019) |
 
 ## External references
 

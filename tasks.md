@@ -59,13 +59,25 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 - [ ] **TASK-071** — Implement the private personal match log: records with free-text labels, sets/scores and notes, owner-only API, progress summary and mobile/web views. Depends: TASK-010. REQ-037 / EVAL-037. Done: owner-only access matrix, set validation and summary tests pass; official matches remain notes-only (REQ-025, TASK-041).
 
+## Phase 1: club life
+
+- [ ] **TASK-072** — Implement club activities (types, schedule fields, audience, capacity, draft/publish/cancel), RSVPs with transactional capacity and waitlist, and the members-only club schedule merging activities, tournaments and training sessions with .ics export. Depends: TASK-013, TASK-017. REQ-039 / EVAL-039. Done: capacity race, visibility and timezone tests pass.
+- [ ] **TASK-073** — Implement activity and club schedule mobile/web views, RSVP controls and publish/change/cancel notifications. Depends: TASK-072, TASK-033. REQ-039 / EVAL-039. Done: audience-only notifications and schedule screenshots recorded; cost notes never imply payment.
+- [ ] **TASK-076** — Implement soda game challenges: create/accept (with or without matching stake)/counter-time/decline/withdraw, pledge records, two-player result confirmation and disputes, settled marking, organization disable switches, and the stake policy feature flag. Depends: TASK-013, TASK-031. REQ-040 / EVAL-040. Done: stake visibility, no-rating impact and dispute tests pass with the flag off and on.
+- [ ] **TASK-077** — Implement soda game mobile/web views (challenge inbox, challenge form, result confirmation, pledge history) and challenge notifications. Depends: TASK-076, TASK-033. REQ-040 / EVAL-040. Done: screenshots recorded; stake fields hidden while the policy gate is off.
+- [ ] **TASK-078** — Obtain and record legal/policy sign-off for soda game stakes (Kenyan betting/gaming rules, age 18+, limits, wording). Depends: none. REQ-040. Done: written decision recorded in intent.md; until then stakes stay disabled in production. Needs user/legal sign-off.
+- [ ] **TASK-080** — Implement the events listing: internal tournament feed, external event submissions with curator review, list/calendar views, filters, countdown, live badge and https-validated live links with reporting. Depends: TASK-017, TASK-013. REQ-042 / EVAL-042. Done: review visibility, live window and link validation tests pass; screenshots recorded.
+
 ## Phase 2: reservations and finances
 
 - [ ] **TASK-036** — Implement opening hours, closures, booking requests, approval/rejection/cancellation and views. Depends: TASK-027, TASK-033. REQ-021 / EVAL-021. Done: approvals race safely against matches and other bookings.
 - [ ] **TASK-037** — Implement charges, manual payments, allocations, excess credit and reversals. Depends: TASK-013, TASK-018, TASK-036. REQ-022 / EVAL-022. Done: ledger arithmetic reconciles and currency mismatches are rejected.
-- [ ] **TASK-038** — Implement contribution campaigns, period generation, assignments and waivers. Depends: TASK-037, TASK-007. REQ-023 / EVAL-023. Done: retries/month-end/leap-year cases create exactly one correct due per period.
+- [ ] **TASK-038** — Implement contribution campaigns, period generation, assignments and waivers. Depends: TASK-037, TASK-007. REQ-023 / EVAL-023. Done: retries/month-end/leap-year cases create exactly one correct due per period; the weekly/monthly "Club operations" template creates all-member dues with overrides/waivers and none for periods before joining or after leaving.
 - [ ] **TASK-039** — Implement contribution member/staff views and reminders. Depends: TASK-038, TASK-033. REQ-023 / EVAL-023. Done: pending/partial/overdue status and visibility match records.
 - [ ] **TASK-040** — Implement purpose expenses, receipts, reversals and transparent summaries. Depends: TASK-037, TASK-038, TASK-016. REQ-024 / EVAL-024. Done: received/spent/remaining totals reconcile, including deficits and reversals.
+- [ ] **TASK-074** — Implement welfare projects: setup with suggested per-member amount, target, deadline, beneficiary and audience; voluntary contributions through the manual ledger; expenses, close/hide, and contributor anonymity. Depends: TASK-037, TASK-040. REQ-038 / EVAL-038. Done: ledger reconciliation, no implied overdue status and beneficiary-privacy tests pass.
+- [ ] **TASK-075** — Implement welfare project member/staff views, progress against target, linked visit activities (REQ-039) and Phase 2 activity cost sharing via one-time campaigns. Depends: TASK-074, TASK-073. REQ-038, REQ-039 / EVAL-038, EVAL-039. Done: member sees totals and own contribution only; screenshots recorded.
+- [ ] **TASK-079** — Implement expense categories, financial-year settings and annual report draft/review/publish with frozen versioned snapshots, amendments, member/public visibility and PDF/CSV export. Depends: TASK-040. REQ-041 / EVAL-041. Done: report reconciles with ledger fixtures; amendments never alter the published snapshot.
 
 ## Phase 3: player development
 
@@ -158,3 +170,8 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-035](spec.md#req-035) | [EVAL-035](test.md#eval-035) | TASK-009, TASK-062; native later TASK-069, TASK-070 |
 | [REQ-036](spec.md#req-036) | [EVAL-036](test.md#eval-036) | TASK-001, TASK-002 |
 | [REQ-037](spec.md#req-037) | [EVAL-037](test.md#eval-037) | TASK-071 |
+| [REQ-038](spec.md#req-038) | [EVAL-038](test.md#eval-038) | TASK-074, TASK-075 |
+| [REQ-039](spec.md#req-039) | [EVAL-039](test.md#eval-039) | TASK-072, TASK-073, TASK-075 |
+| [REQ-040](spec.md#req-040) | [EVAL-040](test.md#eval-040) | TASK-076, TASK-077, TASK-078 |
+| [REQ-041](spec.md#req-041) | [EVAL-041](test.md#eval-041) | TASK-079 |
+| [REQ-042](spec.md#req-042) | [EVAL-042](test.md#eval-042) | TASK-080 |
