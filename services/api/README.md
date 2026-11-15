@@ -41,6 +41,19 @@ uv run ruff check . && uv run ruff format --check .
 uv run --env-file .env manage.py makemigrations --check --dry-run
 ```
 
+### API contract
+
+`openapi.yaml` is the committed schema, and the web app's types (`apps/web/src/lib/api-schema.d.ts`) are generated
+from it. After changing a serializer or view, regenerate both; CI fails when either is stale:
+
+```sh
+uv run --env-file .env manage.py spectacular --fail-on-warn --file openapi.yaml
+cd ../../apps/web && pnpm gen:api
+```
+
+CI (`.github/workflows/ci.yml`) also runs ruff, migration drift, pytest, `pip-audit`, oxlint, the web build,
+`pnpm audit --prod` and a gitleaks secret scan on every PR into `dev` and `main`.
+
 ## Auth endpoints (`/api/v1/auth/`)
 
 | Method | Path | Notes |

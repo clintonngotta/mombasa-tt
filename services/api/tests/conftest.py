@@ -14,6 +14,12 @@ def _clear_throttles():
     cache.clear()
 
 
+@pytest.fixture(autouse=True)
+def _fast_password_hashing(settings):
+    # The production PBKDF2 work factor costs ~1s per hash; tests only need hashing to round-trip.
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+
 class BrowserClient(APIClient):
     """Behaves like the PWA: enforces CSRF and echoes the csrftoken cookie on unsafe requests."""
 

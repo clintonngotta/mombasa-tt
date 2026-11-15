@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react"
 import { api } from "@/lib/api"
+import type { Page, Schemas } from "@/lib/schema"
 
-export type Hand = "right" | "left"
-export type Grip = "shakehand" | "penhold" | "other"
-export type Experience = "new" | "casual" | "club" | "competitive"
+export type Hand = Schemas["HandEnum"]
+export type Grip = Schemas["GripEnum"]
+export type Experience = Schemas["ExperienceEnum"]
 
 export type ProfileDraft = {
   display_name: string
@@ -15,7 +16,7 @@ export type ProfileDraft = {
   bio: string
 }
 
-export type Goal = "compete" | "rating" | "train" | "find_club" | "umpire" | "organize"
+export type Goal = Schemas["GoalsEnum"]
 
 export type OnboardingDraft = {
   profile: ProfileDraft
@@ -24,7 +25,7 @@ export type OnboardingDraft = {
   joinRequests: Club[]
 }
 
-export type Club = { id: string; name: string; town: string; kind: "club" | "facility" | "club_facility" }
+export type Club = Schemas["Organization"]
 
 const STORAGE_KEY = "mombasa-tt:onboarding-draft"
 
@@ -80,7 +81,7 @@ export const saveDiscovery = (directory_opt_in: boolean) =>
 export const saveGoals = (goals: Goal[]) => api<void>("/me/goals/", { method: "PUT", body: { goals } })
 
 export const searchClubs = (query: string) =>
-  api<{ results: Club[] }>(`/organizations/?search=${encodeURIComponent(query)}`)
+  api<Page<Club>>(`/organizations/?search=${encodeURIComponent(query)}`)
 
 export const requestToJoin = (organizationId: string) =>
   api<void>(`/organizations/${organizationId}/join-requests/`, { body: {} })

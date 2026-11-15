@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import PersonalMatch
-from .serializers import PersonalMatchSerializer
+from .serializers import RESULT_CHOICES, PersonalMatchSerializer
 
 SUGGESTED_LABELS = ["Friendly", "Tournament", "Practice", "League"]
 RECENT_FORM_SIZE = 10
@@ -74,8 +74,17 @@ class PersonalMatchViewSet(viewsets.ModelViewSet):
                 "win_rate": serializers.FloatField(allow_null=True),
                 "games_won": serializers.IntegerField(),
                 "games_lost": serializers.IntegerField(),
-                "recent_form": serializers.ListField(child=serializers.CharField()),
-                "by_label": serializers.ListField(child=serializers.DictField()),
+                "recent_form": serializers.ListField(child=serializers.ChoiceField(choices=RESULT_CHOICES)),
+                "by_label": inline_serializer(
+                    "LabelTally",
+                    {
+                        "label": serializers.CharField(),
+                        "played": serializers.IntegerField(),
+                        "won": serializers.IntegerField(),
+                        "lost": serializers.IntegerField(),
+                    },
+                    many=True,
+                ),
             },
         ),
     )
