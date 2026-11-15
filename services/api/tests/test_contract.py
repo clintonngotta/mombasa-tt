@@ -72,5 +72,5 @@ def test_error_fixtures_share_one_envelope(client):
     ).json()
     outsider = logged_in(make_user("outsider@example.com"))
     _assert_envelope(
-        outsider.get(f"/api/v1/organizations/{org['id']}/join-requests/"), 403, "not_organization_admin"
+        outsider.get(f"/api/v1/organizations/{org['id']}/join-requests/"), 403, "permission_denied"
     )

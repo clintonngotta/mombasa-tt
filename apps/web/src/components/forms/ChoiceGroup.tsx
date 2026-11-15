@@ -2,7 +2,8 @@ import { useId } from "react"
 import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export type Option<T extends string> = { value: T; label: string; description?: string }
+/** `disabled` options keep their checked state visible but can't be toggled (e.g. beyond the user's authority). */
+export type Option<T extends string> = { value: T; label: string; description?: string; disabled?: boolean }
 
 type ChoiceGroupProps<T extends string> = {
   legend: string
@@ -60,7 +61,8 @@ export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
               key={option.value}
               className={cn(
                 "relative flex min-h-12 cursor-pointer items-start gap-3 rounded-lg border bg-card px-3 py-3 has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
-                checked && "border-brand-blue bg-surface-selected"
+                checked && "border-brand-blue bg-surface-selected",
+                option.disabled && "cursor-not-allowed opacity-60"
               )}
             >
               <input
@@ -68,6 +70,7 @@ export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
                 name={name}
                 value={option.value}
                 checked={checked}
+                disabled={option.disabled}
                 onChange={() => toggle(option.value)}
                 className="sr-only"
               />

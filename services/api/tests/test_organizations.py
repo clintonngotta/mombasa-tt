@@ -31,13 +31,20 @@ def club(admin):
     return Organization.objects.get(pk=response.json()["id"])
 
 
+def role_keys(org, user) -> list[str]:
+    """Keys of the roles a user holds in `org` ([] = plain member)."""
+    membership = Membership.objects.get(organization=org, user=user)
+    return sorted(role.key or role.name for role in membership.roles.all())
+
+
 def requests_url(org):
     return f"{ORGS}{org.id}/join-requests/"
 
 
 def test_creator_becomes_first_admin(admin, club):
     membership = Membership.objects.get(organization=club)
-    assert (membership.user, membership.role, membership.status) == (admin, "admin", "active")
+    assert (membership.user, membership.status) == (admin, "active")
+    assert role_keys(club, admin) == ["admin"]
     assert (
         logged_in(admin).get("/api/v1/me/memberships/").json()["results"][0]["organization"]["name"]
         == "Coast TT Club"
@@ -80,7 +87,7 @@ def test_join_request_approve_flow(admin, player, club):
     request_id = pending[0]["id"]
     approved = admin_client.post(f"{requests_url(club)}{request_id}/approve/", {}, format="json")
     assert approved.status_code == 200 and approved.json()["status"] == "approved"
-    assert Membership.objects.get(organization=club, user=player).role == "member"
+    assert role_keys(club, player) == []
     # Deciding twice is refused; joining again is refused.
     twice = admin_client.post(f"{requests_url(club)}{request_id}/reject/", {}, format="json")
     assert twice.status_code == 409 and twice.json()["code"] == "already_decided"
@@ -109,7 +116,7 @@ def test_outsider_and_requester_cannot_manage_requests(admin, player, club):
     player_client = logged_in(player)
     request_id = player_client.post(requests_url(club), {}, format="json").json()["id"]
     denied = player_client.get(requests_url(club))
-    assert denied.status_code == 403 and denied.json()["code"] == "not_organization_admin"
+    assert denied.status_code == 403 and denied.json()["code"] == "permission_denied"
     assert (
         player_client.post(f"{requests_url(club)}{request_id}/approve/", {}, format="json").status_code == 403
     )
@@ -150,11 +157,12 @@ def test_players_can_belong_to_several_organizations(admin, player, club):
 
 def test_returning_former_admin_rejoins_as_member(admin, player, club):
     """Approval grants membership only; a former admin's old role is not restored."""
-    Membership.objects.create(organization=club, user=player, role="admin", status="left")
+    former = Membership.objects.create(organization=club, user=player, status="left")
+    former.roles.add(club.roles.get(key="admin"))
     request_id = logged_in(player).post(requests_url(club), {}, format="json").json()["id"]
     logged_in(admin).post(f"{requests_url(club)}{request_id}/approve/", {}, format="json")
     membership = Membership.objects.get(organization=club, user=player)
-    assert (membership.role, membership.status) == ("member", "active")
+    assert membership.status == "active" and role_keys(club, player) == []
 
 
 # Invitations (REQ-004: invited members explicitly accept)
@@ -185,7 +193,7 @@ def test_invite_accept_flow(admin, player, club, mailoutbox):
     accepted = invitee.post(f"{MY_INVITATIONS}{invitation['id']}/accept/")
     assert accepted.status_code == 200 and accepted.json()["status"] == "accepted"
     membership = Membership.objects.get(organization=club, user=player)
-    assert (membership.role, membership.status) == ("member", "active")
+    assert membership.status == "active" and role_keys(club, player) == []
     assert invitee.get(MY_INVITATIONS).json()["results"] == []
     assert invitee.post(f"{MY_INVITATIONS}{invitation['id']}/accept/").status_code == 404
 
@@ -232,7 +240,7 @@ def test_inviting_a_member_reveals_nothing(admin, player, club):
     response = logged_in(admin).post(invitations_url(club), {"email": player.email}, format="json")
     assert response.status_code == 201
     logged_in(player).post(f"{MY_INVITATIONS}{response.json()['id']}/accept/")
-    assert Membership.objects.get(organization=club, user=player).role == "member"
+    assert role_keys(club, player) == []
 
 
 def test_admin_of_another_org_cannot_touch_invitations(admin, player, club):
@@ -304,4 +312,4 @@ def test_accepting_withdraws_an_open_join_request_and_keeps_admin_role(admin, pl
     Invitation.objects.create(organization=club, email=admin.email)
     stray = Invitation.objects.get(organization=club, email=admin.email)
     logged_in(admin).post(f"{MY_INVITATIONS}{stray.id}/accept/")
-    assert Membership.objects.get(organization=club, user=admin).role == "admin"
+    assert role_keys(club, admin) == ["admin"]

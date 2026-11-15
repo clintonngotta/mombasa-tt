@@ -25,6 +25,9 @@ import { ClubPage } from "@/pages/club/ClubPage"
 import { FindClubPage } from "@/pages/club/FindClubPage"
 import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
 import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
+import { MembersPage } from "@/pages/club/MembersPage"
+import { RolesPage } from "@/pages/club/RolesPage"
+import { RoleEditPage } from "@/pages/club/RoleEditPage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +65,10 @@ function App() {
               <Route path="/club/find" element={<FindClubPage />} />
               <Route path="/club/new" element={<RegisterOrganizationPage />} />
               <Route path="/club/invitations" element={<InvitationsInboxPage />} />
+              <Route path="/club/members" element={<MembersPage />} />
+              <Route path="/club/roles" element={<RolesPage />} />
+              <Route path="/club/roles/new" element={<RoleEditPage />} />
+              <Route path="/club/roles/:id" element={<RoleEditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/players" element={<PlayersPage />} />

@@ -1,6 +1,9 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .models import Invitation, JoinRequest, Membership, Organization
+from .access import membership_permissions
+from .models import Invitation, JoinRequest, Membership, Organization, Role
+from .permissions import Permission
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -12,13 +15,73 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "town", "kind"]
 
 
+class RoleSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ["id", "key", "name"]
+        read_only_fields = fields
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    """A role and its permissions (REQ-005). Admin always reports every permission."""
+
+    name = serializers.CharField(max_length=60, trim_whitespace=True)
+    permissions = serializers.ListField(
+        child=serializers.ChoiceField(choices=Permission.choices), required=False
+    )
+    member_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = Role
+        fields = ["id", "key", "name", "permissions", "member_count"]
+        read_only_fields = ["id", "key", "member_count"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["permissions"] = sorted(instance.permission_set)
+        return data
+
+    def validate_permissions(self, value):
+        return sorted(set(value))
+
+
+class PermissionInfoSerializer(serializers.Serializer):
+    code = serializers.ChoiceField(choices=Permission.choices)
+    label = serializers.CharField()
+
+
 class MembershipSerializer(serializers.ModelSerializer):
+    """The player's own membership: roles held and the permissions they add up to, so the app can show
+    only the actions the server will allow."""
+
     organization = OrganizationSerializer(read_only=True)
+    roles = RoleSummarySerializer(many=True, read_only=True)
+    permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = Membership
-        fields = ["id", "organization", "role", "status", "joined_at"]
+        fields = ["id", "organization", "roles", "permissions", "status", "joined_at"]
         read_only_fields = fields
+
+    @extend_schema_field(serializers.ListField(child=serializers.ChoiceField(choices=Permission.choices)))
+    def get_permissions(self, membership) -> list[str]:
+        return sorted(membership_permissions(membership))
+
+
+class MemberSerializer(serializers.ModelSerializer):
+    """Staff view of a member: display name and roles, never email or contact details."""
+
+    display_name = serializers.CharField(source="user.display_name", read_only=True)
+    roles = RoleSummarySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Membership
+        fields = ["id", "user", "display_name", "roles", "joined_at"]
+        read_only_fields = fields
+
+
+class MemberRolesSerializer(serializers.Serializer):
+    roles = serializers.ListField(child=serializers.UUIDField(), max_length=20)
 
 
 class JoinRequestSerializer(serializers.ModelSerializer):
