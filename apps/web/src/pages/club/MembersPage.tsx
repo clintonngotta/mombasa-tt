@@ -41,8 +41,8 @@ function MemberList({ membership }: { membership: Membership }) {
   const [term, setTerm] = useState("")
   const search = useDeferredValue(term.trim())
   const members = useQuery({ queryKey: clubKeys.members(orgId, search), queryFn: () => listMembers(orgId, search) })
-  const manageRoles = can(membership, "roles.manage")
-  const roles = useQuery({ queryKey: clubKeys.roles(orgId), queryFn: () => listRoles(orgId), enabled: manageRoles })
+  // Needed by both permissions: role editing, and knowing whom a members-only manager may remove.
+  const roles = useQuery({ queryKey: clubKeys.roles(orgId), queryFn: () => listRoles(orgId) })
   const accessLost = useAdminAccessLost(members.error, roles.error)
   const items = members.data?.results ?? []
 
@@ -99,7 +99,8 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
     disabled: !withinAuthority(membership, role.permissions),
   }))
   const heldPermissions = roles.filter((role) => member.roles.some((r) => r.id === role.id)).flatMap((r) => r.permissions)
-  const canRemove = can(membership, "members.manage") && !isSelf && withinAuthority(membership, heldPermissions)
+  const canRemove =
+    roles.length > 0 && can(membership, "members.manage") && !isSelf && withinAuthority(membership, heldPermissions)
 
   return (
     <li className={ROW}>
@@ -113,7 +114,15 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
       {!editing && !confirmRemove && (
         <div className="flex gap-2">
           {can(membership, "roles.manage") && roles.length > 0 && (
-            <Button variant="outline" aria-label={`Change roles for ${name}`} onClick={() => setEditing(true)}>
+            <Button
+              variant="outline"
+              aria-label={`Change roles for ${name}`}
+              onClick={() => {
+                // Start from the latest list data, not what the row held when it first rendered.
+                setSelected(member.roles.map((r) => r.id))
+                setEditing(true)
+              }}
+            >
               Roles
             </Button>
           )}

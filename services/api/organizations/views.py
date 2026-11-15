@@ -148,7 +148,9 @@ class JoinRequestViewSet(viewsets.GenericViewSet):
     def _decide(self, request, organization_pk, pk, outcome):
         organization = self.get_organization()
         with transaction.atomic():
-            # Checked inside the transaction so someone whose role was just removed can't still decide.
+            # The organization lock orders this after any concurrent role change, so someone whose role
+            # was just removed can't still decide.
+            lock_organization(organization)
             require_permission(request.user, organization, MANAGE_MEMBERS)
             join_request = get_object_or_404(
                 JoinRequest.objects.select_for_update(), pk=pk, organization=organization
@@ -207,6 +209,7 @@ class InvitationViewSet(viewsets.GenericViewSet):
         email = serializer.validated_data["email"]
 
         with transaction.atomic():
+            lock_organization(organization)  # ordered after concurrent role changes
             require_permission(request.user, organization, MANAGE_MEMBERS)
             invitation = (
                 Invitation.objects.select_for_update()
@@ -238,6 +241,7 @@ class InvitationViewSet(viewsets.GenericViewSet):
     def revoke(self, request, organization_pk, pk):
         organization = self.get_organization()
         with transaction.atomic():
+            lock_organization(organization)  # ordered after concurrent role changes
             require_permission(request.user, organization, MANAGE_MEMBERS)
             invitation = get_object_or_404(
                 Invitation.objects.select_for_update(), pk=pk, organization=organization
@@ -354,11 +358,12 @@ class RoleViewSet(viewsets.GenericViewSet):
             member_count=Count("memberships", filter=Q(memberships__status=Membership.Status.ACTIVE)),
             # Templates in their usual order, custom roles by name, and Member (everyone) last.
             position=Case(
+                When(key=RoleKey.MEMBER, then=len(ROLE_TEMPLATES) + 1),
                 *(When(key=key, then=index) for index, (key, _, _) in enumerate(ROLE_TEMPLATES)),
-                default=len(ROLE_TEMPLATES) - 1,
+                default=len(ROLE_TEMPLATES),
                 output_field=IntegerField(),
             ),
-        ).order_by(Case(When(key=RoleKey.MEMBER, then=1), default=0), "position", Lower("name"))
+        ).order_by("position", Lower("name"))
         return Response(RoleSerializer(roles, many=True).data)
 
     @extend_schema(request=RoleSerializer, responses={201: RoleSerializer})
@@ -372,7 +377,7 @@ class RoleViewSet(viewsets.GenericViewSet):
             permissions = serializer.validated_data.get("permissions", [])
             require_within_authority(granted, permissions)
             role = self._save(serializer, organization=organization, permissions=permissions)
-        return Response(RoleSerializer(role).data, status=status.HTTP_201_CREATED)
+        return Response(RoleSerializer(role).data, status=status.HTTP_201_CREATED)  # new: no members yet
 
     @extend_schema(request=RoleSerializer, responses={200: RoleSerializer})
     def partial_update(self, request, organization_pk, pk):
@@ -381,6 +386,8 @@ class RoleViewSet(viewsets.GenericViewSet):
             lock_organization(organization)
             granted = require_permission(request.user, organization, MANAGE_ROLES)
             role = self.get_role(organization, pk)
+            # Renaming counts too: nobody relabels authority they don't hold (e.g. renaming Admin).
+            require_within_authority(granted, role.permission_set)
             serializer = RoleSerializer(role, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             if "permissions" in serializer.validated_data:
@@ -389,9 +396,9 @@ class RoleViewSet(viewsets.GenericViewSet):
                     raise ApiException(
                         "admin_role_locked", "The Admin role always has every permission.", 409
                     )
-                # Only the permissions actually added or removed need to be within the editor's authority.
-                require_within_authority(granted, new ^ role.permission_set)
+                require_within_authority(granted, new)
             role = self._save(serializer)
+            role.member_count = role.memberships.active().count()
         return Response(RoleSerializer(role).data)
 
     @extend_schema(responses={204: None})
@@ -401,7 +408,7 @@ class RoleViewSet(viewsets.GenericViewSet):
             lock_organization(organization)
             granted = require_permission(request.user, organization, MANAGE_ROLES)
             role = self.get_role(organization, pk)
-            if role.key in (RoleKey.ADMIN, RoleKey.MEMBER):
+            if role.is_admin or role.is_member:
                 raise ApiException("role_required", f"The {role.name} role can't be deleted.", 409)
             require_within_authority(granted, role.permission_set)
             role.delete()

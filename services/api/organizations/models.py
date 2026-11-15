@@ -88,7 +88,8 @@ class MembershipQuerySet(models.QuerySet):
         return self.filter(status=Membership.Status.ACTIVE)
 
     def admins(self, organization):
-        return self.active().filter(organization=organization, roles__key=RoleKey.ADMIN)
+        # A deactivated account can't act, so it doesn't count as the organization's admin.
+        return self.active().filter(organization=organization, roles__key=RoleKey.ADMIN, user__is_active=True)
 
 
 class Membership(models.Model):

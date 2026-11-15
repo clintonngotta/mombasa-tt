@@ -19,13 +19,8 @@ def membership_permissions(membership: Membership) -> frozenset[str]:
     Uses prefetched `roles` and `organization.roles` when present."""
     if membership.status != Membership.Status.ACTIVE:
         return frozenset()
-    granted: set[str] = set()
-    for role in membership.roles.all():
-        granted |= role.permission_set
-    for role in membership.organization.roles.all():
-        if role.is_member:
-            granted |= role.permission_set
-    return frozenset(granted)
+    member_role = [role for role in membership.organization.roles.all() if role.is_member]
+    return roles_permissions([*membership.roles.all(), *member_role])
 
 
 def effective_permissions(user, organization: Organization) -> frozenset[str]:

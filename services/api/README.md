@@ -98,9 +98,9 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET | `/api/v1/organizations/{id}/invitations/` | Open (pending, unexpired) invitations, needs `members.manage`; paginated |
 | POST | `/api/v1/organizations/{id}/invitations/{iid}/revoke/` | Needs `members.manage`; 409 `already_decided` |
 | GET | `/api/v1/organizations/permissions/` | The permission catalog: `{code, label}` for every permission a role can hold |
-| GET | `/api/v1/organizations/{id}/roles/` | Roles with permissions and active `member_count`; needs `roles.manage` or `members.manage` |
+| GET | `/api/v1/organizations/{id}/roles/` | Roles with permissions and active `member_count`, not paginated (an organization has a handful); needs `roles.manage` or `members.manage` |
 | POST | `/api/v1/organizations/{id}/roles/` | `{name, permissions}`; needs `roles.manage`. 403 `beyond_your_authority` for permissions the actor lacks; 400 on a duplicate name (case-insensitive) |
-| PATCH | `/api/v1/organizations/{id}/roles/{rid}/` | Rename or change permissions; only permissions added or removed must be within the actor's authority. Admin can only be renamed (409 `admin_role_locked`) |
+| PATCH | `/api/v1/organizations/{id}/roles/{rid}/` | Rename or change permissions; the actor must hold every permission the role has, before and after. Admin can only be renamed (409 `admin_role_locked`) |
 | DELETE | `/api/v1/organizations/{id}/roles/{rid}/` | 204; Admin and Member can't be deleted (409 `role_required`) |
 | GET | `/api/v1/organizations/{id}/members/?search=` | Active members (display name and roles, never email); needs `members.manage` or `roles.manage`; paginated |
 | PUT | `/api/v1/organizations/{id}/members/{mid}/roles/` | `{roles: [ids]}` replaces the member's roles; needs `roles.manage`. Every role added or removed must be within the actor's authority; role IDs from another organization or the Member role are a 400; 409 `last_admin` |
@@ -112,5 +112,5 @@ Roles (REQ-005, `organizations/permissions.py`): every organization starts with 
 Committee and Member, and can add custom roles. Effective permissions are the union of a member's roles plus the
 Member role, which applies to every active member. Admin always holds every permission. Nobody grants, removes or
 deletes a permission they don't hold. Role changes, removals and leaving lock the organization row, so concurrent
-changes can't remove the last admin (`organizations/access.py`).
+changes can't remove the last admin; deactivated accounts don't count as admins (`organizations/access.py`).
 List endpoints share `core.pagination.StandardPagination` (`page`, `page_size` up to 100) and return `{count, next, previous, results}`.

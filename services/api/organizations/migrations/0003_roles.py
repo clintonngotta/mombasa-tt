@@ -7,10 +7,31 @@ import uuid
 from django.db import migrations, models
 
 
+# Frozen copy of the templates as they were when this migration was written, so later edits to
+# organizations.permissions.ROLE_TEMPLATES never change what this migration does.
+ALL = [
+    "activities.manage", "announcements.manage", "competitions.manage", "facilities.manage",
+    "finances.manage", "finances.view", "members.manage", "results.manage", "roles.manage",
+    "scoring.assigned", "training.manage", "welfare.manage",
+]
+ROLE_TEMPLATES = [
+    ("admin", "Admin", ALL),
+    ("captain", "Captain", [
+        "activities.manage", "announcements.manage", "competitions.manage", "members.manage",
+        "results.manage", "scoring.assigned", "training.manage",
+    ]),
+    ("assistant_captain", "Assistant captain", [
+        "activities.manage", "competitions.manage", "scoring.assigned", "training.manage",
+    ]),
+    ("committee", "Committee", [
+        "activities.manage", "announcements.manage", "finances.manage", "finances.view", "welfare.manage",
+    ]),
+    ("member", "Member", []),
+]
+
+
 def seed_roles_and_map_admins(apps, schema_editor):
     """Give every existing organization the template roles, and make its current admins hold Admin."""
-    from organizations.permissions import ROLE_TEMPLATES, RoleKey
-
     Organization = apps.get_model("organizations", "Organization")
     Role = apps.get_model("organizations", "Role")
     Membership = apps.get_model("organizations", "Membership")
@@ -20,7 +41,7 @@ def seed_roles_and_map_admins(apps, schema_editor):
             for key, name, perms in ROLE_TEMPLATES
         }
         for membership in Membership.objects.filter(organization=organization, role="admin"):
-            membership.roles.add(roles[RoleKey.ADMIN])
+            membership.roles.add(roles["admin"])
 
 
 class Migration(migrations.Migration):

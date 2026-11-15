@@ -56,6 +56,7 @@ function RoleForm({ membership, role }: { membership: Membership; role?: Role })
   const done = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: clubKeys.roles(orgId) }),
+      queryClient.invalidateQueries({ queryKey: clubKeys.membersAll(orgId) }),
       queryClient.invalidateQueries({ queryKey: clubKeys.memberships }),
     ])
     navigate("/club/roles")

@@ -46,7 +46,7 @@ export const clubKeys = {
   joinRequests: (orgId: string) => ["clubs", orgId, "join-requests"] as const,
   invitations: (orgId: string) => ["clubs", orgId, "invitations"] as const,
   roles: (orgId: string) => ["clubs", orgId, "roles"] as const,
-  members: (orgId: string, term = "") => ["clubs", orgId, "members", term] as const,
+  members: (orgId: string, term: string) => ["clubs", orgId, "members", term] as const,
   membersAll: (orgId: string) => ["clubs", orgId, "members"] as const,
   permissions: ["clubs", "permissions"] as const,
 }

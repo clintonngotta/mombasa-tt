@@ -214,10 +214,20 @@ def test_granting_never_exceeds_the_actors_own_permissions(admin, club):
     assert add.status_code == 403
     drop = client.patch(roles_url(club, committee), {"permissions": ["activities.manage"]}, format="json")
     assert drop.status_code == 403
-    ok = client.patch(
-        roles_url(club, committee), {"permissions": [*committee.permissions, "members.manage"]}, format="json"
+    # Even renaming a role that carries permissions they lack is refused (no relabelling Admin).
+    assert client.patch(roles_url(club, committee), {"name": "Exec"}, format="json").status_code == 403
+    assert (
+        client.patch(
+            roles_url(club, club.roles.get(key="admin")), {"name": "Former"}, format="json"
+        ).status_code
+        == 403
     )
-    assert ok.status_code == 200 and "members.manage" in ok.json()["permissions"]
+    ok = client.patch(
+        roles_url(club, door),
+        {"name": "Doorkeeper", "permissions": ["members.manage", "roles.manage"]},
+        format="json",
+    )
+    assert ok.status_code == 200 and ok.json()["permissions"] == ["members.manage", "roles.manage"]
     # Deleting a role that carries permissions they lack.
     assert client.delete(roles_url(club, club.roles.get(key="captain"))).status_code == 403
 
@@ -335,3 +345,21 @@ def test_roles_are_listed_templates_first_then_custom_then_member(admin, club):
     client.post(roles_url(club), {"name": "coach"}, format="json")
     names = [r["name"] for r in client.get(roles_url(club)).json()]
     assert names == ["Admin", "Captain", "Assistant captain", "Committee", "coach", "Treasurer", "Member"]
+
+
+def test_role_update_reports_its_real_member_count(admin, club):
+    captain_role = club.roles.get(key="captain")
+    for n in range(2):
+        add_member(club, make_user(f"c{n}@example.com"), captain_role)
+    response = logged_in(admin).patch(roles_url(club, captain_role), {"name": "Skipper"}, format="json")
+    assert response.json()["member_count"] == 2
+
+
+def test_a_deactivated_admin_does_not_count_as_the_remaining_admin(admin, club):
+    dormant = make_user("dormant@example.com")
+    add_member(club, dormant, "admin")
+    dormant.is_active = False
+    dormant.save(update_fields=["is_active"])
+    me = Membership.objects.get(user=admin)
+    response = logged_in(admin).put(member_roles_url(club, me), {"roles": []}, format="json")
+    assert response.status_code == 409 and code(response) == "last_admin"
