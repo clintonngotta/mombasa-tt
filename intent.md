@@ -52,6 +52,7 @@ Success means that confirmed results produce correct progression and ratings; co
 | Offline | Continue downloaded assigned match; global dispatch/progression needs connectivity |
 | Ratings | Shared platform Elo with separate singles/doubles ledgers |
 | Casual games | Quick Score is unrated and does not reserve a table |
+| Personal match log | Players privately record their own matches (custom labels, sets, scores, notes) to track progress; official matches allow private notes only (2026-10-03) |
 | Club governance | Editable role templates, custom permission bundles, custom member fields |
 | Payments | Manual records initially; no payment gateway at launch |
 | Contributions | Multiple purposes with descriptions, periodic dues, balances, and expenses |
