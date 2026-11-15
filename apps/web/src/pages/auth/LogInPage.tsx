@@ -1,23 +1,29 @@
 import { useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { useMutation } from "@tanstack/react-query"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { AuthLayout } from "@/components/layout/AuthLayout"
 import { Field, FormAlert, PasswordField } from "@/components/forms/Field"
 import { ApiError, errorMessage } from "@/lib/api"
 import { logIn } from "@/lib/auth"
 import { DEV_ACCOUNTS } from "@/lib/devAccounts"
+import { meQueryKey, safeNext } from "@/lib/session"
 import { cn } from "@/lib/utils"
 
 export function LogInPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const next = safeNext(useSearchParams()[0].get("next"))
   const [email, setEmail] = useState(DEV_ACCOUNTS[0]?.email ?? "")
   const [password, setPassword] = useState(DEV_ACCOUNTS[0]?.password ?? "")
   const [missing, setMissing] = useState(false)
 
   const mutation = useMutation({
     mutationFn: logIn,
-    onSuccess: () => navigate("/home", { replace: true }),
+    onSuccess: (user) => {
+      queryClient.setQueryData(meQueryKey, user)
+      navigate(next, { replace: true })
+    },
   })
 
   function onSubmit(e: FormEvent) {

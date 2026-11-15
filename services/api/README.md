@@ -13,10 +13,10 @@ cp .env.example .env          # first time only
 uv sync
 uv run --env-file .env manage.py migrate
 uv run --env-file .env manage.py seed_dev     # test logins, DEBUG only
-uv run --env-file .env manage.py runserver    # http://127.0.0.1:8000
+uv run --env-file .env manage.py runserver 8010   # http://127.0.0.1:8010
 ```
 
-The web dev server (`apps/web`, port 5173) proxies `/api` to `127.0.0.1:8000`, so the browser sees one origin and the
+The web dev server (`apps/web`, port 5173) proxies `/api` to `127.0.0.1:8010` (8000 is often taken by other local projects), so the browser sees one origin and the
 session/CSRF cookies work without CORS. Override the target with `VITE_API_PROXY_TARGET`.
 
 Emails (verification, password reset) print to the `runserver` console unless `SMTP_HOST` is set. Open the link from

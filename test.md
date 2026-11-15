@@ -104,6 +104,10 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 
 **Privacy/tenant isolation — integration.** Setup: A/B/outsider accounts and private fields/files/notes/unpublished media. Steps: enumerate IDs across list/detail/search/export/live/attachment endpoints as outsider and different-role users. Pass: no unauthorized field/object/event leaks; public pages contain only published allowlist; expired signed URL fails and revoked user cannot obtain a new one. Evidence: endpoint/access matrix with negative assertions. Later media cases remain not run until implemented.
 
+### EVAL-037
+
+**Personal match log — integration/UI.** Setup: players A and B, a club admin of A's club, and a platform staff user; A has singles and doubles records under several labels. Steps: create/edit/delete as A; list/read/update/delete A's record IDs as B, admin and staff; submit tied, negative and empty sets; filter by label; compare summaries before/after; inspect ratings, standings and public pages. Pass: only A can access A's records (others get not-found, not forbidden); invalid sets are rejected with field errors; result and summaries match the recorded sets; labels are free text with prior labels suggested; no Elo/standing/public change; official-match scores stay read-only with notes as the only player edit (REQ-025). Evidence: API access matrix tests and UI screenshots.
+
 ## Phase 2 evaluations
 
 ### EVAL-021
@@ -174,7 +178,7 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 
 ### EVAL-036
 
-**Document/design gate — static plus design review.** Setup: five documents and Stitch inventory. Steps: check every REQ has tasks and EVAL, dependency IDs exist, local Markdown links/anchors resolve; inspect each required screen/phase mapping; confirm sequence docs→screens→code. Pass documentation subgate: all 36 requirements mapped, no orphan IDs or contradictory superseded stacks. Pass full gate: missing screen inventory filled/reviewed with IDs and no initial application code created before that review. Evidence: link/ID report and inventory review. Documentation subgate may pass while full gate remains pending.
+**Document/design gate — static plus design review.** Setup: five documents and Stitch inventory. Steps: check every REQ has tasks and EVAL, dependency IDs exist, local Markdown links/anchors resolve; inspect each required screen/phase mapping; confirm sequence docs→screens→code. Pass documentation subgate: all 37 requirements mapped, no orphan IDs or contradictory superseded stacks. Pass full gate: missing screen inventory filled/reviewed with IDs and no initial application code created before that review. Evidence: link/ID report and inventory review. Documentation subgate may pass while full gate remains pending.
 
 ## Release gates and reporting
 
