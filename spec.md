@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-039 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-040 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -198,6 +198,10 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 **Club activities and schedule — Phase 1, cost sharing in Phase 2 (user decision, 2026-11-15).** Staff with the activities permission post club activities beyond competitions: social nights out, fun days, group visits (including REQ-038 welfare visits), meetings and practice nights. An activity has title, type, description, start/end in the organization timezone, venue or meeting point (free text, no precise member locations), audience (all members or selected members), optional capacity and RSVP deadline, and draft/published/cancelled state; cancellation keeps the record with a reason. Members RSVP going/maybe/not going; capacity applies transactionally to "going" and full activities offer a waitlist without automatic promotion. The club schedule lists published activities together with the organization's published tournaments and club training sessions (REQ-027) in date order, with upcoming/past views, type filters and an add-to-calendar (.ics) export; it is visible to members only, never public, unless an activity is explicitly marked public. Publishing, changing time/venue and cancelling notify the audience through REQ-019. Attendee lists are visible to members of the audience as display names only. In Phase 2 an activity can carry a per-person cost or shared expense tracked through a REQ-023 one-time campaign and REQ-024 expenses; Phase 1 shows a cost note only and never implies payment.
 
+### REQ-040
+
+**Soda games (friendly challenges) — Phase 1, stakes behind a policy gate (user decision, 2026-11-15).** A player challenges another player (same club or any player reachable through the opted-in directory) to a friendly singles or doubles match called a soda game. The challenge carries date/time or "next time we meet", optional venue, best-of, a message, and an optional stake: the amount the challenger pledges to pay if they lose (`{amount_minor,currency}`, e.g. KES 100, or a soda). The challenged player can accept and match the same stake, accept and play without staking, propose a new time, or decline; the challenger may withdraw before acceptance. When only the challenger staked, only the challenger owes on a loss. The match is scored through Quick Score (REQ-017) or recorded by both players; the result needs confirmation by both players (or an assigned umpire) before the stake outcome is shown, and a disputed result shows "disputed" with no amount owed. Soda games are unrated, never affect Elo, standings or official history, and do not reserve tables (REQ-014). mombasa-tt only records the pledge and lets the winner mark it "settled"; it never collects, holds or transfers money, sets odds, or lets anyone other than the two players stake, so no spectator or third-party betting. Stakes are visible only to the two players; club members see the challenge and result only if both players allow it. Organizations can disable stakes, or soda games entirely, for their members. Enabling stakes in production requires a recorded legal/policy sign-off (Kenyan betting and gaming law, minimum age 18, stake limits); until then the stake fields stay hidden and soda games run without stakes.
+
 ## Planned entity groups
 
 | Domain | Records and ownership |
@@ -208,7 +212,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 | Operations | Venue, Table, Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
 | Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038) |
-| Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped |
+| Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players |
 | Development | PersonalMatch/PersonalGame (REQ-037), MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |
 | Media later | RecordingSession/Segment, TimeMapping, Marker, Clip, ProcessingJob, Publication, Destination |
 | Billing later | OrganizationSubscription, PlanVersion, Entitlement, UsageRecord, BillingEvent |

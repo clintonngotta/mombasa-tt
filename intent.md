@@ -58,6 +58,7 @@ Success means that confirmed results produce correct progression and ratings; co
 | Contributions | Multiple purposes with descriptions, periodic dues, balances, and expenses |
 | Welfare projects | Clubs run welfare projects (e.g. a sick member) with a suggested per-member contribution such as KES 50, recorded manually, plus a planned visit (2026-11-15) |
 | Club activities | Clubs post social activities (nights out, fun days, visits) with RSVPs on a members-only club schedule (2026-11-15) |
+| Soda games | Players challenge each other to friendly unrated matches; the challenger may pledge a stake if they lose, the opponent may match it or play without staking. The app records pledges only, never handles money; stakes need legal sign-off before production (2026-11-15) |
 | Facilities | Member requests with staff approval |
 | Development | Personal training plus club sessions; private post-match analysis |
 | Notifications | Persistent in-app inbox and optional browser push where supported; native push later |

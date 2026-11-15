@@ -112,6 +112,10 @@ Tools planned: pytest/pytest-django with real PostgreSQL for transactions; TypeS
 
 **Club activities and schedule — integration/UI.** Setup: organization in Africa/Nairobi with an activities officer, members A–D, a non-member E and a published tournament plus training session. Steps: create a draft night out with capacity 2, publish it, RSVP going as A, B and C concurrently, change the venue, cancel with a reason; open the club schedule as A and E; export .ics; check notifications and attendee lists. Pass: drafts are invisible to members; at most two "going" RSVPs, the third is waitlisted and not auto-promoted; publish/change/cancel each notify the audience once; schedule merges activities, tournaments and sessions in organization-timezone order; E and the public cannot see member-only activities; attendee lists show display names only; Phase 1 cost notes never show paid status. Evidence: API access and capacity tests, notification records, schedule screenshots.
 
+### EVAL-040
+
+**Soda games — integration/UI.** Setup: players A, B and C in one club, club admin D, and a club with stakes disabled; policy gate off, then on. Steps: with the gate off, confirm stake fields are hidden and A can challenge B; with the gate on, A challenges B with a KES 100 stake, B accepts without staking, A loses, both confirm; repeat with B matching the stake and B losing; dispute a result; try staking from C on A–B; try challenging in the disabled club; check Elo, standings, table reservations and C/D views. Pass: only the loser who pledged owes the stake; no amount is owed while disputed; C cannot stake or see stakes; disabled club blocks stakes; no money movement or payment record is created; ratings, standings and reservations are unchanged; result visibility follows both players' choice. Evidence: API tests and UI screenshots.
+
 ## Phase 2 evaluations
 
 ### EVAL-021

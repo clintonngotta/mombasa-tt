@@ -63,6 +63,9 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 - [ ] **TASK-072** — Implement club activities (types, schedule fields, audience, capacity, draft/publish/cancel), RSVPs with transactional capacity and waitlist, and the members-only club schedule merging activities, tournaments and training sessions with .ics export. Depends: TASK-013, TASK-017. REQ-039 / EVAL-039. Done: capacity race, visibility and timezone tests pass.
 - [ ] **TASK-073** — Implement activity and club schedule mobile/web views, RSVP controls and publish/change/cancel notifications. Depends: TASK-072, TASK-033. REQ-039 / EVAL-039. Done: audience-only notifications and schedule screenshots recorded; cost notes never imply payment.
+- [ ] **TASK-076** — Implement soda game challenges: create/accept (with or without matching stake)/counter-time/decline/withdraw, pledge records, two-player result confirmation and disputes, settled marking, organization disable switches, and the stake policy feature flag. Depends: TASK-013, TASK-031. REQ-040 / EVAL-040. Done: stake visibility, no-rating impact and dispute tests pass with the flag off and on.
+- [ ] **TASK-077** — Implement soda game mobile/web views (challenge inbox, challenge form, result confirmation, pledge history) and challenge notifications. Depends: TASK-076, TASK-033. REQ-040 / EVAL-040. Done: screenshots recorded; stake fields hidden while the policy gate is off.
+- [ ] **TASK-078** — Obtain and record legal/policy sign-off for soda game stakes (Kenyan betting/gaming rules, age 18+, limits, wording). Depends: none. REQ-040. Done: written decision recorded in intent.md; until then stakes stay disabled in production. Needs user/legal sign-off.
 
 ## Phase 2: reservations and finances
 
@@ -167,3 +170,4 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-037](spec.md#req-037) | [EVAL-037](test.md#eval-037) | TASK-071 |
 | [REQ-038](spec.md#req-038) | [EVAL-038](test.md#eval-038) | TASK-074, TASK-075 |
 | [REQ-039](spec.md#req-039) | [EVAL-039](test.md#eval-039) | TASK-072, TASK-073, TASK-075 |
+| [REQ-040](spec.md#req-040) | [EVAL-040](test.md#eval-040) | TASK-076, TASK-077, TASK-078 |
