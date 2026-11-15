@@ -619,8 +619,9 @@ paths:
   /api/v1/me/memberships/:
     get:
       operationId: me_memberships_list
-      description: 'Organizations the signed-in player belongs to: the basis for the
-        context switcher.'
+      description: |-
+        Organizations the signed-in player belongs to (the basis for the context switcher), with the roles
+        and permissions they hold in each. A player can leave, unless they are its last admin.
       parameters:
       - name: page
         required: false
@@ -645,6 +646,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedMembershipList'
           description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/memberships/{id}/leave/:
+    post:
+      operationId: me_memberships_leave_create
+      description: |-
+        Organizations the signed-in player belongs to (the basis for the context switcher), with the roles
+        and permissions they hold in each. A player can leave, unless they are its last admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this membership.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
         4XX:
           description: Error envelope
           content:
@@ -780,9 +808,9 @@ paths:
     get:
       operationId: organizations_invitations_list
       description: |-
-        Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-        whether it has an account or belongs to a member: the reply is the same and the email goes out
-        either way (an existing member who accepts keeps their role).
+        Email invitations for one organization (REQ-004), for members holding members.manage. Inviting an
+        address never reveals whether it has an account or belongs to a member: the reply is the same and the
+        email goes out either way (an existing member who accepts keeps their roles).
       parameters:
       - in: path
         name: organization_pk
@@ -822,9 +850,9 @@ paths:
     post:
       operationId: organizations_invitations_create
       description: |-
-        Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-        whether it has an account or belongs to a member: the reply is the same and the email goes out
-        either way (an existing member who accepts keeps their role).
+        Email invitations for one organization (REQ-004), for members holding members.manage. Inviting an
+        address never reveals whether it has an account or belongs to a member: the reply is the same and the
+        email goes out either way (an existing member who accepts keeps their roles).
       parameters:
       - in: path
         name: organization_pk
@@ -865,9 +893,9 @@ paths:
     post:
       operationId: organizations_invitations_revoke_create
       description: |-
-        Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-        whether it has an account or belongs to a member: the reply is the same and the email goes out
-        either way (an existing member who accepts keeps their role).
+        Email invitations for one organization (REQ-004), for members holding members.manage. Inviting an
+        address never reveals whether it has an account or belongs to a member: the reply is the same and the
+        email goes out either way (an existing member who accepts keeps their roles).
       parameters:
       - in: path
         name: id
@@ -903,8 +931,7 @@ paths:
       operationId: organizations_join_requests_list
       description: |-
         Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-        active admins of that organization can list or decide requests (TASK-013 replaces this check
-        with real permissions). Routes are mapped explicitly in urls.py.
+        members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
       parameters:
       - in: path
         name: organization_pk
@@ -945,8 +972,7 @@ paths:
       operationId: organizations_join_requests_create
       description: |-
         Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-        active admins of that organization can list or decide requests (TASK-013 replaces this check
-        with real permissions). Routes are mapped explicitly in urls.py.
+        members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
       parameters:
       - in: path
         name: organization_pk
@@ -982,8 +1008,7 @@ paths:
       operationId: organizations_join_requests_approve_create
       description: |-
         Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-        active admins of that organization can list or decide requests (TASK-013 replaces this check
-        with real permissions). Routes are mapped explicitly in urls.py.
+        members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
       parameters:
       - in: path
         name: id
@@ -1019,8 +1044,7 @@ paths:
       operationId: organizations_join_requests_reject_create
       description: |-
         Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-        active admins of that organization can list or decide requests (TASK-013 replaces this check
-        with real permissions). Routes are mapped explicitly in urls.py.
+        members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
       parameters:
       - in: path
         name: id
@@ -1051,6 +1075,268 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/members/:
+    get:
+      operationId: organizations_members_list
+      description: |-
+        Active members of one organization with their roles (REQ-005), for members holding members.manage
+        or roles.manage. Shows display names and roles only, never email or contact details.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Display name
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMemberList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/members/{id}/remove/:
+    post:
+      operationId: organizations_members_remove_create
+      description: End someone's membership. Nobody can remove a member who holds
+        permissions they don't.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/members/{id}/roles/:
+    put:
+      operationId: organizations_members_roles_update
+      description: Replace a member's roles. Each role added or removed must be within
+        the actor's authority.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberRolesRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/roles/:
+    get:
+      operationId: organizations_roles_list
+      description: |-
+        Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+        delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+        has every permission and can only be renamed; Admin and Member can't be deleted.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_roles_create
+      description: |-
+        Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+        delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+        has every permission and can only be renamed; Admin and Member can't be deleted.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/roles/{id}/:
+    patch:
+      operationId: organizations_roles_partial_update
+      description: |-
+        Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+        delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+        has every permission and can only be renamed; Admin and Member can't be deleted.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRoleRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_roles_destroy
+      description: |-
+        Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+        delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+        has every permission and can only be renamed; Admin and Member can't be deleted.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{id}/:
     get:
       operationId: organizations_retrieve
@@ -1073,6 +1359,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/permissions/:
+    get:
+      operationId: organizations_permissions_list
+      description: Every permission a role can hold (REQ-005), with a plain-language
+        label for the role editor.
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionInfo'
           description: ''
         4XX:
           description: Error envelope
@@ -1489,8 +1799,53 @@ components:
       - recent_form
       - win_rate
       - won
+    Member:
+      type: object
+      description: 'Staff view of a member: display name and roles, never email or
+        contact details.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleSummary'
+          readOnly: true
+        joined_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - display_name
+      - id
+      - joined_at
+      - roles
+      - user
+    MemberRolesRequest:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 20
+      required:
+      - roles
     Membership:
       type: object
+      description: |-
+        The player's own membership: roles held and the permissions they add up to, so the app can show
+        only the actions the server will allow.
       properties:
         id:
           type: string
@@ -1500,9 +1855,15 @@ components:
           allOf:
           - $ref: '#/components/schemas/Organization'
           readOnly: true
-        role:
-          allOf:
-          - $ref: '#/components/schemas/RoleEnum'
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleSummary'
+          readOnly: true
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionEnum'
           readOnly: true
         status:
           allOf:
@@ -1516,7 +1877,8 @@ components:
       - id
       - joined_at
       - organization
-      - role
+      - permissions
+      - roles
       - status
     MembershipStatusEnum:
       enum:
@@ -1708,6 +2070,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/JoinRequest'
+    PaginatedMemberList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
     PaginatedMembershipList:
       type: object
       required:
@@ -1913,6 +2300,57 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PublishedDetailsEnum'
+    PatchedRoleRequest:
+      type: object
+      description: A role and its permissions (REQ-005). Admin always reports every
+        permission.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionEnum'
+    PermissionEnum:
+      enum:
+      - members.manage
+      - roles.manage
+      - competitions.manage
+      - results.manage
+      - scoring.assigned
+      - facilities.manage
+      - finances.view
+      - finances.manage
+      - announcements.manage
+      - training.manage
+      - welfare.manage
+      - activities.manage
+      type: string
+      description: |-
+        * `members.manage` - Invite members, decide join requests and remove members
+        * `roles.manage` - Create and edit roles and assign them to members
+        * `competitions.manage` - Set up and run tournaments, events and match days
+        * `results.manage` - Confirm and correct official results
+        * `scoring.assigned` - Score matches they are assigned to
+        * `facilities.manage` - Manage venues, tables, opening hours and bookings
+        * `finances.view` - See club finances and contribution records
+        * `finances.manage` - Record charges, payments, expenses and dues
+        * `announcements.manage` - Publish club announcements and news
+        * `training.manage` - Plan training sessions and coaching groups
+        * `welfare.manage` - Run welfare projects
+        * `activities.manage` - Plan club activities such as nights out
+    PermissionInfo:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/PermissionEnum'
+        label:
+          type: string
+      required:
+      - code
+      - label
     PersonalMatch:
       type: object
       properties:
@@ -2132,14 +2570,83 @@ components:
         * `style` - Style
         * `experience` - Experience
         * `bio` - Bio
-    RoleEnum:
+    Role:
+      type: object
+      description: A role and its permissions (REQ-005). Admin always reports every
+        permission.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        key:
+          allOf:
+          - $ref: '#/components/schemas/RoleKeyEnum'
+          readOnly: true
+        name:
+          type: string
+          maxLength: 60
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionEnum'
+        member_count:
+          type: integer
+          readOnly: true
+          default: 0
+      required:
+      - id
+      - key
+      - member_count
+      - name
+      - permissions
+    RoleKeyEnum:
       enum:
       - admin
+      - captain
+      - assistant_captain
+      - committee
       - member
       type: string
       description: |-
         * `admin` - Admin
+        * `captain` - Captain
+        * `assistant_captain` - Assistant Captain
+        * `committee` - Committee
         * `member` - Member
+    RoleRequest:
+      type: object
+      description: A role and its permissions (REQ-005). Admin always reports every
+        permission.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionEnum'
+      required:
+      - name
+    RoleSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        key:
+          allOf:
+          - $ref: '#/components/schemas/RoleKeyEnum'
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - key
+      - name
     SignUpRequest:
       type: object
       properties:

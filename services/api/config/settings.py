@@ -162,6 +162,8 @@ SPECTACULAR_SETTINGS = {
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
         "MatchResultEnum": "matchlog.models.MatchResult",
         "InvitationStatusEnum": "organizations.models.Invitation.Status",
+        "PermissionEnum": "organizations.permissions.Permission",
+        "RoleKeyEnum": "organizations.permissions.RoleKey",
     },
 }
 

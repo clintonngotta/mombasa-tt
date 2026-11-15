@@ -1,25 +1,30 @@
-import { useEffect, useState, type FormEvent } from "react"
-import { Link } from "react-router-dom"
+import { useState, type FormEvent, type ReactNode } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Clock, Mail, Plus, Search, ShieldCheck } from "lucide-react"
+import { ChevronRight, Clock, KeyRound, LogOut, Mail, Plus, Search, ShieldCheck, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
 import { ApiError, errorMessage } from "@/lib/api"
 import {
+  can,
   clubKeys,
   decideJoinRequest,
+  leaveOrganization,
   listInvitations,
   listJoinRequests,
   listMyInvitations,
   listMyJoinRequests,
   revokeInvitation,
+  roleNames,
   sendInvitation,
   useActiveMembership,
   type JoinDecision,
   type Membership,
 } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
+import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
+import { AccessLost } from "@/components/clubs/AccessLost"
 
 export function ClubPage() {
   const { memberships, active } = useActiveMembership()
@@ -86,24 +91,6 @@ export function ClubPage() {
   )
 }
 
-const ROW = "flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4"
-
-/**
- * The admin role shown here comes from the cached membership list. If the server says 403, the player
- * was demoted elsewhere: refresh memberships so the admin panels go away, and say why meanwhile.
- */
-function useAdminAccessLost(...errors: unknown[]) {
-  const queryClient = useQueryClient()
-  const lost = errors.some((error) => error instanceof ApiError && error.status === 403)
-  useEffect(() => {
-    if (lost) void queryClient.invalidateQueries({ queryKey: clubKeys.memberships })
-  }, [lost, queryClient])
-  return lost
-}
-
-function AccessLost() {
-  return <FormAlert>You're no longer an admin of this organization.</FormAlert>
-}
 
 /** "Showing 20 of 34" when the list is longer than one page. */
 function PageNote({ shown, count, hint }: { shown: number; count: number; hint: string }) {
@@ -116,22 +103,81 @@ function PageNote({ shown, count, hint }: { shown: number; count: number; hint: 
 }
 
 function ActiveOrganization({ membership }: { membership: Membership }) {
-  const isAdmin = membership.role === "admin"
+  const orgId = membership.organization.id
+  const isAdmin = membership.roles.some((role) => role.key === "admin")
+  const manageMembers = can(membership, "members.manage")
+  const manageRoles = can(membership, "roles.manage")
   return (
     <>
       <OrganizationCard organization={membership.organization}>
         <span className={cn("flex items-center gap-1 text-sm font-semibold", isAdmin ? "text-brand-blue" : "text-muted-foreground")}>
           {isAdmin && <ShieldCheck aria-hidden className="size-4" />}
-          {isAdmin ? "Admin" : "Member"}
+          {roleNames(membership.roles)}
         </span>
       </OrganizationCard>
-      {isAdmin && (
+      {(manageMembers || manageRoles) && (
+        <nav aria-label="Club administration" className="flex flex-col gap-2">
+          <AdminLink to="/club/members" icon={<Users aria-hidden className="size-5 text-brand-blue" />}>
+            Members and their roles
+          </AdminLink>
+          {manageRoles && (
+            <AdminLink to="/club/roles" icon={<KeyRound aria-hidden className="size-5 text-brand-blue" />}>
+              Roles and permissions
+            </AdminLink>
+          )}
+        </nav>
+      )}
+      {manageMembers && (
         <>
-          <JoinRequestsPanel orgId={membership.organization.id} />
-          <InvitationsPanel orgId={membership.organization.id} />
+          <JoinRequestsPanel orgId={orgId} />
+          <InvitationsPanel orgId={orgId} />
         </>
       )}
+      <LeaveOrganization membership={membership} />
     </>
+  )
+}
+
+function AdminLink({ to, icon, children }: { to: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <Link to={to} className={cn(ROW, "min-h-12 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
+      {icon}
+      <span className="flex-1">{children}</span>
+      <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
+    </Link>
+  )
+}
+
+/** Two-step leave so a stray tap can't drop someone out of their club. */
+function LeaveOrganization({ membership }: { membership: Membership }) {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const [confirming, setConfirming] = useState(false)
+  const name = membership.organization.name
+  const leave = useMutation({
+    mutationFn: () => leaveOrganization(membership.id),
+    onSuccess: () => navigate("/club"),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.all }),
+  })
+  return (
+    <section aria-label={`Leave ${name}`} className="flex flex-col gap-2 border-t pt-4">
+      {leave.isError && <FormAlert>{errorMessage(leave.error)}</FormAlert>}
+      {confirming ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="flex-1 text-sm">Leave {name}? Your roles there end and you'd need to ask to join again.</p>
+          <Button variant="outline" onClick={() => setConfirming(false)}>
+            Stay
+          </Button>
+          <Button variant="destructive" disabled={leave.isPending} onClick={() => leave.mutate()}>
+            {leave.isPending ? "Leaving…" : "Leave club"}
+          </Button>
+        </div>
+      ) : (
+        <Button variant="ghost" className="self-start text-muted-foreground" onClick={() => setConfirming(true)}>
+          <LogOut aria-hidden className="size-5" /> Leave {name}
+        </Button>
+      )}
+    </section>
   )
 }
 

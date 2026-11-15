@@ -30,8 +30,9 @@ there.
 | `umpire@mombasa-tt.test` | `mombasa-tt-dev` |
 | `admin@mombasa-tt.test` | `mombasa-tt-dev` |
 
-Override the password with `DEV_LOGIN_PASSWORD`. The command refuses to run when `DJANGO_DEBUG` is off. Club roles
-arrive with organizations (TASK-012/013); until then these are plain verified users.
+All three belong to "Mombasa Dev TT Club": admin as Admin, umpire as Assistant captain, player as a plain member.
+Re-running the command resets their passwords and club roles. Override the password with `DEV_LOGIN_PASSWORD`. The
+command refuses to run when `DJANGO_DEBUG` is off.
 
 ## Checks
 
@@ -77,10 +78,11 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default), `published_details` (which of hand, grip, style, experience, bio show on the player page; empty by default) |
 | PUT | `goals/` | `{goals: [...]}` replaces the list. Goals only order Home shortcuts and never grant roles |
 | POST | `onboarding/complete/` | 204. Repeat calls keep the first completion time |
-| GET | `memberships/` | Active memberships with their organization (basis for the club switcher); paginated |
+| GET | `memberships/` | Active memberships with their organization, roles held and effective `permissions` (basis for the club switcher and for which staff actions the app shows); paginated |
+| POST | `memberships/{mid}/leave/` | 204; drops the player's roles. 409 `last_admin` if they are the organization's only admin |
 | GET | `join-requests/` | The player's own join requests with the organization (name, town, kind), newest first; paginated |
 | GET | `invitations/` | Open invitations addressed to the player's verified email; paginated |
-| POST | `invitations/{iid}/accept/` or `decline/` | Accepting joins as a member (an existing admin keeps their role) and withdraws the player's open join request to that organization; 404 for anyone else's, answered, revoked or expired invitation |
+| POST | `invitations/{iid}/accept/` or `decline/` | Accepting joins as a member (an existing member keeps their roles) and withdraws the player's open join request to that organization; 404 for anyone else's, answered, revoked or expired invitation |
 
 ## Organizations and directory
 
@@ -90,14 +92,25 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | POST | `/api/v1/organizations/` | `{name, town, kind}`; the creator becomes the first admin |
 | GET | `/api/v1/organizations/{id}/` | |
 | POST | `/api/v1/organizations/{id}/join-requests/` | 201 new, 200 if one is already pending, 409 `already_member` |
-| GET | `/api/v1/organizations/{id}/join-requests/` | Pending requests, paginated; organization admins only (403 `not_organization_admin`) |
-| POST | `/api/v1/organizations/{id}/join-requests/{rid}/approve/` or `reject/` | Admins only; 409 `already_decided` |
-| POST | `/api/v1/organizations/{id}/invitations/` | `{email}`, admins only. 201 new, 200 if already pending (renews a lapsed one and resends). Same reply and email whether or not the address has an account or belongs to a member. Expires after 14 days; throttled per admin (`THROTTLE_INVITATIONS`, default 30/hour) |
-| GET | `/api/v1/organizations/{id}/invitations/` | Open (pending, unexpired) invitations, admins only; paginated |
-| POST | `/api/v1/organizations/{id}/invitations/{iid}/revoke/` | Admins only; 409 `already_decided` |
+| GET | `/api/v1/organizations/{id}/join-requests/` | Pending requests, paginated; needs `members.manage` (403 `permission_denied`) |
+| POST | `/api/v1/organizations/{id}/join-requests/{rid}/approve/` or `reject/` | Needs `members.manage`; 409 `already_decided` |
+| POST | `/api/v1/organizations/{id}/invitations/` | `{email}`, needs `members.manage`. 201 new, 200 if already pending (renews a lapsed one and resends). Same reply and email whether or not the address has an account or belongs to a member. Expires after 14 days; throttled per sender (`THROTTLE_INVITATIONS`, default 30/hour) |
+| GET | `/api/v1/organizations/{id}/invitations/` | Open (pending, unexpired) invitations, needs `members.manage`; paginated |
+| POST | `/api/v1/organizations/{id}/invitations/{iid}/revoke/` | Needs `members.manage`; 409 `already_decided` |
+| GET | `/api/v1/organizations/permissions/` | The permission catalog: `{code, label}` for every permission a role can hold |
+| GET | `/api/v1/organizations/{id}/roles/` | Roles with permissions and active `member_count`; needs `roles.manage` or `members.manage` |
+| POST | `/api/v1/organizations/{id}/roles/` | `{name, permissions}`; needs `roles.manage`. 403 `beyond_your_authority` for permissions the actor lacks; 400 on a duplicate name (case-insensitive) |
+| PATCH | `/api/v1/organizations/{id}/roles/{rid}/` | Rename or change permissions; only permissions added or removed must be within the actor's authority. Admin can only be renamed (409 `admin_role_locked`) |
+| DELETE | `/api/v1/organizations/{id}/roles/{rid}/` | 204; Admin and Member can't be deleted (409 `role_required`) |
+| GET | `/api/v1/organizations/{id}/members/?search=` | Active members (display name and roles, never email); needs `members.manage` or `roles.manage`; paginated |
+| PUT | `/api/v1/organizations/{id}/members/{mid}/roles/` | `{roles: [ids]}` replaces the member's roles; needs `roles.manage`. Every role added or removed must be within the actor's authority; role IDs from another organization or the Member role are a 400; 409 `last_admin` |
+| POST | `/api/v1/organizations/{id}/members/{mid}/remove/` | 204; needs `members.manage` and every permission the member holds; 409 `last_admin` |
 | GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname and clubs, never email or bio |
 | GET | `/api/v1/players/{id}/` | One opted-in player: the directory card plus only the details they published (others null); 404 once they opt out |
 
-The admin/member role pair is a stand-in until the permission catalog and role templates arrive (TASK-013).
-Invitations, leaving an organization and the last-admin rule also come later.
+Roles (REQ-005, `organizations/permissions.py`): every organization starts with Admin, Captain, Assistant captain,
+Committee and Member, and can add custom roles. Effective permissions are the union of a member's roles plus the
+Member role, which applies to every active member. Admin always holds every permission. Nobody grants, removes or
+deletes a permission they don't hold. Role changes, removals and leaving lock the organization row, so concurrent
+changes can't remove the last admin (`organizations/access.py`).
 List endpoints share `core.pagination.StandardPagination` (`page`, `page_size` up to 100) and return `{count, next, previous, results}`.

@@ -33,5 +33,31 @@ urlpatterns = [
         views.InvitationViewSet.as_view({"post": "revoke"}),
         name="organization-invitation-revoke",
     ),
+    path("permissions/", views.PermissionCatalogView.as_view(), name="organization-permissions"),
+    path(
+        "<uuid:organization_pk>/roles/",
+        views.RoleViewSet.as_view({"get": "list", "post": "create"}),
+        name="organization-roles",
+    ),
+    path(
+        "<uuid:organization_pk>/roles/<uuid:pk>/",
+        views.RoleViewSet.as_view({"patch": "partial_update", "delete": "destroy"}),
+        name="organization-role",
+    ),
+    path(
+        "<uuid:organization_pk>/members/",
+        views.MemberViewSet.as_view({"get": "list"}),
+        name="organization-members",
+    ),
+    path(
+        "<uuid:organization_pk>/members/<uuid:pk>/roles/",
+        views.MemberViewSet.as_view({"put": "set_roles"}),
+        name="organization-member-roles",
+    ),
+    path(
+        "<uuid:organization_pk>/members/<uuid:pk>/remove/",
+        views.MemberViewSet.as_view({"post": "remove"}),
+        name="organization-member-remove",
+    ),
     *router.urls,
 ]

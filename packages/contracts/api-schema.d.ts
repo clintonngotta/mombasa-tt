@@ -356,10 +356,33 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Organizations the signed-in player belongs to: the basis for the context switcher. */
+        /**
+         * @description Organizations the signed-in player belongs to (the basis for the context switcher), with the roles
+         *     and permissions they hold in each. A player can leave, unless they are its last admin.
+         */
         get: operations["me_memberships_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/memberships/{id}/leave/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Organizations the signed-in player belongs to (the basis for the context switcher), with the roles
+         *     and permissions they hold in each. A player can leave, unless they are its last admin.
+         */
+        post: operations["me_memberships_leave_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -424,16 +447,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-         *     whether it has an account or belongs to a member: the reply is the same and the email goes out
-         *     either way (an existing member who accepts keeps their role).
+         * @description Email invitations for one organization (REQ-004), for members holding members.manage. Inviting an
+         *     address never reveals whether it has an account or belongs to a member: the reply is the same and the
+         *     email goes out either way (an existing member who accepts keeps their roles).
          */
         get: operations["organizations_invitations_list"];
         put?: never;
         /**
-         * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-         *     whether it has an account or belongs to a member: the reply is the same and the email goes out
-         *     either way (an existing member who accepts keeps their role).
+         * @description Email invitations for one organization (REQ-004), for members holding members.manage. Inviting an
+         *     address never reveals whether it has an account or belongs to a member: the reply is the same and the
+         *     email goes out either way (an existing member who accepts keeps their roles).
          */
         post: operations["organizations_invitations_create"];
         delete?: never;
@@ -452,9 +475,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Email invitations for one organization (REQ-004), admin only. Inviting an address never reveals
-         *     whether it has an account or belongs to a member: the reply is the same and the email goes out
-         *     either way (an existing member who accepts keeps their role).
+         * @description Email invitations for one organization (REQ-004), for members holding members.manage. Inviting an
+         *     address never reveals whether it has an account or belongs to a member: the reply is the same and the
+         *     email goes out either way (an existing member who accepts keeps their roles).
          */
         post: operations["organizations_invitations_revoke_create"];
         delete?: never;
@@ -472,15 +495,13 @@ export interface paths {
         };
         /**
          * @description Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-         *     active admins of that organization can list or decide requests (TASK-013 replaces this check
-         *     with real permissions). Routes are mapped explicitly in urls.py.
+         *     members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
          */
         get: operations["organizations_join_requests_list"];
         put?: never;
         /**
          * @description Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-         *     active admins of that organization can list or decide requests (TASK-013 replaces this check
-         *     with real permissions). Routes are mapped explicitly in urls.py.
+         *     members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
          */
         post: operations["organizations_join_requests_create"];
         delete?: never;
@@ -500,8 +521,7 @@ export interface paths {
         put?: never;
         /**
          * @description Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-         *     active admins of that organization can list or decide requests (TASK-013 replaces this check
-         *     with real permissions). Routes are mapped explicitly in urls.py.
+         *     members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
          */
         post: operations["organizations_join_requests_approve_create"];
         delete?: never;
@@ -521,14 +541,119 @@ export interface paths {
         put?: never;
         /**
          * @description Join requests for one organization (REQ-004). Any signed-in player can ask to join; only
-         *     active admins of that organization can list or decide requests (TASK-013 replaces this check
-         *     with real permissions). Routes are mapped explicitly in urls.py.
+         *     members holding members.manage can list or decide requests. Routes are mapped explicitly in urls.py.
          */
         post: operations["organizations_join_requests_reject_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/members/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Active members of one organization with their roles (REQ-005), for members holding members.manage
+         *     or roles.manage. Shows display names and roles only, never email or contact details.
+         */
+        get: operations["organizations_members_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/members/{id}/remove/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description End someone's membership. Nobody can remove a member who holds permissions they don't. */
+        post: operations["organizations_members_remove_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/members/{id}/roles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Replace a member's roles. Each role added or removed must be within the actor's authority. */
+        put: operations["organizations_members_roles_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/roles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+         *     delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+         *     has every permission and can only be renamed; Admin and Member can't be deleted.
+         */
+        get: operations["organizations_roles_list"];
+        put?: never;
+        /**
+         * @description Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+         *     delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+         *     has every permission and can only be renamed; Admin and Member can't be deleted.
+         */
+        post: operations["organizations_roles_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/roles/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+         *     delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+         *     has every permission and can only be renamed; Admin and Member can't be deleted.
+         */
+        delete: operations["organizations_roles_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Roles of one organization (REQ-005), for members holding roles.manage. Nobody can create, change or
+         *     delete a role in a way that grants or removes permissions they don't hold themselves. Admin always
+         *     has every permission and can only be renamed; Admin and Member can't be deleted.
+         */
+        patch: operations["organizations_roles_partial_update"];
         trace?: never;
     };
     "/api/v1/organizations/{id}/": {
@@ -540,6 +665,23 @@ export interface paths {
         };
         /** @description Search, view and register organizations (REQ-004). */
         get: operations["organizations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/permissions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every permission a role can hold (REQ-005), with a plain-language label for the role editor. */
+        get: operations["organizations_permissions_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -741,11 +883,30 @@ export interface components {
             recent_form: components["schemas"]["MatchResultEnum"][];
             by_label: components["schemas"]["LabelTally"][];
         };
+        /** @description Staff view of a member: display name and roles, never email or contact details. */
+        Member: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly user: string;
+            readonly display_name: string;
+            readonly roles: components["schemas"]["RoleSummary"][];
+            /** Format: date-time */
+            readonly joined_at: string;
+        };
+        MemberRolesRequest: {
+            roles: string[];
+        };
+        /**
+         * @description The player's own membership: roles held and the permissions they add up to, so the app can show
+         *     only the actions the server will allow.
+         */
         Membership: {
             /** Format: uuid */
             readonly id: string;
             readonly organization: components["schemas"]["Organization"];
-            readonly role: components["schemas"]["RoleEnum"];
+            readonly roles: components["schemas"]["RoleSummary"][];
+            readonly permissions: components["schemas"]["PermissionEnum"][];
             readonly status: components["schemas"]["MembershipStatusEnum"];
             /** Format: date-time */
             readonly joined_at: string;
@@ -838,6 +999,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["JoinRequest"][];
+        };
+        PaginatedMemberList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Member"][];
         };
         PaginatedMembershipList: {
             /** @example 123 */
@@ -942,6 +1118,31 @@ export interface components {
             directory_opt_in?: boolean;
             published_details?: components["schemas"]["PublishedDetailsEnum"][];
         };
+        /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
+        PatchedRoleRequest: {
+            name?: string;
+            permissions?: components["schemas"]["PermissionEnum"][];
+        };
+        /**
+         * @description * `members.manage` - Invite members, decide join requests and remove members
+         *     * `roles.manage` - Create and edit roles and assign them to members
+         *     * `competitions.manage` - Set up and run tournaments, events and match days
+         *     * `results.manage` - Confirm and correct official results
+         *     * `scoring.assigned` - Score matches they are assigned to
+         *     * `facilities.manage` - Manage venues, tables, opening hours and bookings
+         *     * `finances.view` - See club finances and contribution records
+         *     * `finances.manage` - Record charges, payments, expenses and dues
+         *     * `announcements.manage` - Publish club announcements and news
+         *     * `training.manage` - Plan training sessions and coaching groups
+         *     * `welfare.manage` - Run welfare projects
+         *     * `activities.manage` - Plan club activities such as nights out
+         * @enum {string}
+         */
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage";
+        PermissionInfo: {
+            code: components["schemas"]["PermissionEnum"];
+            label: string;
+        };
         PersonalMatch: {
             /** Format: uuid */
             readonly id: string;
@@ -1012,12 +1213,36 @@ export interface components {
          * @enum {string}
          */
         PublishedDetailsEnum: "hand" | "grip" | "style" | "experience" | "bio";
+        /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
+        Role: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly key: components["schemas"]["RoleKeyEnum"];
+            name: string;
+            permissions: components["schemas"]["PermissionEnum"][];
+            /** @default 0 */
+            readonly member_count: number;
+        };
         /**
          * @description * `admin` - Admin
+         *     * `captain` - Captain
+         *     * `assistant_captain` - Assistant Captain
+         *     * `committee` - Committee
          *     * `member` - Member
          * @enum {string}
          */
-        RoleEnum: "admin" | "member";
+        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "member";
+        /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
+        RoleRequest: {
+            name: string;
+            permissions?: components["schemas"]["PermissionEnum"][];
+        };
+        RoleSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly key: components["schemas"]["RoleKeyEnum"];
+            readonly name: string;
+        };
         SignUpRequest: {
             display_name: string;
             /** Format: email */
@@ -1778,6 +2003,36 @@ export interface operations {
             };
         };
     };
+    me_memberships_leave_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_onboarding_complete_create: {
         parameters: {
             query?: never;
@@ -2175,6 +2430,237 @@ export interface operations {
             };
         };
     };
+    organizations_members_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Display name */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMemberList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_members_remove_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_members_roles_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberRolesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_roles_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Role"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_roles_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Role"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_roles_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_roles_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRoleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Role"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_retrieve: {
         parameters: {
             query?: never;
@@ -2193,6 +2679,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_permissions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionInfo"][];
                 };
             };
             /** @description Error envelope */

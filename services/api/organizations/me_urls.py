@@ -5,9 +5,9 @@ from . import views
 
 router = SimpleRouter()
 router.register("invitations", views.MyInvitationViewSet, basename="me-invitation")
+router.register("memberships", views.MyMembershipViewSet, basename="me-membership")
 
 urlpatterns = [
-    path("memberships/", views.MyMembershipsView.as_view(), name="me-memberships"),
     path("join-requests/", views.MyJoinRequestsView.as_view(), name="me-join-requests"),
     *router.urls,
 ]

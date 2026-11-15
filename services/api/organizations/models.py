@@ -2,8 +2,12 @@ import uuid
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils import timezone
+
+from .permissions import ALL_PERMISSIONS, ROLE_TEMPLATES, Permission, RoleKey
 
 INVITATION_TTL = timedelta(days=14)
 
@@ -32,21 +36,64 @@ class Organization(models.Model):
         return self.name
 
 
+class Role(models.Model):
+    """A named permission bundle within one organization (REQ-005). Every organization starts with the
+    template roles in ROLE_TEMPLATES and may add custom ones. Admin always holds every permission and the
+    Member role applies to every active member, so neither can be deleted or assigned by hand."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="roles")
+    key = models.CharField(max_length=20, choices=RoleKey.choices, blank=True, default="")
+    name = models.CharField(max_length=60)
+    permissions = ArrayField(
+        models.CharField(max_length=40, choices=Permission.choices), default=list, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "name"]
+        constraints = [
+            models.UniqueConstraint(Lower("name"), "organization", name="org_role_name_unique"),
+            models.UniqueConstraint(
+                fields=["organization", "key"], condition=~models.Q(key=""), name="org_role_key_unique"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.organization_id})"
+
+    @property
+    def is_admin(self) -> bool:
+        return self.key == RoleKey.ADMIN
+
+    @property
+    def is_member(self) -> bool:
+        return self.key == RoleKey.MEMBER
+
+    @property
+    def permission_set(self) -> frozenset[str]:
+        return ALL_PERMISSIONS if self.is_admin else frozenset(self.permissions)
+
+
+def seed_roles(organization: Organization) -> dict[str, Role]:
+    """Create the template roles for a new organization, keyed by RoleKey."""
+    return {
+        key: Role.objects.create(organization=organization, key=key, name=name, permissions=sorted(perms))
+        for key, name, perms in ROLE_TEMPLATES
+    }
+
+
 class MembershipQuerySet(models.QuerySet):
     def active(self):
         return self.filter(status=Membership.Status.ACTIVE)
 
-    def is_admin(self, user, organization) -> bool:
-        return self.active().filter(organization=organization, user=user, role=Membership.Role.ADMIN).exists()
+    def admins(self, organization):
+        return self.active().filter(organization=organization, roles__key=RoleKey.ADMIN)
 
 
 class Membership(models.Model):
-    """A player's link to one organization. Roles are a placeholder pair until the permission
-    catalog and role templates arrive (TASK-013)."""
-
-    class Role(models.TextChoices):
-        ADMIN = "admin"
-        MEMBER = "member"
+    """A player's link to one organization. Roles (REQ-005) are assigned here; the organization's Member
+    role is implicit for every active membership and is never stored in `roles`."""
 
     class Status(models.TextChoices):
         ACTIVE = "active"
@@ -55,7 +102,7 @@ class Membership(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="memberships")
-    role = models.CharField(max_length=10, choices=Role.choices, default=Role.MEMBER)
+    roles = models.ManyToManyField(Role, related_name="memberships", blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     joined_at = models.DateTimeField(auto_now_add=True)
 
@@ -68,7 +115,7 @@ class Membership(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user_id} in {self.organization_id} ({self.role})"
+        return f"{self.user_id} in {self.organization_id} ({self.status})"
 
 
 class JoinRequest(models.Model):

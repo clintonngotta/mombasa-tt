@@ -13,6 +13,22 @@ export type MyInvitation = Schemas["MyInvitation"]
 export type MyJoinRequest = Schemas["MyJoinRequest"]
 export type JoinDecision = "approve" | "reject"
 export type OrganizationInput = Required<Schemas["OrganizationRequest"]>
+export type Permission = Schemas["PermissionEnum"]
+export type Role = Schemas["Role"]
+export type RoleInput = Schemas["PatchedRoleRequest"]
+export type Member = Schemas["Member"]
+
+/** Whether the membership's effective permissions include any of `perms` (REQ-005). The server checks
+ * every request; this only decides which actions the app offers. */
+export const can = (membership: Pick<Membership, "permissions"> | undefined, ...perms: Permission[]) =>
+  !!membership && perms.some((perm) => membership.permissions.includes(perm))
+
+/** True when every permission in `perms` is one the actor holds, i.e. they may grant or remove it. */
+export const withinAuthority = (membership: Pick<Membership, "permissions">, perms: readonly Permission[]) =>
+  perms.every((perm) => membership.permissions.includes(perm))
+
+/** "Admin, Captain", or "Member" when no roles are assigned. */
+export const roleNames = (roles: readonly { name: string }[]) => (roles.length ? roles.map((r) => r.name).join(", ") : "Member")
 
 export const KIND_LABEL: Record<OrganizationKind, string> = {
   club: "Club",
@@ -29,6 +45,10 @@ export const clubKeys = {
   myJoinRequests: ["clubs", "my-join-requests"] as const,
   joinRequests: (orgId: string) => ["clubs", orgId, "join-requests"] as const,
   invitations: (orgId: string) => ["clubs", orgId, "invitations"] as const,
+  roles: (orgId: string) => ["clubs", orgId, "roles"] as const,
+  members: (orgId: string, term = "") => ["clubs", orgId, "members", term] as const,
+  membersAll: (orgId: string) => ["clubs", orgId, "members"] as const,
+  permissions: ["clubs", "permissions"] as const,
 }
 
 const orgPath = (id: string) => `/organizations/${id}`
@@ -55,6 +75,22 @@ export const sendInvitation = (orgId: string, body: Schemas["InvitationCreateReq
   api<Invitation>(`${orgPath(orgId)}/invitations/`, { body })
 export const revokeInvitation = (orgId: string, id: string) =>
   api<Invitation>(`${orgPath(orgId)}/invitations/${id}/revoke/`, { body: {} })
+
+export const leaveOrganization = (membershipId: string) => api<void>(`/me/memberships/${membershipId}/leave/`, { body: {} })
+
+export const listPermissions = () => api<Schemas["PermissionInfo"][]>("/organizations/permissions/")
+export const listRoles = (orgId: string) => api<Role[]>(`${orgPath(orgId)}/roles/`)
+export const createRole = (orgId: string, body: Schemas["RoleRequest"]) => api<Role>(`${orgPath(orgId)}/roles/`, { body })
+export const updateRole = (orgId: string, id: string, body: RoleInput) =>
+  api<Role>(`${orgPath(orgId)}/roles/${id}/`, { method: "PATCH", body })
+export const deleteRole = (orgId: string, id: string) => api<void>(`${orgPath(orgId)}/roles/${id}/`, { method: "DELETE" })
+
+export const listMembers = (orgId: string, term: string) =>
+  api<Schemas["PaginatedMemberList"]>(`${orgPath(orgId)}/members/?search=${encodeURIComponent(term)}`)
+export const setMemberRoles = (orgId: string, membershipId: string, roles: string[]) =>
+  api<Member>(`${orgPath(orgId)}/members/${membershipId}/roles/`, { method: "PUT", body: { roles } })
+export const removeMember = (orgId: string, membershipId: string) =>
+  api<void>(`${orgPath(orgId)}/members/${membershipId}/remove/`, { body: {} })
 
 /**
  * The signed-in player's active memberships. Disabled for signed-out visitors, and `results` is empty
