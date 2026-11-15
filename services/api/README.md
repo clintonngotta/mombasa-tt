@@ -64,8 +64,8 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default) |
 | PUT | `goals/` | `{goals: [...]}` replaces the list. Goals only order Home shortcuts and never grant roles |
 | POST | `onboarding/complete/` | 204. Repeat calls keep the first completion time |
-| GET | `memberships/` | Active memberships with their organization (basis for the club switcher) |
-| GET | `join-requests/` | The player's own join requests, newest first |
+| GET | `memberships/` | Active memberships with their organization (basis for the club switcher); paginated |
+| GET | `join-requests/` | The player's own join requests, newest first; paginated |
 
 ## Organizations and directory
 
@@ -75,9 +75,10 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | POST | `/api/v1/organizations/` | `{name, town, kind}`; the creator becomes the first admin |
 | GET | `/api/v1/organizations/{id}/` | |
 | POST | `/api/v1/organizations/{id}/join-requests/` | 201 new, 200 if one is already pending, 409 `already_member` |
-| GET | `/api/v1/organizations/{id}/join-requests/` | Pending requests; organization admins only (403 otherwise) |
+| GET | `/api/v1/organizations/{id}/join-requests/` | Pending requests, paginated; organization admins only (403 `not_organization_admin`) |
 | POST | `/api/v1/organizations/{id}/join-requests/{rid}/approve/` or `reject/` | Admins only; 409 `already_decided` |
 | GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname and clubs, never email or bio |
 
 The admin/member role pair is a stand-in until the permission catalog and role templates arrive (TASK-013).
 Invitations, leaving an organization and the last-admin rule also come later.
+List endpoints share `core.pagination.StandardPagination` (`page`, `page_size` up to 100) and return `{count, next, previous, results}`.

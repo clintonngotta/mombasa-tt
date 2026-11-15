@@ -2,11 +2,11 @@ from django.db.models import Prefetch, Q
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.pagination import StandardPagination, search_term
 from organizations.models import Membership
 
 from .models import PlayerProfile, profile_for
@@ -49,27 +49,23 @@ class CompleteOnboardingView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class DirectoryPagination(PageNumberPagination):
-    page_size = 20
-
-
 class PlayerDirectoryView(generics.ListAPIView):
     """Opted-in players only (REQ-006). Searching needs at least two characters so the
     directory can't be dumped with an empty query."""
 
     serializer_class = DirectoryPlayerSerializer
     permission_classes = [IsAuthenticated]
-    pagination_class = DirectoryPagination
+    pagination_class = StandardPagination
 
     @extend_schema(parameters=[OpenApiParameter("search", str, description="Name or nickname")])
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        term = self.request.query_params.get("search", "").strip()
+        term = search_term(self.request)
         if len(term) < MIN_SEARCH_LENGTH:
             return PlayerProfile.objects.none()
-        active = Membership.objects.filter(status=Membership.Status.ACTIVE).select_related("organization")
+        active = Membership.objects.active().select_related("organization")
         return (
             PlayerProfile.objects.filter(directory_opt_in=True, user__is_active=True)
             .filter(Q(user__display_name__icontains=term) | Q(nickname__icontains=term))

@@ -6,21 +6,21 @@ from . import views
 router = SimpleRouter()
 router.register("", views.OrganizationViewSet, basename="organization")
 
-join_requests = views.JoinRequestViewSet
+join_request_views = views.JoinRequestViewSet
 urlpatterns = [
     path(
         "<uuid:organization_pk>/join-requests/",
-        join_requests.as_view({"get": "list", "post": "create"}),
+        join_request_views.as_view({"get": "list", "post": "create"}),
         name="organization-join-requests",
     ),
     path(
         "<uuid:organization_pk>/join-requests/<uuid:pk>/approve/",
-        join_requests.as_view({"post": "approve"}),
+        join_request_views.as_view({"post": "approve"}),
         name="organization-join-request-approve",
     ),
     path(
         "<uuid:organization_pk>/join-requests/<uuid:pk>/reject/",
-        join_requests.as_view({"post": "reject"}),
+        join_request_views.as_view({"post": "reject"}),
         name="organization-join-request-reject",
     ),
     *router.urls,

@@ -28,6 +28,14 @@ class Organization(models.Model):
         return self.name
 
 
+class MembershipQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(status=Membership.Status.ACTIVE)
+
+    def is_admin(self, user, organization) -> bool:
+        return self.active().filter(organization=organization, user=user, role=Membership.Role.ADMIN).exists()
+
+
 class Membership(models.Model):
     """A player's link to one organization. Roles are a placeholder pair until the permission
     catalog and role templates arrive (TASK-013)."""
@@ -47,6 +55,8 @@ class Membership(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     joined_at = models.DateTimeField(auto_now_add=True)
 
+    objects = MembershipQuerySet.as_manager()
+
     class Meta:
         ordering = ["joined_at"]
         constraints = [
@@ -58,6 +68,8 @@ class Membership(models.Model):
 
 
 class JoinRequest(models.Model):
+    """A player's request to join an organization (REQ-004). Staff approve or reject it."""
+
     class Status(models.TextChoices):
         PENDING = "pending"
         APPROVED = "approved"
@@ -79,16 +91,10 @@ class JoinRequest(models.Model):
             # A rejected player may ask again, but only one request can be open at a time.
             models.UniqueConstraint(
                 fields=["organization", "user"],
-                condition=models.Q(status="pending"),
+                condition=models.Q(status="pending"),  # JoinRequest.Status.PENDING (not in scope in Meta)
                 name="org_one_pending_join_request",
             ),
         ]
 
     def __str__(self):
         return f"{self.user_id} -> {self.organization_id} ({self.status})"
-
-
-def is_admin(user, organization) -> bool:
-    return Membership.objects.filter(
-        organization=organization, user=user, role=Membership.Role.ADMIN, status=Membership.Status.ACTIVE
-    ).exists()

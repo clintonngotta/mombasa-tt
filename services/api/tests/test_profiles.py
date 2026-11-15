@@ -115,3 +115,8 @@ def test_opting_out_removes_player_from_directory(ama):
     assert len(other.get("/api/v1/players/?search=Ama").json()["results"]) == 1
     client.patch(PROFILE, {"directory_opt_in": False}, format="json")
     assert other.get("/api/v1/players/?search=Ama").json()["results"] == []
+
+
+def test_blank_display_name_gets_friendly_message(ama):
+    response = logged_in(ama).patch(PROFILE, {"display_name": "  "}, format="json")
+    assert response.json()["fields"]["display_name"] == "Enter the name other players will see."

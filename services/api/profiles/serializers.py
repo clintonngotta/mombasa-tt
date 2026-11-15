@@ -6,7 +6,10 @@ from .models import PlayerProfile
 class ProfileSerializer(serializers.ModelSerializer):
     """The owner's own view of their profile. `display_name` is written through to User."""
 
-    display_name = serializers.CharField(source="user.display_name", max_length=80, trim_whitespace=True)
+    # allow_blank lets validate_display_name give the friendly message instead of the default one.
+    display_name = serializers.CharField(
+        source="user.display_name", max_length=80, trim_whitespace=True, allow_blank=True
+    )
     onboarding_completed = serializers.SerializerMethodField()
 
     class Meta:
@@ -51,7 +54,7 @@ class GoalsSerializer(serializers.Serializer):
 
 
 class DirectoryPlayerSerializer(serializers.Serializer):
-    """Public directory card: name and clubs only. No email, bio, location or other details."""
+    """Public directory card: name and organizations only. No email, bio, location or other details."""
 
     id = serializers.UUIDField(source="user.id")
     display_name = serializers.CharField(source="user.display_name")
