@@ -7,13 +7,9 @@ import { Input } from "@/components/ui/input"
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
+import { KIND_LABEL } from "@/lib/clubs"
 import { requestToJoin, saveDiscovery, searchOrganizations, useOnboardingDraft, type Organization } from "@/lib/onboarding"
 
-const KIND_LABEL: Record<Organization["kind"], string> = {
-  club: "Club",
-  facility: "Facility",
-  club_facility: "Club and facility",
-}
 
 export function FindCommunityPage() {
   const navigate = useNavigate()
