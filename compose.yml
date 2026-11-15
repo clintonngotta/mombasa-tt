@@ -1,0 +1,66 @@
+# Local full stack: `docker compose up --build`, then open http://localhost:8080.
+# Development only (DEBUG on, test logins seeded, dev-only database password). Production topology is
+# TASK-058 (deployment.md). Ports bind to loopback and can be changed with WEB_PORT / API_PORT.
+name: mombasa-tt
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mombasa_tt
+      POSTGRES_USER: mombasa
+      POSTGRES_PASSWORD: mombasa-dev-only
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mombasa -d mombasa_tt"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./services/api
+    environment:
+      DJANGO_DEBUG: "true"
+      DATABASE_URL: postgres://mombasa:mombasa-dev-only@db:5432/mombasa_tt
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,api
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:${WEB_PORT:-8080},http://127.0.0.1:${WEB_PORT:-8080}
+      FRONTEND_URL: http://localhost:${WEB_PORT:-8080}
+      # Emails (verification, password reset) print to `docker compose logs -f api`.
+    ports:
+      - "127.0.0.1:${API_PORT:-8020}:8000"
+    volumes:
+      # Live reload: runserver restarts when API code changes.
+      - ./services/api:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')"]
+      # Fast checks while starting, then every 30s so the runserver log stays readable.
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      # Vite proxies /api to the API container, so the browser sees one origin and cookies just work.
+      VITE_API_PROXY_TARGET: http://api:8000
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:5173"
+    volumes:
+      # Live reload for the app and the generated API types; node_modules stays the image's own.
+      - ./apps/web:/app/apps/web
+      - /app/apps/web/node_modules
+      - ./packages:/app/packages
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db-data:
