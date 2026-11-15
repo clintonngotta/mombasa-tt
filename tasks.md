@@ -1,6 +1,6 @@
 # mombasa-tt — delivery checklist
 
-Updated 2026-09-08. Requirements: [spec.md](spec.md). Acceptance: [test.md](test.md). Operations: [deployment.md](deployment.md).
+Updated 2026-11-15. Requirements: [spec.md](spec.md). Acceptance: [test.md](test.md). Operations: [deployment.md](deployment.md).
 
 ## Execution rules
 
@@ -12,7 +12,7 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 - [x] **TASK-001** — Write and cross-check the five planning documents. Depends: none. REQ-036 / EVAL-036. Done: no orphan requirement/task/evaluation IDs, broken local links, or superseded stack choices. Evidence: 2026-09-08 documentation validation passed all 36 traceability rows, 70 task IDs, local links/anchors and code fences; see test.md execution record. No application tests claimed.
 - [ ] **TASK-002** — Create the shared Stitch brand system and missing mobile/desktop screens, adapt relevant references, record screen IDs in spec.md. Depends: TASK-001. REQ-002, REQ-036 / EVAL-002, EVAL-036. Done: player/club/score comparisons use left/right columns at every viewport, the umpire deck follows the supplied two-panel reference, and all inventory workflows have reviewed references; future screens have phase labels in inventory; no app coding has begun before this gate.
-- [ ] **TASK-003** — Validate competition rules from current authoritative ITTF clauses and create a reviewed rule/fixture table in spec.md/test.md. Depends: TASK-001. REQ-009, REQ-010, REQ-012 / EVAL-009, EVAL-010, EVAL-012. Done: normal scoring and group tie resolution, walkovers, withdrawals, byes and ultimate ties are unambiguous before their implementation.
+- [ ] **TASK-003** — Validate competition rules from current authoritative ITTF clauses and create a reviewed rule/fixture table in spec.md/test.md. Depends: TASK-001. REQ-009, REQ-010, REQ-012 / EVAL-009, EVAL-010, EVAL-012. Done: normal scoring and group tie resolution, walkovers, withdrawals, byes, ultimate ties, timeouts, the penalty-card ladder and carry-over, injury suspension and expedite (REQ-043) are unambiguous before their implementation.
 
 ## Foundation
 
@@ -54,6 +54,12 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 - [ ] **TASK-033** — Implement notification inbox/read state, triggers, audience selection and preferences. Depends: TASK-007, TASK-028, TASK-032. REQ-019 / EVAL-019. Done: alerts resolve current assignment and retries create one logical item.
 - [ ] **TASK-034** — Implement optional browser push with feature detection, opt-in, device setup guidance and expired-subscription cleanup. Depends: TASK-033, TASK-009. REQ-019 / EVAL-019. Done: supported real-device delivery tested; unsupported/denied permission does not break inbox or scheduling.
 - [ ] **TASK-035** — Finish public tournament/player views and organizer web dashboard. Depends: TASK-021, TASK-028, TASK-032, TASK-016. REQ-020 / EVAL-020. Done: unauthenticated tournament journey and authorized admin journey pass.
+
+- [ ] **TASK-081** — Implement day schedule sessions, time estimates, table/slot moves rechecked against reservations, versioned publication with change notifications, and table delays. Depends: TASK-027, TASK-028. REQ-043, REQ-014 / EVAL-043. Done: invalid moves rejected; published changes notify only affected people and keep history.
+- [ ] **TASK-082** — Implement the match-day control centre: table board, check-in desk, call/recall, umpire and table assignment, no-show grace flags, referee-only walkovers and disqualifications, and an audit log. Depends: TASK-081, TASK-024, TASK-033. REQ-043 / EVAL-043. Done: board reflects reservations and live state; referee permission matrix tests pass; desktop/tablet screenshots recorded.
+- [ ] **TASK-083** — Extend the scoring reducer/validator and umpire deck with timeout countdowns, penalty cards and points, adviser cards, injury suspension, expedite, retirement and disqualification outcomes. Depends: TASK-003, TASK-023, TASK-024. REQ-043, REQ-012 / EVAL-043, EVAL-012. Done: shared incident fixtures give identical states in TypeScript and Python; W/O/ret./DQ produce no fabricated scores or Elo.
+- [ ] **TASK-084** — Implement the real-time live score channel (server push with polling fallback) and public/member live views, score strip and match detail. Depends: TASK-029, TASK-021. REQ-043, REQ-033 / EVAL-043, EVAL-033. Done: controlled latency trace meets p95 under 2 seconds; live views never show umpire controls.
+- [ ] **TASK-085** — Implement the results announcement generator and editor (session/round/day/event/tournament scope), plain-text and image-card previews, publish to the tournament news feed with notification and share, frozen versions and amendments after corrections. Depends: TASK-032, TASK-029. REQ-043, REQ-018 / EVAL-043, EVAL-018. Done: generated text matches official results fixtures, marks W/O/ret./DQ/pending and contains no private fields.
 
 ## Phase 1: personal progress
 
@@ -175,3 +181,4 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-040](spec.md#req-040) | [EVAL-040](test.md#eval-040) | TASK-076, TASK-077, TASK-078 |
 | [REQ-041](spec.md#req-041) | [EVAL-041](test.md#eval-041) | TASK-079 |
 | [REQ-042](spec.md#req-042) | [EVAL-042](test.md#eval-042) | TASK-080 |
+| [REQ-043](spec.md#req-043) | [EVAL-043](test.md#eval-043) | TASK-003, TASK-081, TASK-082, TASK-083, TASK-084, TASK-085 |
