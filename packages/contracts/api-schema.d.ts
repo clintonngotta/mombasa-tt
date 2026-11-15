@@ -568,6 +568,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/players/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One listed player's page. 404 once they opt out, so opting out removes the page too. */
+        get: operations["players_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -763,6 +780,8 @@ export interface components {
             /** Format: date-time */
             readonly decided_at: string | null;
         };
+        /** @enum {unknown} */
+        NullEnum: null;
         Organization: {
             /** Format: uuid */
             readonly id: string;
@@ -921,6 +940,7 @@ export interface components {
             experience?: components["schemas"]["ExperienceEnum"] | components["schemas"]["BlankEnum"];
             bio?: string;
             directory_opt_in?: boolean;
+            published_details?: components["schemas"]["PublishedDetailsEnum"][];
         };
         PersonalMatch: {
             /** Format: uuid */
@@ -953,6 +973,22 @@ export interface components {
             notes?: string;
             games: components["schemas"]["GameRequest"][];
         };
+        /**
+         * @description Public player page: the directory card plus only the extended details the player published.
+         *     Unpublished or blank details are null. Never email, location or contact details.
+         */
+        Player: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+            nickname: string;
+            readonly clubs: string[];
+            readonly hand: (components["schemas"]["HandEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly grip: (components["schemas"]["GripEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly style: string | null;
+            readonly experience: (components["schemas"]["ExperienceEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly bio: string | null;
+        };
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         Profile: {
             display_name: string;
@@ -963,9 +999,19 @@ export interface components {
             experience: components["schemas"]["ExperienceEnum"] | components["schemas"]["BlankEnum"];
             bio: string;
             directory_opt_in: boolean;
+            published_details: components["schemas"]["PublishedDetailsEnum"][];
             readonly goals: components["schemas"]["GoalsEnum"][];
             readonly onboarding_completed: boolean;
         };
+        /**
+         * @description * `hand` - Hand
+         *     * `grip` - Grip
+         *     * `style` - Style
+         *     * `experience` - Experience
+         *     * `bio` - Bio
+         * @enum {string}
+         */
+        PublishedDetailsEnum: "hand" | "grip" | "style" | "experience" | "bio";
         /**
          * @description * `admin` - Admin
          *     * `member` - Member
@@ -2182,6 +2228,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedDirectoryPlayerList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    players_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Player"];
                 };
             };
             /** @description Error envelope */

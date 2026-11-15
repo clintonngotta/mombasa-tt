@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout"
 import { FormAlert } from "@/components/forms/Field"
+import { Toggle } from "@/components/forms/Toggle"
 import { errorMessage } from "@/lib/api"
 import { KIND_LABEL, clubKeys, requestToJoin, searchOrganizations, type Organization } from "@/lib/clubs"
 import { saveDiscovery, useOnboardingDraft } from "@/lib/onboarding"
@@ -102,26 +103,12 @@ export function FindCommunityPage() {
         </ul>
       </section>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-card p-4 has-focus-visible:ring-3 has-focus-visible:ring-ring/50">
-        <input
-          type="checkbox"
-          checked={draft.directoryOptIn}
-          onChange={(e) => updateDraft({ directoryOptIn: e.target.checked })}
-          className="peer sr-only"
-        />
-        <span
-          aria-hidden
-          className="mt-0.5 flex h-7 w-12 shrink-0 items-center rounded-full bg-border p-0.5 transition-colors peer-checked:bg-brand-blue peer-checked:[&>span]:translate-x-5"
-        >
-          <span className="size-6 rounded-full bg-white shadow transition-transform" />
-        </span>
-        <span className="flex flex-col">
-          <span className="font-semibold">List me in the player directory</span>
-          <span className="text-sm text-muted-foreground">
-            Other players can find your name, clubs and rating. Your contact details and location are never shown. Off by default.
-          </span>
-        </span>
-      </label>
+      <Toggle
+        checked={draft.directoryOptIn}
+        onChange={(directoryOptIn) => updateDraft({ directoryOptIn })}
+        label="List me in the player directory"
+        description="Other players can find your name, nickname and clubs. Your contact details and location are never shown. Off by default."
+      />
 
       {save.isError && <FormAlert>{errorMessage(save.error)}</FormAlert>}
       <div className="flex flex-col gap-3">

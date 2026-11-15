@@ -18,6 +18,9 @@ import { MatchLogPage } from "@/pages/matches/MatchLogPage"
 import { MatchFormPage } from "@/pages/matches/MatchFormPage"
 import { MatchDetailPage } from "@/pages/matches/MatchDetailPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
+import { ProfileEditPage } from "@/pages/profile/ProfileEditPage"
+import { PlayersPage } from "@/pages/players/PlayersPage"
+import { PlayerPage } from "@/pages/players/PlayerPage"
 import { ClubPage } from "@/pages/club/ClubPage"
 import { FindClubPage } from "@/pages/club/FindClubPage"
 import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
@@ -60,6 +63,9 @@ function App() {
               <Route path="/club/new" element={<RegisterOrganizationPage />} />
               <Route path="/club/invitations" element={<InvitationsInboxPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/players" element={<PlayersPage />} />
+              <Route path="/players/:id" element={<PlayerPage />} />
               <Route path="/matches" element={<MatchLogPage />} />
               <Route path="/matches/new" element={<MatchFormPage />} />
               <Route path="/matches/:id" element={<MatchDetailPage />} />

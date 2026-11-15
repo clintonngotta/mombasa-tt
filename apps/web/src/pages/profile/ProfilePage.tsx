@@ -1,6 +1,7 @@
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, NotebookPen } from "lucide-react"
+import { NotebookPen, UserPen, Users } from "lucide-react"
+import { NavCard } from "@/components/layout/NavCard"
 import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
@@ -28,19 +29,11 @@ export function ProfilePage() {
         <p className="text-muted-foreground">{me.data?.email}</p>
       </div>
 
-      <Link
-        to="/matches"
-        className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50"
-      >
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-surface-selected">
-          <NotebookPen aria-hidden className="size-6 text-brand-blue" />
-        </span>
-        <span className="flex flex-1 flex-col">
-          <span className="font-semibold">My match log</span>
-          <span className="text-sm text-muted-foreground">Private record of your matches, sets and notes</span>
-        </span>
-        <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
-      </Link>
+      <nav aria-label="Profile" className="flex flex-col gap-3">
+        <NavCard to="/profile/edit" icon={UserPen} title="Edit profile" description="Name, playing details, goals and what other players see" />
+        <NavCard to="/players" icon={Users} title="Player directory" description="Find players who chose to be listed" />
+        <NavCard to="/matches" icon={NotebookPen} title="My match log" description="Private record of your matches, sets and notes" />
+      </nav>
 
       {signOut.isError && <FormAlert>{errorMessage(signOut.error)}</FormAlert>}
       <Button variant="outline" disabled={signOut.isPending} onClick={() => signOut.mutate()}>

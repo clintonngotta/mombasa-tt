@@ -1121,6 +1121,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/players/{id}/:
+    get:
+      operationId: players_retrieve
+      description: One listed player's page. 404 once they opt out, so opting out
+        removes the page too.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - players
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   schemas:
     BlankEnum:
@@ -1565,6 +1594,9 @@ components:
       - id
       - organization
       - status
+    NullEnum:
+      enum:
+      - null
     Organization:
       type: object
       properties:
@@ -1877,6 +1909,10 @@ components:
           maxLength: 280
         directory_opt_in:
           type: boolean
+        published_details:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublishedDetailsEnum'
     PersonalMatch:
       type: object
       properties:
@@ -1973,6 +2009,60 @@ components:
       - games
       - label
       - played_on
+    Player:
+      type: object
+      description: |-
+        Public player page: the directory card plus only the extended details the player published.
+        Unpublished or blank details are null. Never email, location or contact details.
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        nickname:
+          type: string
+        clubs:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        hand:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/HandEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        grip:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/GripEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        style:
+          type: string
+          readOnly: true
+          nullable: true
+        experience:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/ExperienceEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        bio:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - bio
+      - clubs
+      - display_name
+      - experience
+      - grip
+      - hand
+      - id
+      - nickname
+      - style
     Profile:
       type: object
       description: The owner's own view of their profile. `display_name` is written
@@ -2004,6 +2094,10 @@ components:
           maxLength: 280
         directory_opt_in:
           type: boolean
+        published_details:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublishedDetailsEnum'
         goals:
           type: array
           items:
@@ -2022,7 +2116,22 @@ components:
       - hand
       - nickname
       - onboarding_completed
+      - published_details
       - style
+    PublishedDetailsEnum:
+      enum:
+      - hand
+      - grip
+      - style
+      - experience
+      - bio
+      type: string
+      description: |-
+        * `hand` - Hand
+        * `grip` - Grip
+        * `style` - Style
+        * `experience` - Experience
+        * `bio` - Bio
     RoleEnum:
       enum:
       - admin

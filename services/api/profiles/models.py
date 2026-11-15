@@ -30,6 +30,15 @@ class PlayerProfile(models.Model):
         UMPIRE = "umpire"
         ORGANIZE = "organize"
 
+    class Detail(models.TextChoices):
+        """Extended details a player may publish on their directory page (REQ-006)."""
+
+        HAND = "hand"
+        GRIP = "grip"
+        STYLE = "style"
+        EXPERIENCE = "experience"
+        BIO = "bio"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True, related_name="profile"
     )
@@ -41,6 +50,10 @@ class PlayerProfile(models.Model):
     bio = models.CharField(max_length=280, blank=True)
     # Off by default: a player appears in the directory only after opting in.
     directory_opt_in = models.BooleanField(default=False)
+    # Extended details stay private until named here, and show only while directory_opt_in is on.
+    published_details = ArrayField(
+        models.CharField(max_length=12, choices=Detail.choices), default=list, blank=True
+    )
     # Goals only order Home shortcuts. They never grant roles or touch ratings.
     goals = ArrayField(models.CharField(max_length=12, choices=Goal.choices), default=list, blank=True)
     onboarding_completed_at = models.DateTimeField(null=True, blank=True)

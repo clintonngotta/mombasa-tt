@@ -1,11 +1,7 @@
 import { useCallback, useState } from "react"
 import { api } from "@/lib/api"
-import type { Schemas } from "@/lib/schema"
 import type { Organization } from "@/lib/clubs"
-
-export type Hand = Schemas["HandEnum"]
-export type Grip = Schemas["GripEnum"]
-export type Experience = Schemas["ExperienceEnum"]
+import type { Experience, Goal, Grip, Hand } from "@/lib/profile"
 
 export type ProfileDraft = {
   display_name: string
@@ -16,8 +12,6 @@ export type ProfileDraft = {
   experience: Experience | ""
   bio: string
 }
-
-export type Goal = Schemas["GoalsEnum"]
 
 export type OnboardingDraft = {
   profile: ProfileDraft
@@ -75,8 +69,5 @@ export const saveProfile = (profile: ProfileDraft) => api<void>("/me/profile/", 
 
 export const saveDiscovery = (directory_opt_in: boolean) =>
   api<void>("/me/profile/", { method: "PATCH", body: { directory_opt_in } })
-
-// Goals only shape Home shortcuts; they never grant roles or touch ratings (REQ-006).
-export const saveGoals = (goals: Goal[]) => api<void>("/me/goals/", { method: "PUT", body: { goals } })
 
 export const completeOnboarding = () => api<void>("/me/onboarding/complete/", { body: {} })
