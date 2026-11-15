@@ -74,7 +74,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again.") {
   if (error instanceof TypeError) return "Can't reach mombasa-tt right now. Check your connection and try again."
   if (error instanceof ApiError) {
-    if (error.status === 429) return "Too many attempts. Wait a few minutes and try again."
+    if (error.status === 429) return "Too many requests for now. Wait a while and try again."
     if (error.status >= 500) return "mombasa-tt is unavailable right now. Please try again shortly."
     if (error.serverMessage) return error.serverMessage
   }

@@ -18,6 +18,10 @@ import { MatchLogPage } from "@/pages/matches/MatchLogPage"
 import { MatchFormPage } from "@/pages/matches/MatchFormPage"
 import { MatchDetailPage } from "@/pages/matches/MatchDetailPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
+import { ClubPage } from "@/pages/club/ClubPage"
+import { FindClubPage } from "@/pages/club/FindClubPage"
+import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
+import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,8 +54,11 @@ function App() {
             {/* Domain screens land here as their Stitch references are implemented. */}
             <Route path="/home" element={null} />
             <Route path="/play" element={null} />
-            <Route path="/club" element={null} />
             <Route element={<RequireAuth />}>
+              <Route path="/club" element={<ClubPage />} />
+              <Route path="/club/find" element={<FindClubPage />} />
+              <Route path="/club/new" element={<RegisterOrganizationPage />} />
+              <Route path="/club/invitations" element={<InvitationsInboxPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/matches" element={<MatchLogPage />} />
               <Route path="/matches/new" element={<MatchFormPage />} />

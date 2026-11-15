@@ -1535,14 +1535,16 @@ components:
       - status
     MyJoinRequest:
       type: object
+      description: 'The requester''s view: which organization (name and town, so the
+        app can list them) and the outcome.'
       properties:
         id:
           type: string
           format: uuid
           readOnly: true
         organization:
-          type: string
-          format: uuid
+          allOf:
+          - $ref: '#/components/schemas/Organization'
           readOnly: true
         status:
           allOf:

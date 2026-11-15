@@ -293,4 +293,8 @@ class MyJoinRequestsView(generics.ListAPIView):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return JoinRequest.objects.none()
-        return JoinRequest.objects.filter(user=self.request.user).order_by("-created_at")
+        return (
+            JoinRequest.objects.filter(user=self.request.user)
+            .select_related("organization")
+            .order_by("-created_at")
+        )

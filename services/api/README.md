@@ -78,7 +78,7 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | PUT | `goals/` | `{goals: [...]}` replaces the list. Goals only order Home shortcuts and never grant roles |
 | POST | `onboarding/complete/` | 204. Repeat calls keep the first completion time |
 | GET | `memberships/` | Active memberships with their organization (basis for the club switcher); paginated |
-| GET | `join-requests/` | The player's own join requests, newest first; paginated |
+| GET | `join-requests/` | The player's own join requests with the organization (name, town, kind), newest first; paginated |
 | GET | `invitations/` | Open invitations addressed to the player's verified email; paginated |
 | POST | `invitations/{iid}/accept/` or `decline/` | Accepting joins as a member (an existing admin keeps their role) and withdraws the player's open join request to that organization; 404 for anyone else's, answered, revoked or expired invitation |
 

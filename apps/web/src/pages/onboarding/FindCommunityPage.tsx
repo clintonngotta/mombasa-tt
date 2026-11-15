@@ -7,13 +7,8 @@ import { Input } from "@/components/ui/input"
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
-import { requestToJoin, saveDiscovery, searchOrganizations, useOnboardingDraft, type Organization } from "@/lib/onboarding"
-
-const KIND_LABEL: Record<Organization["kind"], string> = {
-  club: "Club",
-  facility: "Facility",
-  club_facility: "Club and facility",
-}
+import { KIND_LABEL, clubKeys, requestToJoin, searchOrganizations, type Organization } from "@/lib/clubs"
+import { saveDiscovery, useOnboardingDraft } from "@/lib/onboarding"
 
 export function FindCommunityPage() {
   const navigate = useNavigate()
@@ -22,7 +17,7 @@ export function FindCommunityPage() {
   const [term, setTerm] = useState("")
 
   const results = useQuery({
-    queryKey: ["organizations", "search", term],
+    queryKey: clubKeys.search(term),
     queryFn: () => searchOrganizations(term),
     enabled: term.length >= 2,
   })
