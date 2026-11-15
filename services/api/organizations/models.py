@@ -1,7 +1,11 @@
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+INVITATION_TTL = timedelta(days=14)
 
 
 class Organization(models.Model):
@@ -74,6 +78,7 @@ class JoinRequest(models.Model):
         PENDING = "pending"
         APPROVED = "approved"
         REJECTED = "rejected"
+        WITHDRAWN = "withdrawn"  # settled without a staff decision, e.g. the player accepted an invitation
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="join_requests")
@@ -98,3 +103,53 @@ class JoinRequest(models.Model):
 
     def __str__(self):
         return f"{self.user_id} -> {self.organization_id} ({self.status})"
+
+
+def invitation_expiry():
+    return timezone.now() + INVITATION_TTL
+
+
+class Invitation(models.Model):
+    """Staff invite someone by email to join an organization (REQ-004). The invitee sees it once they
+    are signed in with that verified address, and must explicitly accept; nothing is joined until then."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        ACCEPTED = "accepted"
+        DECLINED = "declined"
+        REVOKED = "revoked"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invitations")
+    email = models.EmailField()  # stored lower-cased
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=invitation_expiry)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "email"],
+                condition=models.Q(status="pending"),  # Invitation.Status.PENDING (not in scope in Meta)
+                name="org_one_pending_invitation",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.email} -> {self.organization_id} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()  # the pending-unique constraint relies on this
+        super().save(*args, **kwargs)
+
+    @property
+    def is_open(self) -> bool:
+        return self.status == self.Status.PENDING and self.expires_at > timezone.now()

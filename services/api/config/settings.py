@@ -138,11 +138,12 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
-    # Applies only to views that set `throttle_scope` (the anonymous auth endpoints).
+    # Applies only to views that set `throttle_scope` (anonymous auth endpoints, sending invitations).
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {
         "auth_login": os.environ.get("THROTTLE_AUTH_LOGIN", "10/min"),
         "auth_email": os.environ.get("THROTTLE_AUTH_EMAIL", "5/min"),
+        "invitations": os.environ.get("THROTTLE_INVITATIONS", "30/hour"),
     },
 }
 
@@ -160,6 +161,7 @@ SPECTACULAR_SETTINGS = {
         "MembershipStatusEnum": "organizations.models.Membership.Status",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
         "MatchResultEnum": "matchlog.models.MatchResult",
+        "InvitationStatusEnum": "organizations.models.Invitation.Status",
     },
 }
 

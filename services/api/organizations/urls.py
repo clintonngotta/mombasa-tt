@@ -23,5 +23,15 @@ urlpatterns = [
         join_request_views.as_view({"post": "reject"}),
         name="organization-join-request-reject",
     ),
+    path(
+        "<uuid:organization_pk>/invitations/",
+        views.InvitationViewSet.as_view({"get": "list", "post": "create"}),
+        name="organization-invitations",
+    ),
+    path(
+        "<uuid:organization_pk>/invitations/<uuid:pk>/revoke/",
+        views.InvitationViewSet.as_view({"post": "revoke"}),
+        name="organization-invitation-revoke",
+    ),
     *router.urls,
 ]
