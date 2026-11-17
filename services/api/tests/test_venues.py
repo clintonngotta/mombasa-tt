@@ -20,21 +20,6 @@ def venues_url(org, venue=None, table=None):
     return url
 
 
-@pytest.fixture
-def admin(db):
-    return make_user("admin@example.com", display_name="Club Admin")
-
-
-@pytest.fixture
-def club(admin):
-    return create_club(admin)
-
-
-@pytest.fixture
-def staff(admin):
-    return logged_in(admin)
-
-
 def make_venue(staff, club, name="Makadara Hall", **extra) -> dict:
     response = staff.post(venues_url(club), {"name": name, "town": "Mombasa", **extra}, format="json")
     assert response.status_code == 201, response.json()

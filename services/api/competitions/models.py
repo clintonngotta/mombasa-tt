@@ -9,6 +9,18 @@ from organizations.models import Organization
 MAX_EVENTS = 30
 
 
+class TournamentQuerySet(models.QuerySet):
+    def detailed(self):
+        """With host, venue and events (each with its number of accepted entries), for serializing."""
+        # Ordered explicitly: an aggregate drops the model's default ordering.
+        events = Event.objects.annotate(
+            accepted_count=models.Count("entries", filter=models.Q(entries__status="accepted"))
+        ).order_by("position", "created_at")
+        return self.select_related("organization", "venue").prefetch_related(
+            models.Prefetch("events", queryset=events)
+        )
+
+
 class Tournament(models.Model):
     """A competition hosted by one organization at one venue (REQ-007). Its dates are calendar days in
     `timezone`. Drafts exist only for the host's competition staff; from publication on it is visible to
@@ -42,6 +54,8 @@ class Tournament(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancel_reason = models.CharField(max_length=300, blank=True)
+
+    objects = TournamentQuerySet.as_manager()
 
     class Meta:
         ordering = ["starts_on", "name", "id"]
@@ -157,3 +171,81 @@ class LifecycleEntry(models.Model):
 
     def __str__(self):
         return f"{self.action} {self.tournament_id}"
+
+
+MIN_TEAM_ROSTER = 2
+MAX_TEAM_ROSTER = 10
+
+
+class Entry(models.Model):
+    """One player, pair or team asking to play an event (REQ-008). Status says where the request stands;
+    check-in is tracked on its own and says only that the entry has arrived at the venue. Nothing here
+    says anything about payment: the fee is declared on the event and receipts arrive in Phase 2."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending"  # waiting for staff
+        ACCEPTED = "accepted"  # holds one of the event's places
+        WAITLISTED = "waitlisted"  # staff will offer a place if one opens
+        REJECTED = "rejected"
+        WITHDRAWN = "withdrawn"
+
+    # Statuses in which the entry still stands, so its players can't be in another entry of the event.
+    LIVE = (Status.PENDING, Status.ACCEPTED, Status.WAITLISTED)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="entries")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    team_name = models.CharField(max_length=80, blank=True)  # team events only
+    captain = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    # Why staff rejected or withdrew it; shown to the entry's players and to staff only.
+    reason = models.CharField(max_length=300, blank=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+    checked_in_at = models.DateTimeField(null=True, blank=True)
+    checked_in_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["event", "status"])]
+
+    def __str__(self):
+        return f"{self.get_status_display()} entry {self.id} in {self.event_id}"
+
+    @property
+    def is_live(self) -> bool:
+        return self.status in self.LIVE
+
+
+class EntryPlayer(models.Model):
+    """A player in an entry. `live` mirrors the entry's status so the database itself refuses a player
+    in two standing entries of one event, whatever races the requests run."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name="players")
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="+")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entry_places")
+    position = models.PositiveSmallIntegerField(default=0)
+    live = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["position"]
+        constraints = [
+            models.UniqueConstraint(fields=["entry", "user"], name="entry_player_once"),
+            models.UniqueConstraint(
+                fields=["event", "user"], condition=models.Q(live=True), name="one_live_entry_per_event"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} in {self.entry_id}"

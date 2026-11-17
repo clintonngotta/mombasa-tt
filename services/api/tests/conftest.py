@@ -66,3 +66,25 @@ def _attachments_in_tmp(settings, tmp_path):
             "OPTIONS": {"location": tmp_path / "attachments"},
         },
     }
+
+
+# A club with its admin signed in: the setting most organization and tournament tests start from.
+@pytest.fixture
+def admin(db):
+    from .helpers import make_user
+
+    return make_user("admin@example.com", display_name="Club Admin")
+
+
+@pytest.fixture
+def club(admin):
+    from .test_roles import create_club
+
+    return create_club(admin)
+
+
+@pytest.fixture
+def staff(admin):
+    from .helpers import logged_in
+
+    return logged_in(admin)

@@ -27,21 +27,6 @@ def url(tournament=None, action="", event=None):
 
 
 @pytest.fixture
-def admin(db):
-    return make_user("admin@example.com", display_name="Club Admin")
-
-
-@pytest.fixture
-def club(admin):
-    return create_club(admin)
-
-
-@pytest.fixture
-def staff(admin):
-    return logged_in(admin)
-
-
-@pytest.fixture
 def venue(staff, club):
     return make_venue(staff, club)
 

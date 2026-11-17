@@ -230,6 +230,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/entries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every entry the caller plays in, newest first, with its event and tournament. */
+        get: operations["me_entries_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/goals/": {
         parameters: {
             query?: never;
@@ -1179,6 +1196,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Accepted entries, plus the caller's own in any status. Competition staff get them all. */
+        get: operations["tournaments_events_entries_list"];
+        put?: never;
+        /**
+         * @description Enter the event. A player's own entry includes them and waits for staff, inside the
+         *     registration window. Staff enter anybody at any time before the event starts: the entry takes
+         *     a place if there is one and joins the waiting list if not.
+         */
+        post: operations["tournaments_events_entries_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Give the entry a place, from pending or from the waiting list (`event_full` when there is
+         *     none). Its players are told; a promotion from the waiting list says so.
+         */
+        post: operations["tournaments_events_entries_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The entry has arrived. Independent of the fee, which this API doesn't record yet. */
+        post: operations["tournaments_events_entries_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Turn down a pending or waitlisted entry. The reason, if given, is shown to its players. */
+        post: operations["tournaments_events_entries_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/staff-withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Withdraw an entry on its players' behalf. Its place is free again; nobody is promoted
+         *     automatically.
+         */
+        post: operations["tournaments_events_entries_staff_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/undo-check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
+         *     event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
+         *     check in. Accepted entries are open to every signed-in player; the rest only to their own players
+         *     and to the host's competition staff.
+         */
+        post: operations["tournaments_events_entries_undo_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/waitlist/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
+         *     event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
+         *     check in. Accepted entries are open to every signed-in player; the rest only to their own players
+         *     and to the host's competition staff.
+         */
+        post: operations["tournaments_events_entries_waitlist_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description By one of the entry's own players, before the event starts. For anybody else the entry
+         *     doesn't exist here.
+         */
+        post: operations["tournaments_events_entries_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{id}/": {
         parameters: {
             query?: never;
@@ -1335,6 +1512,70 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        /**
+         * @description An entry as its players, staff and (once accepted) everybody else see it. Deliberately nothing
+         *     about payment: accepted means a place in the event, not a paid fee (REQ-008).
+         */
+        Entry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["EntryStatusEnum"];
+            readonly players: components["schemas"]["EntryPlayer"][];
+            readonly team_name: string;
+            /** Format: uuid */
+            readonly captain_id: string | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            /** Format: date-time */
+            readonly withdrawn_at: string | null;
+            /** Format: date-time */
+            readonly checked_in_at: string | null;
+            /** @description Whether the caller plays in it, so may withdraw it. */
+            readonly mine: boolean;
+        };
+        EntryEvent: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly kind: components["schemas"]["EventKindEnum"];
+            readonly status: components["schemas"]["EventStatusEnum"];
+        };
+        /** @description A player in an entry: the name they play under, nothing else (REQ-020). */
+        EntryPlayer: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+        };
+        /** @description Who is entering. Left out, `player_ids` is the caller alone and `captain_id` the caller. */
+        EntryRequestRequest: {
+            player_ids?: string[];
+            team_name?: string;
+            /** Format: uuid */
+            captain_id?: string | null;
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `accepted` - Accepted
+         *     * `waitlisted` - Waitlisted
+         *     * `rejected` - Rejected
+         *     * `withdrawn` - Withdrawn
+         * @enum {string}
+         */
+        EntryStatusEnum: "pending" | "accepted" | "waitlisted" | "rejected" | "withdrawn";
+        EntryTournament: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: date */
+            readonly starts_on: string;
+            /** Format: date */
+            readonly ends_on: string;
+            readonly timezone: string;
+            readonly status: components["schemas"]["TournamentStatusEnum"];
+        };
         Event: {
             /** Format: uuid */
             readonly id: string;
@@ -1352,6 +1593,8 @@ export interface components {
             seeding: components["schemas"]["SeedingEnum"];
             group_count: number | null;
             qualifiers_per_group: number | null;
+            /** @description Entries holding a place. Counted here when the caller didn't annotate it. */
+            readonly accepted_count: number;
             readonly status: components["schemas"]["EventStatusEnum"];
             readonly revision: number;
             /** Format: date-time */
@@ -1636,6 +1879,29 @@ export interface components {
             /** @default KES */
             currency: string;
         };
+        /** @description One of the caller's own entries, with the event and tournament it is for. */
+        MyEntry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["EntryStatusEnum"];
+            readonly players: components["schemas"]["EntryPlayer"][];
+            readonly team_name: string;
+            /** Format: uuid */
+            readonly captain_id: string | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            /** Format: date-time */
+            readonly withdrawn_at: string | null;
+            /** Format: date-time */
+            readonly checked_in_at: string | null;
+            /** @description Whether the caller plays in it, so may withdraw it. */
+            readonly mine: boolean;
+            readonly event: components["schemas"]["EntryEvent"];
+            readonly tournament: components["schemas"]["EntryTournament"];
+        };
         /** @description The invitee's view: which organization, and who invited them (display name only). */
         MyInvitation: {
             /** Format: uuid */
@@ -1662,6 +1928,9 @@ export interface components {
         };
         /** @enum {unknown} */
         NullEnum: null;
+        OptionalReasonRequest: {
+            reason?: string;
+        };
         Organization: {
             /** Format: uuid */
             readonly id: string;
@@ -1696,6 +1965,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["DirectoryPlayer"][];
+        };
+        PaginatedEntryList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Entry"][];
         };
         PaginatedInvitationList: {
             /** @example 123 */
@@ -1771,6 +2055,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Membership"][];
+        };
+        PaginatedMyEntryList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyEntry"][];
         };
         PaginatedMyInvitationList: {
             /** @example 123 */
@@ -2585,6 +2884,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_entries_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyEntryList"];
+                };
             };
             /** @description Error envelope */
             "4XX": {
@@ -4672,6 +5004,310 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                status?: "accepted" | "pending" | "rejected" | "waitlisted" | "withdrawn";
+            };
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedEntryList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EntryRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OptionalReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_staff_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OptionalReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_undo_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_waitlist_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
                 };
             };
             /** @description Error envelope */
