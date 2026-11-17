@@ -49,7 +49,7 @@ Groups of four (A, B, C, D), best of five, worked out by hand from 3.7.5; implem
 | F-ST6 ultimate tie | A>B, B>C, C>A, all 3-0 at 11-5; all beat D | A, B, C level on match points (3), games (3/3) and points (48/48) between them: decided by lot, the same lot every time. With only those three matches played and the group unfinished, the three are shown level and nothing is drawn. |
 | F-ST7 forfeit | F-ST2 results, D forfeits afterwards | D loses all three unplayed: A 6, B 5, C 4, D 0. |
 | F-ST8 completion | X beats Y, who retires at 11-9, 5-11, 4-2 | Counted 11-9, 5-11, 11-2, 11-0: games 3-1, points 38-22; Y scores 0 match points. A best-of-seven walkover counts 4-0. |
-| F-ST-exact | Ratios 10/9 and 11/10 | 10/9 ranks higher although both round to 1.1; ratios of exactly 1 (109/109, 20/20, 110/110) are equal and go to the lot. |
+| F-ST-exact | One-game matches A>B 11-5, B>C 11-7, C>A 13-8 | Level on match points (3) and games (1/1); points A 19/18, C 20/19, B 16/18. A and C both show as 1.1 to one decimal, and A ranks above C. Ratios of exactly 1 (109/109, 20/20, 110/110) are equal and go to the lot. |
 
 ## Foundation and Phase 1 evaluations
 

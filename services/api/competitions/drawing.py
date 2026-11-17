@@ -3,6 +3,7 @@
 Callers hold the tournament row lock, like every other change to a tournament.
 """
 
+import hashlib
 import secrets
 
 from django.utils import timezone
@@ -147,6 +148,19 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
         raise _conflict("match_not_ready", "Both sides of this match aren't known yet.")
     if winner.id not in (match.entry_a_id, match.entry_b_id):
         raise _conflict("not_in_match", "The winner is one of the two sides of the match.")
+    a_won = winner.id == match.entry_a_id
+    games = [(a, b) if a_won else (b, a) for a, b in games]  # from the winner's side
+    needed = match.draw.event.best_of // 2 + 1
+    won = sum(1 for mine, theirs in games if mine > theirs)
+    lost = len(games) - won
+    plausible = {
+        Match.Outcome.PLAYED: won == needed and lost < needed,
+        Match.Outcome.WALKOVER: not games,
+        Match.Outcome.RETIRED: won < needed and lost < needed,
+    }
+    if not plausible.get(outcome, False):
+        raise ApiException("invalid_result", "The games don't fit how this match is said to have ended.", 400)
+    games = [(a, b) if a_won else (b, a) for a, b in games]  # back to [a, b] as stored
     match.winner = winner
     match.status = Match.Status.COMPLETED
     match.outcome = outcome
@@ -164,8 +178,9 @@ def _send_on(match: Match) -> None:
 
 def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], bool]:
     """The group in ranking order (3.7.5) and whether every match in it is decided. Until then members
-    nobody can separate stay level; afterwards what is left is drawn by lot from the draw's own number,
-    so the lot is the same every time it is looked at."""
+    nobody can separate stay level; afterwards what is left is drawn by lot. The lot's number comes
+    from the draw and every score in the group, so it is the same each time the table is looked at but
+    nobody can know it, or choose it, before the matches are played."""
     members = [
         str(pk)
         for pk in draw.places.filter(group=group)
@@ -182,11 +197,17 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
         games = tuple((a, b) if a_won else (b, a) for a, b in match.games)
         results.append(
             standings.Result(
-                str(match.winner_id), str(loser), match.outcome, games, best_of=draw.event.best_of
+                str(match.winner_id),
+                str(loser),
+                match.outcome or Match.Outcome.PLAYED,
+                games,
+                best_of=draw.event.best_of,
             )
         )
     complete = len(results) == len(matches)
-    rows = standings.rank(members, results, final=complete, lot_seed=draw.rng_seed + group)
+    scores = sorted((str(match.id), str(match.winner_id), match.outcome, match.games) for match in matches)
+    lot = hashlib.sha256(repr((str(draw.id), draw.rng_seed, group, scores)).encode()).digest()
+    rows = standings.rank(members, results, final=complete, lot_seed=int.from_bytes(lot[:8], "big"))
     return rows, complete
 
 

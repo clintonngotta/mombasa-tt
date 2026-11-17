@@ -395,7 +395,8 @@ class DrawRequestSerializer(serializers.Serializer):
 
 
 class TieBreakStepSerializer(serializers.Serializer):
-    """One comparison used to separate members who were level: the entries compared, what on
+    """One comparison made between members who were level, up to the one that separated them (or the
+    lot): the entries compared, what on
     (`match_points`, `rubbers`, `games`, `points` won/lost between them, or `lot`) and this row's value."""
 
     among = serializers.ListField(child=serializers.UUIDField())
@@ -417,7 +418,9 @@ class StandingRowSerializer(serializers.Serializer):
     level = serializers.BooleanField(
         help_text="Not yet separated from a neighbouring row; the group isn't finished."
     )
-    qualified = serializers.BooleanField(allow_null=True, help_text="Null until the group is finished.")
+    qualified = serializers.BooleanField(
+        allow_null=True, help_text="Null until the group is finished, and always in a round robin event."
+    )
     tie_break = TieBreakStepSerializer(many=True)
 
 

@@ -406,10 +406,12 @@ def test_winners_move_on_and_a_bye_is_never_a_played_match(staff, cup):
     with pytest.raises(Exception, match="one of the two sides"):
         drawing.record_result(semi, seed)
 
-    drawing.record_result(semi, semi.entry_b)
+    drawing.record_result(semi, semi.entry_b, games=[(5, 11)] * 3)
     final.refresh_from_db()
     assert final.entry_b == semi.entry_b and final.status == "scheduled"
-    drawing.record_result(final, seed)
+    with pytest.raises(Exception, match="don't fit"):
+        drawing.record_result(final, seed)  # a played match has its games
+    drawing.record_result(final, seed, games=[(11, 5)] * 3)
     final.refresh_from_db()
     assert final.winner == seed and final.status == "completed"
     with pytest.raises(Exception, match="already decided"):

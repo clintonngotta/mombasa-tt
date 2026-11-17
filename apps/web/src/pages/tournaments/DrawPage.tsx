@@ -49,6 +49,7 @@ export function DrawPage() {
           {draw.data && (
             <>
               {staff && <Desk tournament={t} event={event} draw={draw.data} />}
+              {published && standings.isPending && <p className="text-muted-foreground">Loading standings…</p>}
               {standings.isError && <FormAlert>{errorMessage(standings.error, "We couldn't load the standings.")}</FormAlert>}
               {published && standings.data && ranked && (
                 <section aria-labelledby="standings-heading" className="flex flex-col gap-4">

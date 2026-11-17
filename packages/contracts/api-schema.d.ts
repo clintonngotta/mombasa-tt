@@ -2598,7 +2598,7 @@ export interface components {
             points_lost: number;
             /** @description Not yet separated from a neighbouring row; the group isn't finished. */
             level: boolean;
-            /** @description Null until the group is finished. */
+            /** @description Null until the group is finished, and always in a round robin event. */
             qualified: boolean | null;
             tie_break: components["schemas"]["TieBreakStep"][];
         };
@@ -2620,7 +2620,8 @@ export interface components {
             active?: boolean;
         };
         /**
-         * @description One comparison used to separate members who were level: the entries compared, what on
+         * @description One comparison made between members who were level, up to the one that separated them (or the
+         *     lot): the entries compared, what on
          *     (`match_points`, `rubbers`, `games`, `points` won/lost between them, or `lot`) and this row's value.
          */
         TieBreakStep: {

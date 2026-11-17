@@ -137,7 +137,7 @@ def test_fst6_what_nothing_separates_is_drawn_by_lot_once_the_group_is_finished(
     # While matches are still to play nothing is drawn: the three are shown level, in group order.
     early = rank(MEMBERS, results[:3], final=False)  # only the three matches between A, B and C
     assert order(early) == "ABCD" and [row.level for row in early] == [True, True, True, False]
-    assert all(step[1] != "lot" for member in "ABC" for step in steps(early, member))
+    assert all(steps(early, member) == [] for member in "ABC")  # nothing separated, nothing to explain
 
 
 def test_fst7_a_member_who_forfeits_loses_every_match_unplayed():
@@ -162,16 +162,24 @@ def test_fst8_unfinished_and_unplayed_matches_are_completed_in_the_winners_favou
     ]
 
 
-def test_ratios_are_compared_exactly_never_rounded():
-    """10/9 and 11/10 both show as 1.1 to one decimal; 10/9 is the better ratio."""
+def test_fst_exact_ratios_are_compared_exactly_never_rounded():
+    """A 19/18 (1.0556) and C 20/19 (1.0526) both show as 1.1 to one decimal; A is the better ratio."""
     results = [
-        beat("A", "B", games=[(10, 0)] * 3),  # stylised scores to pin the ratios exactly
-        beat("B", "C", games=[(11, 1)] * 3),
-        beat("C", "A", games=[(11, 9)] * 3),
+        Result("A", "B", games=((11, 5),), best_of=1),
+        Result("B", "C", games=((11, 7),), best_of=1),
+        Result("C", "A", games=((13, 8),), best_of=1),
     ]
     rows = rank(["A", "B", "C"], results)
-    points = {row.member: steps(rows, row.member)[-1][2] for row in rows}
-    assert points == {"A": "57/33", "B": "33/33", "C": "36/60"}
+    assert order(rows) == "ACB"
+    assert steps(rows, "A") == [
+        ("ABC", "match_points", "3"),
+        ("ABC", "games", "1/1"),
+        ("ABC", "points", "19/18"),
+    ]
+    assert steps(rows, "C")[-1] == ("ABC", "points", "20/19")
+    assert steps(rows, "B")[-1] == ("ABC", "points", "16/18")
+    assert round(19 / 18, 1) == round(20 / 19, 1)
+
     close = [
         beat("A", "B", games=[(10, 9)]),
         beat("B", "C", games=[(11, 10)]),
@@ -179,13 +187,19 @@ def test_ratios_are_compared_exactly_never_rounded():
     ]
     # A: 109/109, B: 20/20, C: 110/110 are all exactly 1, so only the lot can separate them.
     assert steps(rank(["A", "B", "C"], close), "A")[-1][1] == "lot"
-    tally_a, tally_b = standings._Tally(), standings._Tally()
-    tally_a.for_["points"], tally_a.against["points"] = 10, 9
-    tally_b.for_["points"], tally_b.against["points"] = 11, 10
-    assert tally_a.key("points") > tally_b.key("points")
-    unbeaten = standings._Tally()
+    unbeaten, beaten = standings._Tally(), standings._Tally()
     unbeaten.for_["games"] = 3
-    assert unbeaten.key("games") > tally_a.key("points")  # nothing lost beats any ratio
+    beaten.for_["games"], beaten.against["games"] = 30, 1
+    assert unbeaten.key("games") > beaten.key("games")  # nothing lost beats any ratio
+
+
+def test_nothing_is_explained_where_nothing_has_been_separated():
+    fresh = rank(MEMBERS, [], final=False)
+    assert all(row.level and row.steps == [] for row in fresh)
+    # Two played, two not: the pair that played is separated and explained, the others just level.
+    early = rank(MEMBERS, [beat("A", "B")], final=False)
+    assert order(early) == "ABCD" and [row.level for row in early] == [False, False, True, True]
+    assert all(row.steps == [] for row in early)
 
 
 def test_a_team_event_looks_at_individual_matches_before_games():
@@ -334,3 +348,42 @@ def test_standings_follow_the_tournaments_visibility(staff, club, cup):
     path = url(draft, event=draft["events"][0]) + "standings/"
     assert logged_in(player("Viewer")).get(path).status_code == 404
     assert staff.get(path).status_code == 200
+
+
+def test_a_result_must_fit_how_the_match_ended_and_the_lot_follows_the_scores(staff, cup):
+    league = cup["events"][1]
+    published(staff, cup, league, 3)
+    first, second, third = Match.objects.filter(draw__event_id=league["id"]).order_by("round")
+    for games, outcome in (
+        ((), "played"),
+        ([(11, 5)] * 2, "played"),
+        ([(11, 5)], "walkover"),
+        ([(11, 5)] * 3, "retired"),
+    ):
+        with pytest.raises(Exception, match="don't fit"):
+            drawing.record_result(first, first.entry_a, games=games, outcome=outcome)
+    drawing.record_result(first, first.entry_a, outcome="walkover")
+    drawing.record_result(second, second.entry_b, games=[(11, 9), (4, 11), (2, 5)], outcome="retired")
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert (first.outcome, first.games) == ("walkover", [])
+    assert (second.outcome, second.games) == ("retired", [[11, 9], [4, 11], [2, 5]])
+
+    # The lot's number depends on the scores, so it can't be known when the draw is made.
+    draw = first.draw
+    seeds = set()
+    original = standings.rank
+
+    def spy(*args, **kwargs):
+        seeds.add(kwargs["lot_seed"])
+        return original(*args, **kwargs)
+
+    standings.rank = spy
+    try:
+        drawing.group_table(draw, 1)
+        drawing.group_table(draw, 1)
+        drawing.record_result(third, third.entry_a, games=[(11, 5)] * 3)
+        drawing.group_table(draw, 1)
+    finally:
+        standings.rank = original
+    assert len(seeds) == 2 and draw.rng_seed + 1 not in seeds

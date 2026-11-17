@@ -88,13 +88,13 @@ class _Tally:
         self.for_ = {"rubbers": 0, "games": 0, "points": 0}
         self.against = {"rubbers": 0, "games": 0, "points": 0}
 
-    def add(self, result: Result, winner: bool, forfeited: bool) -> None:
+    def add(self, result: Result, winner: bool) -> None:
         self.played += 1
         self.won += winner
         self.lost += not winner
         if winner:
             self.match_points += 2
-        elif result.outcome == PLAYED and not forfeited:
+        elif result.outcome == PLAYED:
             self.match_points += 1
         games = credited_games(result)
         mine = (
@@ -143,8 +143,8 @@ def _tallies(members, results: list[Result], forfeited: set[str]) -> dict[str, _
             if winner in forfeited:
                 winner, loser = loser, winner
             result = Result(winner, loser, WALKOVER, best_of=result.best_of)
-        tallies[winner].add(result, winner=True, forfeited=False)
-        tallies[loser].add(result, winner=False, forfeited=loser in forfeited)
+        tallies[winner].add(result, winner=True)
+        tallies[loser].add(result, winner=False)
     return tallies
 
 
@@ -175,21 +175,31 @@ def rank(
     measures = [m for m in MEASURES if team or m != "rubbers"]
     rng = random.Random(lot_seed)
 
-    def separate(level: list[str], first_measure: int) -> list[list[str]]:
-        """`level` split into classes, best first; a class of several is still level."""
+    def separate(level: list[str]) -> list[list[str]]:
+        """`level` split into classes, best first; a class of several is still level. The comparisons
+        are written to the rows only when they lead somewhere: a split here, or the lot at the end."""
         if len(level) == 1:
             return [level]
         tallies = _tallies(level, results, forfeited)
-        for measure in measures[first_measure:]:
-            for member in level:
-                rows[member].steps.append(Step(tuple(level), measure, tallies[member].shown(measure)))
+        tried: list[str] = []
+        for measure in measures:
+            tried.append(measure)
             classes: dict = {}
             for member in level:
                 classes.setdefault(tallies[member].key(measure), []).append(member)
             if len(classes) > 1:
+                note(level, tallies, tried)
                 # Whoever is still level starts again on the matches among themselves (3.7.5.3).
-                return [part for key in sorted(classes, reverse=True) for part in separate(classes[key], 0)]
+                return [part for key in sorted(classes, reverse=True) for part in separate(classes[key])]
+        if final:
+            note(level, tallies, tried)
         return [level]
+
+    def note(level: list[str], tallies: dict[str, _Tally], tried: list[str]) -> None:
+        for member in level:
+            rows[member].steps += [
+                Step(tuple(level), measure, tallies[member].shown(measure)) for measure in tried
+            ]
 
     # First by match points over the whole group (3.7.5.1); then each level set on its own matches.
     by_points: dict[int, list[str]] = {}
@@ -197,7 +207,7 @@ def rank(
         by_points.setdefault(overall[member].match_points, []).append(member)
     order: list[str] = []
     for points in sorted(by_points, reverse=True):
-        for level in separate(by_points[points], 0):
+        for level in separate(by_points[points]):
             if len(level) > 1 and final:
                 for member in level:
                     rows[member].steps.append(Step(tuple(level), "lot", ""))

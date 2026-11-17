@@ -1,9 +1,11 @@
 import { CircleCheck } from "lucide-react"
 import type { Schemas } from "@/lib/schema"
 
-export type Standings = Schemas["Standings"]
+type Standings = Schemas["Standings"]
 type Group = Schemas["GroupStanding"]
 type Row = Schemas["StandingRow"]
+
+const LIST = new Intl.ListFormat("en", { type: "conjunction" })
 
 const MEASURE: Record<Row["tie_break"][number]["measure"], string> = {
   match_points: "match points",
@@ -22,7 +24,7 @@ function explain(row: Row, names: Map<string, string>) {
     if (key !== among) {
       among = key
       const others = step.among.filter((id) => id !== row.entry.id).map((id) => names.get(id) ?? "another entry")
-      sets.push({ others: others.join(" and "), found: [] })
+      sets.push({ others: LIST.format(others), found: [] })
     }
     sets[sets.length - 1].found.push(step.measure === "lot" ? MEASURE.lot : `${MEASURE[step.measure]} ${step.value}`)
   }
@@ -39,7 +41,7 @@ function GroupTable({ group, single }: { group: Group; single: boolean }) {
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-left tabular-nums">
           <caption className="sr-only">
-            {name}: rank, entry, played, won, lost, match points, games and points
+            {name}: rank, entry, played, won, lost, games won and lost, and match points
           </caption>
           <thead className="text-sm text-muted-foreground">
             <tr>
@@ -113,7 +115,7 @@ export function StandingsView({ standings }: { standings: Standings }) {
       {standings.groups.length > 0 && (
         <p className="text-sm text-muted-foreground">
           A win is 2 match points, a loss 1, a loss in a match not played or not finished 0. Entries level on match points are separated by the matches between
-          them: match points, then games, then points won and lost, then by lot (rules {standings.rules_version}).
+          them: match points, then (for teams) individual matches, games and points won and lost, then by lot (rules {standings.rules_version}).
         </p>
       )}
     </div>
