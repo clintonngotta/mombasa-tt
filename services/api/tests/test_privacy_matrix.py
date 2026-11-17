@@ -130,6 +130,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
     "tournament-event-draw": {"get": SIGNED_IN},
     "tournament-event-standings": {"get": SIGNED_IN},
+    "tournament-event-match": {"get": SIGNED_IN},  # of the published draw only
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
@@ -325,6 +326,7 @@ class World:
         self.entered.event.save()
         self.preview = drawing.make_preview(self.entered.event, self.amina, [], rng_seed=424242)
         DrawVersion.objects.filter(pk=self.preview.pk).update(version=987654321)
+        self.preview_match_id = self.preview.matches.first().id
 
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
@@ -385,6 +387,7 @@ class World:
             "tournament-event-entry-check-in": self.faith_entry.id,
             "tournament-event-entry-undo-check-in": self.faith_entry.id,
             "tournament-event-entry-withdraw": self.baraka_entry.id,
+            "tournament-event-match": self.preview_match_id,
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
         }

@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from facilities.models import Venue
+from facilities.models import Table, Venue
 from organizations.models import Organization
 
 MAX_EVENTS = 30
@@ -350,6 +350,10 @@ class Match(models.Model):
     # How a completed match ended, and the points of each game as [a, b] pairs in playing order.
     outcome = models.CharField(max_length=10, choices=Outcome.choices, blank=True)
     games = models.JSONField(default=list, blank=True)
+    # Where and when it is expected to be played; both empty until the organizers schedule it. The time
+    # is an estimate, never a promise (REQ-014).
+    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    scheduled_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["stage", "group", "round", "position"]

@@ -1,0 +1,152 @@
+import { useParams } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { BackLink } from "@/components/layout/BackLink"
+import { FormAlert } from "@/components/forms/Field"
+import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
+import { ApiError, errorMessage } from "@/lib/api"
+import { formatInstant } from "@/lib/dates"
+import { drawKeys, gameWinner, gamesWon, getMatch, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
+import { eventTabPath, firstTab, getTournament, tournamentKeys } from "@/lib/tournaments"
+import { cn } from "@/lib/utils"
+
+/**
+ * One match of a published draw (REQ-010): the two sides left and right, the games, and where and when
+ * it is played. It is a page for reading: scoring belongs to the assigned umpire's deck, never here.
+ */
+export function MatchPage() {
+  const { id = "", eventId = "", matchId = "" } = useParams()
+  const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
+  const match = useQuery({ queryKey: drawKeys.match(matchId), queryFn: () => getMatch(id, eventId, matchId), enabled: tournament.isSuccess })
+  const t = tournament.data
+  const event = t?.events.find((candidate) => candidate.id === eventId)
+  const failed = tournament.error ?? match.error
+  const missing = (failed instanceof ApiError && failed.status === 404) || (!!t && !event)
+  const m = match.data
+
+  return (
+    <div className="flex max-w-[720px] flex-col gap-6">
+      <BackLink to={event ? eventTabPath(id, eventId, m?.stage === "knockout" ? "brackets" : m ? "groups" : firstTab(event.format)) : `/tournaments/${id}`}>
+        {event?.name ?? "Tournament"}
+      </BackLink>
+      {(tournament.isPending || (match.isPending && !failed)) && <p className="text-muted-foreground">Loading match…</p>}
+      {missing && <FormAlert>This match doesn't exist. The draw may have been published again since you opened it.</FormAlert>}
+      {failed && !missing && <FormAlert>{errorMessage(failed, "We couldn't load this match.")}</FormAlert>}
+      {t && event && m && m.b && <Details match={m} second={m.b} eventName={event.name} bestOf={event.best_of} timeZone={t.timezone} />}
+      {t && event && m && !m.b && (
+        <p className="rounded-xl border bg-card p-4">
+          {m.a.entry ? `${m.a.entry.title} has a bye in the ${m.round_name.toLowerCase()}` : `This place in the ${m.round_name.toLowerCase()} is a bye`}: nothing is played and the entry
+          goes straight through.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Name({ side, won, align }: { side: DrawSide; won: boolean; align: "left" | "right" }) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1", align === "right" && "items-end text-right")}>
+      {side.entry ? (
+        <>
+          <span className={cn("text-xl leading-6 break-words", won && "font-bold")}>{side.entry.title}</span>
+          <span className="flex flex-wrap gap-1 text-sm text-muted-foreground">
+            {side.seed && <span>Seed {side.seed}</span>}
+            {side.entry.mine && <YouBadge />}
+            {won && <span className="font-semibold text-success">Winner</span>}
+          </span>
+        </>
+      ) : (
+        <span className="text-muted-foreground italic">{side.awaiting}</span>
+      )}
+    </div>
+  )
+}
+
+function Details({ match: m, second: b, eventName, bestOf, timeZone }: { match: MatchDetail; second: DrawSide; eventName: string; bestOf: number; timeZone: string }) {
+  const won = (side: DrawSide) => sideWon(m, side)
+  const games = gamesWon(m)
+  const decided = m.status === "completed"
+  const round = [m.group_name, m.round_name].filter(Boolean).join(" · ")
+  const names = { a: m.a.entry?.title ?? "First side", b: b.entry?.title ?? "Second side" }
+  const facts: [string, string][] = [
+    ["Event", eventName],
+    ["Round", round],
+    ["Played as", `Best of ${bestOf} games`],
+    ["Table", m.table || "Not given yet"],
+    ["Expected start", m.scheduled_at ? `${formatInstant(m.scheduled_at, timeZone)} (venue time, an estimate)` : "Not scheduled yet"],
+  ]
+  if (decided && m.outcome) facts.push(["Result", OUTCOME_LABEL[m.outcome]])
+  if (!decided && m.winner_plays_in) facts.push(["The winner plays in", `the ${m.winner_plays_in.toLowerCase()}`])
+
+  return (
+    <>
+      <header className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-2xl font-bold">{round}</h1>
+          <MatchStateChip match={m} />
+        </div>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <Name side={m.a} won={won(m.a)} align="left" />
+          <p className="font-display text-[80px] leading-none font-bold tabular-nums max-sm:text-[56px]">
+            <span aria-hidden>
+              {decided ? (m.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}`) : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
+              {decided && m.outcome === "retired" && <span className="block text-center text-base font-semibold text-muted-foreground">ret.</span>}
+            </span>
+            <span className="sr-only">{spokenScore(m)}</span>
+          </p>
+          <Name side={b} won={won(b)} align="right" />
+        </div>
+      </header>
+
+      {m.games.length > 0 && (
+        <section aria-labelledby="games-heading" className="flex flex-col gap-2">
+          <h2 id="games-heading" className="text-2xl font-bold">
+            Games
+          </h2>
+          <div className="overflow-x-auto rounded-xl border bg-card">
+            <table className="w-full text-center tabular-nums">
+              <caption className="sr-only">Points in each game, {names.a} on the left and {names.b} on the right</caption>
+              <thead className="text-sm text-muted-foreground">
+                <tr>
+                  <th scope="col" className="w-1/3 px-3 py-2 text-left font-semibold break-words">{names.a}</th>
+                  <th scope="col" className="px-3 py-2 font-semibold">Game</th>
+                  <th scope="col" className="w-1/3 px-3 py-2 text-right font-semibold break-words">{names.b}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {m.games.map((game, index) => {
+                  const winner = gameWinner(game)
+                  return (
+                    <tr key={index} className="border-t">
+                      <td className={cn("px-3 py-2 text-left text-lg", winner === "a" && "font-bold")}>{game[0]}</td>
+                      <th scope="row" className="px-3 py-2 text-sm font-normal text-muted-foreground">
+                        {index + 1}
+                        {!winner && " (not finished)"}
+                      </th>
+                      <td className={cn("px-3 py-2 text-right text-lg", winner === "b" && "font-bold")}>{game[1]}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {m.outcome === "retired" && <p className="text-sm text-muted-foreground">The match was not finished. The points shown are the ones that were played.</p>}
+        </section>
+      )}
+
+      <section aria-labelledby="about-heading" className="flex flex-col gap-2">
+        <h2 id="about-heading" className="text-2xl font-bold">
+          About this match
+        </h2>
+        <dl className="flex flex-col rounded-xl border bg-card">
+          {facts.map(([label, value]) => (
+            <div key={label} className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t px-3 py-2.5 first:border-t-0">
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="font-semibold">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="text-sm text-muted-foreground">Scores are entered by the umpire assigned to the match and become official once the organizers' system accepts them.</p>
+      </section>
+    </>
+  )
+}

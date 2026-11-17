@@ -18,6 +18,8 @@ import {
   countdown,
   deleteTournament,
   eventSummary,
+  eventTabPath,
+  firstTab,
   formatFee,
   getTournament,
   getTournamentHistory,
@@ -175,8 +177,13 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-semibold">{placesTaken(event)}</p>
           <div className="flex flex-wrap gap-2">
-            <Link to={`/tournaments/${t.id}/events/${event.id}/draw`} aria-label={`Draw for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
-              Draw
+            {staff && (
+              <Link to={`/tournaments/${t.id}/events/${event.id}/draw`} aria-label={`Draw desk for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
+                Draw desk
+              </Link>
+            )}
+            <Link to={eventTabPath(t.id, event.id, firstTab(event.format))} aria-label={`Draw and results for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
+              Draw and results
             </Link>
             <Link to={`/tournaments/${t.id}/events/${event.id}/entries`} aria-label={`Entries for ${event.name}`} className={buttonVariants({ variant: entryBlock(t, event) ? "outline" : "default" })}>
               {entryBlock(t, event) ? "See entries" : "Enter or see entries"}

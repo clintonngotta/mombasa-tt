@@ -1,4 +1,4 @@
-import { byRound, roundHeading, type Draw, type DrawMatch, type DrawSide } from "@/lib/draws"
+import { byRound, roundHeading, sideWon, type Draw, type DrawMatch, type DrawSide } from "@/lib/draws"
 
 function Side({ side, won }: { side: DrawSide; won: boolean }) {
   if (!side.entry) return <span className="text-muted-foreground italic">{side.awaiting}</span>
@@ -13,7 +13,7 @@ function Side({ side, won }: { side: DrawSide; won: boolean }) {
 
 /** The two sides left and right, never one above the other (REQ-002). */
 function MatchLine({ match }: { match: DrawMatch }) {
-  const won = (side: DrawSide) => !!side.entry && match.status === "completed" && match.winner_id === side.entry.id
+  const won = (side: DrawSide) => sideWon(match, side)
   return (
     <li className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border bg-card px-3 py-2">
       <span className="min-w-0 break-words">

@@ -1417,6 +1417,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One match of the published draw: sides, games, table and time. A match of a preview or of a
+         *     superseded draw doesn't exist here.
+         */
+        get: operations["tournaments_events_matches_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/": {
         parameters: {
             query?: never;
@@ -1614,6 +1634,8 @@ export interface components {
             readonly id: string;
             readonly title: string;
             readonly players: components["schemas"]["EntryPlayer"][];
+            /** @description Whether the caller plays in it, so screens can point out their own matches. */
+            readonly mine: boolean;
         };
         DrawGroup: {
             number: number;
@@ -1925,6 +1947,44 @@ export interface components {
             outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
             /** @description Points of each game as [a, b], in playing order. */
             games: number[][];
+            /** @description The table's label; empty until one is given. */
+            table: string;
+            /**
+             * Format: date-time
+             * @description When it is expected to start: an estimate. Null until it is scheduled.
+             */
+            scheduled_at: string | null;
+        };
+        /** @description One match of the published draw on its own page. Reading it gives nobody a way to score it. */
+        MatchDetail: {
+            /** Format: uuid */
+            id: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            group: number | null;
+            round: number;
+            round_name: string;
+            position: number;
+            a: components["schemas"]["MatchSide"];
+            /** @description Null is a bye: `a` goes through without playing. */
+            b: components["schemas"]["MatchSide"] | null;
+            status: components["schemas"]["MatchStatusEnum"];
+            /** Format: uuid */
+            winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description Points of each game as [a, b], in playing order. */
+            games: number[][];
+            /** @description The table's label; empty until one is given. */
+            table: string;
+            /**
+             * Format: date-time
+             * @description When it is expected to start: an estimate. Null until it is scheduled.
+             */
+            scheduled_at: string | null;
+            /** @description Empty for a knockout match. */
+            group_name: string;
+            /** @description The round its winner goes on to; empty when nothing follows. */
+            winner_plays_in: string;
+            draw_version: number;
         };
         MatchLabels: {
             labels: string[];
@@ -5641,6 +5701,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
                 };
             };
             /** @description Error envelope */

@@ -28,6 +28,7 @@ from .serializers import (
     EventDrawSerializer,
     EventSerializer,
     LifecycleEntrySerializer,
+    MatchDetailSerializer,
     MyEntrySerializer,
     OptionalReasonSerializer,
     ReasonSerializer,
@@ -555,6 +556,15 @@ class DrawViewSet(viewsets.GenericViewSet):
             ).data
         )
 
+    def _published(self, request, tournament_pk, event_pk) -> DrawVersion | None:
+        """The event's published draw, if it has one. A draft tournament doesn't exist for anybody but
+        its staff."""
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        if tournament.status == T.DRAFT and not manages(request.user, tournament.organization):
+            raise Http404
+        event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+        return event.draws.filter(status=DrawVersion.Status.PUBLISHED).select_related("event").first()
+
     @extend_schema(responses={200: EventDrawSerializer})
     def retrieve(self, request, tournament_pk, event_pk):
         tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
@@ -568,13 +578,19 @@ class DrawViewSet(viewsets.GenericViewSet):
         """Standings of the published draw: each group ranked under ITTF 3.7.5 with the comparisons
         that separated level members, and the knockout placements decided so far. Empty until a draw is
         published."""
-        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
-        if tournament.status == T.DRAFT and not manages(request.user, tournament.organization):
-            raise Http404
-        event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
-        draw = event.draws.filter(status=DrawVersion.Status.PUBLISHED).select_related("event").first()
+        draw = self._published(request, tournament_pk, event_pk)
         shown = drawing.standings_of(draw) if draw else {"rules_version": "", "groups": [], "placements": []}
         return Response(StandingsSerializer(shown, context={"request": request}).data)
+
+    @extend_schema(responses={200: MatchDetailSerializer})
+    def match(self, request, tournament_pk, event_pk, pk):
+        """One match of the published draw: sides, games, table and time. A match of a preview or of a
+        superseded draw doesn't exist here."""
+        draw = self._published(request, tournament_pk, event_pk)
+        shown = drawing.describe_match(draw, pk) if draw else None
+        if shown is None:
+            raise Http404
+        return Response(MatchDetailSerializer(shown, context={"request": request}).data)
 
     @extend_schema(request=DrawRequestSerializer, responses={200: EventDrawSerializer})
     def preview(self, request, tournament_pk, event_pk):

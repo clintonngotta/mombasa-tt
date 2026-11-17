@@ -268,7 +268,26 @@ def describe(draw: DrawVersion) -> dict:
     places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
     entries = {place.entry_id: place.entry for place in places}
     seeds = {place.entry_id: place.seed for place in places}
-    matches = list(draw.matches.all())
+    matches = list(draw.matches.select_related("table"))
+    shown = _match_describer(matches, entries, seeds)
+    numbers = sorted({place.group for place in places if place.group})
+    return {
+        "id": draw.id,
+        "version": draw.version,
+        "status": draw.status,
+        "rules_version": draw.rules_version,
+        "rng_seed": draw.rng_seed,
+        "stale": is_stale(draw, places),
+        "created_at": draw.created_at,
+        "published_at": draw.published_at,
+        "groups": [{"number": number, "name": group_name(number)} for number in numbers],
+        "places": places,
+        "matches": [shown(match) for match in matches],
+    }
+
+
+def _match_describer(matches: list[Match], entries: dict, seeds: dict):
+    """A function turning one of `matches` (all those of a draw) into what MatchSerializer shows."""
     by_id = {match.id: match for match in matches}
     rounds = max((match.round for match in matches if match.stage == Match.Stage.KNOCKOUT), default=0)
 
@@ -302,21 +321,33 @@ def describe(draw: DrawVersion) -> dict:
             "winner_id": match.winner_id,
             "outcome": match.outcome,
             "games": match.games,
+            "table": match.table.label if match.table else "",
+            "scheduled_at": match.scheduled_at,
         }
 
-    numbers = sorted({place.group for place in places if place.group})
+    return shown
+
+
+def describe_match(draw: DrawVersion, match_id) -> dict | None:
+    """One match of the draw as MatchDetailSerializer shows it, or None when it isn't in this draw."""
+    places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
+    matches = list(draw.matches.select_related("table"))
+    match = next((found for found in matches if found.id == match_id), None)
+    if match is None:
+        return None
+    shown = _match_describer(
+        matches,
+        {place.entry_id: place.entry for place in places},
+        {place.entry_id: place.seed for place in places},
+    )
+    # A winner of this match plays on in the match it feeds; the final feeds nothing.
+    onward = next((m for m in matches if match.id in (m.feeder_a_id, m.feeder_b_id)), None)
+    multiple = len({place.group for place in places if place.group}) > 1
     return {
-        "id": draw.id,
-        "version": draw.version,
-        "status": draw.status,
-        "rules_version": draw.rules_version,
-        "rng_seed": draw.rng_seed,
-        "stale": is_stale(draw, places),
-        "created_at": draw.created_at,
-        "published_at": draw.published_at,
-        "groups": [{"number": number, "name": group_name(number)} for number in numbers],
-        "places": places,
-        "matches": [shown(match) for match in matches],
+        **shown(match),
+        "group_name": group_name(match.group) if match.group and multiple else "",
+        "winner_plays_in": shown(onward)["round_name"] if onward else "",
+        "draw_version": draw.version,
     }
 
 

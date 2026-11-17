@@ -41,6 +41,12 @@ export function formatInstant(iso: string, timeZone: string) {
   }).format(new Date(iso))
 }
 
+/** The calendar day ("YYYY-MM-DD") an instant falls on in `timeZone`. */
+export const dayOf = (iso: string, timeZone: string) => todayIn(timeZone, new Date(iso))
+
+/** "Saturday 5 December" for a calendar day. */
+export const formatDay = (isoDate: string) => dayFormat({ weekday: "long", day: "numeric", month: "long" }).format(day(isoDate))
+
 function wallClock(instant: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
