@@ -110,7 +110,7 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
 
   return (
     <li className={ROW}>
-      <span className="flex min-w-0 flex-1 flex-col">
+      <span className="flex min-w-0 flex-1 basis-full flex-col sm:basis-0">
         <span className="truncate font-semibold">
           {name}
           {isSelf && <span className="font-normal text-muted-foreground"> (you)</span>}
