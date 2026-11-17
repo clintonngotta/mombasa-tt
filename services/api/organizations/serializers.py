@@ -159,9 +159,13 @@ class MemberFieldSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         kind = attrs.get("kind") or self.instance.kind
         if "options" in attrs or not self.instance:
-            # Options differing only by case would be indistinguishable to members.
-            unique = {option.lower(): option for option in reversed(attrs.get("options", []))}
-            options = [option for option in attrs.get("options", []) if unique.get(option.lower()) is option]
+            # Options differing only by case would be indistinguishable to members; the first one wins.
+            seen: set[str] = set()
+            options = []
+            for option in attrs.get("options", []):
+                if option.lower() not in seen:
+                    seen.add(option.lower())
+                    options.append(option)
             if kind == MemberField.Kind.CHOICE and len(options) < 2:
                 raise serializers.ValidationError({"options": "Add at least two options."})
             if kind != MemberField.Kind.CHOICE and options:

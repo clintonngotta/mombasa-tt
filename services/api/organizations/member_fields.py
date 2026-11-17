@@ -49,7 +49,10 @@ def clean_value(field: MemberField, raw):
             raise ValueError(f"Keep this under {MAX_TEXT_LENGTH} characters.")
         return raw
     if kind == MemberField.Kind.NUMBER:
-        if isinstance(raw, bool) or not isinstance(raw, int | float) or not math.isfinite(raw):
+        if isinstance(raw, bool) or not isinstance(raw, int | float):
+            raise ValueError("Enter a number.")
+        # Integers first: math.isfinite overflows on one too big for a float.
+        if isinstance(raw, float) and not math.isfinite(raw):
             raise ValueError("Enter a number.")
         if abs(raw) > MAX_NUMBER:
             raise ValueError("That number is too large.")

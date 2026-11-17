@@ -175,7 +175,8 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
         </form>
       )}
 
-      {showDetails && <MemberDetails orgId={orgId} member={member} name={name} onClose={() => setShowDetails(false)} />}
+      {/* Checked on every render: cached values must go as soon as the permission does. */}
+      {showDetails && can(membership, "members.manage") && <MemberDetails orgId={orgId} member={member} name={name} onClose={() => setShowDetails(false)} />}
 
       {confirmRemove && (
         <div className="flex w-full flex-wrap items-center gap-2">
@@ -212,7 +213,7 @@ function MemberDetails({ orgId, member, name, onClose }: { orgId: string; member
           </Link>
         </p>
       )}
-      {details.isSuccess && details.data.length > 0 ? (
+      {details.isSuccess && !accessLost && details.data.length > 0 ? (
         <MemberFieldValuesForm
           entries={details.data}
           markStaffOnly

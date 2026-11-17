@@ -66,7 +66,6 @@ export const clubKeys = {
   memberFields: (orgId: string) => ["clubs", orgId, "member-fields"] as const,
   /** Staff view of one member's custom field values. */
   memberValues: (orgId: string, membershipId: string) => ["clubs", orgId, "member-values", membershipId] as const,
-  memberValuesAll: (orgId: string) => ["clubs", orgId, "member-values"] as const,
   /** The player's own member-visible values. */
   myFieldValues: (membershipId: string) => ["clubs", "my-fields", membershipId] as const,
 }

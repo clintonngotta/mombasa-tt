@@ -19,7 +19,12 @@ function fromDraft(entry: MemberFieldEntry, text: string): FieldValue {
   const trimmed = text.trim()
   if (trimmed === "") return null
   if (entry.field.kind === "boolean") return trimmed === "yes"
-  if (entry.field.kind === "number") return Number(trimmed)
+  if (entry.field.kind === "number") {
+    // JSON can't carry Infinity or NaN (they become null, which would clear the answer), so send the
+    // text and let the server explain.
+    const number = Number(trimmed)
+    return Number.isFinite(number) ? number : trimmed
+  }
   return trimmed
 }
 

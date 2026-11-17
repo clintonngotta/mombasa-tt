@@ -4,7 +4,9 @@ import pytest
 
 from organizations.member_fields import MAX_ACTIVE_FIELDS
 from organizations.models import MemberField, MemberFieldValue
+from profiles.models import profile_for
 
+from .conftest import BrowserClient
 from .helpers import logged_in, make_user
 from .test_roles import ORGS, add_member, code, create_club
 
@@ -73,7 +75,7 @@ def test_staff_define_every_kind_of_field(staff, club):
     make_field(staff, club, "Locker", "number")
     make_field(staff, club, "Joined federation", "date")
     make_field(staff, club, "Has own bat", "boolean", visibility="member")
-    make_field(staff, club, "Shirt size", "choice", options=["S", " M ", "m", "L"], required=True)
+    make_field(staff, club, "Shirt size", "choice", options=["S", "S", " M ", "m", "L"], required=True)
 
     listed = {f["label"]: f for f in staff.get(fields_url(club)).json()}
     assert [f["kind"] for f in listed.values()] == ["text", "number", "date", "boolean", "choice"]
@@ -147,6 +149,32 @@ def test_staff_only_values_never_reach_the_member(club, staff, member, shirt, no
         }
     assert MemberFieldValue.objects.get(field_id=notes["id"]).value == SECRET
 
+    # No listing of members, organizations or players carries field values, signed in or not.
+    profile = profile_for(member.user)
+    profile.directory_opt_in = True
+    profile.save()
+    public = [
+        f"{ORGS}?search=Coast",
+        f"{ORGS}{club.id}/",
+        f"{ORGS}{club.id}/members/",
+        f"{ORGS}{club.id}/roles/",
+        "/api/v1/players/?search=Juma",
+        f"/api/v1/players/{member.user.id}/",
+    ]
+    for url in public:
+        for client in (staff, plain):
+            assert SECRET not in client.get(url).text, url
+    anonymous = BrowserClient()
+    for url in (*public, my_values_url(member), member_values_url(club, member), fields_url(club)):
+        assert anonymous.get(url).status_code in (401, 403), url
+
+    # Template roles: Captain manages members and so sees the values; Committee doesn't.
+    captain = logged_in(add_member(club, make_user("captain@example.com"), "captain").user)
+    committee = logged_in(add_member(club, make_user("treasurer@example.com"), "committee").user)
+    assert values(captain.get(member_values_url(club, member)))["Committee notes"] == SECRET
+    assert committee.get(member_values_url(club, member)).status_code == 403
+    assert [f["label"] for f in committee.get(fields_url(club)).json()] == ["Shirt size"]
+
     # The staff view of a member is for members.manage only.
     assert plain.get(member_values_url(club, member)).status_code == 403
     roles_only = club.roles.create(name="Role keeper", permissions=["roles.manage"])
@@ -192,7 +220,12 @@ def test_values_are_checked_against_the_field_type(club, staff, member):
         return response.status_code == 400 and set(response.json()["fields"]) == {field["id"]}
 
     assert rejected(text, 12) and rejected(text, "x" * 501) and rejected(text, ["a"])
-    assert rejected(number, "12") and rejected(number, True) and rejected(number, 10**13)
+    assert (
+        rejected(number, "12")
+        and rejected(number, True)
+        and rejected(number, 10**13)
+        and rejected(number, 10**400)
+    )
     assert rejected(day, "31/12/2026") and rejected(day, "2026-02-30") and rejected(day, 20261231)
     assert rejected(flag, "yes") and rejected(flag, 1)
     assert rejected(flag, None)  # required: can't be cleared

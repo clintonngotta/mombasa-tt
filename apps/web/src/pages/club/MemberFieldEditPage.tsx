@@ -36,7 +36,8 @@ export function MemberFieldEditPage() {
   const orgId = active?.organization.id ?? ""
   const allowed = can(active, "members.manage")
   const fields = useQuery({ queryKey: clubKeys.memberFields(orgId), queryFn: () => listMemberFields(orgId), enabled: allowed && !!id })
-  const field = id ? fields.data?.find((f) => f.id === id && !f.retired_at) : undefined
+  // Cached definitions outlive a role change; without the permission, show none of them.
+  const field = id && allowed ? fields.data?.find((f) => f.id === id && !f.retired_at) : undefined
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">
@@ -44,7 +45,7 @@ export function MemberFieldEditPage() {
       <h1 className="text-[32px] leading-9 font-bold">{id ? (field?.label ?? "Member field") : "New member field"}</h1>
       {memberships.isSuccess && !allowed && <AccessLost />}
       {fields.isError && <FormAlert>{errorMessage(fields.error, "We couldn't load this field.")}</FormAlert>}
-      {id && fields.isSuccess && !field && <FormAlert>This field is retired or no longer exists.</FormAlert>}
+      {id && allowed && fields.isSuccess && !field && <FormAlert>This field is retired or no longer exists.</FormAlert>}
       {active && allowed && (!id || field) && <FieldForm key={field?.id ?? "new"} orgId={orgId} field={field} />}
     </div>
   )
@@ -58,7 +59,8 @@ function FieldForm({ orgId, field }: { orgId: string; field?: MemberField }) {
   const [kind, setKind] = useState<MemberFieldKind | "">(field?.kind ?? "")
   const [options, setOptions] = useState(field?.options.join("\n") ?? "")
   const [required, setRequired] = useState(field?.required ?? false)
-  const [visibility, setVisibility] = useState<MemberField["visibility"]>(field?.visibility ?? "member")
+  // New fields start staff-only, like the API: nothing is shown to members until someone chooses to.
+  const [visibility, setVisibility] = useState<MemberField["visibility"]>(field?.visibility ?? "staff")
   const [confirmRetire, setConfirmRetire] = useState(false)
 
   const done = async () => {
@@ -130,6 +132,11 @@ function FieldForm({ orgId, field }: { orgId: string; field?: MemberField }) {
         </div>
       )}
       <ChoiceGroup legend="Who sees it" options={VISIBILITY_OPTIONS} value={visibility} onChange={setVisibility} error={errors.visibility} />
+      {field?.visibility === "staff" && visibility === "member" && (
+        <p role="status" className="text-sm font-semibold text-warning">
+          Each member will see the answer staff already recorded for them under this field.
+        </p>
+      )}
       <Toggle
         checked={required}
         onChange={setRequired}

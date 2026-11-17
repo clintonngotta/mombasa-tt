@@ -123,7 +123,7 @@ changes can't remove the last admin; deactivated accounts don't count as admins 
 Custom member fields (REQ-005, `organizations/member_fields.py`): definitions belong to an organization, values to a
 membership. A member-visible field is shown to, and filled in by, the member it describes and by staff; a staff-only
 field and its values exist only for holders of `members.manage`. Other members never see anyone's values. Both
-audiences read and write through `visible_fields`, so there is one place that decides what a viewer gets. Values are
+audiences read and write values through `visible_fields`, so there is one place that decides what a viewer gets. Values are
 checked against the field type; a required field can't be saved blank. Fields are retired, never deleted, and values
 stay in the database when a field is retired or a member leaves.
 

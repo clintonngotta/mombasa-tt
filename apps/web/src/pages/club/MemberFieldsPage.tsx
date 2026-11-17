@@ -27,8 +27,10 @@ export function MemberFieldsPage() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.all }),
   })
   const accessLost = useAdminAccessLost(fields.error, restore.error)
-  const current = fields.data?.filter((field) => !field.retired_at) ?? []
-  const retired = fields.data?.filter((field) => field.retired_at) ?? []
+  // Cached definitions outlive a role change; once access is gone, show none of them.
+  const visible = allowed && !accessLost ? (fields.data ?? []) : []
+  const current = visible.filter((field) => !field.retired_at)
+  const retired = visible.filter((field) => field.retired_at)
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
@@ -51,7 +53,7 @@ export function MemberFieldsPage() {
         Extra details your club keeps about each member, such as a membership number or shirt size. Members see and fill in
         their own answers unless a field is staff only. Staff-only fields are seen by people who manage members.
       </p>
-      {fields.isSuccess && current.length === 0 && <p className="text-muted-foreground">No member fields yet.</p>}
+      {allowed && !accessLost && fields.isSuccess && current.length === 0 && <p className="text-muted-foreground">No member fields yet.</p>}
       <ul className="flex flex-col gap-2">
         {current.map((field) => (
           <li key={field.id}>
