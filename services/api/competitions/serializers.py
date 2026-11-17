@@ -310,11 +310,17 @@ class DrawEntrySerializer(serializers.ModelSerializer):
 
     title = serializers.SerializerMethodField()
     players = EntryPlayerSerializer(many=True, read_only=True)
+    mine = serializers.SerializerMethodField()
 
     class Meta:
         model = Entry
-        fields = ["id", "title", "players"]
+        fields = ["id", "title", "players", "mine"]
         read_only_fields = fields
+
+    def get_mine(self, entry) -> bool:
+        """Whether the caller plays in it, so screens can point out their own matches."""
+        user = self.context["request"].user
+        return any(place.user_id == user.id for place in entry.players.all())
 
     def get_title(self, entry) -> str:
         return entry.team_name or " / ".join(place.user.display_name for place in entry.players.all())
@@ -353,6 +359,20 @@ class MatchSerializer(serializers.Serializer):
         child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2),
         help_text="Points of each game as [a, b], in playing order.",
     )
+    table = serializers.CharField(allow_blank=True, help_text="The table's label; empty until one is given.")
+    scheduled_at = serializers.DateTimeField(
+        allow_null=True, help_text="When it is expected to start: an estimate. Null until it is scheduled."
+    )
+
+
+class MatchDetailSerializer(MatchSerializer):
+    """One match of the published draw on its own page. Reading it gives nobody a way to score it."""
+
+    group_name = serializers.CharField(allow_blank=True, help_text="Empty for a knockout match.")
+    winner_plays_in = serializers.CharField(
+        allow_blank=True, help_text="The round its winner goes on to; empty when nothing follows."
+    )
+    draw_version = serializers.IntegerField()
 
 
 class DrawGroupSerializer(serializers.Serializer):

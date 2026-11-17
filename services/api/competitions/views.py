@@ -28,6 +28,7 @@ from .serializers import (
     EventDrawSerializer,
     EventSerializer,
     LifecycleEntrySerializer,
+    MatchDetailSerializer,
     MyEntrySerializer,
     OptionalReasonSerializer,
     ReasonSerializer,
@@ -575,6 +576,20 @@ class DrawViewSet(viewsets.GenericViewSet):
         draw = event.draws.filter(status=DrawVersion.Status.PUBLISHED).select_related("event").first()
         shown = drawing.standings_of(draw) if draw else {"rules_version": "", "groups": [], "placements": []}
         return Response(StandingsSerializer(shown, context={"request": request}).data)
+
+    @extend_schema(responses={200: MatchDetailSerializer})
+    def match(self, request, tournament_pk, event_pk, pk):
+        """One match of the published draw: sides, games, table and time. A match of a preview or of a
+        superseded draw doesn't exist here."""
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        if tournament.status == T.DRAFT and not manages(request.user, tournament.organization):
+            raise Http404
+        event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+        draw = event.draws.filter(status=DrawVersion.Status.PUBLISHED).first()
+        shown = drawing.describe_match(draw, pk) if draw else None
+        if shown is None:
+            raise Http404
+        return Response(MatchDetailSerializer(shown, context={"request": request}).data)
 
     @extend_schema(request=DrawRequestSerializer, responses={200: EventDrawSerializer})
     def preview(self, request, tournament_pk, event_pk):

@@ -51,6 +51,14 @@ export const deleteEvent = (id: string, eventId: string) => api<Tournament>(even
 export const moveEvent = (id: string, eventId: string, action: EventAction) => api<Tournament>(`${event(id, eventId)}${action}/`, { body: {} })
 export const cancelEvent = (id: string, eventId: string, reason: string) => api<Tournament>(`${event(id, eventId)}cancel/`, { body: { reason } })
 
+/** The four views every event has (REQ-010). */
+export type EventTab = "brackets" | "groups" | "schedule" | "standings"
+
+/** The tab an event opens on: the one that shows its first stage. */
+export const firstTab = (format: EventFormat): EventTab => (format === "knockout" ? "brackets" : "groups")
+
+export const eventTabPath = (tournamentId: string, eventId: string, tab: EventTab) => `/tournaments/${tournamentId}/events/${eventId}/${tab}`
+
 export const STATUS_LABEL: Record<TournamentStatus, string> = {
   draft: "Draft",
   published: "Published",

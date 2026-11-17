@@ -3076,6 +3076,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/:
+    get:
+      operationId: tournaments_events_matches_retrieve
+      description: |-
+        One match of the published draw: sides, games, table and time. A match of a preview or of a
+        superseded draw doesn't exist here.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/:
     get:
       operationId: tournaments_events_standings_retrieve
@@ -3485,8 +3527,14 @@ components:
           items:
             $ref: '#/components/schemas/EntryPlayer'
           readOnly: true
+        mine:
+          type: boolean
+          description: Whether the caller plays in it, so screens can point out their
+            own matches.
+          readOnly: true
       required:
       - id
+      - mine
       - players
       - title
     DrawGroup:
@@ -4256,6 +4304,15 @@ components:
             maxItems: 2
             minItems: 2
           description: Points of each game as [a, b], in playing order.
+        table:
+          type: string
+          description: The table's label; empty until one is given.
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'When it is expected to start: an estimate. Null until it is
+            scheduled.'
       required:
       - a
       - b
@@ -4266,9 +4323,91 @@ components:
       - position
       - round
       - round_name
+      - scheduled_at
       - stage
       - status
+      - table
       - winner_id
+    MatchDetail:
+      type: object
+      description: One match of the published draw on its own page. Reading it gives
+        nobody a way to score it.
+      properties:
+        id:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+        group:
+          type: integer
+          nullable: true
+        round:
+          type: integer
+        round_name:
+          type: string
+        position:
+          type: integer
+        a:
+          $ref: '#/components/schemas/MatchSide'
+        b:
+          allOf:
+          - $ref: '#/components/schemas/MatchSide'
+          nullable: true
+          description: 'Null is a bye: `a` goes through without playing.'
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        winner_id:
+          type: string
+          format: uuid
+          nullable: true
+        outcome:
+          oneOf:
+          - $ref: '#/components/schemas/MatchOutcomeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+          description: Points of each game as [a, b], in playing order.
+        table:
+          type: string
+          description: The table's label; empty until one is given.
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'When it is expected to start: an estimate. Null until it is
+            scheduled.'
+        group_name:
+          type: string
+          description: Empty for a knockout match.
+        winner_plays_in:
+          type: string
+          description: The round its winner goes on to; empty when nothing follows.
+        draw_version:
+          type: integer
+      required:
+      - a
+      - b
+      - draw_version
+      - games
+      - group
+      - group_name
+      - id
+      - outcome
+      - position
+      - round
+      - round_name
+      - scheduled_at
+      - stage
+      - status
+      - table
+      - winner_id
+      - winner_plays_in
     MatchLabels:
       type: object
       properties:

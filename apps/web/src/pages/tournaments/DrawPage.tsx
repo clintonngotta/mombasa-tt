@@ -1,19 +1,18 @@
 import { useState } from "react"
-import { useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowDown, ArrowUp, X } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { DrawView } from "@/components/tournaments/DrawView"
-import { StandingsView } from "@/components/tournaments/StandingsView"
 import { EventStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys, getDraw, getStandings, previewDraw, publishDraw, type EventDraw } from "@/lib/draws"
+import { drawKeys, getDraw, previewDraw, publishDraw, type EventDraw } from "@/lib/draws"
 import { entryKeys, entryTitle, listEntries, type Entry } from "@/lib/entries"
-import { canManageTournament, eventSummary, getTournament, isClosed, SEEDING_LABEL, tournamentKeys, type Tournament, type TournamentEvent } from "@/lib/tournaments"
+import { canManageTournament, eventSummary, eventTabPath, firstTab, getTournament, isClosed, SEEDING_LABEL, tournamentKeys, type Tournament, type TournamentEvent } from "@/lib/tournaments"
 
 /** The draw of one event (REQ-009): the published draw for everyone, and the organizers' draw desk. */
 export function DrawPage() {
@@ -26,8 +25,6 @@ export function DrawPage() {
   const staff = !!t && canManageTournament(memberships, t)
   const missing = (tournament.error instanceof ApiError && tournament.error.status === 404) || (!!t && !event)
   const published = draw.data?.published
-  const standings = useQuery({ queryKey: drawKeys.standings(eventId), queryFn: () => getStandings(id, eventId), enabled: !!published })
-  const ranked = standings.data && (standings.data.groups.length > 0 || standings.data.placements.length > 0)
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
@@ -39,7 +36,7 @@ export function DrawPage() {
         <>
           <header className="flex flex-col gap-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <h1 className="min-w-0 text-[32px] leading-9 font-bold break-words">{event.name}: draw</h1>
+              <h1 className="min-w-0 text-[32px] leading-9 font-bold break-words">{event.name}: draw desk</h1>
               <EventStatusChip status={event.status} />
             </div>
             <p className="text-muted-foreground">{eventSummary(event)}</p>
@@ -49,25 +46,17 @@ export function DrawPage() {
           {draw.data && (
             <>
               {staff && <Desk tournament={t} event={event} draw={draw.data} />}
-              {published && standings.isPending && <p className="text-muted-foreground">Loading standings…</p>}
-              {standings.isError && <FormAlert>{errorMessage(standings.error, "We couldn't load the standings.")}</FormAlert>}
-              {published && standings.data && ranked && (
-                <section aria-labelledby="standings-heading" className="flex flex-col gap-4">
-                  <h2 id="standings-heading" className="text-2xl font-bold">
-                    Standings
-                  </h2>
-                  <StandingsView standings={standings.data} />
-                </section>
-              )}
-              <section aria-labelledby="draw-heading" className="flex flex-col gap-4">
+              <section aria-labelledby="draw-heading" className="flex flex-col gap-3">
                 <h2 id="draw-heading" className="text-2xl font-bold">
                   {published ? `Published draw (version ${published.version})` : "Draw"}
                 </h2>
                 {published ? (
                   <>
                     <p className="text-sm text-muted-foreground">Published {published.published_at && formatInstant(published.published_at, t.timezone)}.</p>
-                    {published.stale && <FormAlert>The entries have changed since this draw was published. The organizers will publish a new one.</FormAlert>}
-                    <DrawView draw={published} />
+                    {published.stale && <FormAlert>The entries have changed since this draw was published. Draw again and publish a new one.</FormAlert>}
+                    <Link to={eventTabPath(id, eventId, firstTab(event.format))} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+                      See brackets, groups, schedule and standings
+                    </Link>
                   </>
                 ) : (
                   <p className="text-muted-foreground">The draw hasn't been published yet.</p>

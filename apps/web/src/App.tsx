@@ -39,6 +39,8 @@ import { TournamentFormPage } from "@/pages/tournaments/TournamentFormPage"
 import { EventFormPage } from "@/pages/tournaments/EventFormPage"
 import { EntriesPage } from "@/pages/tournaments/EntriesPage"
 import { DrawPage } from "@/pages/tournaments/DrawPage"
+import { EventPage } from "@/pages/tournaments/EventPage"
+import { MatchPage } from "@/pages/tournaments/MatchPage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +80,11 @@ function App() {
               <Route path="/tournaments/:id/events/:eventId" element={<EventFormPage />} />
               <Route path="/tournaments/:id/events/:eventId/entries" element={<EntriesPage />} />
               <Route path="/tournaments/:id/events/:eventId/draw" element={<DrawPage />} />
+              <Route path="/tournaments/:id/events/:eventId/brackets" element={<EventPage tab="brackets" />} />
+              <Route path="/tournaments/:id/events/:eventId/groups" element={<EventPage tab="groups" />} />
+              <Route path="/tournaments/:id/events/:eventId/schedule" element={<EventPage tab="schedule" />} />
+              <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
+              <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
               <Route path="/club/tournaments" element={<HostedTournamentsPage />} />
               <Route path="/club/tournaments/new" element={<TournamentFormPage />} />
               <Route path="/club/venues" element={<VenuesPage />} />
