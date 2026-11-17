@@ -10,7 +10,19 @@ from facilities.serializers import VenueSummarySerializer
 from organizations.models import Organization
 
 from .draws import MAX_SEEDS
-from .models import MAX_TEAM_ROSTER, DrawVersion, Entry, EntryPlayer, Event, LifecycleEntry, Match, Tournament
+from .models import (
+    DEFAULT_TIE_RUBBERS,
+    MAX_TEAM_ROSTER,
+    MAX_TIE_RUBBERS,
+    DrawVersion,
+    Entry,
+    EntryPlayer,
+    Event,
+    LifecycleEntry,
+    Match,
+    Rubber,
+    Tournament,
+)
 
 BEST_OF = (3, 5, 7)
 MAX_CAPACITY = 512
@@ -37,6 +49,19 @@ class EventSerializer(serializers.ModelSerializer):
     qualifiers_per_group = serializers.IntegerField(
         min_value=1, max_value=MAX_QUALIFIERS, allow_null=True, required=False
     )
+    tie_rubbers = serializers.ListField(
+        child=serializers.ChoiceField(choices=Rubber.Kind.choices),
+        max_length=MAX_TIE_RUBBERS,
+        required=False,
+        help_text="Team events: the individual matches of a tie in playing order. Empty otherwise.",
+    )
+    tie_wins_needed = serializers.IntegerField(
+        min_value=1,
+        max_value=MAX_TIE_RUBBERS,
+        allow_null=True,
+        required=False,
+        help_text="Team events: rubbers a team must win to take the tie. Null otherwise.",
+    )
     accepted_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -55,6 +80,8 @@ class EventSerializer(serializers.ModelSerializer):
             "seeding",
             "group_count",
             "qualifiers_per_group",
+            "tie_rubbers",
+            "tie_wins_needed",
             "accepted_count",
             "status",
             "revision",
@@ -114,6 +141,26 @@ class EventSerializer(serializers.ModelSerializer):
             # Groups and qualifiers only mean something for groups followed by a knockout.
             attrs["group_count"] = None
             attrs["qualifiers_per_group"] = None
+
+        if current("kind") == Event.Kind.TEAM:
+            # A team event always has a tie format; left out, it is the usual four singles and a doubles.
+            rubbers = current("tie_rubbers") or list(DEFAULT_TIE_RUBBERS)
+            wins = attrs.get("tie_wins_needed")
+            if wins is None and "tie_rubbers" not in attrs:
+                wins = getattr(self.instance, "tie_wins_needed", None)
+            if wins is None:
+                wins = len(rubbers) // 2 + 1
+            # More than half, so exactly one team can reach it; no more than there are rubbers.
+            if not len(rubbers) / 2 < wins <= len(rubbers):
+                raise serializers.ValidationError(
+                    {
+                        "tie_wins_needed": f"With {len(rubbers)} rubbers a tie is won with "
+                        f"{len(rubbers) // 2 + 1} to {len(rubbers)} wins."
+                    }
+                )
+            attrs["tie_rubbers"], attrs["tie_wins_needed"] = rubbers, wins
+        else:
+            attrs["tie_rubbers"], attrs["tie_wins_needed"] = [], None
 
         opens, closes = current("registration_opens_at"), current("registration_closes_at")
         if opens and closes and closes <= opens:
@@ -359,9 +406,75 @@ class MatchSerializer(serializers.Serializer):
         child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2),
         help_text="Points of each game as [a, b], in playing order.",
     )
+    tie_score = serializers.ListField(
+        child=serializers.IntegerField(),
+        min_length=2,
+        max_length=2,
+        allow_null=True,
+        help_text="Team ties that have begun: rubbers won as [a, b]. Null otherwise.",
+    )
     table = serializers.CharField(allow_blank=True, help_text="The table's label; empty until one is given.")
     scheduled_at = serializers.DateTimeField(
         allow_null=True, help_text="When it is expected to start: an estimate. Null until it is scheduled."
+    )
+
+
+class LineupSideSerializer(serializers.Serializer):
+    """Where one team's lineup stands. `picks` are given to the team itself and to staff until both
+    lineups are in; after that the rubbers show who plays."""
+
+    submitted = serializers.BooleanField()
+    submitted_at = serializers.DateTimeField(allow_null=True)
+    can_submit = serializers.BooleanField(help_text="The caller may hand in or replace this lineup now.")
+    picks = serializers.ListField(
+        child=serializers.ListField(child=serializers.UUIDField()),
+        allow_null=True,
+        help_text="Player ids for each rubber of the template, in order.",
+    )
+
+
+class RubberPlayerSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    display_name = serializers.CharField()
+
+
+class RubberSerializer(serializers.Serializer):
+    """One individual match of a tie. `not_played` means the tie was decided before its turn."""
+
+    id = serializers.UUIDField()
+    position = serializers.IntegerField()
+    kind = serializers.ChoiceField(choices=Rubber.Kind.choices)
+    status = serializers.ChoiceField(choices=Rubber.Status.choices)
+    a_players = RubberPlayerSerializer(many=True)
+    b_players = RubberPlayerSerializer(many=True)
+    winner_id = serializers.UUIDField(allow_null=True, help_text="The entry (team) that won it.")
+    outcome = serializers.ChoiceField(choices=Match.Outcome.choices, allow_blank=True)
+    games = serializers.ListField(
+        child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2)
+    )
+
+
+class TieSerializer(serializers.Serializer):
+    """A team tie (REQ-011): its format, each team's lineup and, once both are in, its rubbers."""
+
+    wins_needed = serializers.IntegerField()
+    template = serializers.ListField(child=serializers.ChoiceField(choices=Rubber.Kind.choices))
+    begun = serializers.BooleanField(help_text="Both lineups are in and the rubbers exist.")
+    score = serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2)
+    a = LineupSideSerializer()
+    b = LineupSideSerializer()
+    can_reset = serializers.BooleanField(help_text="The caller may send both teams back to choose again.")
+    rubbers = RubberSerializer(many=True)
+
+
+class LineupRequestSerializer(serializers.Serializer):
+    """A team's players for each rubber of the tie, in the template's order: one id for a singles, two
+    for a doubles."""
+
+    entry_id = serializers.UUIDField()
+    picks = serializers.ListField(
+        child=serializers.ListField(child=serializers.UUIDField(), min_length=1, max_length=2),
+        max_length=MAX_TIE_RUBBERS,
     )
 
 
@@ -373,6 +486,7 @@ class MatchDetailSerializer(MatchSerializer):
         allow_blank=True, help_text="The round its winner goes on to; empty when nothing follows."
     )
     draw_version = serializers.IntegerField()
+    tie = TieSerializer(allow_null=True, help_text="Team events only.")
 
 
 class DrawGroupSerializer(serializers.Serializer):

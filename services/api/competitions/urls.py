@@ -69,6 +69,16 @@ urlpatterns = [
         name="tournament-event-match",
     ),
     path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/lineup/",
+        action(DrawViewSet, "lineup"),
+        name="tournament-event-match-lineup",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/lineup/reset/",
+        action(DrawViewSet, "lineup_reset"),
+        name="tournament-event-match-lineup-reset",
+    ),
+    path(
         "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/preview/",
         action(DrawViewSet, "preview"),
         name="tournament-event-draw-preview",

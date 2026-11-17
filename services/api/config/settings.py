@@ -189,6 +189,7 @@ SPECTACULAR_SETTINGS = {
         "TournamentStatusEnum": "competitions.models.Tournament.Status",
         "EventStatusEnum": "competitions.models.Event.Status",
         "EventKindEnum": "competitions.models.Event.Kind",
+        "SinglesOrDoublesEnum": "competitions.models.Rubber.Kind",
         "EntryStatusEnum": "competitions.models.Entry.Status",
         "DrawStatusEnum": "competitions.models.DrawVersion.Status",
         "MatchStatusEnum": "competitions.models.Match.Status",

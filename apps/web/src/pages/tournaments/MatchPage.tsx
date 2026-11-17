@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
+import { TieView } from "@/components/tournaments/TieView"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys, gameWinner, gamesWon, getMatch, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
-import { eventTabPath, firstTab, getTournament, tournamentKeys } from "@/lib/tournaments"
+import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
+import { eventTabPath, firstTab, getTournament, tieSummary, tournamentKeys, type TournamentEvent } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 
 /**
@@ -31,7 +32,7 @@ export function MatchPage() {
       {(tournament.isPending || (match.isPending && !failed)) && <p className="text-muted-foreground">Loading match…</p>}
       {missing && <FormAlert>This match doesn't exist. The draw may have been published again since you opened it.</FormAlert>}
       {failed && !missing && <FormAlert>{errorMessage(failed, "We couldn't load this match.")}</FormAlert>}
-      {t && event && m && m.b && <Details match={m} second={m.b} eventName={event.name} bestOf={event.best_of} timeZone={t.timezone} />}
+      {t && event && m && m.b && <Details match={m} second={m.b} event={event} tournamentId={id} timeZone={t.timezone} />}
       {t && event && m && !m.b && (
         <p className="rounded-xl border bg-card p-4">
           {m.a.entry ? `${m.a.entry.title} has a bye in the ${m.round_name.toLowerCase()}` : `This place in the ${m.round_name.toLowerCase()} is a bye`}: nothing is played and the entry
@@ -61,16 +62,18 @@ function Name({ side, won, align }: { side: DrawSide; won: boolean; align: "left
   )
 }
 
-function Details({ match: m, second: b, eventName, bestOf, timeZone }: { match: MatchDetail; second: DrawSide; eventName: string; bestOf: number; timeZone: string }) {
+function Details({ match: m, second: b, event, tournamentId, timeZone }: { match: MatchDetail; second: DrawSide; event: TournamentEvent; tournamentId: string; timeZone: string }) {
   const won = (side: DrawSide) => sideWon(m, side)
-  const games = gamesWon(m)
+  const games = sideScores(m)
   const decided = m.status === "completed"
+  // A tie under way already has rubbers won to show.
+  const counted = decided ? m.outcome !== "walkover" : !!m.tie_score
   const round = [m.group_name, m.round_name].filter(Boolean).join(" · ")
   const names = { a: m.a.entry?.title ?? "First side", b: b.entry?.title ?? "Second side" }
   const facts: [string, string][] = [
-    ["Event", eventName],
+    ["Event", event.name],
     ["Round", round],
-    ["Played as", `Best of ${bestOf} games`],
+    ["Played as", m.tie ? `${tieSummary(m.tie.template, m.tie.wins_needed)}; each rubber best of ${event.best_of} games` : `Best of ${event.best_of} games`],
     ["Table", m.table || "Not given yet"],
     ["Expected start", m.scheduled_at ? `${formatInstant(m.scheduled_at, timeZone)} (venue time, an estimate)` : "Not scheduled yet"],
   ]
@@ -88,7 +91,7 @@ function Details({ match: m, second: b, eventName, bestOf, timeZone }: { match: 
           <Name side={m.a} won={won(m.a)} align="left" />
           <p className="font-display text-[80px] leading-none font-bold tabular-nums max-sm:text-[56px]">
             <span aria-hidden>
-              {decided ? (m.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}`) : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
+              {counted ? `${games.a}–${games.b}` : decided ? "W/O" : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
               {decided && m.outcome === "retired" && <span className="block text-center text-base font-semibold text-muted-foreground">ret.</span>}
             </span>
             <span className="sr-only">{spokenScore(m)}</span>
@@ -96,6 +99,8 @@ function Details({ match: m, second: b, eventName, bestOf, timeZone }: { match: 
           <Name side={b} won={won(b)} align="right" />
         </div>
       </header>
+
+      {m.tie && <TieView match={m} second={b} ids={{ tournamentId, eventId: event.id, matchId: m.id }} />}
 
       {m.games.length > 0 && (
         <section aria-labelledby="games-heading" className="flex flex-col gap-2">

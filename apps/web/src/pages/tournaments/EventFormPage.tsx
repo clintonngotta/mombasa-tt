@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { Plus, X } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
@@ -22,6 +23,10 @@ import {
   type Seeding,
   type Tournament,
   type TournamentEvent,
+  type RubberKind,
+  DEFAULT_TIE_RUBBERS,
+  MAX_TIE_RUBBERS,
+  tieSummary,
   isClosed,
 } from "@/lib/tournaments"
 
@@ -91,7 +96,12 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
   const [fee, setFee] = useState(event && event.entry_fee.amount_minor > 0 ? (event.entry_fee.amount_minor / 100).toString() : "")
   const [opens, setOpens] = useState(toZonedInput(event?.registration_opens_at ?? null, t.timezone))
   const [closes, setCloses] = useState(toZonedInput(event?.registration_closes_at ?? null, t.timezone))
+  const [rubbers, setRubbers] = useState<RubberKind[]>(event?.tie_rubbers.length ? event.tie_rubbers : DEFAULT_TIE_RUBBERS)
+  const [winsNeeded, setWinsNeeded] = useState(event?.tie_wins_needed ?? 3)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const majority = Math.floor(rubbers.length / 2) + 1
+  // Changing the number of rubbers keeps the wins needed within what can decide a tie.
+  const wins = Math.min(Math.max(winsNeeded, majority), rubbers.length)
   const currency = event?.entry_fee.currency ?? "KES"
 
   const done = (fresh: Tournament) => {
@@ -117,6 +127,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
         best_of: Number(bestOf) as BestOf,
         seeding,
         ...(format === "groups_knockout" ? { group_count: whole(groups), qualifiers_per_group: whole(qualifiers) } : {}),
+        ...(kind === "team" ? { tie_rubbers: rubbers, tie_wins_needed: wins } : {}),
       }
       if (event) return updateEvent(t.id, event.id, frozen ? details : { ...details, ...structure })
       return createEvent(t.id, { ...details, ...structure })
@@ -138,7 +149,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
 
       {frozen ? (
         <p role="status" className="rounded-lg border bg-muted p-3 text-sm">
-          This event has started, so who enters, the format, best of, seeding, groups and qualifiers are fixed. You can still change the details below.
+          This event has started, so who enters, the format, best of, seeding, groups, qualifiers and the make-up of a tie are fixed. You can still change the details below.
         </p>
       ) : (
         <>
@@ -158,6 +169,46 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
                 error={errors.qualifiers_per_group}
               />
             </div>
+          )}
+          {kind === "team" && (
+            <fieldset className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+              <legend className="px-1 text-base font-semibold">A tie between two teams</legend>
+              <p className="text-sm text-muted-foreground">The individual matches (rubbers) of a tie, in the order they are played. Each team names its players before the tie begins.</p>
+              <ol className="flex flex-col gap-2">
+                {rubbers.map((rubber, index) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <span className="w-6 shrink-0 font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
+                    <select
+                      aria-label={`Rubber ${index + 1}`}
+                      value={rubber}
+                      onChange={(e) => setRubbers(rubbers.map((kept, i) => (i === index ? (e.target.value as RubberKind) : kept)))}
+                      className="h-12 min-w-0 flex-1 rounded-lg border bg-card px-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      <option value="singles">Singles</option>
+                      <option value="doubles">Doubles</option>
+                    </select>
+                    <Button type="button" variant="ghost" size="icon" aria-label={`Remove rubber ${index + 1}`} disabled={rubbers.length === 1} onClick={() => setRubbers(rubbers.filter((_, i) => i !== index))}>
+                      <X aria-hidden className="size-5" />
+                    </Button>
+                  </li>
+                ))}
+              </ol>
+              <Button type="button" variant="outline" className="self-start" disabled={rubbers.length >= MAX_TIE_RUBBERS} onClick={() => setRubbers([...rubbers, "singles"])}>
+                <Plus aria-hidden className="size-5" /> Add a rubber
+              </Button>
+              {errors.tie_rubbers && <FormAlert>{errors.tie_rubbers}</FormAlert>}
+              <Field
+                label="Wins needed to take the tie"
+                type="number"
+                inputMode="numeric"
+                min={majority}
+                max={rubbers.length}
+                value={wins.toString()}
+                onChange={(e) => setWinsNeeded(Number(e.target.value) || majority)}
+                error={errors.tie_wins_needed}
+                hint={`Between ${majority} and ${rubbers.length}. Once a team has them, the rubbers left are not played. This tie: ${tieSummary(rubbers, wins)}.`}
+              />
+            </fieldset>
           )}
           <ChoiceGroup legend="Match length" columns={3} options={BEST_OF} value={bestOf} onChange={setBestOf} error={errors.best_of} />
           <ChoiceGroup legend="Seeding" columns={3} options={SEEDINGS} value={seeding} onChange={setSeeding} error={errors.seeding} />

@@ -21,8 +21,17 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from attachments.models import Attachment
-from competitions import drawing
-from competitions.models import DrawVersion, Entry, EntryPlayer, Event, LifecycleEntry, Tournament
+from competitions import drawing, ties
+from competitions.models import (
+    DrawVersion,
+    Entry,
+    EntryPlayer,
+    Event,
+    LifecycleEntry,
+    Lineup,
+    Rubber,
+    Tournament,
+)
 from facilities.models import Table, Venue
 from matchlog.models import PersonalMatch
 from organizations.models import (
@@ -131,6 +140,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-draw": {"get": SIGNED_IN},
     "tournament-event-standings": {"get": SIGNED_IN},
     "tournament-event-match": {"get": SIGNED_IN},  # of the published draw only
+    # A team's lineup is handed in by its captain or by staff: who may, and who sees the picks, is
+    # covered in tests/test_ties.py. Sending both teams back to choose again is for staff.
+    "tournament-event-match-lineup": {"post": SIGNED_IN},
+    "tournament-event-match-lineup-reset": {"post": STAFF},
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
@@ -328,6 +341,24 @@ class World:
         DrawVersion.objects.filter(pk=self.preview.pk).update(version=987654321)
         self.preview_match_id = self.preview.matches.first().id
 
+        # A team tie whose lineups are both in, for the lineup routes.
+        self.team_cup = tournament("Team Cup", status.PUBLISHED)
+        team_event = self.team_cup.event
+        Event.objects.filter(pk=team_event.pk).update(
+            kind="team", format="round_robin", tie_rubbers=["singles"], tie_wins_needed=1
+        )
+        team_event.refresh_from_db()
+        for name in ("Tudor", "Nyali"):
+            captain = make_user(f"{name.lower()}-captain@example.com")
+            team = Entry.objects.create(
+                event=team_event, status=Entry.Status.ACCEPTED, team_name=name, captain=captain
+            )
+            EntryPlayer.objects.create(entry=team, event=team_event, user=captain)
+        drawing.make_preview(team_event, self.amina, [], rng_seed=1)
+        self.tie = drawing.publish(team_event, self.amina).matches.get()
+        for team in (self.tie.entry_a, self.tie.entry_b):
+            ties.submit_lineup(self.tie, team, self.amina, [[str(team.captain_id)]])
+
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
             (self.staff_field, "MARK-FAITH-VALUE-STAFF"),
@@ -388,6 +419,8 @@ class World:
             "tournament-event-entry-undo-check-in": self.faith_entry.id,
             "tournament-event-entry-withdraw": self.baraka_entry.id,
             "tournament-event-match": self.preview_match_id,
+            "tournament-event-match-lineup": self.tie.id,
+            "tournament-event-match-lineup-reset": self.tie.id,
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
         }
@@ -398,7 +431,10 @@ class World:
             found["pk"] = pk[name]
         if "table_pk" in names:
             found["table_pk"] = self.table.id
-        if "event_pk" in names:
+        if name.startswith("tournament-event-match-lineup"):
+            found["event_pk"] = self.team_cup.event.id
+            found["tournament_pk"] = self.team_cup.id
+        elif "event_pk" in names:
             # Entries are reached through the event they are for.
             found["event_pk"] = self.entered.event.id
             found["tournament_pk"] = self.entered.id
@@ -432,6 +468,8 @@ class World:
             "lifecycle": LifecycleEntry.objects.count(),
             "entries": sorted(Entry.objects.values_list("id", "status", "checked_in_at", "reason")),
             "entry_players": sorted(EntryPlayer.objects.values_list("entry_id", "user__email", "live")),
+            "lineups": Lineup.objects.count(),
+            "rubbers": Rubber.objects.count(),
             "draws": sorted(DrawVersion.objects.values_list("event__name", "version", "status", "rng_seed")),
         }
 

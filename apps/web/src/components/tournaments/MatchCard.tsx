@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { CalendarClock, CircleCheck, CircleDot, Hourglass, type LucideIcon } from "lucide-react"
+import { CalendarClock, CircleCheck, CircleDot, Hourglass, Radio, type LucideIcon } from "lucide-react"
 import { formatInstant } from "@/lib/dates"
 import { isMine, scoreLine, sideWon, spokenScore, type DrawMatch, type DrawSide } from "@/lib/draws"
 import { cn } from "@/lib/utils"
@@ -7,14 +7,18 @@ import { cn } from "@/lib/utils"
 type State = { label: string; icon: LucideIcon; className: string }
 
 /** Where a match stands, in words (REQ-002: never colour alone). */
-function matchState(match: Pick<DrawMatch, "status" | "a" | "b" | "scheduled_at">): State {
+type Stateful = Pick<DrawMatch, "status" | "a" | "b" | "scheduled_at" | "tie_score">
+
+function matchState(match: Stateful): State {
   if (match.status === "completed") return { label: "Finished", icon: CircleCheck, className: "text-success" }
+  // A tie whose lineups are in has begun, whether or not a rubber is decided yet.
+  if (match.tie_score) return { label: "Under way", icon: Radio, className: "text-brand-navy" }
   if (!match.a.entry || !match.b?.entry) return { label: "Waiting for players", icon: Hourglass, className: "text-muted-foreground" }
   if (match.scheduled_at) return { label: "Scheduled", icon: CalendarClock, className: "text-brand-blue" }
   return { label: "To play", icon: CircleDot, className: "text-muted-foreground" }
 }
 
-export function MatchStateChip({ match }: { match: Pick<DrawMatch, "status" | "a" | "b" | "scheduled_at"> }) {
+export function MatchStateChip({ match }: { match: Stateful }) {
   const state = matchState(match)
   const Icon = state.icon
   return (

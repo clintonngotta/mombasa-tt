@@ -18,9 +18,9 @@ from organizations.access import effective_permissions, require_permission
 from organizations.models import Organization
 from organizations.permissions import Permission
 
-from . import drawing, entries, lifecycle
+from . import drawing, entries, lifecycle, ties
 from .emails import send_entry_news
-from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Tournament
+from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
     DrawRequestSerializer,
     EntryRequestSerializer,
@@ -28,6 +28,7 @@ from .serializers import (
     EventDrawSerializer,
     EventSerializer,
     LifecycleEntrySerializer,
+    LineupRequestSerializer,
     MatchDetailSerializer,
     MyEntrySerializer,
     OptionalReasonSerializer,
@@ -563,7 +564,11 @@ class DrawViewSet(viewsets.GenericViewSet):
         if tournament.status == T.DRAFT and not manages(request.user, tournament.organization):
             raise Http404
         event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
-        return event.draws.filter(status=DrawVersion.Status.PUBLISHED).select_related("event").first()
+        return (
+            event.draws.filter(status=DrawVersion.Status.PUBLISHED)
+            .select_related("event__tournament__organization")
+            .first()
+        )
 
     @extend_schema(responses={200: EventDrawSerializer})
     def retrieve(self, request, tournament_pk, event_pk):
@@ -587,10 +592,70 @@ class DrawViewSet(viewsets.GenericViewSet):
         """One match of the published draw: sides, games, table and time. A match of a preview or of a
         superseded draw doesn't exist here."""
         draw = self._published(request, tournament_pk, event_pk)
+        return self._match_reply(request, draw, pk)
+
+    def _match_reply(self, request, draw: DrawVersion | None, pk) -> Response:
         shown = drawing.describe_match(draw, pk) if draw else None
         if shown is None:
             raise Http404
+        match = shown.pop("match")
+        staff = manages(request.user, draw.event.tournament.organization)
+        shown["tie"] = ties.describe(match, request.user, staff) if draw.event.is_team else None
         return Response(MatchDetailSerializer(shown, context={"request": request}).data)
+
+    def _tie(self, request, tournament_pk, event_pk, pk) -> tuple[Match, bool]:
+        """The tie (a match of the published draw of a team event), with the tournament locked for a
+        change, and whether the caller is competition staff. Call inside a transaction."""
+        tournament = get_object_or_404(
+            Tournament.objects.select_for_update(of=("self",)).select_related("organization"),
+            pk=tournament_pk,
+        )
+        staff = manages(request.user, tournament.organization)
+        if tournament.status == T.DRAFT and not staff:
+            raise Http404
+        match = get_object_or_404(
+            Match.objects.select_related("draw__event__tournament__organization"),
+            pk=pk,
+            draw__event_id=event_pk,
+            draw__event__tournament=tournament,
+            draw__status=DrawVersion.Status.PUBLISHED,
+        )
+        return match, staff
+
+    @extend_schema(request=LineupRequestSerializer, responses={200: MatchDetailSerializer})
+    def lineup(self, request, tournament_pk, event_pk, pk):
+        """Hand in or replace a team's lineup for a tie: by the team's captain or by competition staff,
+        until both lineups are in. The other team sees only that it has been handed in. When both are
+        in the tie begins and its rubbers are made."""
+        serializer = LineupRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            match, staff = self._tie(request, tournament_pk, event_pk, pk)
+            entry = Entry.objects.filter(
+                pk=asked["entry_id"], pk__in=[match.entry_a_id, match.entry_b_id]
+            ).first()
+            if not staff and (entry is None or entry.captain_id != request.user.id):
+                raise ApiException(
+                    "permission_denied", "Only the team's captain or the organizers hand in its lineup.", 403
+                )
+            if entry is None:
+                raise ApiException("not_in_match", "That team doesn't play in this tie.", 409)
+            picks = [[str(pk) for pk in players] for players in asked["picks"]]
+            ties.submit_lineup(match, entry, request.user, picks)
+        return self._match_reply(request, match.draw, match.id)
+
+    @extend_schema(request=None, responses={200: MatchDetailSerializer})
+    def lineup_reset(self, request, tournament_pk, event_pk, pk):
+        """Competition staff send both teams back to choose again, while no rubber has been decided."""
+        with transaction.atomic():
+            match, staff = self._tie(request, tournament_pk, event_pk, pk)
+            if not staff:
+                raise ApiException(
+                    "permission_denied", "Your role in this organization doesn't allow that.", 403
+                )
+            ties.reset_lineups(match)
+        return self._match_reply(request, match.draw, match.id)
 
     @extend_schema(request=DrawRequestSerializer, responses={200: EventDrawSerializer})
     def preview(self, request, tournament_pk, event_pk):

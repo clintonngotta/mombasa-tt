@@ -12,6 +12,19 @@ export type EventKind = Schemas["EventKindEnum"]
 export type EventFormat = Schemas["EventFormatEnum"]
 export type Seeding = Schemas["SeedingEnum"]
 export type BestOf = Schemas["BestOfEnum"]
+/** One individual match of a team tie. */
+export type RubberKind = Schemas["SinglesOrDoublesEnum"]
+
+export const MAX_TIE_RUBBERS = 9
+export const DEFAULT_TIE_RUBBERS: RubberKind[] = ["singles", "singles", "doubles", "singles", "singles"]
+
+/** "5 rubbers (4 singles, 1 doubles), first to 3". */
+export function tieSummary(rubbers: readonly RubberKind[], winsNeeded: number) {
+  const doubles = rubbers.filter((kind) => kind === "doubles").length
+  const singles = rubbers.length - doubles
+  const mix = [singles ? `${singles} singles` : "", doubles ? `${doubles} doubles` : ""].filter(Boolean).join(", ")
+  return `${rubbers.length} ${rubbers.length === 1 ? "rubber" : "rubbers"} (${mix}), first to ${winsNeeded}`
+}
 export type EventInput = Schemas["EventRequest"]
 export type LifecycleEntry = Schemas["LifecycleEntry"]
 export type Money = Schemas["Money"]
@@ -109,6 +122,7 @@ export function formatFee(fee: Money) {
 /** One line about how an event is played. */
 export function eventSummary(e: TournamentEvent) {
   const parts = [KIND_LABEL[e.kind], FORMAT_LABEL[e.format], `best of ${e.best_of}`]
+  if (e.kind === "team" && e.tie_wins_needed) parts.push(`ties of ${tieSummary(e.tie_rubbers, e.tie_wins_needed)}`)
   if (e.format === "groups_knockout" && e.group_count && e.qualifiers_per_group) {
     parts.push(`${e.group_count} groups, ${e.qualifiers_per_group} through from each`)
   }

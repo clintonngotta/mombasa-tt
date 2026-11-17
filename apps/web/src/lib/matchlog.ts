@@ -1,7 +1,7 @@
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 
-export type MatchFormat = Schemas["PersonalMatchFormatEnum"]
+export type MatchFormat = Schemas["SinglesOrDoublesEnum"]
 export type MatchResult = Schemas["MatchResultEnum"]
 export type Game = Schemas["Game"]
 export type PersonalMatch = Schemas["PersonalMatch"]
