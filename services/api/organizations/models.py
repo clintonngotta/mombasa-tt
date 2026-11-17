@@ -7,6 +7,8 @@ from django.db import models
 from django.db.models.functions import Lower
 from django.utils import timezone
 
+from core.timezones import DEFAULT_TIMEZONE
+
 from .permissions import ALL_PERMISSIONS, ROLE_TEMPLATES, Permission, RoleKey
 
 INVITATION_TTL = timedelta(days=14)
@@ -24,6 +26,8 @@ class Organization(models.Model):
     name = models.CharField(max_length=120)
     town = models.CharField(max_length=80)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.CLUB)
+    # Dates of the organization's tournaments and activities are entered and shown in this timezone.
+    timezone = models.CharField(max_length=64, default=DEFAULT_TIMEZONE)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )

@@ -67,6 +67,7 @@ def test_search_by_name_or_town(player, club):
         "name": "Coast TT Club",
         "town": "Mombasa",
         "kind": "club_facility",
+        "timezone": "Africa/Nairobi",
     }
 
 

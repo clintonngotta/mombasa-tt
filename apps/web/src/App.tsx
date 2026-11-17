@@ -30,6 +30,13 @@ import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
 import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
 import { MemberFieldEditPage } from "@/pages/club/MemberFieldEditPage"
+import { VenuesPage } from "@/pages/club/VenuesPage"
+import { VenueEditPage } from "@/pages/club/VenueEditPage"
+import { HostedTournamentsPage } from "@/pages/club/HostedTournamentsPage"
+import { PlayPage } from "@/pages/tournaments/PlayPage"
+import { TournamentPage } from "@/pages/tournaments/TournamentPage"
+import { TournamentFormPage } from "@/pages/tournaments/TournamentFormPage"
+import { EventFormPage } from "@/pages/tournaments/EventFormPage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,8 +68,17 @@ function App() {
           <Route element={<AppShell />}>
             {/* Domain screens land here as their Stitch references are implemented. */}
             <Route path="/home" element={null} />
-            <Route path="/play" element={null} />
             <Route element={<RequireAuth />}>
+              <Route path="/play" element={<PlayPage />} />
+              <Route path="/tournaments/:id" element={<TournamentPage />} />
+              <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
+              <Route path="/tournaments/:id/events/new" element={<EventFormPage />} />
+              <Route path="/tournaments/:id/events/:eventId" element={<EventFormPage />} />
+              <Route path="/club/tournaments" element={<HostedTournamentsPage />} />
+              <Route path="/club/tournaments/new" element={<TournamentFormPage />} />
+              <Route path="/club/venues" element={<VenuesPage />} />
+              <Route path="/club/venues/new" element={<VenueEditPage />} />
+              <Route path="/club/venues/:id" element={<VenueEditPage />} />
               <Route path="/club" element={<ClubPage />} />
               <Route path="/club/find" element={<FindClubPage />} />
               <Route path="/club/new" element={<RegisterOrganizationPage />} />

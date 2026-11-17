@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "core",
     "accounts",
     "attachments",
+    "competitions",
+    "facilities",
     "matchlog",
     "profiles",
     "organizations",

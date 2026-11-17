@@ -1787,6 +1787,276 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/tournaments/:
+    get:
+      operationId: organizations_tournaments_list
+      description: Every tournament an organization hosts, drafts included, for its
+        competition staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTournamentList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_tournaments_create
+      description: A new draft. The timezone defaults to the organization's.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TournamentRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/:
+    get:
+      operationId: organizations_venues_list
+      description: |-
+        Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+        facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Venue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_venues_create
+      description: |-
+        Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+        facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{id}/:
+    patch:
+      operationId: organizations_venues_partial_update
+      description: |-
+        Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+        facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedVenueRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{id}/tables/:
+    post:
+      operationId: organizations_venues_tables_create
+      description: Add a table at the end of the venue's playing order. Replies with
+        the whole venue.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{id}/tables/{table_pk}/:
+    patch:
+      operationId: organizations_venues_tables_partial_update
+      description: |-
+        Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+        facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: table_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTableRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{id}/:
     get:
       operationId: organizations_retrieve
@@ -1910,8 +2180,562 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/:
+    get:
+      operationId: tournaments_list
+      description: |-
+        Published tournaments, drafts never. `when=upcoming` (soonest first) covers those still to
+        finish; `when=past` (latest first) the completed, cancelled and ended ones.
+      parameters:
+      - in: query
+        name: organization
+        schema:
+          type: string
+        description: Host organization id
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Tournament, host or town
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTournamentList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/:
+    get:
+      operationId: tournaments_retrieve
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: tournaments_partial_update
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTournamentRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_destroy
+      description: Only a draft can be deleted; once published, a tournament is cancelled
+        instead.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/cancel/:
+    post:
+      operationId: tournaments_cancel_create
+      description: Terminal and audited. The reason is shown to everyone who can see
+        the tournament.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/complete/:
+    post:
+      operationId: tournaments_complete_create
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/history/:
+    get:
+      operationId: tournaments_history_list
+      description: Who published, started, completed or cancelled what, and the configuration
+        at that moment.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLifecycleEntryList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/publish/:
+    post:
+      operationId: tournaments_publish_create
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/start/:
+    post:
+      operationId: tournaments_start_create
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/:
+    post:
+      operationId: tournaments_events_create
+      description: |-
+        Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+        tournament, so the caller always holds one consistent copy.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{id}/:
+    patch:
+      operationId: tournaments_events_partial_update
+      description: |-
+        Change an event's set-up. Once it has started its structure (type, format, best of, seeding,
+        groups and qualifiers) is frozen: asking to change it is a 409, never a silent no-op.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_events_destroy
+      description: Only while the tournament is a draft; afterwards an event is cancelled,
+        which keeps a record.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{id}/cancel/:
+    post:
+      operationId: tournaments_events_cancel_create
+      description: |-
+        Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+        tournament, so the caller always holds one consistent copy.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{id}/complete/:
+    post:
+      operationId: tournaments_events_complete_create
+      description: |-
+        Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+        tournament, so the caller always holds one consistent copy.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{id}/start/:
+    post:
+      operationId: tournaments_events_start_create
+      description: |-
+        Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+        tournament, so the caller always holds one consistent copy.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   schemas:
+    ActionEnum:
+      enum:
+      - published
+      - updated
+      - started
+      - completed
+      - cancelled
+      - event_started
+      - event_completed
+      - event_cancelled
+      - event_removed
+      type: string
+      description: |-
+        * `published` - Published
+        * `updated` - Updated
+        * `started` - Started
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `event_started` - Event Started
+        * `event_completed` - Event Completed
+        * `event_cancelled` - Event Cancelled
+        * `event_removed` - Event Removed
     AttachmentLink:
       type: object
       description: |-
@@ -1962,6 +2786,16 @@ components:
           description: JPEG, PNG or WebP, up to 5 MB
       required:
       - file
+    BestOfEnum:
+      enum:
+      - 3
+      - 5
+      - 7
+      type: integer
+      description: |-
+        * `3` - 3
+        * `5` - 5
+        * `7` - 7
     BlankEnum:
       enum:
       - ''
@@ -2003,6 +2837,178 @@ components:
           minLength: 1
       required:
       - email
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/EventKindEnum'
+        format:
+          $ref: '#/components/schemas/EventFormatEnum'
+        capacity:
+          type: integer
+          maximum: 512
+          minimum: 2
+          nullable: true
+        best_of:
+          $ref: '#/components/schemas/BestOfEnum'
+        rest_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+        registration_opens_at:
+          type: string
+          format: date-time
+          nullable: true
+        registration_closes_at:
+          type: string
+          format: date-time
+          nullable: true
+        entry_fee:
+          $ref: '#/components/schemas/Money'
+        seeding:
+          $ref: '#/components/schemas/SeedingEnum'
+        group_count:
+          type: integer
+          maximum: 64
+          minimum: 2
+          nullable: true
+        qualifiers_per_group:
+          type: integer
+          maximum: 8
+          minimum: 1
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EventStatusEnum'
+          readOnly: true
+        revision:
+          type: integer
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancel_reason:
+          type: string
+          readOnly: true
+      required:
+      - best_of
+      - cancel_reason
+      - cancelled_at
+      - capacity
+      - completed_at
+      - entry_fee
+      - format
+      - group_count
+      - id
+      - kind
+      - name
+      - qualifiers_per_group
+      - registration_closes_at
+      - registration_opens_at
+      - rest_minutes
+      - revision
+      - seeding
+      - started_at
+      - status
+    EventFormatEnum:
+      enum:
+      - round_robin
+      - knockout
+      - groups_knockout
+      type: string
+      description: |-
+        * `round_robin` - Round Robin
+        * `knockout` - Knockout
+        * `groups_knockout` - Groups Knockout
+    EventKindEnum:
+      enum:
+      - singles
+      - doubles
+      - team
+      type: string
+      description: |-
+        * `singles` - Singles
+        * `doubles` - Doubles
+        * `team` - Team
+    EventRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/EventKindEnum'
+        format:
+          $ref: '#/components/schemas/EventFormatEnum'
+        capacity:
+          type: integer
+          maximum: 512
+          minimum: 2
+          nullable: true
+        best_of:
+          $ref: '#/components/schemas/BestOfEnum'
+        rest_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+        registration_opens_at:
+          type: string
+          format: date-time
+          nullable: true
+        registration_closes_at:
+          type: string
+          format: date-time
+          nullable: true
+        entry_fee:
+          $ref: '#/components/schemas/MoneyRequest'
+        seeding:
+          $ref: '#/components/schemas/SeedingEnum'
+        group_count:
+          type: integer
+          maximum: 64
+          minimum: 2
+          nullable: true
+        qualifiers_per_group:
+          type: integer
+          maximum: 8
+          minimum: 1
+          nullable: true
+      required:
+      - format
+      - kind
+      - name
+    EventStatusEnum:
+      enum:
+      - scheduled
+      - in_progress
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `in_progress` - In Progress
+        * `completed` - Completed
+        * `cancelled` - Cancelled
     ExperienceEnum:
       enum:
       - new
@@ -2015,14 +3021,6 @@ components:
         * `casual` - Casual
         * `club` - Club
         * `competitive` - Competitive
-    FormatEnum:
-      enum:
-      - singles
-      - doubles
-      type: string
-      description: |-
-        * `singles` - Singles
-        * `doubles` - Doubles
     Game:
       type: object
       properties:
@@ -2236,6 +3234,41 @@ components:
       - lost
       - played
       - won
+    LifecycleEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        action:
+          allOf:
+          - $ref: '#/components/schemas/ActionEnum'
+          readOnly: true
+        event_name:
+          type: string
+          readOnly: true
+        actor_name:
+          type: string
+          readOnly: true
+          default: ''
+        reason:
+          type: string
+          readOnly: true
+        snapshot:
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - actor_name
+      - created_at
+      - event_name
+      - id
+      - reason
+      - snapshot
     LogInRequest:
       type: object
       properties:
@@ -2499,6 +3532,36 @@ components:
       description: |-
         * `active` - Active
         * `left` - Left
+    Money:
+      type: object
+      description: The event's declared entry fee in the REQ-032 money shape.
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 0
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+      required:
+      - amount_minor
+      - currency
+    MoneyRequest:
+      type: object
+      description: The event's declared entry fee in the REQ-032 money shape.
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 0
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+      required:
+      - amount_minor
     MyInvitation:
       type: object
       description: 'The invitee''s view: which organization, and who invited them
@@ -2585,10 +3648,14 @@ components:
           maxLength: 80
         kind:
           $ref: '#/components/schemas/KindEnum'
+        timezone:
+          type: string
+          maxLength: 64
       required:
       - id
       - kind
       - name
+      - timezone
       - town
     OrganizationRequest:
       type: object
@@ -2603,7 +3670,28 @@ components:
           maxLength: 80
         kind:
           $ref: '#/components/schemas/KindEnum'
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
       required:
+      - name
+      - town
+    OrganizationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+      required:
+      - id
       - name
       - town
     PaginatedDirectoryPlayerList:
@@ -2681,6 +3769,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/JoinRequest'
+    PaginatedLifecycleEntryList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LifecycleEntry'
     PaginatedMemberList:
       type: object
       required:
@@ -2831,6 +3944,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PersonalMatch'
+    PaginatedTournamentList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tournament'
     PasswordResetConfirmRequest:
       type: object
       properties:
@@ -2848,6 +3986,50 @@ components:
       - password
       - token
       - uid
+    PatchedEventRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/EventKindEnum'
+        format:
+          $ref: '#/components/schemas/EventFormatEnum'
+        capacity:
+          type: integer
+          maximum: 512
+          minimum: 2
+          nullable: true
+        best_of:
+          $ref: '#/components/schemas/BestOfEnum'
+        rest_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+        registration_opens_at:
+          type: string
+          format: date-time
+          nullable: true
+        registration_closes_at:
+          type: string
+          format: date-time
+          nullable: true
+        entry_fee:
+          $ref: '#/components/schemas/MoneyRequest'
+        seeding:
+          $ref: '#/components/schemas/SeedingEnum'
+        group_count:
+          type: integer
+          maximum: 64
+          minimum: 2
+          nullable: true
+        qualifiers_per_group:
+          type: integer
+          maximum: 8
+          minimum: 1
+          nullable: true
     PatchedMemberFieldRequest:
       type: object
       description: |-
@@ -2895,7 +4077,7 @@ components:
           minLength: 1
           maxLength: 40
         format:
-          $ref: '#/components/schemas/FormatEnum'
+          $ref: '#/components/schemas/PersonalMatchFormatEnum'
         opponent_name:
           type: string
           maxLength: 120
@@ -2960,6 +4142,60 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PermissionEnum'
+    PatchedTableRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 40
+        active:
+          type: boolean
+    PatchedTournamentRequest:
+      type: object
+      description: |-
+        A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+        is private once the tournament is published, and drafts are served to the host's staff only.
+      properties:
+        venue_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+    PatchedVenueRequest:
+      type: object
+      description: A venue with its tables in playing order.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
+        address:
+          type: string
+          maxLength: 200
+        active:
+          type: boolean
     PermissionEnum:
       enum:
       - members.manage
@@ -3012,7 +4248,7 @@ components:
           type: string
           maxLength: 40
         format:
-          $ref: '#/components/schemas/FormatEnum'
+          $ref: '#/components/schemas/PersonalMatchFormatEnum'
         opponent_name:
           type: string
           maxLength: 120
@@ -3062,6 +4298,14 @@ components:
       - result
       - updated_at
       - venue
+    PersonalMatchFormatEnum:
+      enum:
+      - singles
+      - doubles
+      type: string
+      description: |-
+        * `singles` - Singles
+        * `doubles` - Doubles
     PersonalMatchRequest:
       type: object
       properties:
@@ -3073,7 +4317,7 @@ components:
           minLength: 1
           maxLength: 40
         format:
-          $ref: '#/components/schemas/FormatEnum'
+          $ref: '#/components/schemas/PersonalMatchFormatEnum'
         opponent_name:
           type: string
           maxLength: 120
@@ -3229,6 +4473,15 @@ components:
         * `style` - Style
         * `experience` - Experience
         * `bio` - Bio
+    ReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     Role:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
@@ -3306,6 +4559,16 @@ components:
       - id
       - key
       - name
+    SeedingEnum:
+      enum:
+      - rating
+      - manual
+      - none
+      type: string
+      description: |-
+        * `rating` - Rating
+        * `manual` - Manual
+        * `none` - None
     SignUpRequest:
       type: object
       properties:
@@ -3325,6 +4588,37 @@ components:
       - display_name
       - email
       - password
+    Table:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          maxLength: 40
+        position:
+          type: integer
+          readOnly: true
+        active:
+          type: boolean
+      required:
+      - active
+      - id
+      - label
+      - position
+    TableRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 40
+        active:
+          type: boolean
+      required:
+      - label
     TokenRequest:
       type: object
       properties:
@@ -3333,6 +4627,134 @@ components:
           minLength: 1
       required:
       - token
+    Tournament:
+      type: object
+      description: |-
+        A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+        is private once the tournament is published, and drafts are served to the host's staff only.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/OrganizationSummary'
+          readOnly: true
+        venue:
+          allOf:
+          - $ref: '#/components/schemas/VenueSummary'
+          readOnly: true
+          nullable: true
+        name:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        timezone:
+          type: string
+          maxLength: 64
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TournamentStatusEnum'
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancel_reason:
+          type: string
+          readOnly: true
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+          readOnly: true
+      required:
+      - cancel_reason
+      - cancelled_at
+      - completed_at
+      - description
+      - ends_on
+      - events
+      - id
+      - name
+      - organization
+      - published_at
+      - started_at
+      - starts_on
+      - status
+      - timezone
+      - venue
+    TournamentRequest:
+      type: object
+      description: |-
+        A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+        is private once the tournament is published, and drafts are served to the host's staff only.
+      properties:
+        venue_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 2000
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required:
+      - ends_on
+      - name
+      - starts_on
+    TournamentStatusEnum:
+      enum:
+      - draft
+      - published
+      - in_progress
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `in_progress` - In Progress
+        * `completed` - Completed
+        * `cancelled` - Cancelled
     User:
       type: object
       properties:
@@ -3362,6 +4784,79 @@ components:
       - email
       - email_verified_at
       - id
+    Venue:
+      type: object
+      description: A venue with its tables in playing order.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        town:
+          type: string
+          maxLength: 80
+        address:
+          type: string
+          maxLength: 200
+        active:
+          type: boolean
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/Table'
+          readOnly: true
+      required:
+      - active
+      - address
+      - id
+      - name
+      - tables
+      - town
+    VenueRequest:
+      type: object
+      description: A venue with its tables in playing order.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
+        address:
+          type: string
+          maxLength: 200
+        active:
+          type: boolean
+      required:
+      - name
+      - town
+    VenueSummary:
+      type: object
+      description: What anyone who can see a tournament sees of its venue.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+      required:
+      - address
+      - id
+      - name
+      - town
     ApiError:
       type: object
       description: Envelope of every API error (REQ-032); see core.exceptions.api_exception_handler.

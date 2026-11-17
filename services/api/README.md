@@ -124,6 +124,21 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET | `/api/v1/players/{id}/` | One opted-in player: the directory card plus only the details they published (others null); 404 once they opt out |
 | GET | `/api/v1/attachments/{id}/url/` | A fresh signed link `{id, url, expires_at}` to a private file; 404 for a missing file and for one the caller may not see |
 | GET | `/api/v1/attachments/{id}/content/?token=` | The file. Needs no session, only the token from a signed link; 403 `link_expired` when the token is expired, altered or for another file |
+| GET | `/api/v1/organizations/{id}/venues/` | Venues with their tables, not paginated. Members get the venues and tables in use; holders of `facilities.manage` get them all; non-members 403 |
+| POST | `/api/v1/organizations/{id}/venues/` | `{name, town, address}`; needs `facilities.manage`. 400 when a venue in use has the name; 409 `too_many_venues` (20 in use) |
+| PATCH | `/api/v1/organizations/{id}/venues/{vid}/` | Change name, town, address or `active`. Venues are switched off, never deleted |
+| POST | `/api/v1/organizations/{id}/venues/{vid}/tables/` | `{label}` adds a table at the end of the playing order; replies with the venue. 409 `too_many_tables` (60 in use) |
+| PATCH | `/api/v1/organizations/{id}/venues/{vid}/tables/{tid}/` | Change `label` or `active`; replies with the venue |
+| GET | `/api/v1/tournaments/?search=&organization=&when=` | Published tournaments (never drafts) with their events, for every signed-in player. `when=upcoming` soonest first, `when=past` latest first |
+| GET | `/api/v1/tournaments/{id}/` | One tournament. A draft is 404 unless the caller holds `competitions.manage` in the host organization |
+| GET, POST | `/api/v1/organizations/{id}/tournaments/` | Everything the organization hosts, drafts included, and creating a draft `{name, starts_on, ends_on, venue_id, timezone, description}`; needs `competitions.manage`. `timezone` defaults to the organization's |
+| PATCH, DELETE | `/api/v1/tournaments/{id}/` | Staff of the host. 409 `tournament_closed` once completed or cancelled; the timezone is fixed once started (`structure_frozen`); only a draft can be deleted (`already_published`) |
+| POST | `/api/v1/tournaments/{id}/publish/`, `start/`, `complete/` | draft → published → in progress → completed. 409 `invalid_transition`, `not_ready` (publishing needs a venue and an event) or `events_unfinished` |
+| POST | `/api/v1/tournaments/{id}/cancel/` | `{reason}`, from published or in progress; terminal. Unfinished events are cancelled with it. The reason is public |
+| GET | `/api/v1/tournaments/{id}/history/` | Staff only: who published, started, completed or cancelled what, with the configuration at that moment |
+| POST | `/api/v1/tournaments/{id}/events/` | `{name, kind, format, capacity, best_of, rest_minutes, registration_opens_at, registration_closes_at, entry_fee: {amount_minor, currency}, seeding, group_count, qualifiers_per_group}`. Event calls reply with the whole tournament |
+| PATCH, DELETE | `/api/v1/tournaments/{id}/events/{eid}/` | Each change adds one to `revision`. After the event starts, changing kind, format, best of, seeding, groups or qualifiers is 409 `structure_frozen`. Delete only in a draft |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/start/`, `complete/`, `cancel/` | scheduled → in progress → completed; start needs the tournament in progress (`tournament_not_started`); cancel takes `{reason}` and needs a published tournament (`not_published`: delete the event of a draft instead) |
 
 Roles (REQ-005, `organizations/permissions.py`): every organization starts with Admin, Captain, Assistant captain,
 Committee and Member, and can add custom roles. Effective permissions are the union of a member's roles plus the

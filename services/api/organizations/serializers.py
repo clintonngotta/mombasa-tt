@@ -1,6 +1,8 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from core.timezones import validate_timezone
+
 from .access import membership_permissions
 from .member_fields import MAX_OPTIONS
 from .models import Invitation, JoinRequest, MemberField, Membership, Organization, Role
@@ -10,10 +12,11 @@ from .permissions import Permission
 class OrganizationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=120, trim_whitespace=True)
     town = serializers.CharField(max_length=80, trim_whitespace=True)
+    timezone = serializers.CharField(max_length=64, required=False, validators=[validate_timezone])
 
     class Meta:
         model = Organization
-        fields = ["id", "name", "town", "kind"]
+        fields = ["id", "name", "town", "kind", "timezone"]
 
 
 class RoleSummarySerializer(serializers.ModelSerializer):
