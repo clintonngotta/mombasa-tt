@@ -46,6 +46,7 @@ from organizations.models import (
 )
 from organizations.permissions import RoleKey
 from profiles.models import PlayerProfile
+from scoring.models import Scorecard, ScoreEvent
 
 from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
@@ -144,6 +145,14 @@ ACCESS: dict[str, dict[str, str]] = {
     # covered in tests/test_ties.py. Sending both teams back to choose again is for staff.
     "tournament-event-match-lineup": {"post": SIGNED_IN},
     "tournament-event-match-lineup-reset": {"post": STAFF},
+    # Scoring: staff say who umpires; the sheet, its events and its confirmation exist only for the
+    # umpire assigned to it (tests/test_umpire_scoring.py).
+    "tournament-event-umpires": {"get": STAFF},
+    "tournament-event-match-umpire": {"post": STAFF},
+    "me-scorecards": {"get": OWNER},
+    "scorecard-detail": {"get": OWNER},
+    "scorecard-events": {"post": OWNER},
+    "scorecard-confirm": {"post": OWNER},
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
@@ -175,6 +184,18 @@ BODIES = {
     ("tournament-events", "post"): {"name": "Doubles", "kind": "doubles", "format": "knockout"},
     ("tournament-event", "patch"): {"capacity": 8},
     ("tournament-event-cancel", "post"): {"reason": "Too few entries"},
+    ("tournament-event-match-umpire", "post"): {"user_id": None},
+    ("scorecard-events", "post"): {
+        "assignment_id": "00000000-0000-4000-8000-000000000000",
+        "events": [
+            {
+                "id": "00000000-0000-4000-8000-000000000001",
+                "sequence": 1,
+                "event": {"type": "start", "server": "a1", "a_end": "left"},
+            }
+        ],
+    },
+    ("scorecard-confirm", "post"): {"revision": 0},
 }
 
 
@@ -359,6 +380,17 @@ class World:
         for team in (self.tie.entry_a, self.tie.entry_b):
             ties.submit_lineup(self.tie, team, self.amina, [[str(team.captain_id)]])
 
+        # A singles match under way with Baraka as its umpire, for the scoring routes.
+        self.scored_cup = tournament("Scored Cup", status.IN_PROGRESS, Event.Status.IN_PROGRESS)
+        for name in ("one", "two"):
+            made = Entry.objects.create(event=self.scored_cup.event, status=Entry.Status.ACCEPTED)
+            EntryPlayer.objects.create(
+                entry=made, event=made.event, user=make_user(f"scored-{name}@example.com")
+            )
+        drawing.make_preview(self.scored_cup.event, self.amina, [], rng_seed=1)
+        self.scored_match = drawing.publish(self.scored_cup.event, self.amina).matches.get()
+        self.scorecard = Scorecard.objects.create(match=self.scored_match, umpire=self.baraka)
+
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
             (self.staff_field, "MARK-FAITH-VALUE-STAFF"),
@@ -421,6 +453,10 @@ class World:
             "tournament-event-match": self.preview_match_id,
             "tournament-event-match-lineup": self.tie.id,
             "tournament-event-match-lineup-reset": self.tie.id,
+            "tournament-event-match-umpire": self.scored_match.id,
+            "scorecard-detail": self.scorecard.id,
+            "scorecard-events": self.scorecard.id,
+            "scorecard-confirm": self.scorecard.id,
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
         }
@@ -431,7 +467,10 @@ class World:
             found["pk"] = pk[name]
         if "table_pk" in names:
             found["table_pk"] = self.table.id
-        if name.startswith("tournament-event-match-lineup"):
+        if name in ("tournament-event-umpires", "tournament-event-match-umpire"):
+            found["event_pk"] = self.scored_cup.event.id
+            found["tournament_pk"] = self.scored_cup.id
+        elif name.startswith("tournament-event-match-lineup"):
             found["event_pk"] = self.team_cup.event.id
             found["tournament_pk"] = self.team_cup.id
         elif "event_pk" in names:
@@ -468,6 +507,8 @@ class World:
             "lifecycle": LifecycleEntry.objects.count(),
             "entries": sorted(Entry.objects.values_list("id", "status", "checked_in_at", "reason")),
             "entry_players": sorted(EntryPlayer.objects.values_list("entry_id", "user__email", "live")),
+            "scorecards": sorted(Scorecard.objects.values_list("umpire__email", "revision", "confirmed_at")),
+            "score_events": ScoreEvent.objects.count(),
             "lineups": Lineup.objects.count(),
             "rubbers": Rubber.objects.count(),
             "draws": sorted(DrawVersion.objects.values_list("event__name", "version", "status", "rng_seed")),
@@ -567,6 +608,12 @@ def test_owner_routes_serve_the_owner(world):
     fields = reverse("me-membership-fields", kwargs={"pk": world.baraka_membership.id})
     assert [entry["field"]["label"] for entry in baraka.get(fields).json()] == ["MARK-FIELD-MEMBER"]
     assert baraka.patch(fields, BODIES["me-membership-fields", "patch"], format="json").status_code == 200
+
+    sheet = baraka.get(reverse("scorecard-detail", kwargs={"pk": world.scorecard.id}))
+    assert sheet.status_code == 200 and sheet.json()["status"] == "assigned"
+    assert [s["id"] for s in baraka.get("/api/v1/me/scorecards/").json()["results"]] == [
+        str(world.scorecard.id)
+    ]
 
     mine = baraka.get("/api/v1/me/entries/").json()["results"]
     assert {e["status"] for e in mine} == {"pending", "rejected"}

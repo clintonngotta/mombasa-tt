@@ -520,6 +520,23 @@ export interface paths {
         patch: operations["me_profile_partial_update"];
         trace?: never;
     };
+    "/api/v1/me/scorecards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Matches the caller is assigned to score and hasn't confirmed, in tournaments still running. */
+        get: operations["me_scorecards_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/": {
         parameters: {
             query?: never;
@@ -1037,6 +1054,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scorecards/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The assigned umpire's sheets (REQ-012). A sheet exists only for the umpire assigned to it; a
+         *     reassigned umpire loses it at once.
+         */
+        get: operations["scorecards_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The umpire confirms the result, which makes it official: the winner moves on through the
+         *     draw. Refused (`match_not_finished`) unless the accepted events are a finished match.
+         */
+        post: operations["scorecards_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send score events in order. Each is replayed through the server's own scoring rules. A retry
+         *     of an accepted event is skipped; the first event out of sequence or against the rules stops the
+         *     batch and is reported in `refused`, with everything before it kept.
+         */
+        post: operations["scorecards_events_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/": {
         parameters: {
             query?: never;
@@ -1475,6 +1553,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/umpire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Give a match, or one rubber of a tie, to an umpire; `user_id` null takes it back. A new
+         *     assignment cuts off the device that held the old one. Points already scored stay.
+         */
+        post: operations["tournaments_events_matches_umpire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/": {
         parameters: {
             query?: never;
@@ -1488,6 +1586,26 @@ export interface paths {
          *     published.
          */
         get: operations["tournaments_events_standings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/umpires/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The host's members who can be given a match to score: those whose role lets them score, and
+         *     those who run competitions or results.
+         */
+        get: operations["tournaments_events_umpires_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1581,6 +1699,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptedEvent: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly sequence: number;
+            event: unknown;
+            /** Format: date-time */
+            readonly device_time: string | null;
+            /** Format: date-time */
+            readonly received_at: string;
+        };
         /**
          * @description * `published` - Published
          *     * `updated` - Updated
@@ -1594,6 +1722,13 @@ export interface components {
          * @enum {string}
          */
         ActionEnum: "published" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
+        /** @description `user_id` null takes the match back from its umpire. `rubber_id` names the rubber of a tie. */
+        AssignUmpireRequest: {
+            /** Format: uuid */
+            user_id: string | null;
+            /** Format: uuid */
+            rubber_id?: string | null;
+        };
         /**
          * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
          *
@@ -1636,6 +1771,20 @@ export interface components {
         BestOfEnum: 3 | 5 | 7;
         /** @enum {unknown} */
         BlankEnum: "";
+        /** @description The revision the deck shows, so a result is never confirmed over points still on their way. */
+        ConfirmRequest: {
+            revision: number;
+        };
+        DeckPlayer: {
+            slot: components["schemas"]["SlotEnum"];
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        DeckSide: {
+            title: string;
+            players: components["schemas"]["DeckPlayer"][];
+        };
         /**
          * @description Directory card of a listed player: name, picture and organizations only. No email, bio, location
          *     or other details.
@@ -1702,6 +1851,13 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        /**
+         * @description * `not_started` - Not Started
+         *     * `in_progress` - In Progress
+         *     * `completed` - Completed
+         * @enum {string}
+         */
+        EnginePhaseEnum: "not_started" | "in_progress" | "completed";
         /**
          * @description An entry as its players, staff and (once accepted) everybody else see it. Deliberately nothing
          *     about payment: accepted means a place in the event, not a paid fee (REQ-008).
@@ -2059,6 +2215,8 @@ export interface components {
             draw_version: number;
             /** @description Team events only. */
             tie: components["schemas"]["Tie"] | null;
+            /** @description Null for a tie: its rubbers are scored. */
+            scoring: components["schemas"]["ScoringSummary"] | null;
         };
         MatchLabels: {
             labels: string[];
@@ -2259,6 +2417,31 @@ export interface components {
             /** Format: date-time */
             readonly decided_at: string | null;
         };
+        /** @description One of the caller's assignments in a list: the sheet without its event log. */
+        MyScorecard: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly assignment_id: string;
+            readonly revision: number;
+            status: components["schemas"]["ScoringStatusEnum"];
+            readonly config: components["schemas"]["ScoringConfig"];
+            state: components["schemas"]["ScoringState"];
+            readonly a: components["schemas"]["DeckSide"];
+            readonly b: components["schemas"]["DeckSide"];
+            /** Format: uuid */
+            readonly tournament_id: string;
+            readonly tournament_name: string;
+            /** Format: uuid */
+            readonly event_id: string;
+            readonly event_name: string;
+            /** Format: uuid */
+            readonly match_id: string;
+            readonly label: string;
+            readonly table: string;
+            /** Format: date-time */
+            readonly confirmed_at: string | null;
+        };
         /** @enum {unknown} */
         NullEnum: null;
         OptionalReasonRequest: {
@@ -2433,6 +2616,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["MyJoinRequest"][];
+        };
+        PaginatedMyScorecardList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyScorecard"][];
         };
         PaginatedOrganizationList: {
             /** @example 123 */
@@ -2674,6 +2872,11 @@ export interface components {
         ReasonRequest: {
             reason: string;
         };
+        RefusedEvent: {
+            sequence: number;
+            /** @description A scoring engine code, `sequence_gap` or `sequence_conflict`. */
+            code: string;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         Role: {
             /** Format: uuid */
@@ -2720,6 +2923,7 @@ export interface components {
             winner_id: string | null;
             outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
             games: number[][];
+            scoring: components["schemas"]["ScoringSummary"];
         };
         RubberPlayer: {
             /** Format: uuid */
@@ -2733,6 +2937,77 @@ export interface components {
          * @enum {string}
          */
         RubberStatusEnum: "scheduled" | "completed" | "not_played";
+        /** @description Everything the deck needs to score one match, for the umpire assigned to it. */
+        Scorecard: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly assignment_id: string;
+            readonly revision: number;
+            status: components["schemas"]["ScoringStatusEnum"];
+            readonly config: components["schemas"]["ScoringConfig"];
+            state: components["schemas"]["ScoringState"];
+            readonly a: components["schemas"]["DeckSide"];
+            readonly b: components["schemas"]["DeckSide"];
+            /** Format: uuid */
+            readonly tournament_id: string;
+            readonly tournament_name: string;
+            /** Format: uuid */
+            readonly event_id: string;
+            readonly event_name: string;
+            /** Format: uuid */
+            readonly match_id: string;
+            readonly label: string;
+            readonly table: string;
+            /** Format: date-time */
+            readonly confirmed_at: string | null;
+            readonly events: components["schemas"]["AcceptedEvent"][];
+        };
+        ScoringConfig: {
+            best_of: number;
+            doubles: boolean;
+        };
+        /** @description The canonical state of the scoring engine (packages/scoring). */
+        ScoringState: {
+            status: components["schemas"]["EnginePhaseEnum"];
+            game_number: number;
+            games: number[][];
+            games_won: number[];
+            points: number[];
+            server: string | null;
+            receiver: string | null;
+            first_server: string | null;
+            first_receiver: string | null;
+            a_end: string | null;
+            decider_changed: boolean;
+            timeouts: boolean[];
+            winner: string | null;
+        };
+        /**
+         * @description * `unassigned` - Unassigned
+         *     * `assigned` - Assigned
+         *     * `in_progress` - In Progress
+         *     * `finished` - Finished
+         *     * `confirmed` - Confirmed
+         * @enum {string}
+         */
+        ScoringStatusEnum: "unassigned" | "assigned" | "in_progress" | "finished" | "confirmed";
+        /**
+         * @description Where the scoring of a match or rubber stands. `can_score` is true only for the umpire assigned
+         *     to it, so nobody else is ever offered a way into the scoring deck (REQ-010).
+         */
+        ScoringSummary: {
+            /**
+             * Format: uuid
+             * @description Given to the assigned umpire only.
+             */
+            scorecard_id: string | null;
+            status: components["schemas"]["ScoringStatusEnum"];
+            umpire_name: string;
+            can_score: boolean;
+            /** @description The caller may assign or change the umpire now. */
+            can_assign: boolean;
+        };
         /**
          * @description * `rating` - Rating
          *     * `manual` - Manual
@@ -2740,6 +3015,18 @@ export interface components {
          * @enum {string}
          */
         SeedingEnum: "rating" | "manual" | "none";
+        /**
+         * @description One score event from the deck: its own id (so a retry is recognised), its place in the stream,
+         *     the engine event itself, and the device's clock, which is kept but decides nothing.
+         */
+        SentEventRequest: {
+            /** Format: uuid */
+            id: string;
+            sequence: number;
+            event: unknown;
+            /** Format: date-time */
+            device_time?: string | null;
+        };
         SignUpRequest: {
             display_name: string;
             /** Format: email */
@@ -2752,6 +3039,14 @@ export interface components {
          * @enum {string}
          */
         SinglesOrDoublesEnum: "singles" | "doubles";
+        /**
+         * @description * `a1` - a1
+         *     * `a2` - a2
+         *     * `b1` - b1
+         *     * `b2` - b2
+         * @enum {string}
+         */
+        SlotEnum: "a1" | "a2" | "b1" | "b2";
         StandingRow: {
             rank: number;
             entry: components["schemas"]["DrawEntry"];
@@ -2774,6 +3069,22 @@ export interface components {
             rules_version: string;
             groups: components["schemas"]["GroupStanding"][];
             placements: components["schemas"]["Placement"][];
+        };
+        SubmitEventsRequest: {
+            /** Format: uuid */
+            assignment_id: string;
+            events: components["schemas"]["SentEventRequest"][];
+        };
+        /**
+         * @description What the server now holds. `refused` is the first event that stopped the batch, if any; the
+         *     events before it were accepted.
+         */
+        SubmitResult: {
+            accepted: number;
+            refused: components["schemas"]["RefusedEvent"] | null;
+            revision: number;
+            status: components["schemas"]["ScoringStatusEnum"];
+            state: components["schemas"]["ScoringState"];
         };
         Table: {
             /** Format: uuid */
@@ -2864,6 +3175,11 @@ export interface components {
          * @enum {string}
          */
         TournamentStatusEnum: "draft" | "published" | "in_progress" | "completed" | "cancelled";
+        Umpire: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
         User: {
             /** Format: uuid */
             readonly id: string;
@@ -3965,6 +4281,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_scorecards_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyScorecardList"];
                 };
             };
             /** @description Error envelope */
@@ -5109,6 +5458,104 @@ export interface operations {
             };
         };
     };
+    scorecards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scorecard"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scorecard"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_events_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitEventsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitResult"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_list: {
         parameters: {
             query?: {
@@ -5934,6 +6381,42 @@ export interface operations {
             };
         };
     };
+    tournaments_events_matches_umpire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignUmpireRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_events_standings_retrieve: {
         parameters: {
             query?: never;
@@ -5952,6 +6435,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Standings"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_umpires_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Umpire"][];
                 };
             };
             /** @description Error envelope */

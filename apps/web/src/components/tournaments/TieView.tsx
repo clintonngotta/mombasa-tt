@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
 import { WinnerMark } from "@/components/tournaments/MatchCard"
+import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { drawKeys, gamesWon, resetLineups, submitLineup, type DrawSide, type MatchDetail, type Rubber, type Tie } from "@/lib/draws"
 import { tieSummary, type RubberKind } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
@@ -65,7 +66,7 @@ export function TieView({ match, second, ids }: { match: MatchDetail; second: Dr
       {tie.begun && (
         <ol className="flex flex-col gap-2">
           {tie.rubbers.map((rubber) => (
-            <RubberRow key={rubber.id} rubber={rubber} match={match} next={rubber.id === tie.rubbers.find((candidate) => candidate.status === "scheduled")?.id} />
+            <RubberRow key={rubber.id} rubber={rubber} match={match} ids={ids} next={rubber.id === tie.rubbers.find((candidate) => candidate.status === "scheduled")?.id} />
           ))}
         </ol>
       )}
@@ -84,7 +85,7 @@ export function TieView({ match, second, ids }: { match: MatchDetail; second: Dr
 
 const names = (players: Rubber["a_players"]) => players.map((player) => player.display_name).join(" / ")
 
-function RubberRow({ rubber, match, next }: { rubber: Rubber; match: MatchDetail; next: boolean }) {
+function RubberRow({ rubber, match, next, ids }: { rubber: Rubber; match: MatchDetail; next: boolean; ids: Ids }) {
   const won = (side: SideKey) => rubber.status === "completed" && rubber.winner_id === (side === "a" ? match.a.entry?.id : match.b?.entry?.id)
   const games = gamesWon(rubber)
   const score = rubber.status === "not_played" ? "Not played" : rubber.status === "scheduled" ? "v" : rubber.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}${rubber.outcome === "retired" ? " ret." : ""}`
@@ -107,6 +108,11 @@ function RubberRow({ rubber, match, next }: { rubber: Rubber; match: MatchDetail
       </span>
       {rubber.games.length > 0 && <span className="text-center text-sm tabular-nums text-muted-foreground">{rubber.games.map(([a, b]) => `${a}–${b}`).join(", ")}</span>}
       {rubber.status === "not_played" && <span className="text-sm">The tie was decided before this rubber's turn.</span>}
+      {rubber.status === "scheduled" && (
+        <span className="border-t pt-2">
+          <UmpireControl scoring={rubber.scoring} ids={ids} rubberId={rubber.id} what={`rubber ${rubber.position}`} />
+        </span>
+      )}
     </li>
   )
 }

@@ -11,6 +11,7 @@ import { TournamentCard } from "@/components/tournaments/TournamentCard"
 import { errorMessage } from "@/lib/api"
 import { formatDayRange } from "@/lib/dates"
 import { entryKeys, entryTitle, isLive, listMyEntries } from "@/lib/entries"
+import { listMyScorecards, SCORING_STATUS_LABEL, scoringKeys } from "@/lib/scoring"
 import { isClosed, listTournaments, tournamentKeys, type When } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 
@@ -35,6 +36,7 @@ export function PlayPage() {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <h1 className="text-[32px] leading-9 font-bold">Play</h1>
+      <MyScorecards />
       <MyEntries />
 
       <section aria-labelledby="tournaments-heading" className="flex flex-col gap-4">
@@ -125,6 +127,36 @@ function MyEntries() {
                 </span>
               </span>
               <EntryStatusChip status={entry.status} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/** Matches the player is assigned to umpire and hasn't confirmed. Shown only when there are some. */
+function MyScorecards() {
+  const cards = useQuery({ queryKey: scoringKeys.mine, queryFn: listMyScorecards, staleTime: 30_000 })
+  const items = cards.data?.results ?? []
+  if (items.length === 0) return null
+  return (
+    <section aria-labelledby="scorecards-heading" className="flex flex-col gap-3 rounded-xl border border-brand-blue/30 bg-surface-selected p-4">
+      <h2 id="scorecards-heading" className="text-2xl font-bold">
+        Matches you umpire
+      </h2>
+      <ul className="flex flex-col gap-2">
+        {items.map((card) => (
+          <li key={card.id}>
+            <Link to={`/score/${card.id}`} className="flex min-h-12 flex-col gap-0.5 rounded-lg border bg-card px-3 py-2 outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50">
+              <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 font-semibold">
+                <span className="min-w-0 break-words">{card.a.title}</span>
+                <span className="text-sm font-normal text-muted-foreground">v</span>
+                <span className="min-w-0 text-right break-words">{card.b.title}</span>
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {[card.tournament_name, card.event_name, card.label, card.table].filter(Boolean).join(" · ")} · {SCORING_STATUS_LABEL[card.status]}
+              </span>
             </Link>
           </li>
         ))}

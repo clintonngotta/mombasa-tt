@@ -6,6 +6,8 @@ from competitions.urls import me_urlpatterns as my_entries
 from competitions.urls import organization_urlpatterns as organization_tournaments
 from core import views as core_views
 from profiles.views import PlayerDetailView, PlayerDirectoryView
+from scoring.urls import me_urlpatterns as my_scorecards
+from scoring.urls import tournament_urlpatterns as umpires
 
 api_v1 = [
     path("auth/", include("accounts.urls")),
@@ -14,10 +16,13 @@ api_v1 = [
     path("me/", include("profiles.urls")),
     path("me/", include("organizations.me_urls")),
     path("me/", include(my_entries)),
+    path("me/", include(my_scorecards)),
+    path("scorecards/", include("scoring.urls")),
     path("organizations/", include("organizations.urls")),
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
     path("organizations/<uuid:organization_pk>/", include(organization_tournaments)),
     path("tournaments/", include("competitions.urls")),
+    path("tournaments/", include(umpires)),
     path("players/", PlayerDirectoryView.as_view(), name="player-directory"),
     path("players/<uuid:pk>/", PlayerDetailView.as_view(), name="player-detail"),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),

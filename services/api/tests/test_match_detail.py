@@ -65,7 +65,7 @@ def test_a_match_of_the_published_draw_is_shown_with_its_place_in_the_event(staf
     assert set(body) == {
         "id", "stage", "group", "round", "round_name", "position", "a", "b", "status", "winner_id",
         "outcome", "games", "tie_score", "table", "scheduled_at", "group_name", "winner_plays_in",
-        "draw_version", "tie",
+        "draw_version", "tie", "scoring",
     }  # fmt: skip
     assert (body["round_name"], body["winner_plays_in"], body["group_name"]) == ("Semi-final", "Final", "")
     assert (body["table"], body["scheduled_at"], body["draw_version"]) == (
@@ -75,6 +75,8 @@ def test_a_match_of_the_published_draw_is_shown_with_its_place_in_the_event(staf
     )
     assert (body["status"], body["games"], body["outcome"]) == ("scheduled", [], "")
     assert body["tie"] is None and body["tie_score"] is None  # not a team event
+    assert (body["scoring"]["status"], body["scoring"]["can_score"]) == ("unassigned", False)
+    assert body["scoring"]["scorecard_id"] is None and body["scoring"]["can_assign"] is False
 
     drawing.record_result(semi, semi.entry_a, games=[(11, 4), (9, 11), (11, 7), (11, 9)])
     done = viewer.get(match_url(cup, singles, semi)).json()
