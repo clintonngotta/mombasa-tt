@@ -83,6 +83,28 @@ def ensure_open(tournament: Tournament) -> None:
         )
 
 
+def match_reply(request, draw: DrawVersion | None, pk) -> Response:
+    """One match of `draw` as MatchDetailSerializer shows it to the caller: its tie if it is one, and
+    where its scoring stands."""
+    from scoring import service as scoring  # scoring builds on competitions
+
+    shown = drawing.describe_match(draw, pk) if draw else None
+    if shown is None:
+        raise Http404
+    match = shown.pop("match")
+    staff = manages(request.user, draw.event.tournament.organization)
+    if draw.event.is_team:
+        shown["tie"] = ties.describe(match, request.user, staff)
+        shown["scoring"] = None
+        by_id = {rubber.id: rubber for rubber in match.rubbers.all()}
+        for rubber in shown["tie"]["rubbers"]:
+            rubber["scoring"] = scoring.summary(match, by_id[rubber["id"]], request.user, staff)
+    else:
+        shown["tie"] = None
+        shown["scoring"] = scoring.summary(match, None, request.user, staff)
+    return Response(MatchDetailSerializer(shown, context={"request": request}).data)
+
+
 class TournamentViewSet(viewsets.GenericViewSet):
     """Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
     changes need competitions.manage in the host organization."""
@@ -600,16 +622,7 @@ class DrawViewSet(viewsets.GenericViewSet):
         """One match of the published draw: sides, games, table and time. A match of a preview or of a
         superseded draw doesn't exist here."""
         draw = self._published(request, tournament_pk, event_pk)
-        return self._match_reply(request, draw, pk)
-
-    def _match_reply(self, request, draw: DrawVersion | None, pk) -> Response:
-        shown = drawing.describe_match(draw, pk) if draw else None
-        if shown is None:
-            raise Http404
-        match = shown.pop("match")
-        staff = manages(request.user, draw.event.tournament.organization)
-        shown["tie"] = ties.describe(match, request.user, staff) if draw.event.is_team else None
-        return Response(MatchDetailSerializer(shown, context={"request": request}).data)
+        return match_reply(request, draw, pk)
 
     def _tie(self, request, tournament_pk, event_pk, pk) -> tuple[Match, bool]:
         """The tie (a match of the published draw of a team event), with the tournament locked for a
@@ -651,7 +664,7 @@ class DrawViewSet(viewsets.GenericViewSet):
                 raise ApiException("not_in_match", "That team doesn't play in this tie.", 409)
             picks = [[str(pk) for pk in players] for players in asked["picks"]]
             ties.submit_lineup(match, entry, request.user, picks)
-        return self._match_reply(request, match.draw, match.id)
+        return match_reply(request, match.draw, match.id)
 
     @extend_schema(request=None, responses={200: MatchDetailSerializer})
     def lineup_reset(self, request, tournament_pk, event_pk, pk):
@@ -663,7 +676,7 @@ class DrawViewSet(viewsets.GenericViewSet):
                     "permission_denied", "Your role in this organization doesn't allow that.", 403
                 )
             ties.reset_lineups(match)
-        return self._match_reply(request, match.draw, match.id)
+        return match_reply(request, match.draw, match.id)
 
     @extend_schema(request=DrawRequestSerializer, responses={200: EventDrawSerializer})
     def preview(self, request, tournament_pk, event_pk):

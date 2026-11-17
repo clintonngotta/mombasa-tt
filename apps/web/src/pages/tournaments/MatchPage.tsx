@@ -4,6 +4,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
 import { TieView } from "@/components/tournaments/TieView"
+import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
@@ -100,6 +101,15 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
         </div>
       </header>
 
+      {m.scoring && (m.scoring.status !== "unassigned" || !decided) && (
+        <section aria-labelledby="scoring-heading" className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          <h2 id="scoring-heading" className="text-xl font-bold">
+            Scoring
+          </h2>
+          <UmpireControl scoring={m.scoring} ids={{ tournamentId, eventId: event.id, matchId: m.id }} what="this match" />
+        </section>
+      )}
+
       {m.tie && <TieView match={m} second={b} ids={{ tournamentId, eventId: event.id, matchId: m.id }} />}
 
       {m.games.length > 0 && (
@@ -150,7 +160,7 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
             </div>
           ))}
         </dl>
-        <p className="text-sm text-muted-foreground">Scores are entered by the umpire assigned to the match and become official once the organizers' system accepts them.</p>
+        <p className="text-sm text-muted-foreground">Scores are entered by the umpire assigned to the match and become official once the umpire confirms the finished match.</p>
       </section>
     </>
   )

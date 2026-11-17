@@ -41,6 +41,7 @@ import { EntriesPage } from "@/pages/tournaments/EntriesPage"
 import { DrawPage } from "@/pages/tournaments/DrawPage"
 import { EventPage } from "@/pages/tournaments/EventPage"
 import { MatchPage } from "@/pages/tournaments/MatchPage"
+import { ScoringDeckRoute } from "@/pages/scoring/ScoringDeckPage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +69,11 @@ function App() {
           <Route path="/onboarding/community" element={<FindCommunityPage />} />
           <Route path="/onboarding/goals" element={<GoalsPage />} />
           <Route path="/onboarding/complete" element={<CompletionPage />} />
+
+          {/* The scoring deck is full screen, outside the app's navigation (REQ-002). */}
+          <Route element={<RequireAuth />}>
+            <Route path="/score/:id" element={<ScoringDeckRoute />} />
+          </Route>
 
           <Route element={<AppShell />}>
             {/* Domain screens land here as their Stitch references are implemented. */}

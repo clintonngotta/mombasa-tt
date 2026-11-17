@@ -8,6 +8,7 @@ from core.timezones import validate_timezone
 from facilities.models import Venue
 from facilities.serializers import VenueSummarySerializer
 from organizations.models import Organization
+from scoring.serializers import ScoringSummarySerializer
 
 from .draws import MAX_SEEDS
 from .models import (
@@ -455,6 +456,7 @@ class RubberSerializer(serializers.Serializer):
     games = serializers.ListField(
         child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2)
     )
+    scoring = ScoringSummarySerializer()
 
 
 class TieSerializer(serializers.Serializer):
@@ -490,6 +492,7 @@ class MatchDetailSerializer(MatchSerializer):
     )
     draw_version = serializers.IntegerField()
     tie = TieSerializer(allow_null=True, help_text="Team events only.")
+    scoring = ScoringSummarySerializer(allow_null=True, help_text="Null for a tie: its rubbers are scored.")
 
 
 class DrawGroupSerializer(serializers.Serializer):

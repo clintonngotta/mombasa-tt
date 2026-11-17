@@ -9,10 +9,13 @@ export default defineConfig({
     proxy: {
       "/api": process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8010",
     },
+    // The scoring reducer lives beside the app in packages/scoring (shared with future clients).
+    fs: { allow: [import.meta.dirname + "/../.."] },
   },
   resolve: {
     alias: {
       "@": import.meta.dirname + "/src",
+      "@scoring": import.meta.dirname + "/../../packages/scoring/src/index.ts",
     },
   },
 })

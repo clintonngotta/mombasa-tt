@@ -108,6 +108,9 @@ def reset_lineups(match: Match) -> None:
         raise _conflict("event_closed", "This event is over, so its lineups can't change.")
     if match.rubbers.exclude(status=R.SCHEDULED).exists() or match.status != Match.Status.SCHEDULED:
         raise _conflict("tie_under_way", "A rubber of this tie is already decided, so its lineups stand.")
+    # A rubber being scored would lose its sheet with the rubber (scoring.Scorecard, by its related name).
+    if match.rubbers.filter(scorecard__revision__gt=0).exists():
+        raise _conflict("tie_under_way", "A rubber of this tie is being scored, so its lineups stand.")
     match.rubbers.all().delete()
     match.lineups.all().delete()
 

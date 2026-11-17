@@ -956,6 +956,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/scorecards/:
+    get:
+      operationId: me_scorecards_list
+      description: Matches the caller is assigned to score and hasn't confirmed, in
+        tournaments still running.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyScorecardList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/:
     get:
       operationId: organizations_list
@@ -2215,6 +2250,111 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/scorecards/{id}/:
+    get:
+      operationId: scorecards_retrieve
+      description: |-
+        The assigned umpire's sheets (REQ-012). A sheet exists only for the umpire assigned to it; a
+        reassigned umpire loses it at once.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - scorecards
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scorecard'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/scorecards/{id}/confirm/:
+    post:
+      operationId: scorecards_confirm_create
+      description: |-
+        The umpire confirms the result, which makes it official: the winner moves on through the
+        draw. Refused (`match_not_finished`) unless the accepted events are a finished match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - scorecards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scorecard'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/scorecards/{id}/events/:
+    post:
+      operationId: scorecards_events_create
+      description: |-
+        Send score events in order. Each is replayed through the server's own scoring rules. Only the
+        sheet is locked, not the tournament: points arrive from every table at once and change nothing
+        outside their own sheet until it is confirmed. A retry
+        of an accepted event is skipped; the first event out of sequence or against the rules stops the
+        batch and is reported in `refused`, with everything before it kept.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - scorecards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitEventsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResult'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/:
     get:
       operationId: tournaments_list
@@ -3208,6 +3348,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/umpire/:
+    post:
+      operationId: tournaments_events_matches_umpire_create
+      description: |-
+        Give a match, or one rubber of a tie, to an umpire; `user_id` null takes it back. A new
+        assignment cuts off the device that held the old one. Points already scored stay.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignUmpireRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/:
     get:
       operationId: tournaments_events_standings_retrieve
@@ -3238,6 +3426,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Standings'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/umpires/:
+    get:
+      operationId: tournaments_events_umpires_list
+      description: |-
+        The host's members who can be given a match to score: those whose role lets them score, and
+        those who run competitions or results.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Umpire'
           description: ''
         4XX:
           description: Error envelope
@@ -3436,6 +3662,32 @@ paths:
                 $ref: '#/components/schemas/ApiError'
 components:
   schemas:
+    AcceptedEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sequence:
+          type: integer
+          readOnly: true
+        event: {}
+        device_time:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        received_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - device_time
+      - event
+      - id
+      - received_at
+      - sequence
     ActionEnum:
       enum:
       - published
@@ -3458,6 +3710,21 @@ components:
         * `event_completed` - Event Completed
         * `event_cancelled` - Event Cancelled
         * `event_removed` - Event Removed
+    AssignUmpireRequest:
+      type: object
+      description: '`user_id` null takes the match back from its umpire. `rubber_id`
+        names the rubber of a tie.'
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        rubber_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - user_id
     AttachmentLink:
       type: object
       description: |-
@@ -3521,6 +3788,47 @@ components:
     BlankEnum:
       enum:
       - ''
+    ConfirmRequest:
+      type: object
+      description: |-
+        The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
+        revision it shows (a result is never confirmed over points still on their way).
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 0
+      required:
+      - assignment_id
+      - revision
+    DeckPlayer:
+      type: object
+      properties:
+        slot:
+          $ref: '#/components/schemas/SlotEnum'
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
+      - slot
+    DeckSide:
+      type: object
+      properties:
+        title:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeckPlayer'
+      required:
+      - players
+      - title
     DirectoryPlayer:
       type: object
       description: |-
@@ -3694,6 +4002,16 @@ components:
           minLength: 1
       required:
       - email
+    EnginePhaseEnum:
+      enum:
+      - not_started
+      - in_progress
+      - completed
+      type: string
+      description: |-
+        * `not_started` - Not Started
+        * `in_progress` - In Progress
+        * `completed` - Completed
     Entry:
       type: object
       description: |-
@@ -4583,6 +4901,11 @@ components:
           - $ref: '#/components/schemas/Tie'
           nullable: true
           description: Team events only.
+        scoring:
+          allOf:
+          - $ref: '#/components/schemas/ScoringSummary'
+          nullable: true
+          description: 'Null for a tie: its rubbers are scored.'
       required:
       - a
       - b
@@ -4596,6 +4919,7 @@ components:
       - round
       - round_name
       - scheduled_at
+      - scoring
       - stage
       - status
       - table
@@ -5085,6 +5409,84 @@ components:
       - id
       - organization
       - status
+    MyScorecard:
+      type: object
+      description: 'One of the caller''s assignments in a list: the sheet without
+        its event log.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        assignment_id:
+          type: string
+          format: uuid
+          readOnly: true
+        revision:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/ScoringStatusEnum'
+        config:
+          allOf:
+          - $ref: '#/components/schemas/ScoringConfig'
+          readOnly: true
+        state:
+          $ref: '#/components/schemas/ScoringState'
+        a:
+          allOf:
+          - $ref: '#/components/schemas/DeckSide'
+          readOnly: true
+        b:
+          allOf:
+          - $ref: '#/components/schemas/DeckSide'
+          readOnly: true
+        tournament_id:
+          type: string
+          format: uuid
+          readOnly: true
+        tournament_name:
+          type: string
+          readOnly: true
+        event_id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_name:
+          type: string
+          readOnly: true
+        match_id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        table:
+          type: string
+          readOnly: true
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - a
+      - assignment_id
+      - b
+      - config
+      - confirmed_at
+      - event_id
+      - event_name
+      - id
+      - label
+      - match_id
+      - revision
+      - state
+      - status
+      - table
+      - tournament_id
+      - tournament_name
     NullEnum:
       enum:
       - null
@@ -5405,6 +5807,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MyJoinRequest'
+    PaginatedMyScorecardList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyScorecard'
     PaginatedOrganizationList:
       type: object
       required:
@@ -6011,6 +6438,17 @@ components:
           maxLength: 300
       required:
       - reason
+    RefusedEvent:
+      type: object
+      properties:
+        sequence:
+          type: integer
+        code:
+          type: string
+          description: A scoring engine code, `sequence_gap` or `sequence_conflict`.
+      required:
+      - code
+      - sequence
     Role:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
@@ -6127,6 +6565,8 @@ components:
               type: integer
             maxItems: 2
             minItems: 2
+        scoring:
+          $ref: '#/components/schemas/ScoringSummary'
       required:
       - a_players
       - b_players
@@ -6135,6 +6575,7 @@ components:
       - kind
       - outcome
       - position
+      - scoring
       - status
       - winner_id
     RubberPlayer:
@@ -6158,6 +6599,208 @@ components:
         * `scheduled` - Scheduled
         * `completed` - Completed
         * `not_played` - Not Played
+    Scorecard:
+      type: object
+      description: Everything the deck needs to score one match, for the umpire assigned
+        to it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        assignment_id:
+          type: string
+          format: uuid
+          readOnly: true
+        revision:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/ScoringStatusEnum'
+        config:
+          allOf:
+          - $ref: '#/components/schemas/ScoringConfig'
+          readOnly: true
+        state:
+          $ref: '#/components/schemas/ScoringState'
+        a:
+          allOf:
+          - $ref: '#/components/schemas/DeckSide'
+          readOnly: true
+        b:
+          allOf:
+          - $ref: '#/components/schemas/DeckSide'
+          readOnly: true
+        tournament_id:
+          type: string
+          format: uuid
+          readOnly: true
+        tournament_name:
+          type: string
+          readOnly: true
+        event_id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_name:
+          type: string
+          readOnly: true
+        match_id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        table:
+          type: string
+          readOnly: true
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcceptedEvent'
+          readOnly: true
+      required:
+      - a
+      - assignment_id
+      - b
+      - config
+      - confirmed_at
+      - event_id
+      - event_name
+      - events
+      - id
+      - label
+      - match_id
+      - revision
+      - state
+      - status
+      - table
+      - tournament_id
+      - tournament_name
+    ScoringConfig:
+      type: object
+      properties:
+        best_of:
+          type: integer
+        doubles:
+          type: boolean
+      required:
+      - best_of
+      - doubles
+    ScoringState:
+      type: object
+      description: The canonical state of the scoring engine (packages/scoring).
+      properties:
+        status:
+          $ref: '#/components/schemas/EnginePhaseEnum'
+        game_number:
+          type: integer
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+        games_won:
+          type: array
+          items:
+            type: integer
+          maxItems: 2
+          minItems: 2
+        points:
+          type: array
+          items:
+            type: integer
+          maxItems: 2
+          minItems: 2
+        server:
+          type: string
+          nullable: true
+        receiver:
+          type: string
+          nullable: true
+        first_server:
+          type: string
+          nullable: true
+        first_receiver:
+          type: string
+          nullable: true
+        a_end:
+          type: string
+          nullable: true
+        decider_changed:
+          type: boolean
+        timeouts:
+          type: array
+          items:
+            type: boolean
+          maxItems: 2
+          minItems: 2
+        winner:
+          type: string
+          nullable: true
+      required:
+      - a_end
+      - decider_changed
+      - first_receiver
+      - first_server
+      - game_number
+      - games
+      - games_won
+      - points
+      - receiver
+      - server
+      - status
+      - timeouts
+      - winner
+    ScoringStatusEnum:
+      enum:
+      - unassigned
+      - assigned
+      - in_progress
+      - finished
+      - confirmed
+      type: string
+      description: |-
+        * `unassigned` - Unassigned
+        * `assigned` - Assigned
+        * `in_progress` - In Progress
+        * `finished` - Finished
+        * `confirmed` - Confirmed
+    ScoringSummary:
+      type: object
+      description: |-
+        Where the scoring of a match or rubber stands. `can_score` is true only for the umpire assigned
+        to it, so nobody else is ever offered a way into the scoring deck (REQ-010).
+      properties:
+        scorecard_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Given to the assigned umpire only.
+        status:
+          $ref: '#/components/schemas/ScoringStatusEnum'
+        umpire_name:
+          type: string
+        can_score:
+          type: boolean
+        can_assign:
+          type: boolean
+          description: The caller may assign or change the umpire now.
+      required:
+      - can_assign
+      - can_score
+      - scorecard_id
+      - status
+      - umpire_name
     SeedingEnum:
       enum:
       - rating
@@ -6168,6 +6811,27 @@ components:
         * `rating` - Rating
         * `manual` - Manual
         * `none` - None
+    SentEventRequest:
+      type: object
+      description: |-
+        One score event from the deck: its own id (so a retry is recognised), its place in the stream,
+        the engine event itself, and the device's clock, which is kept but decides nothing.
+      properties:
+        id:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          minimum: 1
+        event: {}
+        device_time:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - event
+      - id
+      - sequence
     SignUpRequest:
       type: object
       properties:
@@ -6195,6 +6859,18 @@ components:
       description: |-
         * `singles` - Singles
         * `doubles` - Doubles
+    SlotEnum:
+      enum:
+      - a1
+      - a2
+      - b1
+      - b2
+      type: string
+      description: |-
+        * `a1` - a1
+        * `a2` - a2
+        * `b1` - b1
+        * `b2` - b2
     StandingRow:
       type: object
       properties:
@@ -6264,6 +6940,45 @@ components:
       - groups
       - placements
       - rules_version
+    SubmitEventsRequest:
+      type: object
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/SentEventRequest'
+          maxItems: 200
+          minItems: 1
+      required:
+      - assignment_id
+      - events
+    SubmitResult:
+      type: object
+      description: |-
+        What the server now holds. `refused` is the first event that stopped the batch, if any; the
+        events before it were accepted.
+      properties:
+        accepted:
+          type: integer
+        refused:
+          allOf:
+          - $ref: '#/components/schemas/RefusedEvent'
+          nullable: true
+        revision:
+          type: integer
+        status:
+          $ref: '#/components/schemas/ScoringStatusEnum'
+        state:
+          $ref: '#/components/schemas/ScoringState'
+      required:
+      - accepted
+      - refused
+      - revision
+      - state
+      - status
     Table:
       type: object
       properties:
@@ -6491,6 +7206,17 @@ components:
         * `in_progress` - In Progress
         * `completed` - Completed
         * `cancelled` - Cancelled
+    Umpire:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
     User:
       type: object
       properties:
