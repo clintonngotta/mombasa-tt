@@ -9,6 +9,7 @@ import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
 import { formatDayRange, formatInstant } from "@/lib/dates"
+import { entryBlock, placesTaken } from "@/lib/entries"
 import {
   ACTION_LABEL,
   cancelEvent,
@@ -170,6 +171,14 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
         </p>
       )}
       {event.status === "cancelled" && <p className="text-sm font-semibold text-destructive">Cancelled: {event.cancel_reason}</p>}
+      {t.status !== "draft" && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-semibold">{placesTaken(event)}</p>
+          <Link to={`/tournaments/${t.id}/events/${event.id}/entries`} aria-label={`Entries for ${event.name}`} className={buttonVariants({ variant: entryBlock(t, event) ? "outline" : "default" })}>
+            {entryBlock(t, event) ? "See entries" : "Enter or see entries"}
+          </Link>
+        </div>
+      )}
 
       {staff && !closed && (
         <div className="flex flex-col gap-2 border-t pt-3">

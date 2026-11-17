@@ -1,13 +1,17 @@
 import { useState, type FormEvent } from "react"
+import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { NotebookPen, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FormAlert } from "@/components/forms/Field"
 import { NavCard } from "@/components/layout/NavCard"
+import { EntryStatusChip } from "@/components/tournaments/StatusChip"
 import { TournamentCard } from "@/components/tournaments/TournamentCard"
 import { errorMessage } from "@/lib/api"
-import { listTournaments, tournamentKeys, type When } from "@/lib/tournaments"
+import { formatDayRange } from "@/lib/dates"
+import { entryKeys, entryTitle, isLive, listMyEntries } from "@/lib/entries"
+import { isClosed, listTournaments, tournamentKeys, type When } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 
 const WHEN: { value: When; label: string }[] = [
@@ -31,6 +35,7 @@ export function PlayPage() {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <h1 className="text-[32px] leading-9 font-bold">Play</h1>
+      <MyEntries />
 
       <section aria-labelledby="tournaments-heading" className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -90,5 +95,40 @@ export function PlayPage() {
 
       <NavCard to="/matches" icon={NotebookPen} title="Your match log" description="Matches you recorded yourself, with your progress" />
     </div>
+  )
+}
+
+/** The caller's standing entries in tournaments that aren't over; nothing at all when there are none. */
+function MyEntries() {
+  const entries = useQuery({ queryKey: entryKeys.mine, queryFn: listMyEntries })
+  const current = (entries.data?.results ?? []).filter((entry) => isLive(entry) && !isClosed(entry.tournament) && !isClosed(entry.event))
+  if (current.length === 0) return null
+  return (
+    <section aria-labelledby="my-entries-heading" className="flex flex-col gap-3">
+      <h2 id="my-entries-heading" className="text-2xl font-bold">
+        Your entries
+      </h2>
+      <ul className="flex flex-col gap-2">
+        {current.map((entry) => (
+          <li key={entry.id}>
+            <Link
+              to={`/tournaments/${entry.tournament.id}/events/${entry.event.id}/entries`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-4 outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <span className="flex min-w-0 flex-col">
+                <span className="font-semibold break-words">
+                  {entry.event.name} · {entry.tournament.name}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {formatDayRange(entry.tournament.starts_on, entry.tournament.ends_on)}
+                  {entry.players.length > 1 && ` · ${entryTitle(entry)}`}
+                </span>
+              </span>
+              <EntryStatusChip status={entry.status} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

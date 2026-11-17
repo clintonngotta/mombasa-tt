@@ -27,7 +27,6 @@ def _plain(data) -> dict:
 
 
 def record(tournament: Tournament, action: str, actor, *, event: Event | None = None, reason: str = ""):
-    fresh = Tournament.objects.select_related("organization", "venue").prefetch_related("events")
     LifecycleEntry.objects.create(
         tournament=tournament,
         event=event,
@@ -36,7 +35,9 @@ def record(tournament: Tournament, action: str, actor, *, event: Event | None = 
         actor=actor,
         reason=reason,
         snapshot=_plain(
-            EventSerializer(event).data if event else TournamentSerializer(fresh.get(pk=tournament.pk)).data
+            EventSerializer(event).data
+            if event
+            else TournamentSerializer(Tournament.objects.detailed().get(pk=tournament.pk)).data
         ),
     )
 

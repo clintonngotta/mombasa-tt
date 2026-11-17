@@ -1,6 +1,12 @@
 from django.urls import path
 
-from .views import EventViewSet, OrganizationTournamentViewSet, TournamentViewSet
+from .views import (
+    EntryViewSet,
+    EventViewSet,
+    MyEntriesViewSet,
+    OrganizationTournamentViewSet,
+    TournamentViewSet,
+)
 
 
 def action(viewset, name):
@@ -41,6 +47,32 @@ urlpatterns = [
         action(EventViewSet, "cancel"),
         name="tournament-event-cancel",
     ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/entries/",
+        EntryViewSet.as_view({"get": "list", "post": "create"}),
+        name="tournament-event-entries",
+    ),
+    *(
+        path(
+            f"<uuid:tournament_pk>/events/<uuid:event_pk>/entries/<uuid:pk>/{slug}/",
+            action(EntryViewSet, slug.replace("-", "_")),
+            name=f"tournament-event-entry-{slug}",
+        )
+        for slug in (
+            "accept",
+            "waitlist",
+            "reject",
+            "staff-withdraw",
+            "check-in",
+            "undo-check-in",
+            "withdraw",
+        )
+    ),
+]
+
+# Mounted under /me/.
+me_urlpatterns = [
+    path("entries/", MyEntriesViewSet.as_view({"get": "list"}), name="me-entries"),
 ]
 
 # Mounted under /organizations/<organization_pk>/.

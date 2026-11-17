@@ -326,6 +326,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/entries/:
+    get:
+      operationId: me_entries_list
+      description: Every entry the caller plays in, newest first, with its event and
+        tournament.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyEntryList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/goals/:
     put:
       operationId: me_goals_update
@@ -2523,6 +2558,410 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/:
+    get:
+      operationId: tournaments_events_entries_list
+      description: Accepted entries, plus the caller's own in any status. Competition
+        staff get them all.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - accepted
+          - pending
+          - rejected
+          - waitlisted
+          - withdrawn
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEntryList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: tournaments_events_entries_create
+      description: |-
+        Enter the event. A player's own entry includes them and waits for staff, inside the
+        registration window. Staff enter anybody at any time before the event starts: the entry takes
+        a place if there is one and joins the waiting list if not.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryRequestRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/accept/:
+    post:
+      operationId: tournaments_events_entries_accept_create
+      description: |-
+        Give the entry a place, from pending or from the waiting list (`event_full` when there is
+        none). Its players are told; a promotion from the waiting list says so.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/check-in/:
+    post:
+      operationId: tournaments_events_entries_check_in_create
+      description: The entry has arrived. Independent of the fee, which this API doesn't
+        record yet.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/reject/:
+    post:
+      operationId: tournaments_events_entries_reject_create
+      description: Turn down a pending or waitlisted entry. The reason, if given,
+        is shown to its players.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionalReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/staff-withdraw/:
+    post:
+      operationId: tournaments_events_entries_staff_withdraw_create
+      description: |-
+        Withdraw an entry on its players' behalf. Its place is free again; nobody is promoted
+        automatically.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionalReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/undo-check-in/:
+    post:
+      operationId: tournaments_events_entries_undo_check_in_create
+      description: |-
+        Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
+        event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
+        check in. Accepted entries are open to every signed-in player; the rest only to their own players
+        and to the host's competition staff.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/waitlist/:
+    post:
+      operationId: tournaments_events_entries_waitlist_create
+      description: |-
+        Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
+        event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
+        check in. Accepted entries are open to every signed-in player; the rest only to their own players
+        and to the host's competition staff.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/withdraw/:
+    post:
+      operationId: tournaments_events_entries_withdraw_create
+      description: |-
+        By one of the entry's own players, before the event starts. For anybody else the entry
+        doesn't exist here.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{id}/:
     patch:
       operationId: tournaments_events_partial_update
@@ -2837,6 +3276,173 @@ components:
           minLength: 1
       required:
       - email
+    Entry:
+      type: object
+      description: |-
+        An entry as its players, staff and (once accepted) everybody else see it. Deliberately nothing
+        about payment: accepted means a place in the event, not a paid fee (REQ-008).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EntryStatusEnum'
+          readOnly: true
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntryPlayer'
+          readOnly: true
+        team_name:
+          type: string
+          readOnly: true
+        captain_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        withdrawn_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        checked_in_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        mine:
+          type: boolean
+          description: Whether the caller plays in it, so may withdraw it.
+          readOnly: true
+      required:
+      - captain_id
+      - checked_in_at
+      - created_at
+      - decided_at
+      - id
+      - mine
+      - players
+      - reason
+      - status
+      - team_name
+      - withdrawn_at
+    EntryEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/EventKindEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EventStatusEnum'
+          readOnly: true
+      required:
+      - id
+      - kind
+      - name
+      - status
+    EntryPlayer:
+      type: object
+      description: 'A player in an entry: the name they play under, nothing else (REQ-020).'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+      required:
+      - display_name
+      - id
+    EntryRequestRequest:
+      type: object
+      description: Who is entering. Left out, `player_ids` is the caller alone and
+        `captain_id` the caller.
+      properties:
+        player_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 10
+          minItems: 1
+        team_name:
+          type: string
+          maxLength: 80
+        captain_id:
+          type: string
+          format: uuid
+          nullable: true
+    EntryStatusEnum:
+      enum:
+      - pending
+      - accepted
+      - waitlisted
+      - rejected
+      - withdrawn
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `accepted` - Accepted
+        * `waitlisted` - Waitlisted
+        * `rejected` - Rejected
+        * `withdrawn` - Withdrawn
+    EntryTournament:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        starts_on:
+          type: string
+          format: date
+          readOnly: true
+        ends_on:
+          type: string
+          format: date
+          readOnly: true
+        timezone:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TournamentStatusEnum'
+          readOnly: true
+      required:
+      - ends_on
+      - id
+      - name
+      - starts_on
+      - status
+      - timezone
     Event:
       type: object
       properties:
@@ -2884,6 +3490,11 @@ components:
           maximum: 8
           minimum: 1
           nullable: true
+        accepted_count:
+          type: integer
+          description: Entries holding a place. Counted here when the caller didn't
+            annotate it.
+          readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/EventStatusEnum'
@@ -2910,6 +3521,7 @@ components:
           type: string
           readOnly: true
       required:
+      - accepted_count
       - best_of
       - cancel_reason
       - cancelled_at
@@ -3562,6 +4174,80 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    MyEntry:
+      type: object
+      description: One of the caller's own entries, with the event and tournament
+        it is for.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EntryStatusEnum'
+          readOnly: true
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntryPlayer'
+          readOnly: true
+        team_name:
+          type: string
+          readOnly: true
+        captain_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        withdrawn_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        checked_in_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        mine:
+          type: boolean
+          description: Whether the caller plays in it, so may withdraw it.
+          readOnly: true
+        event:
+          allOf:
+          - $ref: '#/components/schemas/EntryEvent'
+          readOnly: true
+        tournament:
+          allOf:
+          - $ref: '#/components/schemas/EntryTournament'
+          readOnly: true
+      required:
+      - captain_id
+      - checked_in_at
+      - created_at
+      - decided_at
+      - event
+      - id
+      - mine
+      - players
+      - reason
+      - status
+      - team_name
+      - tournament
+      - withdrawn_at
     MyInvitation:
       type: object
       description: 'The invitee''s view: which organization, and who invited them
@@ -3633,6 +4319,12 @@ components:
     NullEnum:
       enum:
       - null
+    OptionalReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 300
     Organization:
       type: object
       properties:
@@ -3719,6 +4411,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DirectoryPlayer'
+    PaginatedEntryList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entry'
     PaginatedInvitationList:
       type: object
       required:
@@ -3844,6 +4561,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Membership'
+    PaginatedMyEntryList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyEntry'
     PaginatedMyInvitationList:
       type: object
       required:

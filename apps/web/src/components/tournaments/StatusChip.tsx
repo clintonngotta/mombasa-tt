@@ -1,5 +1,6 @@
-import { Ban, CircleCheck, CircleDot, FilePen, Megaphone, type LucideIcon } from "lucide-react"
+import { Ban, CircleCheck, CircleDot, FilePen, Hourglass, ListOrdered, LogOut, Megaphone, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ENTRY_STATUS_LABEL, type EntryStatus } from "@/lib/entries"
 import { EVENT_STATUS_LABEL, STATUS_LABEL, type EventStatus, type TournamentStatus } from "@/lib/tournaments"
 
 type Look = { icon: LucideIcon; className: string }
@@ -26,3 +27,13 @@ function Chip({ look, children }: { look: Look; children: string }) {
 
 export const TournamentStatusChip = ({ status }: { status: TournamentStatus }) => <Chip look={LOOK[status]}>{STATUS_LABEL[status]}</Chip>
 export const EventStatusChip = ({ status }: { status: EventStatus }) => <Chip look={LOOK[status]}>{EVENT_STATUS_LABEL[status]}</Chip>
+
+const ENTRY_LOOK: Record<EntryStatus, Look> = {
+  pending: { icon: Hourglass, className: "border-border bg-muted text-muted-foreground" },
+  accepted: { icon: CircleCheck, className: "border-success/30 bg-success/10 text-success" },
+  waitlisted: { icon: ListOrdered, className: "border-brand-blue/30 bg-surface-selected text-brand-blue" },
+  rejected: { icon: Ban, className: "border-destructive/30 bg-destructive/5 text-destructive" },
+  withdrawn: { icon: LogOut, className: "border-border bg-muted text-muted-foreground" },
+}
+
+export const EntryStatusChip = ({ status }: { status: EntryStatus }) => <Chip look={ENTRY_LOOK[status]}>{ENTRY_STATUS_LABEL[status]}</Chip>

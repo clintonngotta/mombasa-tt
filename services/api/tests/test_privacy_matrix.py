@@ -21,7 +21,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from attachments.models import Attachment
-from competitions.models import Event, LifecycleEntry, Tournament
+from competitions.models import Entry, EntryPlayer, Event, LifecycleEntry, Tournament
 from facilities.models import Table, Venue
 from matchlog.models import PersonalMatch
 from organizations.models import (
@@ -115,6 +115,17 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-start": {"post": STAFF},
     "tournament-event-complete": {"post": STAFF},
     "tournament-event-cancel": {"post": STAFF},
+    # Entries: accepted ones are for every signed-in player, the rest for their own players and for
+    # competition staff. Anyone may enter; only an entry's own players withdraw it themselves.
+    "tournament-event-entries": {"get": SIGNED_IN, "post": SIGNED_IN},
+    "tournament-event-entry-accept": {"post": STAFF},
+    "tournament-event-entry-waitlist": {"post": STAFF},
+    "tournament-event-entry-reject": {"post": STAFF},
+    "tournament-event-entry-staff-withdraw": {"post": STAFF},
+    "tournament-event-entry-check-in": {"post": STAFF},
+    "tournament-event-entry-undo-check-in": {"post": STAFF},
+    "tournament-event-entry-withdraw": {"post": OWNER},
+    "me-entries": {"get": OWNER},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
 }
@@ -287,6 +298,23 @@ class World:
             tournament=self.published, action="published", actor=self.amina, reason="MARK-HISTORY-REASON"
         )
 
+        # Entries in a tournament of their own, one per staff action. Baraka's are not accepted, so
+        # they are for him and staff only; Faith's is accepted and open to everyone.
+        self.entered = tournament("Entered Cup", status.PUBLISHED)
+
+        def entry(user, state=Entry.Status.PENDING, **extra):
+            made = Entry.objects.create(event=self.entered.event, status=state, entered_by=user, **extra)
+            EntryPlayer.objects.create(entry=made, event=made.event, user=user, live=state in Entry.LIVE)
+            return made
+
+        self.baraka_entry = entry(self.baraka)
+        entry(self.baraka, Entry.Status.REJECTED, reason="MARK-ENTRY-REASON")
+        self.faith_entry = entry(self.faith, Entry.Status.ACCEPTED)
+        self.entry_to_accept = entry(self.daudi)
+        self.entry_to_waitlist = entry(self.imani)
+        self.entry_to_reject = entry(self.hamisi)
+        self.entry_to_withdraw = entry(self.grace, Entry.Status.ACCEPTED)
+
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
             (self.staff_field, "MARK-FAITH-VALUE-STAFF"),
@@ -339,6 +367,13 @@ class World:
             "tournament-event-start": self.running.event.id,
             "tournament-event-complete": self.playing.event.id,
             "tournament-event-cancel": self.published.event.id,
+            "tournament-event-entry-accept": self.entry_to_accept.id,
+            "tournament-event-entry-waitlist": self.entry_to_waitlist.id,
+            "tournament-event-entry-reject": self.entry_to_reject.id,
+            "tournament-event-entry-staff-withdraw": self.entry_to_withdraw.id,
+            "tournament-event-entry-check-in": self.faith_entry.id,
+            "tournament-event-entry-undo-check-in": self.faith_entry.id,
+            "tournament-event-entry-withdraw": self.baraka_entry.id,
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
         }
@@ -349,7 +384,11 @@ class World:
             found["pk"] = pk[name]
         if "table_pk" in names:
             found["table_pk"] = self.table.id
-        if "tournament_pk" in names:
+        if "event_pk" in names:
+            # Entries are reached through the event they are for.
+            found["event_pk"] = self.entered.event.id
+            found["tournament_pk"] = self.entered.id
+        elif "tournament_pk" in names:
             # The event addressed by `pk` decides which tournament it is reached through.
             event = Event.objects.filter(pk=found.get("pk")).first()
             found["tournament_pk"] = event.tournament_id if event else self.draft.id
@@ -377,6 +416,8 @@ class World:
             "tournaments": sorted(Tournament.objects.values_list("name", "status", "cancel_reason")),
             "events": sorted(Event.objects.values_list("name", "status", "capacity", "cancel_reason")),
             "lifecycle": LifecycleEntry.objects.count(),
+            "entries": sorted(Entry.objects.values_list("id", "status", "checked_in_at", "reason")),
+            "entry_players": sorted(EntryPlayer.objects.values_list("entry_id", "user__email", "live")),
         }
 
 
@@ -473,6 +514,11 @@ def test_owner_routes_serve_the_owner(world):
     fields = reverse("me-membership-fields", kwargs={"pk": world.baraka_membership.id})
     assert [entry["field"]["label"] for entry in baraka.get(fields).json()] == ["MARK-FIELD-MEMBER"]
     assert baraka.patch(fields, BODIES["me-membership-fields", "patch"], format="json").status_code == 200
+
+    mine = baraka.get("/api/v1/me/entries/").json()["results"]
+    assert {e["status"] for e in mine} == {"pending", "rejected"}
+    withdraw = world.url("tournament-event-entry-withdraw", {"tournament_pk", "event_pk", "pk"})
+    assert baraka.post(withdraw, {}, format="json").json()["status"] == "withdrawn"
 
     imani = logged_in(world.imani)
     assert [i["id"] for i in imani.get("/api/v1/me/invitations/").json()["results"]] == [
@@ -583,6 +629,11 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-DELETABLE-CUP": {"amina"},
         "MARK-HISTORY-REASON": {"amina"},
         "Published Cup": set(world.viewers),
+        # Entries: Baraka's are pending and rejected, so his name and the reason he was turned down
+        # stay with him and staff. Grace's accepted entry is on show (control: she is in no directory).
+        "Baraka Otieno": {"amina", "baraka"},
+        "MARK-ENTRY-REASON": {"amina", "baraka"},
+        "Grace Achieng": set(world.viewers),
     }
     for who, user in world.viewers.items():
         served = everything_served_to(world, user)
