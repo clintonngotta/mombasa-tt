@@ -95,7 +95,7 @@ Decision revision on 2026-09-08: the user selected **React PWA + Django for laun
 Use the supplied coastal club crest's navy, blue, cyan, gold, and white. Light operational screens and a navy scoring deck replace the orange/dark PongForge appearance. Exact tokens are in [spec.md](spec.md#req-002).
 
 - [Existing Stitch project](https://stitch.withgoogle.com/projects/1275312862625402020), inspected 2026-09-07: 12 reference screens covering onboarding, profile, home, scoring, brackets, and media.
-- Logo: the supplied Coast Table Tennis Club crest, in the project since 2026-11-17 as `apps/web/public/logo-512.png`, `logo-192.png`, `apple-touch-icon.png` and `favicon.png` (the circle cut out of the supplied sheet, transparent outside it). It sits beside the name in the wordmark and is the browser and home-screen icon.
+- Logo: the supplied Coast Table Tennis Club crest, in the project since 2026-11-17. The whole crest is kept as `apps/web/brand/crest.png` (the circle cut out of the supplied sheet, transparent outside it) for the install manifest and large uses. Its lettering cannot be read at small sizes, so the wordmark, browser icon and home-screen icon use a simplified mark cut from the crest: the bat and ball over the sea in a navy ring (`apps/web/public/logo-mark.png`, `favicon.png`, `favicon-32.png`, and `apple-touch-icon.png` on a solid navy square).
 - New screen names and IDs must be added to the screen inventory in spec.md after generation.
 
 Two-sided comparisons always place players, teams or clubs left and right, including mobile scoring, match cards, results and head-to-head views. The umpire deck follows the user's two-panel reference; responsive layouts must never stack the opposing sides vertically.

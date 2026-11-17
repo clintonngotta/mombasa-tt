@@ -285,7 +285,7 @@ Project: [1275312862625402020](https://stitch.withgoogle.com/projects/1275312862
 | 90d3b622797c4c528922f05861df3008 | PongForge Match Scoring | Adapt deck; add offline and official confirmation |
 | 802d5d30a4a74b74b6fa952148a3c37d | Tournament Bracket View | Preserve four-tab model; provide other selected-tab states |
 | 430bb5802cb446e2b39bbe10fabf4b3d | Detailed Player Profile | Separate ratings/privacy; remove challenge/chat promises |
-| ea0ef10e404d4e50aa550f0f6c5d17b7 | Welcome Splash | mombasa-tt branding |
+| ea0ef10e404d4e50aa550f0f6c5d17b7 | Welcome Splash | Coast TT branding |
 | 8cd1bcdd8da848daa97b7189501026b5 | Sign Up | Email/password; remove unsupported social buttons |
 | 5f3fc1bfbefb4b99a35229492ee7d3a3 | Profile Setup | Optional enrichment |
 | 7e672d9f2dc943b2b84678d76cd5967d | Equipment Setup | Phase 3; skippable free-text |
