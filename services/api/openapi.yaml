@@ -3920,8 +3920,8 @@ components:
           maximum: 9
           minimum: 1
           nullable: true
-          description: 'Team events: rubbers a team must win to take the tie. Null
-            otherwise.'
+          description: 'Team events: rubbers a team must win to take the tie; at most
+            half of them, rounded up, so a tie always has a winner. Null otherwise.'
         accepted_count:
           type: integer
           description: Entries holding a place. Counted here when the caller didn't
@@ -4067,8 +4067,8 @@ components:
           maximum: 9
           minimum: 1
           nullable: true
-          description: 'Team events: rubbers a team must win to take the tie. Null
-            otherwise.'
+          description: 'Team events: rubbers a team must win to take the tie; at most
+            half of them, rounded up, so a tie always has a winner. Null otherwise.'
       required:
       - format
       - kind
@@ -5553,8 +5553,8 @@ components:
           maximum: 9
           minimum: 1
           nullable: true
-          description: 'Team events: rubbers a team must win to take the tie. Null
-            otherwise.'
+          description: 'Team events: rubbers a team must win to take the tie; at most
+            half of them, rounded up, so a tie always has a winner. Null otherwise.'
     PatchedMemberFieldRequest:
       type: object
       description: |-

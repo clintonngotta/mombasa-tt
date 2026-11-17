@@ -60,7 +60,8 @@ class EventSerializer(serializers.ModelSerializer):
         max_value=MAX_TIE_RUBBERS,
         allow_null=True,
         required=False,
-        help_text="Team events: rubbers a team must win to take the tie. Null otherwise.",
+        help_text="Team events: rubbers a team must win to take the tie; at most half of them, rounded "
+        "up, so a tie always has a winner. Null otherwise.",
     )
     accepted_count = serializers.SerializerMethodField()
 
@@ -148,14 +149,16 @@ class EventSerializer(serializers.ModelSerializer):
             wins = attrs.get("tie_wins_needed")
             if wins is None and "tie_rubbers" not in attrs:
                 wins = getattr(self.instance, "tie_wins_needed", None)
+            most = (len(rubbers) + 1) // 2
             if wins is None:
-                wins = len(rubbers) // 2 + 1
-            # More than half, so exactly one team can reach it; no more than there are rubbers.
-            if not len(rubbers) / 2 < wins <= len(rubbers):
+                wins = most
+            # A tie must always produce a winner: with both teams one short of the wins needed there
+            # is still a rubber left to play, so 2 x wins - 1 can't exceed the number of rubbers.
+            if wins > most:
                 raise serializers.ValidationError(
                     {
-                        "tie_wins_needed": f"With {len(rubbers)} rubbers a tie is won with "
-                        f"{len(rubbers) // 2 + 1} to {len(rubbers)} wins."
+                        "tie_wins_needed": f"With {len(rubbers)} rubbers a tie is won with at most {most} "
+                        "wins: more could leave it without a winner."
                     }
                 )
             attrs["tie_rubbers"], attrs["tie_wins_needed"] = rubbers, wins

@@ -15,6 +15,14 @@ from . import drawing, standings
 from .models import DrawVersion, Entry, Event, Lineup, Match, Rubber, RubberPlayer
 
 R = Rubber.Status
+# What a lineup was made for: changing any of these under a handed-in lineup would leave it wrong.
+LINEUP_FIELDS = {"kind", "best_of", "tie_rubbers", "tie_wins_needed"}
+
+
+def has_lineups(event: Event) -> bool:
+    return Lineup.objects.filter(match__draw__event=event).exists()
+
+
 SIZE = {Rubber.Kind.SINGLES: 1, Rubber.Kind.DOUBLES: 2}
 
 
@@ -95,16 +103,16 @@ def _begin_if_ready(match: Match) -> None:
 
 def reset_lineups(match: Match) -> None:
     """Staff send both teams back to choose again, as long as no rubber has been decided."""
+    event = match.draw.event
+    if event.is_closed or event.tournament.is_closed:
+        raise _conflict("event_closed", "This event is over, so its lineups can't change.")
     if match.rubbers.exclude(status=R.SCHEDULED).exists() or match.status != Match.Status.SCHEDULED:
         raise _conflict("tie_under_way", "A rubber of this tie is already decided, so its lineups stand.")
     match.rubbers.all().delete()
     match.lineups.all().delete()
 
 
-def tie_score(match: Match, rubbers=None) -> tuple[int, int]:
-    """Rubbers won by side a and side b."""
-    won = [rubber.winner_id for rubber in (match.rubbers.all() if rubbers is None else rubbers)]
-    return won.count(match.entry_a_id), won.count(match.entry_b_id)
+tie_score = drawing.tie_score
 
 
 def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome.PLAYED, games=()) -> None:
@@ -112,6 +120,8 @@ def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome
     [a, b] points in playing order, a being the tie's side a. Who may decide a rubber arrives with
     scoring; this is what follows from the result."""
     match = rubber.match
+    if match.draw.status != DrawVersion.Status.PUBLISHED:
+        raise _conflict("draw_not_published", "Only ties of the published draw are played.")
     if match.status != Match.Status.SCHEDULED or rubber.status != R.SCHEDULED:
         raise _conflict("rubber_closed", "This rubber is already decided or was not needed.")
     current = match.rubbers.filter(status=R.SCHEDULED).order_by("position").first()
@@ -130,11 +140,8 @@ def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome
     rubber.games = games
     rubber.save(update_fields=["winner", "status", "outcome", "games"])
 
-    a, b = tie_score(match)
-    needed = match.draw.event.tie_wins_needed
-    if max(a, b) >= needed:
-        # Decided: what is left is not played, and the tie goes on through the draw like any match.
-        match.rubbers.filter(status=R.SCHEDULED).update(status=R.NOT_PLAYED)
+    if max(tie_score(match)) >= match.draw.event.tie_wins_needed:
+        # Decided: the tie goes on through the draw like any match, and what is left is not played.
         drawing.record_result(match, winner)
 
 
@@ -164,11 +171,14 @@ def result_of(match: Match) -> standings.Result:
                 best_of=event.best_of,
             )
         )
-        games += credited if mine else [(theirs, ours) for ours, theirs in credited]
-    if match.outcome == Match.Outcome.WALKOVER and not won:
-        # A tie that was never played: the wins needed, each in straight games to nil.
-        won = event.tie_wins_needed
-        games = [(standings.GAME_POINTS, 0)] * (won * (event.best_of // 2 + 1))
+        # `credited` is from the rubber's winner; `games` is kept from the tie winner's side.
+        games += credited if mine else [(lost_by, won_by) for won_by, lost_by in credited]
+    if match.outcome in (Match.Outcome.WALKOVER, Match.Outcome.RETIRED):
+        # A tie that wasn't played, or wasn't finished, is completed in the winner's favour: the wins
+        # still needed, each in straight games to nil.
+        missing = max(event.tie_wins_needed - won, 0)
+        won += missing
+        games += [(standings.GAME_POINTS, 0)] * (missing * (event.best_of // 2 + 1))
     return standings.Result(
         str(match.winner_id),
         str(loser),
@@ -183,7 +193,12 @@ def describe(match: Match, viewer, staff: bool) -> dict:
     """The tie as TieSerializer shows it to `viewer`. A lineup's picks are shown to the team itself and
     to staff until both are in; everybody else learns only that it has been handed in."""
     event = match.draw.event
-    rubbers = list(match.rubbers.prefetch_related("players__user"))
+    match = (
+        Match.objects.select_related("draw__event__tournament")
+        .prefetch_related("rubbers__players__user")
+        .get(pk=match.pk)
+    )
+    rubbers = list(match.rubbers.all())
     begun = bool(rubbers)
     lineups = {lineup.entry_id: lineup for lineup in match.lineups.all()}
     open_now = not begun and _lineups_open(match)
@@ -200,7 +215,7 @@ def describe(match: Match, viewer, staff: bool) -> dict:
             "picks": lineup.picks if lineup and not begun and (staff or on_team) else None,
         }
 
-    a, b = tie_score(match, rubbers)
+    a, b = tie_score(match)
     return {
         "wins_needed": event.tie_wins_needed,
         "template": event.tie_rubbers,

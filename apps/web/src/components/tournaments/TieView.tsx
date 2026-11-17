@@ -4,6 +4,7 @@ import { CircleCheck, Hourglass } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
+import { WinnerMark } from "@/components/tournaments/MatchCard"
 import { drawKeys, gamesWon, resetLineups, submitLineup, type DrawSide, type MatchDetail, type Rubber, type Tie } from "@/lib/draws"
 import { tieSummary, type RubberKind } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
@@ -64,7 +65,7 @@ export function TieView({ match, second, ids }: { match: MatchDetail; second: Dr
       {tie.begun && (
         <ol className="flex flex-col gap-2">
           {tie.rubbers.map((rubber) => (
-            <RubberRow key={rubber.id} rubber={rubber} match={match} />
+            <RubberRow key={rubber.id} rubber={rubber} match={match} next={rubber.id === tie.rubbers.find((candidate) => candidate.status === "scheduled")?.id} />
           ))}
         </ol>
       )}
@@ -83,7 +84,7 @@ export function TieView({ match, second, ids }: { match: MatchDetail; second: Dr
 
 const names = (players: Rubber["a_players"]) => players.map((player) => player.display_name).join(" / ")
 
-function RubberRow({ rubber, match }: { rubber: Rubber; match: MatchDetail }) {
+function RubberRow({ rubber, match, next }: { rubber: Rubber; match: MatchDetail; next: boolean }) {
   const won = (side: SideKey) => rubber.status === "completed" && rubber.winner_id === (side === "a" ? match.a.entry?.id : match.b?.entry?.id)
   const games = gamesWon(rubber)
   const score = rubber.status === "not_played" ? "Not played" : rubber.status === "scheduled" ? "v" : rubber.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}${rubber.outcome === "retired" ? " ret." : ""}`
@@ -91,16 +92,17 @@ function RubberRow({ rubber, match }: { rubber: Rubber; match: MatchDetail }) {
     <li className={cn("flex flex-col gap-1.5 rounded-xl border bg-card px-3 py-2.5", rubber.status === "not_played" && "bg-muted text-muted-foreground")}>
       <span className="text-sm font-semibold text-muted-foreground">
         Rubber {rubber.position} · {KIND_LABEL[rubber.kind]}
+        {next && <span className="ml-2 rounded bg-brand-cyan/20 px-1.5 text-brand-navy">Next to play</span>}
       </span>
       <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <span className={cn("min-w-0 break-words", won("a") && "font-bold")}>
           {names(rubber.a_players)}
-          {won("a") && <span className="sr-only"> (winner)</span>}
+          {won("a") && <WinnerMark />}
         </span>
         <span className={cn("font-display text-xl font-bold tabular-nums", rubber.status !== "completed" && "font-sans text-sm font-normal text-muted-foreground")}>{score}</span>
         <span className={cn("min-w-0 text-right break-words", won("b") && "font-bold")}>
           {names(rubber.b_players)}
-          {won("b") && <span className="sr-only"> (winner)</span>}
+          {won("b") && <WinnerMark />}
         </span>
       </span>
       {rubber.games.length > 0 && <span className="text-center text-sm tabular-nums text-muted-foreground">{rubber.games.map(([a, b]) => `${a}–${b}`).join(", ")}</span>}

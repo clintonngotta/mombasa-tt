@@ -11,7 +11,7 @@ from django.utils import timezone
 from core.exceptions import ApiException
 
 from . import draws, standings
-from .models import DrawPlace, DrawVersion, Entry, Event, Match, Tournament
+from .models import DrawPlace, DrawVersion, Entry, Event, Match, Rubber, Tournament
 from .rules import RULES_VERSION
 
 D = DrawVersion.Status
@@ -150,17 +150,24 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
         raise _conflict("not_in_match", "The winner is one of the two sides of the match.")
     event = match.draw.event
     if event.is_team:
-        # A tie has no games of its own: it is played to its end through its rubbers, or not at all.
-        rubbers_won = sum(1 for rubber in match.rubbers.all() if rubber.winner_id == winner.id)
+        # A tie has no games of its own. It is played to its end through its rubbers; or it is awarded:
+        # before any rubber is decided (walkover) or part-way, when a team can't go on (retired).
+        most = max(tie_score(match))
+        needed = event.tie_wins_needed or 0
+        any_decided = match.rubbers.exclude(status=Rubber.Status.SCHEDULED).exists()
         fits = {
-            Match.Outcome.PLAYED: rubbers_won >= (event.tie_wins_needed or 0) > 0,
-            Match.Outcome.WALKOVER: not match.rubbers.exclude(status="scheduled").exists(),
+            Match.Outcome.PLAYED: tie_score(match)[winner.id != match.entry_a_id] >= needed > 0,
+            Match.Outcome.WALKOVER: not any_decided,
+            Match.Outcome.RETIRED: any_decided and most < needed,
         }
         if games or not fits.get(outcome, False):
             raise ApiException(
-                "invalid_result", "A tie is decided by its rubbers, or awarded without being played.", 400
+                "invalid_result",
+                "A tie is decided by its rubbers, or awarded when a team doesn't play or can't go on.",
+                400,
             )
-        match.rubbers.filter(status="scheduled").update(status="not_played")
+        # Whatever wasn't needed is not played: never scored and never rated.
+        match.rubbers.filter(status=Rubber.Status.SCHEDULED).update(status=Rubber.Status.NOT_PLAYED)
     else:
         check_games(event.best_of, games, outcome, a_won=winner.id == match.entry_a_id)
     match.winner = winner
@@ -204,15 +211,16 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
         .order_by("group_position")
         .values_list("entry_id", flat=True)
     ]
-    matches = list(draw.matches.filter(stage=Match.Stage.GROUP, group=group))
+    from . import ties  # ties builds on this module, so it is imported here and not at the top
+
     team = draw.event.is_team
+    matches = list(draw.matches.filter(stage=Match.Stage.GROUP, group=group).prefetch_related("rubbers"))
     results = []
     for match in matches:
+        match.draw = draw  # the draw and its event are already loaded
         if match.status != Match.Status.COMPLETED:
             continue
         if team:
-            from . import ties  # ties builds on this module
-
             results.append(ties.result_of(match))
             continue
         a_won = match.winner_id == match.entry_a_id
@@ -360,7 +368,7 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict):
             "winner_id": match.winner_id,
             "outcome": match.outcome,
             "games": match.games,
-            "tie_score": _tie_score(match) if match.rubbers.all() else None,
+            "tie_score": list(tie_score(match)) if match.rubbers.all() else None,
             "table": match.table.label if match.table else "",
             "scheduled_at": match.scheduled_at,
         }
@@ -368,10 +376,10 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict):
     return shown
 
 
-def _tie_score(match: Match) -> list[int]:
-    """Rubbers won by each side of a tie, from its (prefetched) rubbers."""
+def tie_score(match: Match) -> tuple[int, int]:
+    """Rubbers won by side a and side b of a tie."""
     won = [rubber.winner_id for rubber in match.rubbers.all() if rubber.winner_id]
-    return [won.count(match.entry_a_id), won.count(match.entry_b_id)]
+    return won.count(match.entry_a_id), won.count(match.entry_b_id)
 
 
 def describe_match(draw: DrawVersion, match_id) -> dict | None:

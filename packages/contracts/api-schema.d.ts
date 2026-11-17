@@ -1785,7 +1785,7 @@ export interface components {
             qualifiers_per_group: number | null;
             /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
             tie_rubbers: components["schemas"]["SinglesOrDoublesEnum"][];
-            /** @description Team events: rubbers a team must win to take the tie. Null otherwise. */
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
             tie_wins_needed: number | null;
             /** @description Entries holding a place. Counted here when the caller didn't annotate it. */
             readonly accepted_count: number;
@@ -1835,7 +1835,7 @@ export interface components {
             qualifiers_per_group?: number | null;
             /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
             tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
-            /** @description Team events: rubbers a team must win to take the tie. Null otherwise. */
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
             tie_wins_needed?: number | null;
         };
         /**
@@ -2501,7 +2501,7 @@ export interface components {
             qualifiers_per_group?: number | null;
             /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
             tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
-            /** @description Team events: rubbers a team must win to take the tie. Null otherwise. */
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
             tie_wins_needed?: number | null;
         };
         /**

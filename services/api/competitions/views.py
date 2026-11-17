@@ -282,8 +282,16 @@ class EventViewSet(viewsets.GenericViewSet):
             if event.status != E.SCHEDULED and serializer.structure_changes:
                 raise ApiException(
                     "structure_frozen",
-                    "This event has started, so its format, best of, seeding, groups and qualifiers "
-                    "can't change.",
+                    "This event has started, so its format, best of, seeding, groups, qualifiers and "
+                    "the make-up of a tie can't change.",
+                    409,
+                )
+            # A lineup names players for the rubbers as they stood when it was handed in.
+            if serializer.structure_changes & ties.LINEUP_FIELDS and ties.has_lineups(event):
+                raise ApiException(
+                    "lineups_in",
+                    "A team has handed in a lineup for this event, so the make-up of a tie and the match "
+                    "length can't change. Clear the lineups first.",
                     409,
                 )
             if changed:

@@ -97,11 +97,11 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
   const [opens, setOpens] = useState(toZonedInput(event?.registration_opens_at ?? null, t.timezone))
   const [closes, setCloses] = useState(toZonedInput(event?.registration_closes_at ?? null, t.timezone))
   const [rubbers, setRubbers] = useState<RubberKind[]>(event?.tie_rubbers.length ? event.tie_rubbers : DEFAULT_TIE_RUBBERS)
-  const [winsNeeded, setWinsNeeded] = useState(event?.tie_wins_needed ?? 3)
+  const [winsNeeded, setWinsNeeded] = useState(event?.tie_wins_needed ?? MAX_TIE_RUBBERS)
   const [confirmRemove, setConfirmRemove] = useState(false)
-  const majority = Math.floor(rubbers.length / 2) + 1
-  // Changing the number of rubbers keeps the wins needed within what can decide a tie.
-  const wins = Math.min(Math.max(winsNeeded, majority), rubbers.length)
+  // With both teams one short there must still be a rubber to play, or a tie could end without a winner.
+  const mostWins = Math.floor((rubbers.length + 1) / 2)
+  const wins = Math.min(Math.max(winsNeeded, 1), mostWins)
   const currency = event?.entry_fee.currency ?? "KES"
 
   const done = (fresh: Tournament) => {
@@ -201,12 +201,12 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
                 label="Wins needed to take the tie"
                 type="number"
                 inputMode="numeric"
-                min={majority}
-                max={rubbers.length}
+                min={1}
+                max={mostWins}
                 value={wins.toString()}
-                onChange={(e) => setWinsNeeded(Number(e.target.value) || majority)}
+                onChange={(e) => setWinsNeeded(Number(e.target.value) || mostWins)}
                 error={errors.tie_wins_needed}
-                hint={`Between ${majority} and ${rubbers.length}. Once a team has them, the rubbers left are not played. This tie: ${tieSummary(rubbers, wins)}.`}
+                hint={`At most ${mostWins}, so a tie always has a winner. Once a team has them, the rubbers left are not played. This tie: ${tieSummary(rubbers, wins)}.`}
               />
             </fieldset>
           )}

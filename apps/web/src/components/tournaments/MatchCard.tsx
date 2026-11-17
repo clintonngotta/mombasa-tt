@@ -40,6 +40,16 @@ export function YouBadge() {
   return <span className="ml-1 rounded bg-brand-gold px-1 text-xs font-bold text-brand-navy">You</span>
 }
 
+/** A winner is marked with an icon and a word, not by weight alone (REQ-002). */
+export function WinnerMark() {
+  return (
+    <>
+      <CircleCheck aria-hidden className="ml-1 inline size-4 text-success" />
+      <span className="sr-only"> (winner)</span>
+    </>
+  )
+}
+
 function SideName({ side, won, align }: { side: DrawSide; won: boolean; align: "left" | "right" }) {
   return (
     <span className={cn("min-w-0 break-words", align === "right" && "text-right")}>
@@ -48,7 +58,7 @@ function SideName({ side, won, align }: { side: DrawSide; won: boolean; align: "
           {side.entry.title}
           {side.seed && <span className="ml-1 text-sm font-normal text-muted-foreground">[{side.seed}]</span>}
           {side.entry.mine && <YouBadge />}
-          {won && <span className="sr-only"> (winner)</span>}
+          {won && <WinnerMark />}
         </span>
       ) : (
         <span className="text-sm text-muted-foreground italic">{side.awaiting}</span>

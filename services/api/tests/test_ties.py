@@ -111,9 +111,12 @@ def test_a_team_event_has_a_tie_format(staff, club):
         assert response.status_code == 400, response.json()
         return response.json()["fields"]
 
-    # Half the rubbers or fewer could leave a tie without a winner; more than there are can't be won.
-    assert "tie_wins_needed" in refused(tie_rubbers=["singles"] * 4, tie_wins_needed=2)
-    assert "tie_wins_needed" in refused(tie_rubbers=["singles"] * 3, tie_wins_needed=4)
+    # More wins than half the rubbers (rounded up) could leave a tie level with nothing left to play.
+    assert "tie_wins_needed" in refused(tie_rubbers=["singles"] * 5, tie_wins_needed=4)
+    assert "tie_wins_needed" in refused(tie_rubbers=["singles"] * 4, tie_wins_needed=3)
+    assert "tie_wins_needed" in refused(tie_rubbers=["singles"] * 3, tie_wins_needed=0)
+    four = add_event(staff, tournament, name="Four", kind="team", tie_rubbers=["singles"] * 4)["events"][3]
+    assert four["tie_wins_needed"] == 2
     assert "tie_rubbers" in refused(tie_rubbers=["singles", "mixed"])
     assert "tie_rubbers" in refused(tie_rubbers=["singles"] * 10)
 
@@ -126,7 +129,7 @@ def test_a_team_event_has_a_tie_format(staff, club):
     do(staff, tournament, "publish")
     do(staff, tournament, "start")
     do(staff, tournament, "start", event=events[0])
-    frozen = staff.patch(url(tournament, event=events[0]), {"tie_wins_needed": 4}, format="json")
+    frozen = staff.patch(url(tournament, event=events[0]), {"tie_wins_needed": 2}, format="json")
     assert (frozen.status_code, frozen.json()["code"]) == (409, "structure_frozen")
 
 
@@ -307,9 +310,7 @@ def test_a_team_group_is_ranked_on_individual_matches_before_games(staff, cup):
     def play(winner: str, loser: str, sequence: str) -> None:
         """`sequence` says who takes each rubber in turn: W for the tie's winner, L for its loser."""
         match = by_pair[frozenset((teams[winner][0]["id"], teams[loser][0]["id"]))]
-        fake = {"cup": cup, "event": event, "match": match}
         for name in (winner, loser):
-            fake[name.lower()] = teams[name][0]
             body = {"entry_id": teams[name][0]["id"], "picks": picks(teams[name][1])}
             path = url(cup, event=event) + f"matches/{match.id}/lineup/"
             assert staff.post(path, body, format="json").status_code == 200
@@ -331,3 +332,42 @@ def test_a_team_group_is_ranked_on_individual_matches_before_games(staff, cup):
     ]
     # The table's games are those of the rubbers played: Tudor won 5 rubbers 3-0 and lost 3 by 0-3.
     assert (table["rows"][0]["games_won"], table["rows"][0]["games_lost"]) == (15, 9)
+
+
+def test_the_tie_format_cannot_change_under_a_lineup(staff, tie):
+    hand_in(staff, tie, "tudor")
+    for change in ({"tie_rubbers": ["singles"] * 7}, {"tie_wins_needed": 2}, {"best_of": 3}):
+        refused = staff.patch(url(tie["cup"], event=tie["event"]), change, format="json")
+        assert (refused.status_code, refused.json()["code"]) == (409, "lineups_in"), change
+    # Other details still change, and so does the format once the lineups are cleared.
+    assert (
+        staff.patch(url(tie["cup"], event=tie["event"]), {"rest_minutes": 5}, format="json").status_code
+        == 200
+    )
+    hand_in(staff, tie, "nyali")
+    assert staff.post(match_url(tie, "lineup/reset/"), {}, format="json").status_code == 200
+    changed = staff.patch(
+        url(tie["cup"], event=tie["event"]), {"tie_rubbers": ["singles"] * 3}, format="json"
+    )
+    assert changed.status_code == 200
+    assert "3 rubbers" in hand_in(staff, tie, "tudor", expect=400)["message"]  # the old five no longer fit
+
+
+def test_a_tie_a_team_cannot_finish_is_awarded_and_completed_in_the_winners_favour(staff, tie):
+    rubbers = begin(staff, tie)
+    match = tie["match"]
+    tudor = Entry.objects.get(pk=tie["tudor"]["id"])
+    with pytest.raises(Exception, match="decided by its rubbers"):
+        drawing.record_result(match, tudor, outcome="retired")  # nothing decided yet: that is a walkover
+    decide(rubbers[0], tie, "nyali")
+    decide(rubbers[1], tie, "tudor", outcome="walkover")
+    with pytest.raises(Exception, match="decided by its rubbers"):
+        drawing.record_result(match, tudor, outcome="walkover")
+    drawing.record_result(match, tudor, outcome="retired")
+    assert [r.status for r in Rubber.objects.filter(match=match)] == ["completed"] * 2 + ["not_played"] * 3
+    table = staff.get(url(tie["cup"], event=tie["event"]) + "standings/").json()["groups"][0]
+    first, second = table["rows"]
+    assert [(r["entry"]["title"], r["match_points"]) for r in table["rows"]] == [("Tudor", 2), ("Nyali", 0)]
+    # Tudor: lost a rubber 0-3, won one by walkover (3 games to nil) and is credited two more the same way.
+    assert (first["games_won"], first["games_lost"]) == (9, 3)
+    assert (second["games_won"], second["games_lost"]) == (3, 9)
