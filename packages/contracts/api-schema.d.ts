@@ -1437,6 +1437,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hand in or replace a team's lineup for a tie: by the team's captain or by competition staff,
+         *     until both lineups are in. The other team sees only that it has been handed in. When both are
+         *     in the tie begins and its rubbers are made.
+         */
+        post: operations["tournaments_events_matches_lineup_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/reset/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Competition staff send both teams back to choose again, while no rubber has been decided. */
+        post: operations["tournaments_events_matches_lineup_reset_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/": {
         parameters: {
             query?: never;
@@ -1745,6 +1783,10 @@ export interface components {
             seeding: components["schemas"]["SeedingEnum"];
             group_count: number | null;
             qualifiers_per_group: number | null;
+            /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
+            tie_rubbers: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
+            tie_wins_needed: number | null;
             /** @description Entries holding a place. Counted here when the caller didn't annotate it. */
             readonly accepted_count: number;
             readonly status: components["schemas"]["EventStatusEnum"];
@@ -1791,6 +1833,10 @@ export interface components {
             seeding?: components["schemas"]["SeedingEnum"];
             group_count?: number | null;
             qualifiers_per_group?: number | null;
+            /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
+            tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
+            tie_wins_needed?: number | null;
         };
         /**
          * @description * `scheduled` - Scheduled
@@ -1925,6 +1971,28 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        /**
+         * @description A team's players for each rubber of the tie, in the template's order: one id for a singles, two
+         *     for a doubles.
+         */
+        LineupRequestRequest: {
+            /** Format: uuid */
+            entry_id: string;
+            picks: string[][];
+        };
+        /**
+         * @description Where one team's lineup stands. `picks` are given to the team itself and to staff until both
+         *     lineups are in; after that the rubbers show who plays.
+         */
+        LineupSide: {
+            submitted: boolean;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** @description The caller may hand in or replace this lineup now. */
+            can_submit: boolean;
+            /** @description Player ids for each rubber of the template, in order. */
+            picks: string[][] | null;
+        };
         LogInRequest: {
             /** Format: email */
             email: string;
@@ -1947,6 +2015,8 @@ export interface components {
             outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
             /** @description Points of each game as [a, b], in playing order. */
             games: number[][];
+            /** @description Team ties that have begun: rubbers won as [a, b]. Null otherwise. */
+            tie_score: number[] | null;
             /** @description The table's label; empty until one is given. */
             table: string;
             /**
@@ -1973,6 +2043,8 @@ export interface components {
             outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
             /** @description Points of each game as [a, b], in playing order. */
             games: number[][];
+            /** @description Team ties that have begun: rubbers won as [a, b]. Null otherwise. */
+            tie_score: number[] | null;
             /** @description The table's label; empty until one is given. */
             table: string;
             /**
@@ -1985,6 +2057,8 @@ export interface components {
             /** @description The round its winner goes on to; empty when nothing follows. */
             winner_plays_in: string;
             draw_version: number;
+            /** @description Team events only. */
+            tie: components["schemas"]["Tie"] | null;
         };
         MatchLabels: {
             labels: string[];
@@ -2425,6 +2499,10 @@ export interface components {
             seeding?: components["schemas"]["SeedingEnum"];
             group_count?: number | null;
             qualifiers_per_group?: number | null;
+            /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
+            tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
+            tie_wins_needed?: number | null;
         };
         /**
          * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
@@ -2447,7 +2525,7 @@ export interface components {
             /** Format: date */
             played_on?: string;
             label?: string;
-            format?: components["schemas"]["PersonalMatchFormatEnum"];
+            format?: components["schemas"]["SinglesOrDoublesEnum"];
             opponent_name?: string;
             partner_name?: string;
             venue?: string;
@@ -2523,7 +2601,7 @@ export interface components {
             /** Format: date */
             played_on: string;
             label: string;
-            format: components["schemas"]["PersonalMatchFormatEnum"];
+            format: components["schemas"]["SinglesOrDoublesEnum"];
             opponent_name: string;
             partner_name: string;
             venue: string;
@@ -2537,17 +2615,11 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
-        /**
-         * @description * `singles` - Singles
-         *     * `doubles` - Doubles
-         * @enum {string}
-         */
-        PersonalMatchFormatEnum: "singles" | "doubles";
         PersonalMatchRequest: {
             /** Format: date */
             played_on: string;
             label: string;
-            format?: components["schemas"]["PersonalMatchFormatEnum"];
+            format?: components["schemas"]["SinglesOrDoublesEnum"];
             opponent_name?: string;
             partner_name?: string;
             venue?: string;
@@ -2632,6 +2704,35 @@ export interface components {
             readonly key: components["schemas"]["RoleKeyEnum"];
             readonly name: string;
         };
+        /** @description One individual match of a tie. `not_played` means the tie was decided before its turn. */
+        Rubber: {
+            /** Format: uuid */
+            id: string;
+            position: number;
+            kind: components["schemas"]["SinglesOrDoublesEnum"];
+            status: components["schemas"]["RubberStatusEnum"];
+            a_players: components["schemas"]["RubberPlayer"][];
+            b_players: components["schemas"]["RubberPlayer"][];
+            /**
+             * Format: uuid
+             * @description The entry (team) that won it.
+             */
+            winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            games: number[][];
+        };
+        RubberPlayer: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `completed` - Completed
+         *     * `not_played` - Not Played
+         * @enum {string}
+         */
+        RubberStatusEnum: "scheduled" | "completed" | "not_played";
         /**
          * @description * `rating` - Rating
          *     * `manual` - Manual
@@ -2645,6 +2746,12 @@ export interface components {
             email: string;
             password: string;
         };
+        /**
+         * @description * `singles` - Singles
+         *     * `doubles` - Doubles
+         * @enum {string}
+         */
+        SinglesOrDoublesEnum: "singles" | "doubles";
         StandingRow: {
             rank: number;
             entry: components["schemas"]["DrawEntry"];
@@ -2678,6 +2785,19 @@ export interface components {
         TableRequest: {
             label: string;
             active?: boolean;
+        };
+        /** @description A team tie (REQ-011): its format, each team's lineup and, once both are in, its rubbers. */
+        Tie: {
+            wins_needed: number;
+            template: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Both lineups are in and the rubbers exist. */
+            begun: boolean;
+            score: number[];
+            a: components["schemas"]["LineupSide"];
+            b: components["schemas"]["LineupSide"];
+            /** @description The caller may send both teams back to choose again. */
+            can_reset: boolean;
+            rubbers: components["schemas"]["Rubber"][];
         };
         /**
          * @description One comparison made between members who were level, up to the one that separated them (or the
@@ -5715,6 +5835,74 @@ export interface operations {
         };
     };
     tournaments_events_matches_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_lineup_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineupRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_lineup_reset_create: {
         parameters: {
             query?: never;
             header?: never;

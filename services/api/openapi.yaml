@@ -3118,6 +3118,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/:
+    post:
+      operationId: tournaments_events_matches_lineup_create
+      description: |-
+        Hand in or replace a team's lineup for a tie: by the team's captain or by competition staff,
+        until both lineups are in. The other team sees only that it has been handed in. When both are
+        in the tie begins and its rubbers are made.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LineupRequestRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/reset/:
+    post:
+      operationId: tournaments_events_matches_lineup_reset_create
+      description: Competition staff send both teams back to choose again, while no
+        rubber has been decided.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/:
     get:
       operationId: tournaments_events_standings_retrieve
@@ -3818,6 +3908,20 @@ components:
           maximum: 8
           minimum: 1
           nullable: true
+        tie_rubbers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglesOrDoublesEnum'
+          description: 'Team events: the individual matches of a tie in playing order.
+            Empty otherwise.'
+          maxItems: 9
+        tie_wins_needed:
+          type: integer
+          maximum: 9
+          minimum: 1
+          nullable: true
+          description: 'Team events: rubbers a team must win to take the tie; at most
+            half of them, rounded up, so a tie always has a winner. Null otherwise.'
         accepted_count:
           type: integer
           description: Entries holding a place. Counted here when the caller didn't
@@ -3869,6 +3973,8 @@ components:
       - seeding
       - started_at
       - status
+      - tie_rubbers
+      - tie_wins_needed
     EventDraw:
       type: object
       description: The event's published draw and, for competition staff only, the
@@ -3949,6 +4055,20 @@ components:
           maximum: 8
           minimum: 1
           nullable: true
+        tie_rubbers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglesOrDoublesEnum'
+          description: 'Team events: the individual matches of a tie in playing order.
+            Empty otherwise.'
+          maxItems: 9
+        tie_wins_needed:
+          type: integer
+          maximum: 9
+          minimum: 1
+          nullable: true
+          description: 'Team events: rubbers a team must win to take the tie; at most
+            half of them, rounded up, so a tie always has a winner. Null otherwise.'
       required:
       - format
       - kind
@@ -4247,6 +4367,57 @@ components:
       - id
       - reason
       - snapshot
+    LineupRequestRequest:
+      type: object
+      description: |-
+        A team's players for each rubber of the tie, in the template's order: one id for a singles, two
+        for a doubles.
+      properties:
+        entry_id:
+          type: string
+          format: uuid
+        picks:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+              format: uuid
+            maxItems: 2
+            minItems: 1
+          maxItems: 9
+      required:
+      - entry_id
+      - picks
+    LineupSide:
+      type: object
+      description: |-
+        Where one team's lineup stands. `picks` are given to the team itself and to staff until both
+        lineups are in; after that the rubbers show who plays.
+      properties:
+        submitted:
+          type: boolean
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        can_submit:
+          type: boolean
+          description: The caller may hand in or replace this lineup now.
+        picks:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+              format: uuid
+          nullable: true
+          description: Player ids for each rubber of the template, in order.
+      required:
+      - can_submit
+      - picks
+      - submitted
+      - submitted_at
     LogInRequest:
       type: object
       properties:
@@ -4304,6 +4475,14 @@ components:
             maxItems: 2
             minItems: 2
           description: Points of each game as [a, b], in playing order.
+        tie_score:
+          type: array
+          items:
+            type: integer
+          nullable: true
+          description: 'Team ties that have begun: rubbers won as [a, b]. Null otherwise.'
+          maxItems: 2
+          minItems: 2
         table:
           type: string
           description: The table's label; empty until one is given.
@@ -4327,6 +4506,7 @@ components:
       - stage
       - status
       - table
+      - tie_score
       - winner_id
     MatchDetail:
       type: object
@@ -4373,6 +4553,14 @@ components:
             maxItems: 2
             minItems: 2
           description: Points of each game as [a, b], in playing order.
+        tie_score:
+          type: array
+          items:
+            type: integer
+          nullable: true
+          description: 'Team ties that have begun: rubbers won as [a, b]. Null otherwise.'
+          maxItems: 2
+          minItems: 2
         table:
           type: string
           description: The table's label; empty until one is given.
@@ -4390,6 +4578,11 @@ components:
           description: The round its winner goes on to; empty when nothing follows.
         draw_version:
           type: integer
+        tie:
+          allOf:
+          - $ref: '#/components/schemas/Tie'
+          nullable: true
+          description: Team events only.
       required:
       - a
       - b
@@ -4406,6 +4599,8 @@ components:
       - stage
       - status
       - table
+      - tie
+      - tie_score
       - winner_id
       - winner_plays_in
     MatchLabels:
@@ -5346,6 +5541,20 @@ components:
           maximum: 8
           minimum: 1
           nullable: true
+        tie_rubbers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglesOrDoublesEnum'
+          description: 'Team events: the individual matches of a tie in playing order.
+            Empty otherwise.'
+          maxItems: 9
+        tie_wins_needed:
+          type: integer
+          maximum: 9
+          minimum: 1
+          nullable: true
+          description: 'Team events: rubbers a team must win to take the tie; at most
+            half of them, rounded up, so a tie always has a winner. Null otherwise.'
     PatchedMemberFieldRequest:
       type: object
       description: |-
@@ -5393,7 +5602,7 @@ components:
           minLength: 1
           maxLength: 40
         format:
-          $ref: '#/components/schemas/PersonalMatchFormatEnum'
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
         opponent_name:
           type: string
           maxLength: 120
@@ -5564,7 +5773,7 @@ components:
           type: string
           maxLength: 40
         format:
-          $ref: '#/components/schemas/PersonalMatchFormatEnum'
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
         opponent_name:
           type: string
           maxLength: 120
@@ -5614,14 +5823,6 @@ components:
       - result
       - updated_at
       - venue
-    PersonalMatchFormatEnum:
-      enum:
-      - singles
-      - doubles
-      type: string
-      description: |-
-        * `singles` - Singles
-        * `doubles` - Doubles
     PersonalMatchRequest:
       type: object
       properties:
@@ -5633,7 +5834,7 @@ components:
           minLength: 1
           maxLength: 40
         format:
-          $ref: '#/components/schemas/PersonalMatchFormatEnum'
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
         opponent_name:
           type: string
           maxLength: 120
@@ -5887,6 +6088,76 @@ components:
       - id
       - key
       - name
+    Rubber:
+      type: object
+      description: One individual match of a tie. `not_played` means the tie was decided
+        before its turn.
+      properties:
+        id:
+          type: string
+          format: uuid
+        position:
+          type: integer
+        kind:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        status:
+          $ref: '#/components/schemas/RubberStatusEnum'
+        a_players:
+          type: array
+          items:
+            $ref: '#/components/schemas/RubberPlayer'
+        b_players:
+          type: array
+          items:
+            $ref: '#/components/schemas/RubberPlayer'
+        winner_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The entry (team) that won it.
+        outcome:
+          oneOf:
+          - $ref: '#/components/schemas/MatchOutcomeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+      required:
+      - a_players
+      - b_players
+      - games
+      - id
+      - kind
+      - outcome
+      - position
+      - status
+      - winner_id
+    RubberPlayer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
+    RubberStatusEnum:
+      enum:
+      - scheduled
+      - completed
+      - not_played
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `completed` - Completed
+        * `not_played` - Not Played
     SeedingEnum:
       enum:
       - rating
@@ -5916,6 +6187,14 @@ components:
       - display_name
       - email
       - password
+    SinglesOrDoublesEnum:
+      enum:
+      - singles
+      - doubles
+      type: string
+      description: |-
+        * `singles` - Singles
+        * `doubles` - Doubles
     StandingRow:
       type: object
       properties:
@@ -6016,6 +6295,46 @@ components:
           type: boolean
       required:
       - label
+    Tie:
+      type: object
+      description: 'A team tie (REQ-011): its format, each team''s lineup and, once
+        both are in, its rubbers.'
+      properties:
+        wins_needed:
+          type: integer
+        template:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        begun:
+          type: boolean
+          description: Both lineups are in and the rubbers exist.
+        score:
+          type: array
+          items:
+            type: integer
+          maxItems: 2
+          minItems: 2
+        a:
+          $ref: '#/components/schemas/LineupSide'
+        b:
+          $ref: '#/components/schemas/LineupSide'
+        can_reset:
+          type: boolean
+          description: The caller may send both teams back to choose again.
+        rubbers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rubber'
+      required:
+      - a
+      - b
+      - begun
+      - can_reset
+      - rubbers
+      - score
+      - template
+      - wins_needed
     TieBreakStep:
       type: object
       description: |-

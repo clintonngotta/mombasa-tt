@@ -11,7 +11,7 @@ from django.utils import timezone
 from core.exceptions import ApiException
 
 from . import draws, standings
-from .models import DrawPlace, DrawVersion, Entry, Event, Match, Tournament
+from .models import DrawPlace, DrawVersion, Entry, Event, Match, Rubber, Tournament
 from .rules import RULES_VERSION
 
 D = DrawVersion.Status
@@ -148,19 +148,28 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
         raise _conflict("match_not_ready", "Both sides of this match aren't known yet.")
     if winner.id not in (match.entry_a_id, match.entry_b_id):
         raise _conflict("not_in_match", "The winner is one of the two sides of the match.")
-    a_won = winner.id == match.entry_a_id
-    games = [(a, b) if a_won else (b, a) for a, b in games]  # from the winner's side
-    needed = match.draw.event.best_of // 2 + 1
-    won = sum(1 for mine, theirs in games if mine > theirs)
-    lost = len(games) - won
-    plausible = {
-        Match.Outcome.PLAYED: won == needed and lost < needed,
-        Match.Outcome.WALKOVER: not games,
-        Match.Outcome.RETIRED: won < needed and lost < needed,
-    }
-    if not plausible.get(outcome, False):
-        raise ApiException("invalid_result", "The games don't fit how this match is said to have ended.", 400)
-    games = [(a, b) if a_won else (b, a) for a, b in games]  # back to [a, b] as stored
+    event = match.draw.event
+    if event.is_team:
+        # A tie has no games of its own. It is played to its end through its rubbers; or it is awarded:
+        # before any rubber is decided (walkover) or part-way, when a team can't go on (retired).
+        most = max(tie_score(match))
+        needed = event.tie_wins_needed or 0
+        any_decided = match.rubbers.exclude(status=Rubber.Status.SCHEDULED).exists()
+        fits = {
+            Match.Outcome.PLAYED: tie_score(match)[winner.id != match.entry_a_id] >= needed > 0,
+            Match.Outcome.WALKOVER: not any_decided,
+            Match.Outcome.RETIRED: any_decided and most < needed,
+        }
+        if games or not fits.get(outcome, False):
+            raise ApiException(
+                "invalid_result",
+                "A tie is decided by its rubbers, or awarded when a team doesn't play or can't go on.",
+                400,
+            )
+        # Whatever wasn't needed is not played: never scored and never rated.
+        match.rubbers.filter(status=Rubber.Status.SCHEDULED).update(status=Rubber.Status.NOT_PLAYED)
+    else:
+        check_games(event.best_of, games, outcome, a_won=winner.id == match.entry_a_id)
     match.winner = winner
     match.status = Match.Status.COMPLETED
     match.outcome = outcome
@@ -169,6 +178,21 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
     _send_on(match)
     if match.stage == Match.Stage.GROUP:
         place_qualifiers(match.draw, match.group)
+
+
+def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
+    """Refuse games (as [a, b] points) that don't fit how an individual match is said to have ended: a
+    played match has exactly the games its winner needed, a walkover none, a retirement too few."""
+    needed = best_of // 2 + 1
+    won = sum(1 for a, b in games if (a > b) == a_won and a != b)
+    lost = len(games) - won
+    plausible = {
+        Match.Outcome.PLAYED: won == needed and lost < needed,
+        Match.Outcome.WALKOVER: not games,
+        Match.Outcome.RETIRED: won < needed and lost < needed,
+    }
+    if not plausible.get(outcome, False):
+        raise ApiException("invalid_result", "The games don't fit how this match is said to have ended.", 400)
 
 
 def _send_on(match: Match) -> None:
@@ -187,10 +211,17 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
         .order_by("group_position")
         .values_list("entry_id", flat=True)
     ]
-    matches = list(draw.matches.filter(stage=Match.Stage.GROUP, group=group))
+    from . import ties  # ties builds on this module, so it is imported here and not at the top
+
+    team = draw.event.is_team
+    matches = list(draw.matches.filter(stage=Match.Stage.GROUP, group=group).prefetch_related("rubbers"))
     results = []
     for match in matches:
+        match.draw = draw  # the draw and its event are already loaded
         if match.status != Match.Status.COMPLETED:
+            continue
+        if team:
+            results.append(ties.result_of(match))
             continue
         a_won = match.winner_id == match.entry_a_id
         loser = match.entry_b_id if a_won else match.entry_a_id
@@ -205,9 +236,20 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
             )
         )
     complete = len(results) == len(matches)
-    scores = sorted((str(match.id), str(match.winner_id), match.outcome, match.games) for match in matches)
+    scores = sorted(
+        (
+            str(match.id),
+            str(match.winner_id),
+            match.outcome,
+            match.games,
+            [rubber.games for rubber in match.rubbers.all()] if team else [],
+        )
+        for match in matches
+    )
     lot = hashlib.sha256(repr((str(draw.id), draw.rng_seed, group, scores)).encode()).digest()
-    rows = standings.rank(members, results, final=complete, lot_seed=int.from_bytes(lot[:8], "big"))
+    rows = standings.rank(
+        members, results, final=complete, lot_seed=int.from_bytes(lot[:8], "big"), team=team
+    )
     return rows, complete
 
 
@@ -268,7 +310,7 @@ def describe(draw: DrawVersion) -> dict:
     places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
     entries = {place.entry_id: place.entry for place in places}
     seeds = {place.entry_id: place.seed for place in places}
-    matches = list(draw.matches.select_related("table"))
+    matches = _matches_of(draw)
     shown = _match_describer(matches, entries, seeds)
     numbers = sorted({place.group for place in places if place.group})
     return {
@@ -284,6 +326,11 @@ def describe(draw: DrawVersion) -> dict:
         "places": places,
         "matches": [shown(match) for match in matches],
     }
+
+
+def _matches_of(draw: DrawVersion) -> list[Match]:
+    """Every match of the draw with what describing one needs: its table and, for ties, its rubbers."""
+    return list(draw.matches.select_related("table").prefetch_related("rubbers"))
 
 
 def _match_describer(matches: list[Match], entries: dict, seeds: dict):
@@ -321,6 +368,7 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict):
             "winner_id": match.winner_id,
             "outcome": match.outcome,
             "games": match.games,
+            "tie_score": list(tie_score(match)) if match.rubbers.all() else None,
             "table": match.table.label if match.table else "",
             "scheduled_at": match.scheduled_at,
         }
@@ -328,10 +376,16 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict):
     return shown
 
 
+def tie_score(match: Match) -> tuple[int, int]:
+    """Rubbers won by side a and side b of a tie."""
+    won = [rubber.winner_id for rubber in match.rubbers.all() if rubber.winner_id]
+    return won.count(match.entry_a_id), won.count(match.entry_b_id)
+
+
 def describe_match(draw: DrawVersion, match_id) -> dict | None:
     """One match of the draw as MatchDetailSerializer shows it, or None when it isn't in this draw."""
     places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
-    matches = list(draw.matches.select_related("table"))
+    matches = _matches_of(draw)
     match = next((found for found in matches if found.id == match_id), None)
     if match is None:
         return None
@@ -348,6 +402,7 @@ def describe_match(draw: DrawVersion, match_id) -> dict | None:
         "group_name": group_name(match.group) if match.group and multiple else "",
         "winner_plays_in": shown(onward)["round_name"] if onward else "",
         "draw_version": draw.version,
+        "match": match,
     }
 
 

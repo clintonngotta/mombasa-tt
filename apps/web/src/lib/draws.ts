@@ -7,6 +7,8 @@ export type DrawSide = Schemas["MatchSide"]
 export type EventDraw = Schemas["EventDraw"]
 export type MatchDetail = Schemas["MatchDetail"]
 export type Standings = Schemas["Standings"]
+export type Tie = Schemas["Tie"]
+export type Rubber = Schemas["Rubber"]
 
 export const drawKeys = {
   event: (eventId: string) => ["draws", "event", eventId] as const,
@@ -22,6 +24,11 @@ export const getDraw = (id: string, eventId: string) => api<EventDraw>(base(id, 
 export const getStandings = (id: string, eventId: string) => api<Standings>(`/tournaments/${id}/events/${eventId}/standings/`)
 /** One match of the published draw. */
 export const getMatch = (id: string, eventId: string, matchId: string) => api<MatchDetail>(`/tournaments/${id}/events/${eventId}/matches/${matchId}/`)
+/** Hand in a team's lineup for a tie: player ids for each rubber, in the tie's order. */
+export const submitLineup = (id: string, eventId: string, matchId: string, entryId: string, picks: string[][]) =>
+  api<MatchDetail>(`/tournaments/${id}/events/${eventId}/matches/${matchId}/lineup/`, { body: { entry_id: entryId, picks } })
+/** Staff: send both teams back to choose again. */
+export const resetLineups = (id: string, eventId: string, matchId: string) => api<MatchDetail>(`/tournaments/${id}/events/${eventId}/matches/${matchId}/lineup/reset/`, { body: {} })
 /** Draw the accepted entries (again); seeds are entry ids, best first. */
 export const previewDraw = (id: string, eventId: string, seeds: string[]) => api<EventDraw>(`${base(id, eventId)}preview/`, { body: { seeded_entry_ids: seeds } })
 export const publishDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}publish/`, { body: {} })
@@ -46,8 +53,13 @@ export function gameWinner([a, b]: number[]): "a" | "b" | null {
   return a > b ? "a" : "b"
 }
 
+/** What a match is counted in: games won, or for a team tie the rubbers won. */
+export function sideScores(match: Pick<DrawMatch, "games" | "tie_score">) {
+  return match.tie_score ? { a: match.tie_score[0], b: match.tie_score[1] } : gamesWon(match)
+}
+
 /** Games won by each side, from the points of each finished game. */
-export function gamesWon(match: Pick<DrawMatch, "games">) {
+export function gamesWon(match: { games: number[][] }) {
   const winners = match.games.map(gameWinner)
   return { a: winners.filter((winner) => winner === "a").length, b: winners.filter((winner) => winner === "b").length }
 }
@@ -56,18 +68,20 @@ export function gamesWon(match: Pick<DrawMatch, "games">) {
 export const sideWon = (match: Pick<DrawMatch, "status" | "winner_id">, side: DrawSide | null) => !!side?.entry && match.status === "completed" && match.winner_id === side.entry.id
 
 /** The score as it is read out: "3 games to 1", "walkover", "not played yet". */
-export function spokenScore(match: Pick<DrawMatch, "games" | "status" | "outcome">) {
-  if (match.status !== "completed") return "not played yet"
+export function spokenScore(match: Pick<DrawMatch, "games" | "status" | "outcome" | "tie_score">) {
+  const { a, b } = sideScores(match)
+  const unit = match.tie_score ? "rubbers" : "games"
+  if (match.status !== "completed") return match.tie_score ? `${a} ${unit} to ${b} so far` : "not played yet"
   if (match.outcome === "walkover") return "walkover"
-  const { a, b } = gamesWon(match)
-  return `${a} games to ${b}${match.outcome === "retired" ? ", retired" : ""}`
+  return `${a} ${unit} to ${b}${match.outcome === "retired" ? ", retired" : ""}`
 }
 
 /** "3–1", "W/O" for a walkover, "2–1 ret." for a retirement; null while the match isn't decided. */
-export function scoreLine(match: Pick<DrawMatch, "games" | "status" | "outcome">) {
-  if (match.status !== "completed") return null
+export function scoreLine(match: Pick<DrawMatch, "games" | "status" | "outcome" | "tie_score">) {
+  const { a, b } = sideScores(match)
+  // A tie under way shows its rubbers so far.
+  if (match.status !== "completed") return match.tie_score ? `${a}–${b}` : null
   if (match.outcome === "walkover") return "W/O"
-  const { a, b } = gamesWon(match)
   return match.outcome === "retired" ? `${a}–${b} ret.` : `${a}–${b}`
 }
 

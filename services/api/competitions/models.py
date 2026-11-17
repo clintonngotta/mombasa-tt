@@ -7,6 +7,10 @@ from facilities.models import Table, Venue
 from organizations.models import Organization
 
 MAX_EVENTS = 30
+MAX_TIE_RUBBERS = 9
+# The usual club tie: four singles around a doubles, first team to three.
+DEFAULT_TIE_RUBBERS = ["singles", "singles", "doubles", "singles", "singles"]
+DEFAULT_TIE_WINS = 3
 
 
 class TournamentQuerySet(models.QuerySet):
@@ -101,7 +105,16 @@ class Event(models.Model):
         CANCELLED = "cancelled"
 
     # What "structure" means for REQ-007: fixed once the event has started.
-    STRUCTURE_FIELDS = ("kind", "format", "best_of", "seeding", "group_count", "qualifiers_per_group")
+    STRUCTURE_FIELDS = (
+        "kind",
+        "format",
+        "best_of",
+        "seeding",
+        "group_count",
+        "qualifiers_per_group",
+        "tie_rubbers",
+        "tie_wins_needed",
+    )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="events")
@@ -119,6 +132,10 @@ class Event(models.Model):
     seeding = models.CharField(max_length=10, choices=Seeding.choices, default=Seeding.RATING)
     group_count = models.PositiveSmallIntegerField(null=True, blank=True)  # groups_knockout only
     qualifiers_per_group = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Team events only (REQ-011): the individual matches of a tie in playing order, each "singles" or
+    # "doubles", and how many of them a team must win to take the tie.
+    tie_rubbers = models.JSONField(default=list, blank=True)
+    tie_wins_needed = models.PositiveSmallIntegerField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.SCHEDULED)
     position = models.PositiveSmallIntegerField(default=0)
     revision = models.PositiveIntegerField(default=1)
@@ -137,6 +154,10 @@ class Event(models.Model):
     @property
     def is_closed(self) -> bool:
         return self.status in {self.Status.COMPLETED, self.Status.CANCELLED}
+
+    @property
+    def is_team(self) -> bool:
+        return self.kind == self.Kind.TEAM
 
 
 class LifecycleEntry(models.Model):
@@ -371,3 +392,76 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.stage} round {self.round} match {self.position} of draw {self.draw_id}"
+
+
+class Lineup(models.Model):
+    """Who one team sends out for each rubber of a tie (REQ-011). `picks` holds, for every rubber of the
+    event's tie template in order, the ids of the one or two players chosen. A team's lineup is its own
+    until both are in: then the tie begins and the rubbers are made from them."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="lineups")
+    entry = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name="lineups")
+    picks = models.JSONField(default=list)
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    submitted_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["match", "entry"], name="one_lineup_per_team")]
+
+    def __str__(self):
+        return f"Lineup of {self.entry_id} for {self.match_id}"
+
+
+class Rubber(models.Model):
+    """One individual match of a team tie (REQ-011): a singles or doubles with its own score. Rubbers
+    are played in order, one at a time; once a team has the wins it needs, those left are not played."""
+
+    class Kind(models.TextChoices):
+        SINGLES = "singles"
+        DOUBLES = "doubles"
+
+    class Status(models.TextChoices):
+        SCHEDULED = "scheduled"
+        COMPLETED = "completed"
+        NOT_PLAYED = "not_played"  # the tie was decided before its turn came
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="rubbers")
+    position = models.PositiveSmallIntegerField()  # 1-based playing order
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
+    winner = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    outcome = models.CharField(max_length=10, choices=Match.Outcome.choices, blank=True)
+    # Points of each game as [a, b] pairs, a being the tie's side a.
+    games = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["position"]
+        constraints = [models.UniqueConstraint(fields=["match", "position"], name="rubber_position_once")]
+
+    def __str__(self):
+        return f"Rubber {self.position} of {self.match_id}"
+
+
+class RubberPlayer(models.Model):
+    """A player in a rubber, on the side of the team that picked them."""
+
+    class Side(models.TextChoices):
+        A = "a"
+        B = "b"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rubber = models.ForeignKey(Rubber, on_delete=models.CASCADE, related_name="players")
+    side = models.CharField(max_length=1, choices=Side.choices)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["side", "position"]
+        constraints = [models.UniqueConstraint(fields=["rubber", "user"], name="rubber_player_once")]
+
+    def __str__(self):
+        return f"{self.user_id} in {self.rubber_id}"
