@@ -69,14 +69,24 @@ def roster_problem(event: Event, players: list, team_name: str, captain) -> dict
     return {}
 
 
+def _already_entered(taken, actor, by_staff: bool) -> ApiException:
+    """Staff are told who; a player learns only about themselves, since other people's pending and
+    waitlisted entries are not theirs to see."""
+    if by_staff:
+        names = ", ".join(sorted({place.user.display_name for place in taken}))
+        return _conflict("already_entered", f"Already entered in this event: {names}.")
+    if any(place.user_id == actor.id for place in taken):
+        return _conflict("already_entered", "You are already entered in this event.")
+    return _conflict("already_entered", "One of these players is already entered in this event.")
+
+
 def create(event: Event, actor, players: list, *, team_name: str, captain, by_staff: bool) -> Entry:
     """A player's own entry waits for staff; one made by staff takes a place if there is one and joins
     the waiting list if not."""
     is_team = event.kind == Event.Kind.TEAM
     taken = EntryPlayer.objects.filter(event=event, live=True, user__in=players).select_related("user")
     if taken:
-        names = ", ".join(sorted({place.user.display_name for place in taken}))
-        raise _conflict("already_entered", f"Already entered in this event: {names}.")
+        raise _already_entered(taken, actor, by_staff)
     if is_team and event.entries.filter(status__in=Entry.LIVE, team_name__iexact=team_name).exists():
         raise _conflict("team_name_taken", "Another team in this event has that name.")
     status = S.PENDING
@@ -122,9 +132,7 @@ def _decide(entry: Entry, actor, status: str, reason: str = "") -> None:
 def _stand_down(entry: Entry) -> None:
     """The entry no longer stands: its players are free to enter again and it is no longer checked in."""
     entry.players.update(live=False)
-    entry.checked_in_at = None
-    entry.checked_in_by = None
-    entry.save(update_fields=["checked_in_at", "checked_in_by"])
+    undo_check_in(entry)
 
 
 def accept(entry: Entry, actor) -> str:
@@ -152,10 +160,9 @@ def withdraw(entry: Entry, actor, reason: str = "") -> None:
     """By one of its players, or by staff on their behalf. The place it held is free again; nobody is
     promoted into it automatically."""
     _require(entry, *Entry.LIVE, doing="withdrawn")
-    entry.status = S.WITHDRAWN
     entry.withdrawn_at = timezone.now()
-    entry.reason = reason
-    entry.save(update_fields=["status", "withdrawn_at", "reason"])
+    entry.save(update_fields=["withdrawn_at"])
+    _decide(entry, actor, S.WITHDRAWN, reason)  # records who withdrew it, player or staff
     _stand_down(entry)
 
 

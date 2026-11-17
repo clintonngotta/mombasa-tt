@@ -9,21 +9,17 @@ export type EntryInput = Schemas["EntryRequestRequest"]
 /** What competition staff can do to an entry. */
 export type StaffEntryAction = "accept" | "waitlist" | "reject" | "staff-withdraw" | "check-in" | "undo-check-in"
 
-export const MIN_TEAM_ROSTER = 2
 export const MAX_TEAM_ROSTER = 10
 
 export const entryKeys = {
-  all: ["entries"] as const,
   event: (eventId: string) => ["entries", "event", eventId] as const,
-  list: (eventId: string, status: EntryStatus | "") => ["entries", "event", eventId, status] as const,
   mine: ["entries", "mine"] as const,
 }
 
 const base = (id: string, eventId: string) => `/tournaments/${id}/events/${eventId}/entries/`
 
 /** Accepted entries plus the caller's own; staff get every entry. Up to 100, the API's largest page. */
-export const listEntries = (id: string, eventId: string, status: EntryStatus | "" = "") =>
-  api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100${status ? `&status=${status}` : ""}`)
+export const listEntries = (id: string, eventId: string) => api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100`)
 export const createEntry = (id: string, eventId: string, body: EntryInput) => api<Entry>(base(id, eventId), { body })
 export const withdrawEntry = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/withdraw/`, { body: {} })
 export const changeEntry = (id: string, eventId: string, entryId: string, action: StaffEntryAction, reason?: string) =>
@@ -56,9 +52,10 @@ export function placesTaken(event: Pick<TournamentEvent, "accepted_count" | "cap
  * Why a player can't enter right now, or null when they can. Mirrors the API's rules so the form isn't
  * offered when the answer would be a refusal; the server still decides.
  */
-export function entryBlock(t: Pick<Tournament, "status">, event: TournamentEvent, now = new Date()) {
+export function entryBlock(t: Pick<Tournament, "status">, event: Pick<TournamentEvent, "status" | "registration_opens_at" | "registration_closes_at">, { staff = false, now = new Date() } = {}) {
   if (t.status === "draft") return "Entries open once the tournament is published."
   if (t.status === "completed" || t.status === "cancelled" || event.status !== "scheduled") return "Entries for this event are closed."
+  if (staff) return null // the organizers enter people until the event starts
   if (event.registration_opens_at && now < new Date(event.registration_opens_at)) return "Registration hasn't opened yet."
   if (event.registration_closes_at && now >= new Date(event.registration_closes_at)) return "Registration has closed."
   return null

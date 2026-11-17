@@ -222,10 +222,6 @@ class Entry(models.Model):
     def __str__(self):
         return f"{self.get_status_display()} entry {self.id} in {self.event_id}"
 
-    @property
-    def is_live(self) -> bool:
-        return self.status in self.LIVE
-
 
 class EntryPlayer(models.Model):
     """A player in an entry. `live` mirrors the entry's status so the database itself refuses a player

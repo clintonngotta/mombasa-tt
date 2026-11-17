@@ -183,7 +183,10 @@ def test_a_player_is_in_one_standing_entry_per_event(staff, cup, singles, double
             entries_url(cup, doubles), {"player_ids": [str(i) for i in ids]}, format="json"
         )
         assert response.status_code == 409 and response.json()["code"] == "already_entered"
-        assert "Kofi" in response.json()["message"]
+        # Staff are told who; another player isn't, because a pending entry is not theirs to see.
+        assert ("Kofi" in response.json()["message"]) == (client is staff)
+    mine = as_ama.post(entries_url(cup, doubles), {"player_ids": [str(ama.id), str(esi.id)]}, format="json")
+    assert mine.json()["message"] == "You are already entered in this event."
     # The database refuses it too, should two requests ever pass the check together.
     other = Entry.objects.create(event_id=doubles["id"])
     with pytest.raises(IntegrityError, match="one_live_entry_per_event"), transaction.atomic():
@@ -390,3 +393,21 @@ def test_entries_page_through_a_stable_order(staff, cup, doubles):
     everyone = [names(e)[0] for e in listed(staff, cup, doubles)]
     assert everyone == [f"A{i}" for i in range(5)]
     assert ORGS  # entries are reached through the tournament, never through the organization
+
+
+def test_a_mail_fault_after_the_change_is_saved_is_not_an_error(staff, cup, singles, monkeypatch):
+    entry = enter(logged_in(player("Ama")), cup, singles)
+
+    def broken(*args, **kwargs):
+        raise OSError("smtp down")
+
+    monkeypatch.setattr("competitions.emails.send_mail", broken)
+    assert act(staff, cup, singles, entry, "accept")["status"] == "accepted"
+
+
+def test_entering_is_rate_limited_per_caller(staff, cup, singles, settings):
+    ama = logged_in(player("Ama"))
+    for _ in range(30):
+        ama.post(entries_url(cup, singles), {"player_ids": []}, format="json")
+    assert ama.post(entries_url(cup, singles), {}, format="json").status_code == 429
+    assert listed(ama, cup, singles) == []  # reading is not limited

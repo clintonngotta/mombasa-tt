@@ -270,9 +270,10 @@ class EventViewSet(viewsets.GenericViewSet):
                 raise ApiException(
                     "has_entries", "This event already has entries, so who enters it can't change.", 409
                 )
-            accepted = event.entries.filter(status=Entry.Status.ACCEPTED).count()
-            if new.get("capacity") is not None and new["capacity"] < accepted:
-                raise ValidationError({"capacity": f"{accepted} entries are already accepted."})
+            if new.get("capacity") is not None:
+                accepted = event.entries.filter(status=Entry.Status.ACCEPTED).count()
+                if new["capacity"] < accepted:
+                    raise ValidationError({"capacity": f"{accepted} entries are already accepted."})
             if event.status != E.SCHEDULED and serializer.structure_changes:
                 raise ApiException(
                     "structure_frozen",
@@ -337,6 +338,11 @@ class EntryViewSet(viewsets.GenericViewSet):
     serializer_class = EntrySerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardPagination
+
+    @property
+    def throttle_scope(self):
+        # Entering names other players and emails them, so it is rate-limited per caller.
+        return "entries" if self.action == "create" else None
 
     def _reply(self, entry: Entry, code=status.HTTP_200_OK) -> Response:
         fresh = entry_list().get(pk=entry.pk)

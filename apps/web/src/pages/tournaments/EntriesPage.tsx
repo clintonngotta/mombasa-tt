@@ -19,6 +19,7 @@ import {
   entryTitle,
   isLive,
   listEntries,
+  listMyEntries,
   MAX_TEAM_ROSTER,
   placesTaken,
   withdrawEntry,
@@ -34,12 +35,15 @@ export function EntriesPage() {
   const { id = "", eventId = "" } = useParams()
   const { results: memberships } = useMemberships()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
-  const entries = useQuery({ queryKey: entryKeys.list(eventId, ""), queryFn: () => listEntries(id, eventId), enabled: tournament.isSuccess })
+  const entries = useQuery({ queryKey: entryKeys.event(eventId), queryFn: () => listEntries(id, eventId), enabled: tournament.isSuccess })
   const t = tournament.data
   const event = t?.events.find((candidate) => candidate.id === eventId)
   const staff = !!t && canManageTournament(memberships, t)
   const missing = (tournament.error instanceof ApiError && tournament.error.status === 404) || (!!t && !event)
+  // The caller's own entries come from their own list, so they are found however many the event has.
+  const own = useQuery({ queryKey: entryKeys.mine, queryFn: listMyEntries, enabled: tournament.isSuccess })
   const all = entries.data?.results ?? []
+  const mine = (own.data?.results ?? []).filter((entry) => entry.event.id === eventId)
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
@@ -67,8 +71,13 @@ export function EntriesPage() {
           {entries.isError && <FormAlert>{errorMessage(entries.error, "We couldn't load the entries.")}</FormAlert>}
           {entries.isSuccess && (
             <>
-              <MyEntry tournament={t} event={event} staff={staff} entries={all.filter((entry) => entry.mine)} />
-              {staff ? <Desk tournament={t} event={event} entries={all} total={entries.data.count} /> : <Accepted entries={all.filter((entry) => entry.status === "accepted")} />}
+              {entries.data.count > all.length && (
+                <FormAlert>
+                  Showing the first {all.length} of {entries.data.count} entries.
+                </FormAlert>
+              )}
+              <MyEntry tournament={t} event={event} staff={staff} entries={mine} />
+              {staff ? <Desk tournament={t} event={event} entries={all} /> : <Accepted entries={all.filter((entry) => entry.status === "accepted")} />}
             </>
           )}
         </>
@@ -114,8 +123,8 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
   const onChange = useEntryChange(t, event)
   const [confirming, setConfirming] = useState(false)
   const live = entries.find(isLive)
-  const last = entries.at(-1)
-  const block = entryBlock(t, event)
+  const last = entries[0] // newest first
+  const block = entryBlock(t, event, { staff })
   const withdraw = useMutation({
     mutationFn: (entryId: string) => withdrawEntry(t.id, event.id, entryId),
     onSuccess: () => {
@@ -157,7 +166,7 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
               </Button>
             )
           ) : (
-            <p className="text-sm text-muted-foreground">The event has started. To pull out now, tell the tournament desk.</p>
+            <p className="text-sm text-muted-foreground">The event has started, so entries are fixed. If you can't play, tell the tournament desk before your match.</p>
           )}
         </>
       ) : (
@@ -282,7 +291,7 @@ const GROUPS: { status: EntryStatus; title: string; empty: string }[] = [
 ]
 
 /** The organizers' entry desk: decide, check in, withdraw, and enter people themselves. */
-function Desk({ tournament: t, event, entries, total }: { tournament: Tournament; event: TournamentEvent; entries: Entry[]; total: number }) {
+function Desk({ tournament: t, event, entries }: { tournament: Tournament; event: TournamentEvent; entries: Entry[] }) {
   const onChange = useEntryChange(t, event)
   const [adding, setAdding] = useState(false)
   const taking = t.status !== "draft" && !isClosed(t) && event.status === "scheduled"
@@ -297,7 +306,6 @@ function Desk({ tournament: t, event, entries, total }: { tournament: Tournament
         <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organization.name} see this.</p>
       </div>
       {!taking && <p className="text-muted-foreground">{t.status === "draft" ? "Entries open once the tournament is published." : "Entries can't change now; check-in stays open until the event ends."}</p>}
-      {total > entries.length && <FormAlert>Showing the first {entries.length} of {total} entries.</FormAlert>}
 
       {taking &&
         (adding ? (

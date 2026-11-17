@@ -162,6 +162,7 @@ REST_FRAMEWORK = {
         "auth_email": os.environ.get("THROTTLE_AUTH_EMAIL", "5/min"),
         "invitations": os.environ.get("THROTTLE_INVITATIONS", "30/hour"),
         "uploads": os.environ.get("THROTTLE_UPLOADS", "30/hour"),
+        "entries": os.environ.get("THROTTLE_ENTRIES", "30/hour"),
     },
 }
 

@@ -1,7 +1,11 @@
+import logging
+
 from django.conf import settings
 from django.core.mail import send_mail
 
 from .models import Entry
+
+logger = logging.getLogger(__name__)
 
 NEWS = {
     "entered": ("You've been entered in {event}", "{actor} entered you in {event} at {tournament}."),
@@ -13,8 +17,8 @@ NEWS = {
     ),
     "waitlisted": (
         "You're on the waiting list for {event}",
-        "{event} at {tournament} is full for now, so your entry is on the waiting list. The organizers "
-        "will tell you if a place opens up.",
+        "Your entry in {event} at {tournament} is on the waiting list. The organizers will tell you if "
+        "a place becomes yours.",
     ),
     "rejected": (
         "Your entry in {event} was not accepted",
@@ -40,5 +44,11 @@ def send_entry_news(entry: Entry, news: str, actor) -> None:
     body += f"\n\nSee the tournament: {settings.FRONTEND_URL}/tournaments/{event.tournament_id}"
     # One message each, so players never see each other's addresses.
     for place in entry.players.all():
-        if place.user_id != actor.id:
+        if place.user_id == actor.id:
+            continue
+        try:
             send_mail(subject.format(**words), body, None, [place.user.email])
+        except Exception:
+            # The change is already saved: a mail fault must not turn it into an error the caller
+            # would retry. The entry page shows the same news.
+            logger.exception("entry news %r not sent for entry %s", news, entry.id)
