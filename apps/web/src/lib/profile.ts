@@ -11,6 +11,12 @@ export type Experience = Schemas["ExperienceEnum"]
 export type Goal = Schemas["GoalsEnum"]
 export type DirectoryPlayer = Schemas["DirectoryPlayer"]
 export type Player = Schemas["Player"]
+/** A short-lived signed link to a private file (REQ-020). */
+export type AttachmentLink = Schemas["AttachmentLink"]
+
+/** Keep in sync with MAX_UPLOAD_BYTES in services/api/attachments/images.py. */
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024
+export const AVATAR_TYPES = "image/jpeg,image/png,image/webp"
 
 export const HANDS: Option<Hand>[] = [
   { value: "right", label: "Right-handed" },
@@ -83,6 +89,14 @@ export const MIN_SEARCH_LENGTH = 2
 
 export const getProfile = () => api<Profile>("/me/profile/")
 export const updateProfile = (body: ProfileUpdate) => api<Profile>("/me/profile/", { method: "PATCH", body })
+export function uploadAvatar(file: File) {
+  const body = new FormData()
+  body.append("file", file)
+  return api<Profile>("/me/avatar/", { method: "PUT", body })
+}
+export const removeAvatar = () => api<null>("/me/avatar/", { method: "DELETE" })
+/** A new link for an attachment the viewer may still see; 404 once they may not. */
+export const getAttachmentLink = (id: string) => api<AttachmentLink>(`/attachments/${id}/url/`)
 // Goals only shape Home shortcuts; they never grant roles or touch ratings (REQ-006).
 export const saveGoals = (goals: Goal[]) => api<{ goals: Goal[] }>("/me/goals/", { method: "PUT", body: { goals } })
 export const searchPlayers = (term: string) =>

@@ -45,11 +45,18 @@ async function ensureCsrfToken() {
   return csrfToken()
 }
 
+/** Full address of a path the API hands out (e.g. a signed attachment link, which starts at the API's root). */
+export function apiOriginUrl(path: string) {
+  return /^https?:/.test(API_BASE) ? new URL(path, API_BASE).toString() : path
+}
+
 // Session cookies are HttpOnly (REQ-003); unsafe methods carry Django's CSRF header.
+// A FormData body is sent as a file upload; anything else as JSON.
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const method = init.method ?? (init.body === undefined ? "GET" : "POST")
   const headers: Record<string, string> = { Accept: "application/json" }
-  if (init.body !== undefined) headers["Content-Type"] = "application/json"
+  const upload = init.body instanceof FormData
+  if (init.body !== undefined && !upload) headers["Content-Type"] = "application/json"
   if (method !== "GET") {
     const token = await ensureCsrfToken()
     if (token) headers["X-CSRFToken"] = token
@@ -59,7 +66,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     method,
     headers,
     credentials: "include",
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body: init.body === undefined ? undefined : upload ? (init.body as FormData) : JSON.stringify(init.body),
   })
 
   if (res.status === 204) return null as T

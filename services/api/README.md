@@ -34,6 +34,14 @@ All three belong to "Mombasa Dev TT Club": admin as Admin, umpire as Assistant c
 Re-running the command resets their passwords and club roles. Override the password with `DEV_LOGIN_PASSWORD`. The
 command refuses to run when `DJANGO_DEBUG` is off.
 
+## Attachments
+
+Uploaded files (profile photos so far) are private. They are stored through `STORAGES["attachments"]` (a local
+folder, `ATTACHMENTS_ROOT`, default `var/attachments`) and are never served directly. A client gets a file only
+through a signed link: the API checks the viewer's access (`attachments/access.py`), then issues a link that works
+without a session for `ATTACHMENT_URL_TTL` seconds (default 300). `GET /api/v1/attachments/<id>/url/` issues a
+fresh link. Images are re-encoded on upload, which also removes location and camera metadata.
+
 ## Checks
 
 ```sh
@@ -75,7 +83,8 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 
 | Method | Path | Notes |
 |---|---|---|
-| GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default), `published_details` (which of hand, grip, style, experience, bio show on the player page; empty by default) |
+| GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default), `published_details` (which of hand, grip, style, experience, bio show on the player page; empty by default). `avatar` is read-only here: a signed link `{id, url, expires_at}` or null |
+| PUT, DELETE | `avatar/` | Profile photo. `PUT` is a multipart upload with `file` (JPEG, PNG or WebP, up to 5 MB; 400 with a `file` message otherwise) and returns the profile; the image is re-encoded to a 512px WebP without metadata. `DELETE` is 204. Limited by `THROTTLE_UPLOADS` (default `30/hour`) |
 | PUT | `goals/` | `{goals: [...]}` replaces the list. Goals only order Home shortcuts and never grant roles |
 | POST | `onboarding/complete/` | 204. Repeat calls keep the first completion time |
 | GET | `memberships/` | Active memberships with their organization, roles held and effective `permissions` (basis for the club switcher and for which staff actions the app shows); paginated |
@@ -111,8 +120,10 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | PATCH | `/api/v1/organizations/{id}/member-fields/{fid}/` | Change label, options, required or visibility. `kind` can't change (400); a retired field is 409 `field_retired` |
 | POST | `/api/v1/organizations/{id}/member-fields/{fid}/retire/` or `restore/` | Retiring hides the field everywhere and keeps its values; restoring brings both back. 409 `label_taken` if an active field now uses the label |
 | GET, PATCH | `/api/v1/organizations/{id}/members/{mid}/fields/` | A member's values for every active field, staff-only ones included; needs `members.manage`. Same body and rules as the player's own endpoint |
-| GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname and clubs, never email or bio |
+| GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname, photo link (`avatar`) and clubs, never email or bio |
 | GET | `/api/v1/players/{id}/` | One opted-in player: the directory card plus only the details they published (others null); 404 once they opt out |
+| GET | `/api/v1/attachments/{id}/url/` | A fresh signed link `{id, url, expires_at}` to a private file; 404 for a missing file and for one the caller may not see |
+| GET | `/api/v1/attachments/{id}/content/?token=` | The file. Needs no session, only the token from a signed link; 403 `link_expired` when the token is expired, altered or for another file |
 
 Roles (REQ-005, `organizations/permissions.py`): every organization starts with Admin, Captain, Assistant captain,
 Committee and Member, and can add custom roles. Effective permissions are the union of a member's roles plus the

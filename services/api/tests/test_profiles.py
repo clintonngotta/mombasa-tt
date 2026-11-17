@@ -107,6 +107,7 @@ def test_directory_lists_only_opted_in_players_without_private_fields(ama):
             "id": str(listed.id),
             "display_name": "Baraka Otieno",
             "nickname": "Bara",
+            "avatar": None,
             "clubs": ["Coast TT Club"],
         }
     ]
@@ -149,6 +150,7 @@ def test_player_page_shows_only_published_details(ama):
         "id": str(ama.id),
         "display_name": "Ama Wanjiru",
         "nickname": "Flick",
+        "avatar": None,
         "clubs": [],
         "hand": "left",
         "grip": None,

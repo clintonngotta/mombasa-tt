@@ -54,3 +54,15 @@ def link_from(mail, path: str) -> dict[str, str]:
     from urllib.parse import parse_qsl
 
     return dict(parse_qsl(match.group(1)))
+
+
+@pytest.fixture(autouse=True)
+def _attachments_in_tmp(settings, tmp_path):
+    # Uploaded files go to a throwaway folder, never into the checkout.
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "attachments": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": tmp_path / "attachments"},
+        },
+    }
