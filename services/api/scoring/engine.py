@@ -35,6 +35,18 @@ def games_needed(best_of: int) -> int:
     return best_of // 2 + 1
 
 
+def check_config(config) -> None:
+    """Refuse a configuration the rules don't know: best of 3, 5 or 7, singles or doubles."""
+    known = (
+        isinstance(config, dict)
+        and type(config.get("best_of")) is int
+        and config["best_of"] in (3, 5, 7)
+        and isinstance(config.get("doubles"), bool)
+    )
+    if not known:
+        raise ScoringError("invalid_config")
+
+
 def initial_state() -> dict:
     return {
         "status": "not_started",
@@ -153,11 +165,12 @@ def _choose_server(config: dict, state: dict, event: dict) -> dict:
     player = event.get("player")
     if player not in PLAYERS or player[0] != state["server"][0]:
         raise ScoringError("not_serving_pair")
-    if player != state["server"]:
-        # 2.13.4: the receiver is whoever served to the chosen server in the game before: the partner
-        # of the player who would otherwise have received.
-        receiver = partner_of(state["receiver"])
-        state.update(server=player, first_server=player, receiver=receiver, first_receiver=receiver)
+    if player == state["server"]:
+        return state  # already the server: nothing changes
+    # 2.13.4: the receiver is whoever served to the chosen server in the game before: the partner of
+    # the player who would otherwise have received.
+    receiver = partner_of(state["receiver"])
+    state.update(server=player, first_server=player, receiver=receiver, first_receiver=receiver)
     return state
 
 
@@ -178,11 +191,14 @@ _HANDLERS = {"start": _start, "point": _point, "choose_server": _choose_server, 
 
 
 def apply(config: dict, state: dict, event: dict) -> dict:
-    """The state after one event that isn't an undo; `state` itself is left as it was."""
-    handler = _HANDLERS.get(event.get("type"))
+    """The state after one event that isn't an undo; `state` itself is left as it was, and is what
+    comes back when the event changes nothing."""
+    kind = event.get("type") if isinstance(event, dict) else None
+    handler = _HANDLERS.get(kind) if isinstance(kind, str) else None
     if handler is None:
         raise ScoringError("unknown_event")
-    return handler(config, deepcopy(state), event)
+    after = handler(config, deepcopy(state), event)
+    return state if after == state else after
 
 
 class Scoring:
@@ -190,19 +206,24 @@ class Scoring:
     raises and changes nothing."""
 
     def __init__(self, config: dict):
+        check_config(config)
         self.config = config
         self.state = initial_state()
         self._earlier: list[dict] = []
 
     def push(self, event: dict) -> dict:
-        if event.get("type") == "undo":
+        """Undo goes back one action at a time for as long as there are actions: through a game
+        boundary, a time-out, the end of the match and the start itself. The state returned is the
+        engine's own: read it, don't change it."""
+        if isinstance(event, dict) and event.get("type") == "undo":
             if not self._earlier:
                 raise ScoringError("nothing_to_undo")
             self.state = self._earlier.pop()
         else:
             after = apply(self.config, self.state, event)
-            self._earlier.append(self.state)
-            self.state = after
+            if after is not self.state:  # an event that changed nothing leaves nothing to undo
+                self._earlier.append(self.state)
+                self.state = after
         return self.state
 
 

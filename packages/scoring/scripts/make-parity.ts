@@ -61,16 +61,25 @@ function match(config: Config, seed: number): ParityMatch {
     const roll = random()
     // An undo can take back the start itself; the umpire then sets the match up again.
     const { status, server, points, game_number } = scoring.state
-    if (status === "not_started") begin()
+    if (status === "not_started") {
+      // Set up again after an undo took back the start; now and then wrongly first.
+      if (roll < 0.3) send({ type: "start", server: "a2", receiver: "a1", a_end: "left" })
+      begin()
+    }
     // Before a later game of doubles the serving pair often names its other player to serve first.
     else if (config.doubles && server && game_number > 1 && points[0] + points[1] === 0 && roll < 0.5) {
+      if (roll < 0.08) send({ type: "choose_server", player: pick(PLAYERS.filter((player) => player[0] !== server[0])) }) // refused
       send({ type: "choose_server", player: pick(PLAYERS.filter((player) => player[0] === server[0])) })
+      if (roll > 0.4) send({ type: "undo" }) // takes back the choice, or the last point of the game before
+      if (roll > 0.45) send({ type: "timeout", side: side() })
       send({ type: "point", side: random() < lean ? "a" : "b" })
     }
     else if (roll < 0.04) send({ type: "undo" })
     else if (roll < 0.06) send({ type: "timeout", side: side() })
     else if (roll < 0.09) send({ type: "choose_server", player: pick(PLAYERS) })
     else if (roll < 0.1) send({ type: "start", server: "a1", a_end: "left" })
+    else if (roll < 0.105) send({ type: "bogus" } as unknown as ScoreEvent)
+    else if (roll < 0.11) send({ type: "point", side: "c" } as unknown as ScoreEvent)
     else send({ type: "point", side: random() < lean ? "a" : "b" })
   }
   send({ type: "point", side: side() }) // refused: the match is over
@@ -78,6 +87,6 @@ function match(config: Config, seed: number): ParityMatch {
   return { config, events }
 }
 
-const matches = CONFIGS.flatMap((config, index) => [1000, 2000, 3000].map((seed) => match(config, seed + index)))
+const matches = CONFIGS.flatMap((config, index) => [1000, 2000, 3000, 4000].map((seed) => match(config, seed + index)))
 writeFileSync(`${FIXTURES}parity.json`, `[\n${matches.map((made) => JSON.stringify(made)).join(",\n")}\n]\n`)
 console.log(`${matches.length} matches, ${matches.reduce((total, made) => total + made.events.length, 0)} events`)

@@ -1,5 +1,5 @@
 {
-  "name": "F-SC8: undo takes back the last standing action, across a game boundary, a time-out and the start; an undo is not itself undone",
+  "name": "F-SC8: undo takes back one action at a time, across a game boundary, a time-out and the end of the match; an undo is not itself undone",
   "rules": "REQ-012 undo",
   "config": {
     "best_of": 3,
@@ -155,6 +155,38 @@
           false,
           false
         ]
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "game_number": 2
+      }
+    },
+    {
+      "points": "aaaaaaaaaaa",
+      "expect": {
+        "status": "completed",
+        "winner": "a"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "status": "in_progress",
+        "winner": null,
+        "points": [
+          10,
+          0
+        ],
+        "game_number": 2,
+        "games_won": [
+          1,
+          0
+        ],
+        "server": "a1"
       }
     }
   ]

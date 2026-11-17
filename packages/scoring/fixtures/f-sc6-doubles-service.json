@@ -118,6 +118,25 @@
       "error": "not_serving_pair"
     },
     {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "server": "b2",
+        "receiver": "a2"
+      }
+    },
+    {
+      "event": {
+        "type": "choose_server",
+        "player": "b1"
+      },
+      "expect": {
+        "server": "b1",
+        "receiver": "a1"
+      }
+    },
+    {
       "points": "b",
       "expect": {
         "points": [

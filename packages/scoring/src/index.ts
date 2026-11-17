@@ -58,6 +58,7 @@ export type ErrorCode =
   | "timeout_used"
   | "nothing_to_undo"
   | "unknown_event"
+  | "invalid_config"
 
 export class ScoringError extends Error {
   readonly code: ErrorCode
@@ -78,6 +79,12 @@ const otherEnd = (end: End | null): End | null => (end === null ? null : end ===
 
 /** Games a side must win: the majority of `best_of`. */
 export const gamesNeeded = (config: Config) => Math.floor(config.best_of / 2) + 1
+
+/** Refuse a configuration the rules don't know: a match is the best of 3, 5 or 7, singles or doubles. */
+export function checkConfig(config: Config): void {
+  const known = typeof config === "object" && config !== null && [3, 5, 7].includes(config.best_of) && typeof config.doubles === "boolean"
+  if (!known) throw new ScoringError("invalid_config")
+}
 
 export function initialState(): State {
   return {
@@ -113,12 +120,13 @@ function start(config: Config, state: State, event: Extract<ScoreEvent, { type: 
   let receiver: Player
   if (config.doubles) {
     // 2.13.4: in the first game the receiving pair decides which of them receives first.
-    if (event.receiver === undefined || !PLAYERS.includes(event.receiver) || sideOf(event.receiver) === sideOf(event.server)) throw new ScoringError("invalid_start")
+    if (event.receiver == null || !PLAYERS.includes(event.receiver) || sideOf(event.receiver) === sideOf(event.server)) throw new ScoringError("invalid_start")
     receiver = event.receiver
   } else {
     if (event.server[1] !== "1") throw new ScoringError("invalid_start")
     receiver = sideOf(event.server) === "a" ? "b1" : "a1"
-    if (event.receiver !== undefined && event.receiver !== receiver) throw new ScoringError("invalid_start")
+    // A singles start needn't name the receiver; if it does, it is the opponent.
+    if (event.receiver != null && event.receiver !== receiver) throw new ScoringError("invalid_start")
   }
   const next = copy(state)
   next.status = "in_progress"
@@ -187,13 +195,13 @@ function chooseServer(config: Config, state: State, player: Player): State {
   if (state.game_number === 1 || state.points[0] + state.points[1] !== 0) throw new ScoringError("game_under_way")
   const server = state.server as Player
   if (!PLAYERS.includes(player) || sideOf(player) !== sideOf(server)) throw new ScoringError("not_serving_pair")
+  // Naming the player who already serves changes nothing, so it leaves nothing for an undo to take back.
+  if (player === server) return state
   const next = copy(state)
-  if (player !== server) {
-    // 2.13.4: the receiver is whoever served to the chosen server in the game before, which is the
-    // partner of the player who would otherwise have received.
-    next.server = next.first_server = player
-    next.receiver = next.first_receiver = partnerOf(state.receiver as Player)
-  }
+  // 2.13.4: the receiver is whoever served to the chosen server in the game before, which is the
+  // partner of the player who would otherwise have received.
+  next.server = next.first_server = player
+  next.receiver = next.first_receiver = partnerOf(state.receiver as Player)
   return next
 }
 
@@ -207,8 +215,12 @@ function timeout(state: State, side: Side): State {
   return next
 }
 
-/** The state after one event that isn't an undo. Throws ScoringError when the event isn't allowed. */
+/**
+ * The state after one event that isn't an undo. Throws ScoringError when the event isn't allowed. An
+ * event that changes nothing returns `state` itself.
+ */
 export function apply(config: Config, state: State, event: ScoreEvent): State {
+  if (typeof event !== "object" || event === null) throw new ScoringError("unknown_event")
   switch (event.type) {
     case "start":
       return start(config, state, event)
@@ -233,6 +245,7 @@ export class Scoring {
   private readonly earlier: readonly State[]
 
   constructor(config: Config, state: State = initialState(), earlier: readonly State[] = []) {
+    checkConfig(config)
     this.config = config
     this.state = state
     this.earlier = earlier
@@ -243,12 +256,17 @@ export class Scoring {
     return this.earlier.length
   }
 
+  /**
+   * Undo goes back one action at a time for as long as there are actions: through a game boundary, a
+   * time-out (which the side then has again), the end of the match and the start itself.
+   */
   push(event: ScoreEvent): Scoring {
-    if (event.type === "undo") {
+    if (typeof event === "object" && event !== null && event.type === "undo") {
       if (this.earlier.length === 0) throw new ScoringError("nothing_to_undo")
       return new Scoring(this.config, this.earlier[this.earlier.length - 1], this.earlier.slice(0, -1))
     }
-    return new Scoring(this.config, apply(this.config, this.state, event), [...this.earlier, this.state])
+    const after = apply(this.config, this.state, event)
+    return after === this.state ? this : new Scoring(this.config, after, [...this.earlier, this.state])
   }
 }
 

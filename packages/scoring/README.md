@@ -22,4 +22,8 @@ cd ../../services/api
 uv run pytest tests/test_scoring.py   # Python validator
 ```
 
+Undo goes back one action at a time for as long as there are actions, through a game boundary, a time-out, the end
+of the match and the start. Anything the rules don't allow, a malformed event or an unknown configuration is refused
+with a `ScoringError` code and changes nothing.
+
 A rule change means: the clause in spec.md, a hand-worked fixture, both implementations, then `pnpm gen:parity`.

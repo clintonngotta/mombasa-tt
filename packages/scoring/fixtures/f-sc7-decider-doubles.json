@@ -1,5 +1,5 @@
 {
-  "name": "F-SC7b: deciding game of doubles, 5 reached between changes of service: the receiving pair changes its order",
+  "name": "F-SC7b: deciding game of doubles, 5 reached between changes of service: the receiving pair changes its order; undo takes the change back",
   "rules": "2.13.5, 2.13.6, 2.13.7",
   "config": {
     "best_of": 3,
@@ -87,6 +87,76 @@
         "server": "b2",
         "receiver": "a2",
         "a_end": "right"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          9,
+          0
+        ],
+        "server": "a1",
+        "receiver": "b2"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          5,
+          0
+        ],
+        "server": "a2",
+        "receiver": "b1",
+        "a_end": "right",
+        "decider_changed": true
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          4,
+          0
+        ],
+        "server": "a2",
+        "receiver": "b2",
+        "a_end": "left",
+        "decider_changed": false
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          4,
+          1
+        ],
+        "server": "a2",
+        "receiver": "b2",
+        "decider_changed": false
       }
     }
   ]

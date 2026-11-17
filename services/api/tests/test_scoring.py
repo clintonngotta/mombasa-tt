@@ -12,13 +12,13 @@ from pathlib import Path
 
 import pytest
 
-from scoring.engine import Scoring, ScoringError, games_needed, replay
+from scoring.engine import Scoring, ScoringError, check_config, games_needed, replay
 
 # In the checkout the fixtures sit beside the TypeScript reducer. The compose API container sees only
 # services/api, so compose.yml mounts them and says where through SCORING_FIXTURES.
-FIXTURES = Path(
-    os.environ.get("SCORING_FIXTURES") or Path(__file__).resolve().parents[3] / "packages/scoring/fixtures"
-)
+HERE = Path(__file__).resolve()
+CHECKOUT = HERE.parents[3] if len(HERE.parents) > 3 else HERE.parent
+FIXTURES = Path(os.environ.get("SCORING_FIXTURES") or CHECKOUT / "packages/scoring/fixtures")
 HAND_WORKED = sorted(FIXTURES.glob("f-sc*.json"))
 
 
@@ -62,7 +62,7 @@ def parity_matches() -> list[dict]:
 
 def test_random_streams_give_the_state_the_typescript_reducer_recorded_after_every_event():
     matches = parity_matches()
-    assert len(matches) >= 12
+    assert len(matches) >= 24
     compared = 0
     for number, match in enumerate(matches, start=1):
         scoring = Scoring(match["config"])
@@ -92,6 +92,17 @@ def test_no_stream_ends_in_an_impossible_score():
             assert (state["status"] == "completed") == (max(state["games_won"]) == needed)
             if state["status"] == "in_progress":
                 assert state["server"][0] != state["receiver"][0]
+
+
+@pytest.mark.parametrize(
+    "config", [{"best_of": 4, "doubles": False}, {"best_of": 5}, {"best_of": "5", "doubles": False}, None]
+)
+def test_a_configuration_the_rules_dont_know_is_refused(config):
+    with pytest.raises(ScoringError) as refused:
+        check_config(config)
+    assert refused.value.code == "invalid_config"
+    with pytest.raises(ScoringError):
+        Scoring(config)
 
 
 def test_a_refused_event_leaves_the_state_object_alone():

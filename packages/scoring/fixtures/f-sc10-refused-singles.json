@@ -88,6 +88,46 @@
           0
         ]
       }
+    },
+    {
+      "event": null,
+      "error": "unknown_event"
+    },
+    {
+      "event": "point",
+      "error": "unknown_event"
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "status": "not_started"
+      }
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "b1",
+        "receiver": null,
+        "a_end": "left"
+      },
+      "expect": {
+        "status": "in_progress",
+        "server": "b1",
+        "receiver": "a1"
+      }
     }
   ]
 }
