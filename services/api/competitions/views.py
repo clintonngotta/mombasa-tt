@@ -31,6 +31,7 @@ from .serializers import (
     MyEntrySerializer,
     OptionalReasonSerializer,
     ReasonSerializer,
+    StandingsSerializer,
     TournamentSerializer,
 )
 
@@ -561,6 +562,19 @@ class DrawViewSet(viewsets.GenericViewSet):
         if tournament.status == T.DRAFT and not staff:
             raise Http404
         return self._shown(get_object_or_404(Event, pk=event_pk, tournament=tournament), staff)
+
+    @extend_schema(responses={200: StandingsSerializer})
+    def standings(self, request, tournament_pk, event_pk):
+        """Standings of the published draw: each group ranked under ITTF 3.7.5 with the comparisons
+        that separated level members, and the knockout placements decided so far. Empty until a draw is
+        published."""
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        if tournament.status == T.DRAFT and not manages(request.user, tournament.organization):
+            raise Http404
+        event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+        draw = event.draws.filter(status=DrawVersion.Status.PUBLISHED).select_related("event").first()
+        shown = drawing.standings_of(draw) if draw else {"rules_version": "", "groups": [], "placements": []}
+        return Response(StandingsSerializer(shown, context={"request": request}).data)
 
     @extend_schema(request=DrawRequestSerializer, responses={200: EventDrawSerializer})
     def preview(self, request, tournament_pk, event_pk):
