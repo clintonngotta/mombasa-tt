@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, Clock, KeyRound, LogOut, Mail, Plus, Search, ShieldCheck, Users } from "lucide-react"
+import { ChevronRight, ClipboardList, Clock, KeyRound, LogOut, Mail, Plus, Search, ShieldCheck, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
@@ -10,6 +10,7 @@ import {
   can,
   clubKeys,
   decideJoinRequest,
+  getMyFieldValues,
   leaveOrganization,
   listInvitations,
   listJoinRequests,
@@ -17,6 +18,7 @@ import {
   listMyJoinRequests,
   revokeInvitation,
   roleNames,
+  saveMyFieldValues,
   sendInvitation,
   useActiveMembership,
   type JoinDecision,
@@ -25,6 +27,7 @@ import {
 import { cn } from "@/lib/utils"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { AccessLost } from "@/components/clubs/AccessLost"
+import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
 
 export function ClubPage() {
   const { memberships, active } = useActiveMembership()
@@ -125,8 +128,14 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
               Roles and permissions
             </AdminLink>
           )}
+          {manageMembers && (
+            <AdminLink to="/club/fields" icon={<ClipboardList aria-hidden className="size-5 text-brand-blue" />}>
+              Member fields
+            </AdminLink>
+          )}
         </nav>
       )}
+      <MyClubDetails membershipId={membership.id} />
       {manageMembers && (
         <>
           <JoinRequestsPanel orgId={orgId} />
@@ -135,6 +144,34 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
       )}
       <LeaveOrganization membership={membership} />
     </>
+  )
+}
+
+/** The member's own answers to the club's member-visible fields (REQ-005). Hidden when the club asks for none. */
+function MyClubDetails({ membershipId }: { membershipId: string }) {
+  const queryClient = useQueryClient()
+  const key = clubKeys.myFieldValues(membershipId)
+  const details = useQuery({ queryKey: key, queryFn: () => getMyFieldValues(membershipId) })
+  if (details.isError) return <FormAlert>{errorMessage(details.error, "We couldn't load your club details.")}</FormAlert>
+  if (!details.data?.length) return null
+  const missing = details.data.filter((entry) => entry.field.required && entry.value === null).length
+  return (
+    <section aria-labelledby="my-details-heading" className="flex flex-col gap-3">
+      <h2 id="my-details-heading" className="text-xl font-bold">
+        Your club details
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Asked for by this club and seen by you and the people who manage its members.
+        {missing > 0 && ` ${missing} required ${missing === 1 ? "answer is" : "answers are"} missing.`}
+      </p>
+      <div className="rounded-xl border bg-card p-4">
+        <MemberFieldValuesForm
+          entries={details.data}
+          save={(values) => saveMyFieldValues(membershipId, values)}
+          onSaved={(entries) => queryClient.setQueryData(key, entries)}
+        />
+      </div>
+    </section>
   )
 }
 

@@ -164,6 +164,9 @@ SPECTACULAR_SETTINGS = {
         "InvitationStatusEnum": "organizations.models.Invitation.Status",
         "PermissionEnum": "organizations.permissions.Permission",
         "RoleKeyEnum": "organizations.permissions.RoleKey",
+        "KindEnum": "organizations.models.Organization.Kind",
+        "MemberFieldKindEnum": "organizations.models.MemberField.Kind",
+        "MemberFieldVisibilityEnum": "organizations.models.MemberField.Visibility",
     },
 }
 

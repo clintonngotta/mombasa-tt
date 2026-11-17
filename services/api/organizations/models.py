@@ -201,3 +201,68 @@ class Invitation(models.Model):
     @property
     def is_open(self) -> bool:
         return self.status == self.Status.PENDING and self.expires_at > timezone.now()
+
+
+class MemberField(models.Model):
+    """A custom detail an organization keeps about its members (REQ-005), e.g. a membership number or
+    shirt size. Member-visible fields are shown to, and filled in by, the member they describe; staff-only
+    fields exist only for members holding members.manage. Fields are retired, never deleted, so the values
+    recorded under them survive."""
+
+    class Kind(models.TextChoices):
+        TEXT = "text"
+        NUMBER = "number"
+        DATE = "date"
+        BOOLEAN = "boolean"
+        CHOICE = "choice"
+
+    class Visibility(models.TextChoices):
+        MEMBER = "member"
+        STAFF = "staff"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="member_fields")
+    label = models.CharField(max_length=80)
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    options = ArrayField(models.CharField(max_length=60), default=list, blank=True)  # CHOICE only
+    required = models.BooleanField(default=False)
+    visibility = models.CharField(max_length=10, choices=Visibility.choices, default=Visibility.STAFF)
+    created_at = models.DateTimeField(auto_now_add=True)
+    retired_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "label"]
+        constraints = [
+            # A retired field keeps its label; a new field may reuse it.
+            models.UniqueConstraint(
+                Lower("label"),
+                "organization",
+                condition=models.Q(retired_at__isnull=True),
+                name="org_member_field_label_unique",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.label} ({self.organization_id})"
+
+
+class MemberFieldValue(models.Model):
+    """One member's value for one custom field. `value` holds a string (text, choice, ISO date), a number
+    or a boolean; an unanswered field has no row."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="field_values")
+    field = models.ForeignKey(MemberField, on_delete=models.CASCADE, related_name="values")
+    value = models.JSONField()
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["membership", "field"], name="member_field_value_unique"),
+        ]
+
+    def __str__(self):
+        return f"{self.field_id} for {self.membership_id}"
