@@ -245,3 +245,113 @@ class EntryPlayer(models.Model):
 
     def __str__(self):
         return f"{self.user_id} in {self.entry_id}"
+
+
+class DrawVersion(models.Model):
+    """One generated draw of an event (REQ-009). A preview is the organizers' working copy; publishing
+    makes it the event's draw and supersedes the one before. `rng_seed` and `rules_version` make the
+    draw reproducible: the same entries, seeds and seed number always give the same draw."""
+
+    class Status(models.TextChoices):
+        PREVIEW = "preview"
+        PUBLISHED = "published"
+        SUPERSEDED = "superseded"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="draws")
+    version = models.PositiveIntegerField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PREVIEW)
+    rules_version = models.CharField(max_length=40)
+    rng_seed = models.BigIntegerField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["event", "version"]
+        constraints = [
+            models.UniqueConstraint(fields=["event", "version"], name="draw_version_once"),
+            models.UniqueConstraint(
+                fields=["event"], condition=models.Q(status="published"), name="one_published_draw"
+            ),
+            models.UniqueConstraint(
+                fields=["event"], condition=models.Q(status="preview"), name="one_preview_draw"
+            ),
+        ]
+
+    def __str__(self):
+        return f"Draw v{self.version} of {self.event_id} ({self.status})"
+
+
+class DrawPlace(models.Model):
+    """Where one entry sits in a draw: its seed, its group and number in the group, and its line in the
+    first round of the knockout."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    draw = models.ForeignKey(DrawVersion, on_delete=models.CASCADE, related_name="places")
+    entry = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name="draw_places")
+    seed = models.PositiveSmallIntegerField(null=True, blank=True)
+    group = models.PositiveSmallIntegerField(null=True, blank=True)  # 1-based group number
+    group_position = models.PositiveSmallIntegerField(null=True, blank=True)  # number within the group
+    bracket_position = models.PositiveSmallIntegerField(null=True, blank=True)  # line in round one
+
+    class Meta:
+        ordering = ["group", "group_position", "bracket_position"]
+        constraints = [models.UniqueConstraint(fields=["draw", "entry"], name="draw_place_once")]
+
+    def __str__(self):
+        return f"{self.entry_id} in draw {self.draw_id}"
+
+
+class Match(models.Model):
+    """A match of a draw. A side is an entry, or still to come: the winner of an earlier match
+    (`feeder_*`) or a group's qualifier (`*_from_group`, `*_from_rank`). A bye is a first-round line
+    with nobody opposite: the entry goes through, nothing is played and nothing is rated."""
+
+    class Stage(models.TextChoices):
+        GROUP = "group"
+        KNOCKOUT = "knockout"
+
+    class Status(models.TextChoices):
+        SCHEDULED = "scheduled"
+        BYE = "bye"
+        COMPLETED = "completed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    draw = models.ForeignKey(DrawVersion, on_delete=models.CASCADE, related_name="matches")
+    stage = models.CharField(max_length=10, choices=Stage.choices)
+    group = models.PositiveSmallIntegerField(null=True, blank=True)
+    round = models.PositiveSmallIntegerField()  # 1-based within its stage (and group)
+    position = models.PositiveSmallIntegerField()  # 1-based within the round
+    entry_a = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    entry_b = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    feeder_a = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    feeder_b = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    a_from_group = models.PositiveSmallIntegerField(null=True, blank=True)
+    a_from_rank = models.PositiveSmallIntegerField(null=True, blank=True)
+    b_from_group = models.PositiveSmallIntegerField(null=True, blank=True)
+    b_from_rank = models.PositiveSmallIntegerField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
+    winner = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["stage", "group", "round", "position"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["draw", "stage", "group", "round", "position"],
+                name="match_line_once",
+                nulls_distinct=False,
+            ),
+            models.CheckConstraint(
+                condition=models.Q(entry_a__isnull=True) | ~models.Q(entry_a=models.F("entry_b")),
+                name="match_sides_differ",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.stage} round {self.round} match {self.position} of draw {self.draw_id}"

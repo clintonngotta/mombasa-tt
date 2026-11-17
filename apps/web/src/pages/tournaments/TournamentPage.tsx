@@ -174,9 +174,14 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
       {t.status !== "draft" && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-semibold">{placesTaken(event)}</p>
-          <Link to={`/tournaments/${t.id}/events/${event.id}/entries`} aria-label={`Entries for ${event.name}`} className={buttonVariants({ variant: entryBlock(t, event) ? "outline" : "default" })}>
-            {entryBlock(t, event) ? "See entries" : "Enter or see entries"}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to={`/tournaments/${t.id}/events/${event.id}/draw`} aria-label={`Draw for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
+              Draw
+            </Link>
+            <Link to={`/tournaments/${t.id}/events/${event.id}/entries`} aria-label={`Entries for ${event.name}`} className={buttonVariants({ variant: entryBlock(t, event) ? "outline" : "default" })}>
+              {entryBlock(t, event) ? "See entries" : "Enter or see entries"}
+            </Link>
+          </div>
         </div>
       )}
 

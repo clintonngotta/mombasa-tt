@@ -21,7 +21,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from attachments.models import Attachment
-from competitions.models import Entry, EntryPlayer, Event, LifecycleEntry, Tournament
+from competitions import drawing
+from competitions.models import DrawVersion, Entry, EntryPlayer, Event, LifecycleEntry, Tournament
 from facilities.models import Table, Venue
 from matchlog.models import PersonalMatch
 from organizations.models import (
@@ -126,6 +127,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-entry-undo-check-in": {"post": STAFF},
     "tournament-event-entry-withdraw": {"post": OWNER},
     "me-entries": {"get": OWNER},
+    # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
+    "tournament-event-draw": {"get": SIGNED_IN},
+    "tournament-event-draw-preview": {"post": STAFF},
+    "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
 }
@@ -314,6 +319,11 @@ class World:
         self.entry_to_waitlist = entry(self.imani)
         self.entry_to_reject = entry(self.hamisi)
         self.entry_to_withdraw = entry(self.grace, Entry.Status.ACCEPTED)
+        # A preview of the draw, which only staff see: its version number is the marker.
+        self.entered.event.seeding = "manual"
+        self.entered.event.save()
+        self.preview = drawing.make_preview(self.entered.event, self.amina, [], rng_seed=424242)
+        DrawVersion.objects.filter(pk=self.preview.pk).update(version=987654321)
 
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
@@ -418,6 +428,7 @@ class World:
             "lifecycle": LifecycleEntry.objects.count(),
             "entries": sorted(Entry.objects.values_list("id", "status", "checked_in_at", "reason")),
             "entry_players": sorted(EntryPlayer.objects.values_list("entry_id", "user__email", "live")),
+            "draws": sorted(DrawVersion.objects.values_list("event__name", "version", "status", "rng_seed")),
         }
 
 
@@ -634,6 +645,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "Baraka Otieno": {"amina", "baraka"},
         "MARK-ENTRY-REASON": {"amina", "baraka"},
         "Grace Achieng": set(world.viewers),
+        "987654321": {"amina"},  # the draw preview
     }
     for who, user in world.viewers.items():
         served = everything_served_to(world, user)

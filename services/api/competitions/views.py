@@ -18,12 +18,14 @@ from organizations.access import effective_permissions, require_permission
 from organizations.models import Organization
 from organizations.permissions import Permission
 
-from . import entries, lifecycle
+from . import drawing, entries, lifecycle
 from .emails import send_entry_news
 from .models import MAX_EVENTS, Entry, Event, LifecycleEntry, Tournament
 from .serializers import (
+    DrawRequestSerializer,
     EntryRequestSerializer,
     EntrySerializer,
+    EventDrawSerializer,
     EventSerializer,
     LifecycleEntrySerializer,
     MyEntrySerializer,
@@ -528,3 +530,59 @@ class MyEntriesViewSet(viewsets.GenericViewSet):
         return self.get_paginated_response(
             MyEntrySerializer(page, many=True, context={"request": request}).data
         )
+
+
+class DrawViewSet(viewsets.GenericViewSet):
+    """The draw of one event (REQ-009). The published draw is open to every signed-in player; the
+    preview, and making and publishing draws, are for the host's competition staff."""
+
+    serializer_class = EventDrawSerializer
+    permission_classes = [IsAuthenticated]
+
+    def _shown(self, event: Event, staff: bool) -> Response:
+        by_status = {draw.status: draw for draw in event.draws.exclude(status="superseded")}
+        published, preview = by_status.get("published"), by_status.get("preview") if staff else None
+        return Response(
+            EventDrawSerializer(
+                {
+                    "published": drawing.describe(published) if published else None,
+                    "preview": drawing.describe(preview) if preview else None,
+                },
+                context={"request": self.request},
+            ).data
+        )
+
+    @extend_schema(responses={200: EventDrawSerializer})
+    def retrieve(self, request, tournament_pk, event_pk):
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        staff = manages(request.user, tournament.organization)
+        if tournament.status == T.DRAFT and not staff:
+            raise Http404
+        return self._shown(get_object_or_404(Event, pk=event_pk, tournament=tournament), staff)
+
+    @extend_schema(request=DrawRequestSerializer, responses={200: EventDrawSerializer})
+    def preview(self, request, tournament_pk, event_pk):
+        """Draw the accepted entries (again). Seeds are given best first; the rest is drawn by lot from
+        `rng_seed`, so the same request always gives the same draw. Replaces the last preview and
+        changes nothing anybody else can see."""
+        serializer = DrawRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+            drawing.ensure_drawable(tournament, event)
+            seeds = [str(pk) for pk in asked.get("seeded_entry_ids", [])]
+            drawing.make_preview(event, request.user, seeds, asked.get("rng_seed"))
+        return self._shown(event, staff=True)
+
+    @extend_schema(request=None, responses={200: EventDrawSerializer})
+    def publish(self, request, tournament_pk, event_pk):
+        """Publish the preview as the event's draw, superseding the one before. Refused when the
+        accepted entries have changed since it was drawn (`draw_stale`)."""
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+            drawing.ensure_drawable(tournament, event)
+            drawing.publish(event, request.user)
+        return self._shown(event, staff=True)

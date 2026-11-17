@@ -1196,6 +1196,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The draw of one event (REQ-009). The published draw is open to every signed-in player; the
+         *     preview, and making and publishing draws, are for the host's competition staff.
+         */
+        get: operations["tournaments_events_draw_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Draw the accepted entries (again). Seeds are given best first; the rest is drawn by lot from
+         *     `rng_seed`, so the same request always gives the same draw. Replaces the last preview and
+         *     changes nothing anybody else can see.
+         */
+        post: operations["tournaments_events_draw_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Publish the preview as the event's draw, superseding the one before. Refused when the
+         *     accepted entries have changed since it was drawn (`draw_stale`).
+         */
+        post: operations["tournaments_events_draw_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/": {
         parameters: {
             query?: never;
@@ -1508,6 +1569,54 @@ export interface components {
             readonly avatar: components["schemas"]["AttachmentLink"] | null;
             readonly clubs: string[];
         };
+        /** @description One version of an event's draw: who sits where, and every match with its sides. */
+        Draw: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+            status: components["schemas"]["DrawStatusEnum"];
+            rules_version: string;
+            rng_seed: number;
+            /** @description The accepted entries changed since this draw was made. */
+            stale: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            published_at: string | null;
+            groups: components["schemas"]["DrawGroup"][];
+            places: components["schemas"]["DrawPlace"][];
+            matches: components["schemas"]["Match"][];
+        };
+        /** @description An accepted entry as a draw shows it: its name and players. */
+        DrawEntry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly players: components["schemas"]["EntryPlayer"][];
+        };
+        DrawGroup: {
+            number: number;
+            name: string;
+        };
+        DrawPlace: {
+            entry: components["schemas"]["DrawEntry"];
+            seed: number | null;
+            group: number | null;
+            group_position: number | null;
+            bracket_position: number | null;
+        };
+        /** @description Seeds in order, best first (accepted entries of the event). `rng_seed` repeats an earlier draw. */
+        DrawRequestRequest: {
+            seeded_entry_ids?: string[];
+            rng_seed?: number;
+        };
+        /**
+         * @description * `preview` - Preview
+         *     * `published` - Published
+         *     * `superseded` - Superseded
+         * @enum {string}
+         */
+        DrawStatusEnum: "preview" | "published" | "superseded";
         EmailOnlyRequest: {
             /** Format: email */
             email: string;
@@ -1604,6 +1713,11 @@ export interface components {
             /** Format: date-time */
             readonly cancelled_at: string | null;
             readonly cancel_reason: string;
+        };
+        /** @description The event's published draw and, for competition staff only, the preview being worked on. */
+        EventDraw: {
+            published: components["schemas"]["Draw"] | null;
+            preview: components["schemas"]["Draw"] | null;
         };
         /**
          * @description * `round_robin` - Round Robin
@@ -1765,6 +1879,21 @@ export interface components {
             email: string;
             password: string;
         };
+        Match: {
+            /** Format: uuid */
+            id: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            group: number | null;
+            round: number;
+            round_name: string;
+            position: number;
+            a: components["schemas"]["MatchSide"];
+            /** @description Null is a bye: `a` goes through without playing. */
+            b: components["schemas"]["MatchSide"] | null;
+            status: components["schemas"]["MatchStatusEnum"];
+            /** Format: uuid */
+            winner_id: string | null;
+        };
         MatchLabels: {
             labels: string[];
         };
@@ -1775,6 +1904,21 @@ export interface components {
          * @enum {string}
          */
         MatchResultEnum: "win" | "loss" | "draw";
+        /**
+         * @description An entry, or (while `entry` is null) `awaiting` says whose place it is, e.g. "Winner of
+         *     semi-final 1" or "Group A winner".
+         */
+        MatchSide: {
+            entry: components["schemas"]["DrawEntry"] | null;
+            seed: number | null;
+            awaiting: string;
+        };
+        /**
+         * @description * `group` - Group
+         *     * `knockout` - Knockout
+         * @enum {string}
+         */
+        MatchStageEnum: "group" | "knockout";
         MatchStats: {
             played: number;
             won: number;
@@ -1787,6 +1931,13 @@ export interface components {
             recent_form: components["schemas"]["MatchResultEnum"][];
             by_label: components["schemas"]["LabelTally"][];
         };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `bye` - Bye
+         *     * `completed` - Completed
+         * @enum {string}
+         */
+        MatchStatusEnum: "scheduled" | "bye" | "completed";
         /** @description Staff view of a member: display name and roles, never email or contact details. */
         Member: {
             /** Format: uuid */
@@ -5004,6 +5155,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DrawRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
                 };
             };
             /** @description Error envelope */

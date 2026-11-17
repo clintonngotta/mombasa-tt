@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    DrawViewSet,
     EntryViewSet,
     EventViewSet,
     MyEntriesViewSet,
@@ -51,6 +52,21 @@ urlpatterns = [
         "<uuid:tournament_pk>/events/<uuid:event_pk>/entries/",
         EntryViewSet.as_view({"get": "list", "post": "create"}),
         name="tournament-event-entries",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/",
+        DrawViewSet.as_view({"get": "retrieve"}),
+        name="tournament-event-draw",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/preview/",
+        action(DrawViewSet, "preview"),
+        name="tournament-event-draw-preview",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/publish/",
+        action(DrawViewSet, "publish"),
+        name="tournament-event-draw-publish",
     ),
     *(
         path(
