@@ -1,0 +1,77 @@
+{
+  "name": "F-SC9: one time-out for each side in a match",
+  "rules": "3.4.4.2",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
+      "error": "not_in_progress"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
+      "expect": {
+        "timeouts": [
+          true,
+          false
+        ],
+        "points": [
+          0,
+          0
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
+      "error": "timeout_used"
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "b"
+      },
+      "expect": {
+        "timeouts": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "points": "aaaaaaaaaaa",
+      "expect": {
+        "game_number": 2,
+        "timeouts": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "b"
+      },
+      "error": "timeout_used"
+    }
+  ]
+}

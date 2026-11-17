@@ -1,0 +1,193 @@
+{
+  "name": "F-SC8: undo takes back one action at a time, across a game boundary, a time-out and the end of the match; an undo is not itself undone",
+  "rules": "REQ-012 undo",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "aaaaaaaaaa",
+      "expect": {
+        "points": [
+          10,
+          0
+        ],
+        "server": "b1"
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "game_number": 2,
+        "games": [
+          [
+            11,
+            0
+          ]
+        ],
+        "server": "b1",
+        "a_end": "right"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "game_number": 1,
+        "games": [],
+        "games_won": [
+          0,
+          0
+        ],
+        "points": [
+          10,
+          0
+        ],
+        "server": "b1",
+        "receiver": "a1",
+        "first_server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          9,
+          0
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
+      "expect": {
+        "timeouts": [
+          true,
+          false
+        ],
+        "points": [
+          9,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "timeouts": [
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
+      "expect": {
+        "timeouts": [
+          true,
+          false
+        ]
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "game_number": 2
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          10,
+          0
+        ],
+        "game_number": 1,
+        "timeouts": [
+          true,
+          false
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          9,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          9,
+          0
+        ],
+        "timeouts": [
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "game_number": 2
+      }
+    },
+    {
+      "points": "aaaaaaaaaaa",
+      "expect": {
+        "status": "completed",
+        "winner": "a"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "status": "in_progress",
+        "winner": null,
+        "points": [
+          10,
+          0
+        ],
+        "game_number": 2,
+        "games_won": [
+          1,
+          0
+        ],
+        "server": "a1"
+      }
+    }
+  ]
+}

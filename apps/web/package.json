@@ -8,6 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "test:scoring": "node --experimental-strip-types --test ../../packages/scoring/test/scoring.test.ts",
+    "typecheck:scoring": "tsc -p ../../packages/scoring",
+    "gen:parity": "node --experimental-strip-types ../../packages/scoring/scripts/make-parity.ts",
     "gen:api": "openapi-typescript ../../services/api/openapi.yaml -o ../../packages/contracts/api-schema.d.ts"
   },
   "dependencies": {

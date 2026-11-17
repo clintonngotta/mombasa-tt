@@ -80,6 +80,12 @@ jobs:
           git diff --exit-code -- ../../packages/contracts || { echo "::error::packages/contracts is stale; run pnpm gen:api"; exit 1; }
       - name: Lint
         run: pnpm lint
+      - name: Scoring reducer (types, shared fixtures, parity file drift)
+        run: |
+          pnpm typecheck:scoring
+          pnpm test:scoring
+          pnpm gen:parity
+          git diff --exit-code -- ../../packages/scoring/fixtures || { echo "::error::packages/scoring/fixtures/parity.json is stale; run pnpm gen:parity"; exit 1; }
       - name: Typecheck and build
         run: pnpm build
       - name: Dependency audit

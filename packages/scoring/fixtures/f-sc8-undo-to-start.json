@@ -1,0 +1,88 @@
+{
+  "name": "F-SC8b: undo back to before the start, and nothing further",
+  "rules": "REQ-012 undo",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "undo"
+      },
+      "error": "nothing_to_undo"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      },
+      "expect": {
+        "status": "in_progress"
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "points": [
+          2,
+          0
+        ],
+        "server": "b1"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          1,
+          0
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "status": "not_started",
+        "server": null,
+        "a_end": null
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "error": "nothing_to_undo"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "b1",
+        "a_end": "right"
+      },
+      "expect": {
+        "status": "in_progress",
+        "server": "b1",
+        "receiver": "a1",
+        "a_end": "right"
+      }
+    }
+  ]
+}

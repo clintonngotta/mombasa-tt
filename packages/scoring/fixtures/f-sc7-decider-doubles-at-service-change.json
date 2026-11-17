@@ -1,0 +1,76 @@
+{
+  "name": "F-SC7c: deciding game of doubles, 5 reached on a change of service: service passes on, then the pair due to receive changes its order",
+  "rules": "2.13.5, 2.13.6, 2.13.7",
+  "config": {
+    "best_of": 3,
+    "doubles": true
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left",
+        "receiver": "b1"
+      }
+    },
+    {
+      "points": "aaaaaaaaaaa"
+    },
+    {
+      "points": "bbbbbbbbbbb",
+      "expect": {
+        "game_number": 3,
+        "server": "a1",
+        "receiver": "b1"
+      }
+    },
+    {
+      "points": "aaaab",
+      "expect": {
+        "points": [
+          4,
+          1
+        ],
+        "server": "a2",
+        "receiver": "b2",
+        "decider_changed": false
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          5,
+          1
+        ],
+        "server": "b2",
+        "receiver": "a2",
+        "a_end": "right",
+        "decider_changed": true
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          6,
+          1
+        ],
+        "server": "b2",
+        "receiver": "a2"
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          7,
+          1
+        ],
+        "server": "a2",
+        "receiver": "b1"
+      }
+    }
+  ]
+}
