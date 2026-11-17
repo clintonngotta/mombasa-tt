@@ -1,4 +1,7 @@
+from io import BytesIO
+
 from django.utils import timezone
+from PIL import Image
 
 from accounts.models import User
 
@@ -15,3 +18,12 @@ def logged_in(user):
     response = client.post("/api/v1/auth/login/", {"email": user.email, "password": PASSWORD}, format="json")
     assert response.status_code == 200
     return client
+
+
+def image_upload(fmt="JPEG", size=(900, 600), name="me.jpg", **save) -> BytesIO:
+    """An in-memory image file ready to post as a multipart upload."""
+    out = BytesIO()
+    Image.new("RGB", size, "navy").save(out, fmt, **save)
+    out.seek(0)
+    out.name = name
+    return out

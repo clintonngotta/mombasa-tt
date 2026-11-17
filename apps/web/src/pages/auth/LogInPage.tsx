@@ -8,21 +8,29 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { logIn } from "@/lib/auth"
 import { DEV_ACCOUNTS } from "@/lib/devAccounts"
 import { meQueryKey, safeNext } from "@/lib/session"
+import { getProfile, profileKeys } from "@/lib/profile"
 import { cn } from "@/lib/utils"
 
 export function LogInPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const next = safeNext(useSearchParams()[0].get("next"))
+  const requested = useSearchParams()[0].get("next")
   const [email, setEmail] = useState(DEV_ACCOUNTS[0]?.email ?? "")
   const [password, setPassword] = useState(DEV_ACCOUNTS[0]?.password ?? "")
   const [missing, setMissing] = useState(false)
 
   const mutation = useMutation({
-    mutationFn: logIn,
-    onSuccess: (user) => {
+    mutationFn: async (credentials: Parameters<typeof logIn>[0]) => {
+      const user = await logIn(credentials)
+      // A player who left onboarding unfinished picks it up again, unless they were heading somewhere.
+      // If the profile can't be read, just carry on to the app.
+      const profile = requested ? null : await getProfile().catch(() => null)
+      return { user, profile }
+    },
+    onSuccess: ({ user, profile }) => {
       queryClient.setQueryData(meQueryKey, user)
-      navigate(next, { replace: true })
+      if (profile) queryClient.setQueryData(profileKeys.me, profile)
+      navigate(profile && !profile.onboarding_completed ? "/onboarding/profile" : safeNext(requested), { replace: true })
     },
   })
 

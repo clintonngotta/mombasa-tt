@@ -1,5 +1,6 @@
 """Private attachments, signed links and the profile picture (REQ-020, REQ-032, REQ-006; TASK-016)."""
 
+import struct
 from io import BytesIO
 
 import pytest
@@ -11,26 +12,18 @@ from attachments.models import Attachment
 from profiles.models import PlayerProfile, profile_for
 
 from .conftest import BrowserClient
-from .helpers import logged_in, make_user
+from .helpers import image_upload, logged_in, make_user
 
 pytestmark = pytest.mark.django_db
 AVATAR = "/api/v1/me/avatar/"
 PROFILE = "/api/v1/me/profile/"
 
 
-def image_file(fmt="JPEG", size=(900, 600), name="me.jpg", **save) -> BytesIO:
-    out = BytesIO()
-    Image.new("RGB", size, "navy").save(out, fmt, **save)
-    out.seek(0)
-    out.name = name
-    return out
-
-
 def upload(client, file):
     return client.put(AVATAR, {"file": file}, format="multipart")
 
 
-def link_url(client, attachment_id) -> str:
+def link_url(attachment_id) -> str:
     return f"/api/v1/attachments/{attachment_id}/url/"
 
 
@@ -57,7 +50,7 @@ def later(monkeypatch, seconds):
 
 def test_upload_stores_a_normalized_private_image(ama):
     client = logged_in(ama)
-    response = upload(client, image_file())
+    response = upload(client, image_upload())
     assert response.status_code == 200, response.json()
     avatar = response.json()["avatar"]
     assert set(avatar) == {"id", "url", "expires_at"}
@@ -83,7 +76,7 @@ def test_upload_drops_photo_location_metadata(ama):
     exif = Image.Exif()
     exif[0x010F] = "MARKER-CAMERA-MAKE"
     exif[0x8825] = {1: "S", 2: (4.0, 3.0, 0.0), 3: "E", 4: (39.0, 40.0, 0.0)}  # GPS position
-    response = upload(logged_in(ama), image_file(exif=exif))
+    response = upload(logged_in(ama), image_upload(exif=exif))
     assert response.status_code == 200
     attachment = Attachment.objects.get()
     with Image.open(attachment.file) as stored:
@@ -94,8 +87,8 @@ def test_upload_drops_photo_location_metadata(ama):
 @pytest.mark.parametrize(
     "make",
     [
-        lambda: image_file("GIF", name="me.gif"),
-        lambda: image_file("BMP", name="me.jpg"),  # the name doesn't decide the type
+        lambda: image_upload("GIF", name="me.gif"),
+        lambda: image_upload("BMP", name="me.jpg"),  # the name doesn't decide the type
         lambda: BytesIO(b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>"),
         lambda: BytesIO(b"\xff\xd8\xff\xe0 not really a jpeg"),
         lambda: BytesIO(b"x" * (5 * 1024 * 1024 + 1)),
@@ -111,21 +104,72 @@ def test_upload_rejects_other_files(ama, make):
     assert not Attachment.objects.exists()
 
 
+def test_damaged_images_are_a_400_not_a_crash(ama):
+    """Pillow raises all sorts of errors on damaged files; each must come back as a `file` message."""
+    good = image_upload("PNG", name="me.png").getvalue()
+    damaged = [
+        good.replace(b"IDAT", b"ID~T"),  # broken chunk name
+        good[: len(good) // 2],  # truncated
+        good[:20] + bytes(40) + good[60:],  # header overwritten
+    ]
+    client = logged_in(ama)
+    for content in damaged:
+        file = BytesIO(content)
+        file.name = "me.png"
+        response = upload(client, file)
+        assert response.status_code == 400, response.content
+        assert "file" in response.json()["fields"]
+    assert not Attachment.objects.exists()
+
+
+@pytest.mark.parametrize("error", [SyntaxError("broken PNG file"), struct.error("bad"), MemoryError()])
+def test_any_decoder_failure_is_a_400(ama, monkeypatch, error):
+    def explode(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr("attachments.images.ImageOps.exif_transpose", explode)
+    response = upload(logged_in(ama), image_upload())
+    assert response.status_code == 400
+    assert response.json()["fields"] == {"file": "Choose a JPEG, PNG or WebP image."}
+
+
+def test_oversized_body_is_refused_before_it_is_read(ama):
+    response = logged_in(ama).put(
+        AVATAR, {"file": image_upload()}, format="multipart", CONTENT_LENGTH=6 * 1024 * 1024
+    )
+    assert response.status_code == 400
+    assert "file" in response.json()["fields"]
+
+
+def test_a_failed_save_leaves_no_file_behind(ama, monkeypatch):
+    client = logged_in(ama)
+    client.raise_request_exception = False
+
+    def fail(self, *args, **kwargs):
+        raise RuntimeError("database went away")
+
+    monkeypatch.setattr(PlayerProfile, "save", fail)
+    assert upload(client, image_upload()).status_code == 500
+    assert not Attachment.objects.exists()
+    storage = storages["attachments"]
+    assert not storage.exists("avatar") or storage.listdir("avatar")[1] == []
+
+
 def test_upload_rejects_images_with_too_many_pixels(ama, monkeypatch):
     monkeypatch.setattr("attachments.images.MAX_PIXELS", 100 * 100)
-    assert upload(logged_in(ama), image_file(size=(101, 100))).status_code == 400
-    assert upload(logged_in(ama), image_file(size=(100, 100))).status_code == 200
+    assert upload(logged_in(ama), image_upload(size=(101, 100))).status_code == 400
+    assert upload(logged_in(ama), image_upload(size=(100, 100))).status_code == 200
 
 
 def test_upload_needs_a_file_and_a_login(ama):
-    assert upload(BrowserClient(), image_file()).status_code == 401
+    assert upload(BrowserClient(), image_upload()).status_code == 401
     client = logged_in(ama)
     assert client.put(AVATAR, {}, format="multipart").status_code == 400
     assert client.put(AVATAR, {"file": "text"}, format="json").status_code == 415
 
 
 def test_profile_patch_cannot_point_the_avatar_at_another_attachment(ama, baraka):
-    upload(logged_in(baraka), image_file())
+    upload(logged_in(baraka), image_upload())
     theirs = Attachment.objects.get()
     response = logged_in(ama).patch(PROFILE, {"avatar": str(theirs.id), "nickname": "A"}, format="json")
     assert response.status_code == 200
@@ -141,13 +185,13 @@ def commits(django_capture_on_commit_callbacks):
 
 def test_replacing_and_removing_delete_the_old_file(ama, commits):
     client = logged_in(ama)
-    first = upload(client, image_file()).json()["avatar"]
+    first = upload(client, image_upload()).json()["avatar"]
     first_name = Attachment.objects.get(pk=first["id"]).file.name
     storage = storages["attachments"]
     assert storage.exists(first_name)
 
     with commits():
-        second = upload(client, image_file("PNG", name="me.png")).json()["avatar"]
+        second = upload(client, image_upload("PNG", name="me.png")).json()["avatar"]
     assert second["id"] != first["id"]
     assert list(Attachment.objects.values_list("id", flat=True)) == [profile_for(ama).avatar_id]
     assert not storage.exists(first_name)
@@ -162,7 +206,7 @@ def test_replacing_and_removing_delete_the_old_file(ama, commits):
 
 
 def test_deleting_the_account_removes_the_file(ama, commits):
-    upload(logged_in(ama), image_file())
+    upload(logged_in(ama), image_upload())
     name = Attachment.objects.get().file.name
     with commits():
         ama.delete()
@@ -173,7 +217,7 @@ def test_deleting_the_account_removes_the_file(ama, commits):
 
 
 def test_link_expires(ama, monkeypatch, settings):
-    avatar = upload(logged_in(ama), image_file()).json()["avatar"]
+    avatar = upload(logged_in(ama), image_upload()).json()["avatar"]
     later(monkeypatch, settings.ATTACHMENT_URL_TTL - 5)
     assert BrowserClient().get(avatar["url"]).status_code == 200
     later(monkeypatch, settings.ATTACHMENT_URL_TTL + 5)
@@ -183,8 +227,8 @@ def test_link_expires(ama, monkeypatch, settings):
 
 
 def test_link_is_bound_to_its_attachment_and_signature(ama, baraka):
-    mine = upload(logged_in(ama), image_file()).json()["avatar"]
-    theirs = upload(logged_in(baraka), image_file()).json()["avatar"]
+    mine = upload(logged_in(ama), image_upload()).json()["avatar"]
+    theirs = upload(logged_in(baraka), image_upload()).json()["avatar"]
     token = mine["url"].split("token=")[1]
     anonymous = BrowserClient()
 
@@ -199,14 +243,14 @@ def test_link_is_bound_to_its_attachment_and_signature(ama, baraka):
 
 def test_who_can_get_a_link(ama, baraka):
     """Owner always; other signed-in players only while the owner is listed; nobody when signed out."""
-    avatar = upload(logged_in(ama), image_file()).json()["avatar"]
-    url = link_url(None, avatar["id"])
+    avatar = upload(logged_in(ama), image_upload()).json()["avatar"]
+    url = link_url(avatar["id"])
     other = logged_in(baraka)
 
     assert logged_in(ama).get(url).status_code == 200
     assert BrowserClient().get(url).status_code == 401
     assert other.get(url).status_code == 404  # not listed: indistinguishable from a missing attachment
-    assert other.get(link_url(None, "00000000-0000-4000-8000-000000000000")).status_code == 404
+    assert other.get(link_url("00000000-0000-4000-8000-000000000000")).status_code == 404
 
     PlayerProfile.objects.filter(user=ama).update(directory_opt_in=True)
     issued = other.get(url)
@@ -216,8 +260,8 @@ def test_who_can_get_a_link(ama, baraka):
 
 def test_losing_access_blocks_new_links(ama, baraka):
     PlayerProfile.objects.update_or_create(user=ama, defaults={"directory_opt_in": True})
-    avatar = upload(logged_in(ama), image_file()).json()["avatar"]
-    url = link_url(None, avatar["id"])
+    avatar = upload(logged_in(ama), image_upload()).json()["avatar"]
+    url = link_url(avatar["id"])
     other = logged_in(baraka)
     assert other.get(url).status_code == 200
 
@@ -243,9 +287,9 @@ def test_losing_access_blocks_new_links(ama, baraka):
 def test_a_replaced_avatar_is_not_reachable_through_the_old_id(ama, baraka):
     PlayerProfile.objects.update_or_create(user=ama, defaults={"directory_opt_in": True})
     client = logged_in(ama)
-    old = upload(client, image_file()).json()["avatar"]
-    upload(client, image_file())
-    assert logged_in(baraka).get(link_url(None, old["id"])).status_code == 404
+    old = upload(client, image_upload()).json()["avatar"]
+    upload(client, image_upload())
+    assert logged_in(baraka).get(link_url(old["id"])).status_code == 404
 
 
 # --- where avatars appear ----------------------------------------------------------------------------
@@ -253,7 +297,7 @@ def test_a_replaced_avatar_is_not_reachable_through_the_old_id(ama, baraka):
 
 def test_directory_and_player_page_carry_a_working_link_for_listed_players(ama, baraka):
     PlayerProfile.objects.update_or_create(user=ama, defaults={"directory_opt_in": True})
-    upload(logged_in(ama), image_file())
+    upload(logged_in(ama), image_upload())
     viewer = logged_in(baraka)
 
     card = viewer.get("/api/v1/players/?search=ama").json()["results"][0]

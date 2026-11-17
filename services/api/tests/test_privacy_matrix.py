@@ -12,12 +12,10 @@ One named world, then every route of the API is exercised against it:
 """
 
 import importlib
-from io import BytesIO
 
 import pytest
 from django.apps import apps
 from django.urls import URLResolver, get_resolver, reverse
-from PIL import Image
 from rest_framework import serializers
 
 from attachments.models import Attachment
@@ -27,7 +25,7 @@ from organizations.permissions import RoleKey
 from profiles.models import PlayerProfile
 
 from .conftest import BrowserClient
-from .helpers import logged_in, make_user
+from .helpers import image_upload, logged_in, make_user
 
 pytestmark = pytest.mark.django_db
 
@@ -114,14 +112,6 @@ def api_routes():
 ROUTES = list(api_routes())
 
 
-def avatar_bytes() -> BytesIO:
-    out = BytesIO()
-    Image.new("RGB", (64, 64), "teal").save(out, "PNG")
-    out.seek(0)
-    out.name = "me.png"
-    return out
-
-
 class World:
     """Coast Spinners (Amina admin, Baraka and Faith members), Nyali Loop (Chiku admin), and Daudi, who
     belongs to neither and has asked to join Coast Spinners."""
@@ -132,6 +122,12 @@ class World:
         self.faith = make_user("faith.listed@coast.example", display_name="Faith Mwende")
         self.chiku = make_user("chiku.admin@nyali.example", display_name="Chiku Nyali")
         self.daudi = make_user("daudi.outsider@else.example", display_name="Daudi Kazi")
+        # Different roles and revoked access (EVAL-020): a committee member with no member or role
+        # permissions, a former member, a platform operator with no club, and somebody invited.
+        self.grace = make_user("grace.committee@coast.example", display_name="Grace Achieng")
+        self.hamisi = make_user("hamisi.left@coast.example", display_name="Hamisi Juma")
+        self.operator = make_user("operator@platform.example", display_name="Olive Operator", is_staff=True)
+        self.imani = make_user("mark.invitee@else.example", display_name="Imani Invited")
 
         self.coast = Organization.objects.create(name="Coast Spinners", town="Mombasa")
         self.nyali = Organization.objects.create(name="Nyali Loop", town="Nyali")
@@ -139,6 +135,10 @@ class World:
             roles = seed_roles(org)
             Membership.objects.create(organization=org, user=admin).roles.add(roles[RoleKey.ADMIN])
         self.baraka_membership = Membership.objects.create(organization=self.coast, user=self.baraka)
+        Membership.objects.create(organization=self.coast, user=self.grace).roles.add(
+            self.coast.roles.get(key=RoleKey.COMMITTEE)
+        )
+        Membership.objects.create(organization=self.coast, user=self.hamisi, status=Membership.Status.LEFT)
         Membership.objects.create(organization=self.coast, user=self.faith)
         self.custom_role = Role.objects.create(organization=self.coast, name="Tea committee")
 
@@ -159,7 +159,9 @@ class World:
             published_details=["style"],
         )
         for user in (self.baraka, self.faith):
-            response = logged_in(user).put("/api/v1/me/avatar/", {"file": avatar_bytes()}, format="multipart")
+            response = logged_in(user).put(
+                "/api/v1/me/avatar/", {"file": image_upload("PNG", (64, 64), "me.png")}, format="multipart"
+            )
             assert response.status_code == 200, response.content
         self.baraka_avatar = Attachment.objects.get(owner=self.baraka)
         self.faith_avatar = Attachment.objects.get(owner=self.faith)
@@ -172,7 +174,7 @@ class World:
             notes="MARK-BARAKA-NOTE",
         )
         self.invitation = Invitation.objects.create(
-            organization=self.coast, email="mark.invitee@else.example", invited_by=self.amina
+            organization=self.coast, email=self.imani.email, invited_by=self.amina
         )
         self.join_request = JoinRequest.objects.create(organization=self.coast, user=self.daudi)
 
@@ -182,6 +184,9 @@ class World:
             "faith": self.faith,
             "chiku": self.chiku,
             "daudi": self.daudi,
+            "grace": self.grace,
+            "hamisi": self.hamisi,
+            "operator": self.operator,
         }
 
     def kwargs(self, name: str, names: set[str]) -> dict:
@@ -253,7 +258,7 @@ def test_signed_out_callers_reach_only_public_routes(world):
     assert world.state() == before
 
 
-@pytest.mark.parametrize("who", ["baraka", "faith", "chiku", "daudi"])
+@pytest.mark.parametrize("who", ["baraka", "faith", "chiku", "daudi", "grace", "hamisi", "operator"])
 def test_staff_routes_refuse_members_other_clubs_and_outsiders(world, who):
     before = world.state()
     client = logged_in(world.viewers[who])
@@ -274,7 +279,45 @@ def test_staff_routes_serve_the_clubs_own_admin(world):
             assert client.get(world.url(name, names)).status_code == 200, name
 
 
-@pytest.mark.parametrize("who", ["amina", "faith", "chiku", "daudi"])
+def test_staff_actions_succeed_for_the_clubs_own_admin(world):
+    """The same calls as the refusals above, made by somebody allowed: they change things, so the bodies
+    in BODIES are valid and a refusal really is about who is asking."""
+    client = logged_in(world.amina)
+    for name, methods, names in ROUTES:
+        for method in sorted(methods, key=lambda m: m == "delete"):  # delete a role after renaming it
+            if ACCESS[name][method] != STAFF or method == "get":
+                continue
+            response = call(client, method, name, world.url(name, names))
+            # The join request was approved a moment earlier, so rejecting it is a conflict, not a refusal.
+            expected = {409} if name == "organization-join-request-reject" else {200, 201, 204}
+            assert response.status_code in expected, f"{method.upper()} {name}: {response.content}"
+
+
+def test_owner_routes_serve_the_owner(world):
+    """Positive control for the refusals below: the ids used are real and reachable by their owner."""
+    baraka = logged_in(world.baraka)
+    match = reverse("personal-match-detail", kwargs={"pk": world.match.id})
+    assert baraka.get(match).status_code == 200
+    assert baraka.patch(match, BODIES["personal-match-detail", "patch"], format="json").status_code == 200
+
+    imani = logged_in(world.imani)
+    assert [i["id"] for i in imani.get("/api/v1/me/invitations/").json()["results"]] == [
+        str(world.invitation.id)
+    ]
+    declined = imani.post(
+        reverse("me-invitation-decline", kwargs={"pk": world.invitation.id}), {}, format="json"
+    )
+    assert declined.status_code in {200, 204}
+
+    left = baraka.post(
+        reverse("me-membership-leave", kwargs={"pk": world.baraka_membership.id}), {}, format="json"
+    )
+    assert left.status_code == 204
+
+
+# Owner routes without an id in the path (profile, goals, lists...) always act on the caller, so there is
+# nothing of somebody else's to address; what they return is covered by the marker test below.
+@pytest.mark.parametrize("who", ["amina", "faith", "chiku", "daudi", "grace", "hamisi", "operator"])
 def test_owner_routes_refuse_everyone_else(world, who):
     """Baraka's match, membership and the invitee's invitation, addressed by id by somebody else."""
     before = world.state()
@@ -317,7 +360,10 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         world.faith.email: {"faith"},
         world.chiku.email: {"chiku"},
         world.daudi.email: {"daudi"},
-        "mark.invitee@else.example": {"amina"},  # staff of the inviting club
+        world.grace.email: {"grace"},
+        world.hamisi.email: {"hamisi"},
+        world.operator.email: {"operator"},
+        world.imani.email: {"amina"},  # staff of the inviting club (the invitee isn't a viewer here)
         "MARK-BARAKA-NICK": {"baraka"},
         "MARK-BARAKA-STYLE": {"baraka"},
         "MARK-BARAKA-BIO": {"baraka"},
@@ -385,3 +431,14 @@ def test_model_serializers_name_every_field_they_expose():
         meta = serializer.Meta
         assert isinstance(meta.fields, list | tuple), f"{serializer.__name__} must list its fields"
         assert not hasattr(meta, "exclude"), f"{serializer.__name__} must not use exclude"
+
+
+def test_routes_outside_the_api_serve_no_data(world):
+    """Health checks say only that the service is up; the Django admin is for platform operators."""
+    anonymous = BrowserClient()
+    for path in ("/health/live", "/health/ready"):
+        response = anonymous.get(path)
+        assert response.status_code == 200
+        assert len(response.content) < 100
+    assert anonymous.get("/admin/").status_code == 302
+    assert logged_in(world.amina).get("/admin/").status_code == 302  # a club admin is not an operator

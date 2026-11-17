@@ -77,8 +77,17 @@ class Attachment(models.Model):
             sha256=hashlib.sha256(content).hexdigest(),
         )
         attachment.file.save("upload", ContentFile(content), save=False)
-        attachment.save()
+        try:
+            attachment.save()
+        except BaseException:
+            attachment.discard_file()
+            raise
         return attachment
+
+    def discard_file(self) -> None:
+        """Remove the stored file of an attachment whose row was never committed, so a failed or rolled
+        back save leaves nothing behind in storage."""
+        self.file.storage.delete(self.file.name)
 
 
 @receiver(post_delete, sender=Attachment)

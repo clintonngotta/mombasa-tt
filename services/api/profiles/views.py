@@ -3,17 +3,18 @@ from django.db.models import Prefetch, Q
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from attachments.images import OUTPUT_CONTENT_TYPE, normalize_image
+from attachments.images import MAX_UPLOAD_BYTES, OUTPUT_CONTENT_TYPE, normalize_image
 from attachments.models import Attachment
 from core.pagination import StandardPagination, search_term
 from organizations.models import Membership
 
-from .models import PlayerProfile, profile_for
+from .models import PlayerProfile, listed_profiles, profile_for
 from .serializers import (
     AvatarUploadSerializer,
     DirectoryPlayerSerializer,
@@ -24,6 +25,7 @@ from .serializers import (
 
 MIN_SEARCH_LENGTH = 2
 AVATAR_SIDE = 512
+MULTIPART_OVERHEAD = 64 * 1024  # form boundaries and headers around the file
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
@@ -43,28 +45,42 @@ class AvatarView(APIView):
     throttle_scope = "uploads"
 
     def _replace(self, user, content: bytes | None) -> PlayerProfile:
-        profile = PlayerProfile.objects.select_for_update().get(pk=profile_for(user).pk)
-        old = profile.avatar
-        profile.avatar = content and Attachment.store(
-            owner=user, purpose=Attachment.Purpose.AVATAR, content=content, content_type=OUTPUT_CONTENT_TYPE
-        )
-        profile.save(update_fields=["avatar", "updated_at"])
-        if old:
-            old.delete()
+        """Swap the player's photo for `content` (None removes it) and delete the old one."""
+        new = None
+        try:
+            with transaction.atomic():
+                profile = PlayerProfile.objects.select_for_update().get(pk=profile_for(user).pk)
+                old = profile.avatar
+                if content is not None:
+                    new = Attachment.store(
+                        owner=user,
+                        purpose=Attachment.Purpose.AVATAR,
+                        content=content,
+                        content_type=OUTPUT_CONTENT_TYPE,
+                    )
+                profile.avatar = new
+                profile.save(update_fields=["avatar", "updated_at"])
+                if old:
+                    old.delete()
+        except BaseException:
+            if new is not None:
+                new.discard_file()  # its row was rolled back; don't leave the file behind
+            raise
         return profile
 
     @extend_schema(
         request={"multipart/form-data": AvatarUploadSerializer}, responses={200: ProfileSerializer}
     )
-    @transaction.atomic
     def put(self, request):
+        # Refuse an oversized body before reading it (the proxy caps it too, see deployment.md).
+        if int(request.META.get("CONTENT_LENGTH") or 0) > MAX_UPLOAD_BYTES + MULTIPART_OVERHEAD:
+            raise ValidationError({"file": "Choose an image under 5 MB."})
         serializer = AvatarUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         content = normalize_image(serializer.validated_data["file"], max_side=AVATAR_SIDE)
         return Response(ProfileSerializer(self._replace(request.user, content)).data)
 
     @extend_schema(request=None, responses={204: None})
-    @transaction.atomic
     def delete(self, request):
         self._replace(request.user, None)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -99,7 +115,7 @@ def listed_players():
     """Profiles that may be shown to other players: opted in and active (REQ-006)."""
     active = Membership.objects.active().select_related("organization")
     return (
-        PlayerProfile.objects.filter(directory_opt_in=True, user__is_active=True)
+        listed_profiles()
         .select_related("user")
         .prefetch_related(Prefetch("user__memberships", queryset=active))
     )

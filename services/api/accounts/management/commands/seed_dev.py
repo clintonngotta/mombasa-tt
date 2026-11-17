@@ -7,6 +7,7 @@ from django.utils import timezone
 from accounts.models import User
 from organizations.models import Membership, Organization, seed_roles
 from organizations.permissions import RoleKey
+from profiles.models import profile_for
 
 # Mirrors apps/web/src/lib/devAccounts.ts. The last item is the role each holds in the dev club
 # (None = plain member).
@@ -41,6 +42,11 @@ class Command(BaseCommand):
             user.is_active = True
             user.set_password(password)
             user.save()
+            # Test logins skip onboarding, so logging in goes straight to the app.
+            profile = profile_for(user)
+            if profile.onboarding_completed_at is None:
+                profile.onboarding_completed_at = timezone.now()
+                profile.save(update_fields=["onboarding_completed_at", "updated_at"])
             membership, _ = Membership.objects.update_or_create(
                 organization=club, user=user, defaults={"status": Membership.Status.ACTIVE}
             )

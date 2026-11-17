@@ -29,6 +29,9 @@ const EMPTY_DRAFT: OnboardingDraft = {
   joinRequests: [],
 }
 
+/** True while nothing has been typed into the profile step on this device. */
+export const isBlankProfile = (profile: ProfileDraft) => Object.values(profile).every((value) => value === "")
+
 function readDraft(): OnboardingDraft {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)

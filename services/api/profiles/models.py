@@ -70,3 +70,9 @@ class PlayerProfile(models.Model):
 def profile_for(user) -> PlayerProfile:
     profile, _ = PlayerProfile.objects.get_or_create(user=user)
     return profile
+
+
+def listed_profiles():
+    """Profiles other players may be shown (REQ-006): opted in to the directory and still active. The one
+    place this rule lives; the directory, player pages and photo access all start from it."""
+    return PlayerProfile.objects.filter(directory_opt_in=True, user__is_active=True)
