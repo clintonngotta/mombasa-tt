@@ -19,8 +19,8 @@ uv run --env-file .env manage.py runserver 8010   # http://127.0.0.1:8010
 The web dev server (`apps/web`, port 5173) proxies `/api` to `127.0.0.1:8010` (8000 is often taken by other local projects), so the browser sees one origin and the
 session/CSRF cookies work without CORS. Override the target with `VITE_API_PROXY_TARGET`.
 
-Emails (verification, password reset) print to the `runserver` console unless `SMTP_HOST` is set. Open the link from
-there.
+Emails (verification, password reset) print readable bodies and copyable links to the `runserver` console unless
+`SMTP_HOST` is set. The local preview backend avoids MIME transfer encoding so long links remain intact.
 
 ### Test logins (`seed_dev`)
 
