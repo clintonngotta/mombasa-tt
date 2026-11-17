@@ -269,7 +269,7 @@ def describe(draw: DrawVersion) -> dict:
     entries = {place.entry_id: place.entry for place in places}
     seeds = {place.entry_id: place.seed for place in places}
     matches = list(draw.matches.select_related("table"))
-    shown = _match_shower(matches, entries, seeds)
+    shown = _match_describer(matches, entries, seeds)
     numbers = sorted({place.group for place in places if place.group})
     return {
         "id": draw.id,
@@ -286,7 +286,7 @@ def describe(draw: DrawVersion) -> dict:
     }
 
 
-def _match_shower(matches: list[Match], entries: dict, seeds: dict):
+def _match_describer(matches: list[Match], entries: dict, seeds: dict):
     """A function turning one of `matches` (all those of a draw) into what MatchSerializer shows."""
     by_id = {match.id: match for match in matches}
     rounds = max((match.round for match in matches if match.stage == Match.Stage.KNOCKOUT), default=0)
@@ -335,7 +335,7 @@ def describe_match(draw: DrawVersion, match_id) -> dict | None:
     match = next((found for found in matches if found.id == match_id), None)
     if match is None:
         return None
-    shown = _match_shower(
+    shown = _match_describer(
         matches,
         {place.entry_id: place.entry for place in places},
         {place.entry_id: place.seed for place in places},

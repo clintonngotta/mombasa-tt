@@ -87,12 +87,11 @@ export function EventPage({ tab }: { tab: EventTab }) {
 
           {draw.isPending && <p className="text-muted-foreground">Loading draw…</p>}
           {draw.isError && <FormAlert>{errorMessage(draw.error, "We couldn't load the draw.")}</FormAlert>}
-          {draw.data && !published && <NotDrawn event={event} />}
+          {draw.data && !published && <NotDrawn event={event} tab={tab} />}
           {published && (
             <section aria-label={TABS.find((candidate) => candidate.tab === tab)?.label} className="flex flex-col gap-4">
               {published.stale && <FormAlert>The entries have changed since this draw was published. The organizers will publish a new one.</FormAlert>}
-              {standings.isError && tab !== "schedule" && <FormAlert>{errorMessage(standings.error, "We couldn't load the standings.")}</FormAlert>}
-              <TabBody tab={tab} tournament={t} event={event} draw={published} standings={standings.data} />
+              <TabBody tab={tab} tournament={t} event={event} draw={published} standings={standings.data} standingsError={standings.error} />
               <p className="text-sm text-muted-foreground">
                 Draw version {published.version}
                 {published.published_at && `, published ${formatInstant(published.published_at, t.timezone)}`}. Rules {published.rules_version}, draw number {published.rng_seed}.
@@ -105,10 +104,34 @@ export function EventPage({ tab }: { tab: EventTab }) {
   )
 }
 
-function NotDrawn({ event }: { event: TournamentEvent }) {
+/** What a tab will hold for this event's format once the draw is published, or why it will hold nothing. */
+const BEFORE_DRAW: Record<EventTab, Record<TournamentEvent["format"], string>> = {
+  brackets: {
+    knockout: "The bracket appears here once the draw is published.",
+    groups_knockout: "The knockout bracket appears here once the draw is published. The groups are played first and their qualifiers fill it.",
+    round_robin: "This event is a round robin: everybody plays everybody and the table decides the places, so it will have no bracket.",
+  },
+  groups: {
+    knockout: "This event is a straight knockout, so it will have no groups.",
+    groups_knockout: "The groups and their fixtures appear here once the draw is published.",
+    round_robin: "The fixtures appear here once the draw is published.",
+  },
+  schedule: {
+    knockout: "The matches appear here once the draw is published.",
+    groups_knockout: "The matches appear here once the draw is published.",
+    round_robin: "The matches appear here once the draw is published.",
+  },
+  standings: {
+    knockout: "A knockout has no table. Once it is played, the winner, the runner-up and who went out in each round are listed here.",
+    groups_knockout: "The group tables appear here once the draw is published.",
+    round_robin: "The table appears here once the draw is published.",
+  },
+}
+
+function NotDrawn({ event, tab }: { event: TournamentEvent; tab: EventTab }) {
   return (
     <p className="text-muted-foreground">
-      {event.status === "cancelled" ? "This event was cancelled before a draw was published." : "The draw hasn't been published yet. Brackets, groups, the schedule and standings appear here once it is."}
+      {event.status === "cancelled" ? "This event was cancelled before a draw was published." : `The draw hasn't been published yet. ${BEFORE_DRAW[tab][event.format]}`}
     </p>
   )
 }
@@ -125,7 +148,21 @@ function NotApplicable({ children, to, label }: { children: ReactNode; to: strin
   )
 }
 
-function TabBody({ tab, tournament: t, event, draw, standings }: { tab: EventTab; tournament: Tournament; event: TournamentEvent; draw: Draw; standings?: Standings }) {
+function TabBody({
+  tab,
+  tournament: t,
+  event,
+  draw,
+  standings,
+  standingsError,
+}: {
+  tab: EventTab
+  tournament: Tournament
+  event: TournamentEvent
+  draw: Draw
+  standings?: Standings
+  standingsError: unknown
+}) {
   const path = (name: EventTab) => eventTabPath(t.id, event.id, name)
   const matchPath = (matchId: string) => `/tournaments/${t.id}/events/${event.id}/matches/${matchId}`
   const knockout = draw.matches.filter((match) => match.stage === "knockout")
@@ -148,10 +185,16 @@ function TabBody({ tab, tournament: t, event, draw, standings }: { tab: EventTab
         </NotApplicable>
       )
     }
-    return <GroupsView draw={draw} standings={standings} matchPath={matchPath} timeZone={t.timezone} />
+    return (
+      <>
+        {!!standingsError && <FormAlert>{errorMessage(standingsError, "We couldn't load who has qualified. The fixtures below are complete.")}</FormAlert>}
+        <GroupsView draw={draw} standings={standings} matchPath={matchPath} timeZone={t.timezone} />
+      </>
+    )
   }
   if (tab === "schedule") return <ScheduleView draw={draw} matchPath={matchPath} timeZone={t.timezone} />
 
+  if (standingsError) return <FormAlert>{errorMessage(standingsError, "We couldn't load the standings.")}</FormAlert>
   if (!standings) return <p className="text-muted-foreground">Loading standings…</p>
   return (
     <div className="flex flex-col gap-4">

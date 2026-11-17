@@ -2,10 +2,10 @@ import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
-import { MatchStateChip } from "@/components/tournaments/MatchCard"
+import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys, gamesWon, getMatch, OUTCOME_LABEL, type DrawSide, type MatchDetail } from "@/lib/draws"
+import { drawKeys, gameWinner, gamesWon, getMatch, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
 import { eventTabPath, firstTab, getTournament, tournamentKeys } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 
@@ -31,7 +31,13 @@ export function MatchPage() {
       {(tournament.isPending || (match.isPending && !failed)) && <p className="text-muted-foreground">Loading match…</p>}
       {missing && <FormAlert>This match doesn't exist. The draw may have been published again since you opened it.</FormAlert>}
       {failed && !missing && <FormAlert>{errorMessage(failed, "We couldn't load this match.")}</FormAlert>}
-      {t && event && m && m.b && <Details match={m} side={m.b} eventName={event.name} bestOf={event.best_of} timeZone={t.timezone} />}
+      {t && event && m && m.b && <Details match={m} second={m.b} eventName={event.name} bestOf={event.best_of} timeZone={t.timezone} />}
+      {t && event && m && !m.b && (
+        <p className="rounded-xl border bg-card p-4">
+          {m.a.entry ? `${m.a.entry.title} has a bye in the ${m.round_name.toLowerCase()}` : `This place in the ${m.round_name.toLowerCase()} is a bye`}: nothing is played and the entry
+          goes straight through.
+        </p>
+      )}
     </div>
   )
 }
@@ -44,7 +50,7 @@ function Name({ side, won, align }: { side: DrawSide; won: boolean; align: "left
           <span className={cn("text-xl leading-6 break-words", won && "font-bold")}>{side.entry.title}</span>
           <span className="flex flex-wrap gap-1 text-sm text-muted-foreground">
             {side.seed && <span>Seed {side.seed}</span>}
-            {side.entry.mine && <span className="rounded bg-brand-gold px-1 font-bold text-brand-navy">You</span>}
+            {side.entry.mine && <YouBadge />}
             {won && <span className="font-semibold text-success">Winner</span>}
           </span>
         </>
@@ -55,8 +61,8 @@ function Name({ side, won, align }: { side: DrawSide; won: boolean; align: "left
   )
 }
 
-function Details({ match: m, side: b, eventName, bestOf, timeZone }: { match: MatchDetail; side: DrawSide; eventName: string; bestOf: number; timeZone: string }) {
-  const won = (side: DrawSide) => !!side.entry && m.status === "completed" && m.winner_id === side.entry.id
+function Details({ match: m, second: b, eventName, bestOf, timeZone }: { match: MatchDetail; second: DrawSide; eventName: string; bestOf: number; timeZone: string }) {
+  const won = (side: DrawSide) => sideWon(m, side)
   const games = gamesWon(m)
   const decided = m.status === "completed"
   const round = [m.group_name, m.round_name].filter(Boolean).join(" · ")
@@ -80,9 +86,12 @@ function Details({ match: m, side: b, eventName, bestOf, timeZone }: { match: Ma
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
           <Name side={m.a} won={won(m.a)} align="left" />
-          <p className="font-display text-[56px] leading-none font-bold tabular-nums" aria-label={decided && m.outcome !== "walkover" ? `Games: ${games.a} to ${games.b}` : undefined}>
-            {decided ? (m.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}`) : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
-            {decided && m.outcome === "retired" && <span className="block text-center text-base font-semibold text-muted-foreground">ret.</span>}
+          <p className="font-display text-[80px] leading-none font-bold tabular-nums max-sm:text-[56px]">
+            <span aria-hidden>
+              {decided ? (m.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}`) : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
+              {decided && m.outcome === "retired" && <span className="block text-center text-base font-semibold text-muted-foreground">ret.</span>}
+            </span>
+            <span className="sr-only">{spokenScore(m)}</span>
           </p>
           <Name side={b} won={won(b)} align="right" />
         </div>
@@ -104,13 +113,19 @@ function Details({ match: m, side: b, eventName, bestOf, timeZone }: { match: Ma
                 </tr>
               </thead>
               <tbody>
-                {m.games.map(([left, right], index) => (
-                  <tr key={index} className="border-t">
-                    <td className={cn("px-3 py-2 text-left text-lg", left > right && "font-bold")}>{left}</td>
-                    <th scope="row" className="px-3 py-2 text-sm font-normal text-muted-foreground">{index + 1}</th>
-                    <td className={cn("px-3 py-2 text-right text-lg", right > left && "font-bold")}>{right}</td>
-                  </tr>
-                ))}
+                {m.games.map((game, index) => {
+                  const winner = gameWinner(game)
+                  return (
+                    <tr key={index} className="border-t">
+                      <td className={cn("px-3 py-2 text-left text-lg", winner === "a" && "font-bold")}>{game[0]}</td>
+                      <th scope="row" className="px-3 py-2 text-sm font-normal text-muted-foreground">
+                        {index + 1}
+                        {!winner && " (not finished)"}
+                      </th>
+                      <td className={cn("px-3 py-2 text-right text-lg", winner === "b" && "font-bold")}>{game[1]}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

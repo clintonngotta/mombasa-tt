@@ -41,11 +41,6 @@ export function formatInstant(iso: string, timeZone: string) {
   }).format(new Date(iso))
 }
 
-/** "14:30" in the given timezone. */
-export function formatTime(iso: string, timeZone: string) {
-  return new Intl.DateTimeFormat("en-KE", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso))
-}
-
 /** The calendar day ("YYYY-MM-DD") an instant falls on in `timeZone`. */
 export const dayOf = (iso: string, timeZone: string) => todayIn(timeZone, new Date(iso))
 

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { CalendarClock, CircleCheck, CircleDot, Hourglass, type LucideIcon } from "lucide-react"
 import { formatInstant } from "@/lib/dates"
-import { isMine, scoreLine, type DrawMatch, type DrawSide } from "@/lib/draws"
+import { isMine, scoreLine, sideWon, spokenScore, type DrawMatch, type DrawSide } from "@/lib/draws"
 import { cn } from "@/lib/utils"
 
 type State = { label: string; icon: LucideIcon; className: string }
@@ -31,6 +31,11 @@ function whenAndWhere(match: Pick<DrawMatch, "scheduled_at" | "table">, timeZone
   return parts.join(" · ")
 }
 
+/** Marks one of the viewer's own entries. */
+export function YouBadge() {
+  return <span className="ml-1 rounded bg-brand-gold px-1 text-xs font-bold text-brand-navy">You</span>
+}
+
 function SideName({ side, won, align }: { side: DrawSide; won: boolean; align: "left" | "right" }) {
   return (
     <span className={cn("min-w-0 break-words", align === "right" && "text-right")}>
@@ -38,7 +43,7 @@ function SideName({ side, won, align }: { side: DrawSide; won: boolean; align: "
         <span className={won ? "font-bold" : undefined}>
           {side.entry.title}
           {side.seed && <span className="ml-1 text-sm font-normal text-muted-foreground">[{side.seed}]</span>}
-          {side.entry.mine && <span className="ml-1 rounded bg-brand-gold px-1 text-xs font-bold text-brand-navy">You</span>}
+          {side.entry.mine && <YouBadge />}
           {won && <span className="sr-only"> (winner)</span>}
         </span>
       ) : (
@@ -53,16 +58,18 @@ function SideName({ side, won, align }: { side: DrawSide; won: boolean; align: "
  * between them, and a line with what else is known. A bye is shown as a bye and leads nowhere.
  */
 export function MatchCard({ match, to, heading, timeZone, compact = false }: { match: DrawMatch; to?: string; heading?: string; timeZone: string; compact?: boolean }) {
-  const won = (side: DrawSide) => !!side.entry && match.status === "completed" && match.winner_id === side.entry.id
   const score = scoreLine(match)
   const detail = whenAndWhere(match, timeZone)
   const body = (
     <>
       {heading && <span className="text-sm font-semibold text-muted-foreground">{heading}</span>}
       <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <SideName side={match.a} won={won(match.a)} align="left" />
-        <span className={cn("font-display text-xl font-bold tabular-nums", !score && "text-sm font-normal text-muted-foreground")}>{match.b ? (score ?? "v") : "–"}</span>
-        {match.b ? <SideName side={match.b} won={won(match.b)} align="right" /> : <span className="text-right font-semibold text-muted-foreground">Bye</span>}
+        <SideName side={match.a} won={sideWon(match, match.a)} align="left" />
+        <span className={cn("font-display text-xl font-bold tabular-nums", !score && "text-sm font-normal text-muted-foreground")}>
+          <span aria-hidden>{match.b ? (score ?? "v") : "–"}</span>
+          <span className="sr-only">{match.b ? `, ${spokenScore(match)}, ` : ", "}</span>
+        </span>
+        {match.b ? <SideName side={match.b} won={sideWon(match, match.b)} align="right" /> : <span className="text-right font-semibold text-muted-foreground">Bye</span>}
       </span>
       {match.b && (!compact || detail) && (
         <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -72,7 +79,7 @@ export function MatchCard({ match, to, heading, timeZone, compact = false }: { m
       )}
     </>
   )
-  const className = cn("flex flex-col gap-1.5 rounded-xl border bg-card px-3 py-2.5", isMine(match) && "border-brand-blue bg-surface-selected")
+  const className = cn("flex min-h-12 flex-col justify-center gap-1.5 rounded-xl border bg-card px-3 py-2.5", isMine(match) && "border-brand-blue bg-surface-selected")
   if (!to || !match.b) return <div className={className}>{body}</div>
   return (
     <Link to={to} className={cn(className, "outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50")}>

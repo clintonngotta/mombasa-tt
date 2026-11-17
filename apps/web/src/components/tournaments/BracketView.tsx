@@ -20,7 +20,7 @@ const initialLayout = (): Layout => (typeof window !== "undefined" && window.mat
 export function BracketView({ matches, matchPath, timeZone }: { matches: DrawMatch[]; matchPath: (matchId: string) => string; timeZone: string }) {
   const [layout, setLayout] = useState<Layout>(initialLayout)
   const rounds = byRound(matches)
-  const lines = rounds[0]?.matches.length ?? 0
+  const firstRoundLines = rounds[0]?.matches.length ?? 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -30,9 +30,9 @@ export function BracketView({ matches, matchPath, timeZone }: { matches: DrawMat
           <div className="flex w-max gap-6">
             {rounds.map((round, index) => (
               <section key={round.name} aria-label={roundHeading(round)} className="flex w-[300px] flex-col gap-2">
-                <h3 className="text-lg font-bold">{roundHeading(round)}</h3>
+                <h2 className="text-xl font-bold">{roundHeading(round)}</h2>
                 {/* Each round's matches span twice the rows of the round before, so a match sits between its feeders. */}
-                <ol className="grid flex-1 gap-y-3" style={{ gridTemplateRows: `repeat(${lines}, minmax(max-content, 1fr))` }}>
+                <ol className="grid flex-1 gap-y-3" style={{ gridTemplateRows: `repeat(${firstRoundLines}, minmax(max-content, 1fr))` }}>
                   {round.matches.map((match) => (
                     <li key={match.id} className="flex flex-col justify-center" style={{ gridRow: `span ${2 ** index}` }}>
                       <MatchCard match={match} to={matchPath(match.id)} timeZone={timeZone} compact />
@@ -47,7 +47,7 @@ export function BracketView({ matches, matchPath, timeZone }: { matches: DrawMat
         <div className="flex flex-col gap-5">
           {rounds.map((round) => (
             <section key={round.name} aria-label={roundHeading(round)} className="flex flex-col gap-2">
-              <h3 className="text-lg font-bold">{roundHeading(round)}</h3>
+              <h2 className="text-xl font-bold">{roundHeading(round)}</h2>
               <ol className="flex flex-col gap-2">
                 {round.matches.map((match) => (
                   <li key={match.id}>

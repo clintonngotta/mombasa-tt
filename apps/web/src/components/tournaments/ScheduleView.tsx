@@ -4,9 +4,9 @@ import { MatchCard } from "@/components/tournaments/MatchCard"
 import { dayOf, formatDay } from "@/lib/dates"
 import { isMine, matchLabel, type Draw, type DrawMatch } from "@/lib/draws"
 
-type Show = "all" | "to_play" | "finished"
+type StatusFilter = "all" | "to_play" | "finished"
 
-const SHOW: { value: Show; label: string }[] = [
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "to_play", label: "To play" },
   { value: "finished", label: "Finished" },
@@ -15,9 +15,10 @@ const SHOW: { value: Show; label: string }[] = [
 const EVERYONE = ""
 const MINE = "mine"
 
-/** Earliest first; matches without a time keep the order they are played in. */
+/** Matches with a time first, earliest first; then the order matches are played in. */
 function inPlayingOrder(a: DrawMatch, b: DrawMatch) {
-  if (a.scheduled_at && b.scheduled_at && a.scheduled_at !== b.scheduled_at) return a.scheduled_at < b.scheduled_at ? -1 : 1
+  if (!a.scheduled_at !== !b.scheduled_at) return a.scheduled_at ? -1 : 1
+  if (a.scheduled_at && b.scheduled_at && a.scheduled_at !== b.scheduled_at) return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
   if (a.stage !== b.stage) return a.stage === "group" ? -1 : 1
   return a.round - b.round || (a.group ?? 0) - (b.group ?? 0) || a.position - b.position
 }
@@ -27,7 +28,7 @@ function inPlayingOrder(a: DrawMatch, b: DrawMatch) {
  * and by entry. Days and times are the venue's. Byes aren't matches, so they aren't listed.
  */
 export function ScheduleView({ draw, matchPath, timeZone }: { draw: Draw; matchPath: (matchId: string) => string; timeZone: string }) {
-  const [show, setShow] = useState<Show>("all")
+  const [show, setShow] = useState<StatusFilter>("all")
   const [who, setWho] = useState(EVERYONE)
   const whoId = useId()
   const entries = draw.places.map((place) => place.entry).sort((a, b) => a.title.localeCompare(b.title))
@@ -50,7 +51,7 @@ export function ScheduleView({ draw, matchPath, timeZone }: { draw: Draw; matchP
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end gap-3">
-        <Segmented label="Which matches" options={SHOW} value={show} onChange={setShow} />
+        <Segmented label="Which matches" options={STATUS_FILTERS} value={show} onChange={setShow} />
         <div className="flex min-w-0 flex-col gap-1">
           <label htmlFor={whoId} className="text-sm font-semibold">
             Player or team
@@ -72,7 +73,7 @@ export function ScheduleView({ draw, matchPath, timeZone }: { draw: Draw; matchP
       {matches.length === 0 && <p className="text-muted-foreground">No matches fit these filters.</p>}
       {sections.map(([day, list]) => (
         <section key={day || "unscheduled"} aria-label={day ? formatDay(day) : "No time given yet"} className="flex flex-col gap-2">
-          <h3 className="text-lg font-bold">{day ? formatDay(day) : scheduled ? "No time given yet" : "Matches"}</h3>
+          <h2 className="text-xl font-bold">{day ? formatDay(day) : scheduled ? "No time given yet" : "Matches"}</h2>
           <ol className="flex flex-col gap-2">
             {list.map((match) => (
               <li key={match.id}>

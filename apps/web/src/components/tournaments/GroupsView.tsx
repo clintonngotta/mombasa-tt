@@ -1,5 +1,5 @@
 import { CircleCheck } from "lucide-react"
-import { MatchCard } from "@/components/tournaments/MatchCard"
+import { MatchCard, YouBadge } from "@/components/tournaments/MatchCard"
 import { byRound, type Draw, type Standings } from "@/lib/draws"
 
 /** Each group (REQ-010): who is in it, its fixtures round by round, and who has qualified so far. */
@@ -16,7 +16,7 @@ export function GroupsView({ draw, standings, matchPath, timeZone }: { draw: Dra
         const matches = draw.matches.filter((match) => match.stage === "group" && match.group === group.number)
         return (
           <section key={group.number} aria-label={name} className="flex flex-col gap-3">
-            <h3 className="text-xl font-bold">{name}</h3>
+            <h2 className="text-2xl font-bold">{name}</h2>
             <ol className="flex flex-col rounded-xl border bg-card">
               {members.map((place) => (
                 <li key={place.entry.id} className="flex min-h-12 items-center gap-2 border-t px-3 py-2 first:border-t-0">
@@ -24,7 +24,7 @@ export function GroupsView({ draw, standings, matchPath, timeZone }: { draw: Dra
                   <span className="min-w-0 flex-1 break-words">
                     {place.entry.title}
                     {place.seed && <span className="ml-1 text-sm text-muted-foreground">[{place.seed}]</span>}
-                    {place.entry.mine && <span className="ml-1 rounded bg-brand-gold px-1 text-xs font-bold text-brand-navy">You</span>}
+                    {place.entry.mine && <YouBadge />}
                   </span>
                   {qualified.has(place.entry.id) && (
                     <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-success">
@@ -42,7 +42,7 @@ export function GroupsView({ draw, standings, matchPath, timeZone }: { draw: Dra
             )}
             {byRound(matches).map((round) => (
               <section key={round.name} aria-label={`${name}: ${round.name}`} className="flex flex-col gap-2">
-                <h4 className="font-semibold">{round.name}</h4>
+                <h3 className="text-xl font-bold">{round.name}</h3>
                 <ol className="flex flex-col gap-2">
                   {round.matches.map((match) => (
                     <li key={match.id}>
