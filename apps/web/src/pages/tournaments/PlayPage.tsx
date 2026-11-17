@@ -45,7 +45,7 @@ export function PlayPage() {
                 aria-pressed={when === option.value}
                 onClick={() => setWhen(option.value)}
                 className={cn(
-                  "h-10 rounded-md px-4 font-semibold text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                  "h-12 rounded-md px-4 font-semibold text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                   when === option.value && "bg-surface-selected text-brand-blue"
                 )}
               >

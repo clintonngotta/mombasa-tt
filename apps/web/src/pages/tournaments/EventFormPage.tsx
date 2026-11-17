@@ -22,6 +22,7 @@ import {
   type Seeding,
   type Tournament,
   type TournamentEvent,
+  isClosed,
 } from "@/lib/tournaments"
 
 const KINDS: { value: EventKind; label: string; description: string }[] = [
@@ -58,7 +59,7 @@ export function EventFormPage() {
   const t = tournament.data
   const event = eventId ? t?.events.find((e) => e.id === eventId) : undefined
   const allowed = !!t && canManageTournament(all, t)
-  const closed = !!t && (t.status === "completed" || t.status === "cancelled" || event?.status === "completed" || event?.status === "cancelled")
+  const closed = !!t && (isClosed(t) || (!!event && isClosed(event)))
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">

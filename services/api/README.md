@@ -138,7 +138,7 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET | `/api/v1/tournaments/{id}/history/` | Staff only: who published, started, completed or cancelled what, with the configuration at that moment |
 | POST | `/api/v1/tournaments/{id}/events/` | `{name, kind, format, capacity, best_of, rest_minutes, registration_opens_at, registration_closes_at, entry_fee: {amount_minor, currency}, seeding, group_count, qualifiers_per_group}`. Event calls reply with the whole tournament |
 | PATCH, DELETE | `/api/v1/tournaments/{id}/events/{eid}/` | Each change adds one to `revision`. After the event starts, changing kind, format, best of, seeding, groups or qualifiers is 409 `structure_frozen`. Delete only in a draft |
-| POST | `/api/v1/tournaments/{id}/events/{eid}/start/`, `complete/`, `cancel/` | scheduled → in progress → completed; start needs the tournament in progress (`tournament_not_started`); cancel takes `{reason}` |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/start/`, `complete/`, `cancel/` | scheduled → in progress → completed; start needs the tournament in progress (`tournament_not_started`); cancel takes `{reason}` and needs a published tournament (`not_published`: delete the event of a draft instead) |
 
 Roles (REQ-005, `organizations/permissions.py`): every organization starts with Admin, Captain, Assistant captain,
 Committee and Member, and can add custom roles. Effective permissions are the union of a member's roles plus the

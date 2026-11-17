@@ -72,7 +72,10 @@ export function fromZonedInput(local: string, timeZone: string): string | null {
   return new Date(guess).toISOString()
 }
 
+/** Mirrors the API default (core/timezones.py). */
+export const DEFAULT_TIME_ZONE = "Africa/Nairobi"
+
 export function timeZones(): string[] {
   const supported = (Intl as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf
-  return supported ? supported("timeZone") : ["Africa/Nairobi"]
+  return supported ? supported("timeZone") : [DEFAULT_TIME_ZONE]
 }

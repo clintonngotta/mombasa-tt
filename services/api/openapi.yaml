@@ -2717,6 +2717,7 @@ components:
     ActionEnum:
       enum:
       - published
+      - updated
       - started
       - completed
       - cancelled
@@ -2727,6 +2728,7 @@ components:
       type: string
       description: |-
         * `published` - Published
+        * `updated` - Updated
         * `started` - Started
         * `completed` - Completed
         * `cancelled` - Cancelled

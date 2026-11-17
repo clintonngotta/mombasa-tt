@@ -28,6 +28,7 @@ import {
   type Tournament,
   type TournamentAction,
   type TournamentEvent,
+  isClosed,
 } from "@/lib/tournaments"
 
 /** One tournament (REQ-007): what everyone sees, plus the controls of the host's competition staff. */
@@ -105,7 +106,7 @@ function useTournamentChange(id: string) {
 }
 
 function Events({ tournament: t, staff }: { tournament: Tournament; staff: boolean }) {
-  const open = t.status !== "completed" && t.status !== "cancelled"
+  const open = !isClosed(t)
   return (
     <section aria-labelledby="events-heading" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -141,7 +142,7 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
       onChange(fresh)
     },
   })
-  const closed = event.status === "completed" || event.status === "cancelled"
+  const closed = isClosed(event)
   const facts = [
     event.capacity ? `Up to ${event.capacity} entries` : "No entry limit",
     `Entry fee: ${formatFee(event.entry_fee)}`,
@@ -287,7 +288,7 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
     },
   })
   const next = NEXT[t.status]
-  const open = t.status !== "completed" && t.status !== "cancelled"
+  const open = !isClosed(t)
 
   return (
     <section aria-labelledby="manage-heading" className="flex flex-col gap-4 rounded-xl border border-brand-blue/30 bg-surface-selected p-4">

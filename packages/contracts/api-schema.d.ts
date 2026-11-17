@@ -1266,6 +1266,7 @@ export interface components {
     schemas: {
         /**
          * @description * `published` - Published
+         *     * `updated` - Updated
          *     * `started` - Started
          *     * `completed` - Completed
          *     * `cancelled` - Cancelled
@@ -1275,7 +1276,7 @@ export interface components {
          *     * `event_removed` - Event Removed
          * @enum {string}
          */
-        ActionEnum: "published" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
+        ActionEnum: "published" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
         /**
          * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
          *
@@ -2104,7 +2105,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly organization: components["schemas"]["OrganizationSummary"];
-            readonly venue: components["schemas"]["VenueSummary"];
+            readonly venue: components["schemas"]["VenueSummary"] | null;
             name: string;
             description: string;
             /** Format: date */

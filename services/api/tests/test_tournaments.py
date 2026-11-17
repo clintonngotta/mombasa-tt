@@ -533,3 +533,52 @@ def test_listing_shows_published_tournaments_by_time_and_host(staff, club, venue
     assert names(f"?organization={rival.id}") == []
     assert viewer.get(f"{TOURNAMENTS}?organization=nope").status_code == 400
     assert {soon["status"], later["status"], ended["status"]} == {"published"}
+
+
+def test_a_published_tournament_keeps_its_venue_and_records_every_edit(staff, admin, draft, venue):
+    assert staff.patch(url(draft), {"venue_id": None}, format="json").json()["venue"] is None
+    staff.patch(url(draft), {"venue_id": venue["id"]}, format="json")
+    do(staff, draft, "publish")
+
+    response = staff.patch(url(draft), {"venue_id": None}, format="json")
+    assert response.status_code == 400 and "venue_id" in response.json()["fields"]
+
+    # A change to what was published goes on the record with the configuration it produced.
+    assert staff.patch(url(draft), {"name": "Coast Open 2026"}, format="json").status_code == 200
+    staff.patch(url(draft), {"name": "Coast Open 2026"}, format="json")  # nothing changed: no entry
+    history = staff.get(url(draft, "history")).json()
+    assert [entry["action"] for entry in history] == ["published", "updated"]
+    assert history[1]["actor_name"] == admin.display_name
+    assert history[1]["snapshot"]["name"] == "Coast Open 2026"
+
+
+def test_registration_closes_by_the_last_day_in_the_tournaments_timezone(staff, draft):
+    event = draft["events"][0]
+    # The last day is 2026-12-06 in Nairobi: 23:30 there is still that day, 00:30 the next is not.
+    ok = staff.patch(
+        url(draft, event=event), {"registration_closes_at": "2026-12-06T23:30:00+03:00"}, format="json"
+    )
+    assert ok.status_code == 200, ok.json()
+    for attempt in (
+        staff.patch(
+            url(draft, event=event), {"registration_closes_at": "2026-12-07T00:30:00+03:00"}, format="json"
+        ),
+        staff.post(
+            url(draft, event=False),
+            {**SINGLES, "name": "Late", "registration_closes_at": "2026-12-07T00:30:00+03:00"},
+            format="json",
+        ),
+    ):
+        assert attempt.status_code == 400 and "registration_closes_at" in attempt.json()["fields"]
+
+
+def test_an_event_nobody_has_seen_is_deleted_not_cancelled(staff, draft):
+    response = staff.post(url(draft, "cancel", draft["events"][0]), {"reason": "Too few"}, format="json")
+    assert response.status_code == 409 and code(response) == "not_published"
+
+
+def test_asking_to_change_frozen_groups_is_refused_even_when_they_would_be_dropped(staff, running):
+    event = running["events"][0]
+    do(staff, running, "start", event)
+    response = staff.patch(url(running, event=event), {"group_count": 4}, format="json")
+    assert response.status_code == 409 and code(response) == "structure_frozen"

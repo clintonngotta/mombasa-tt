@@ -8,8 +8,8 @@ import { SelectField, TextAreaField } from "@/components/forms/SelectField"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
 import { can, useActiveMembership, useMemberships } from "@/lib/clubs"
-import { timeZones } from "@/lib/dates"
-import { canManageTournament, createTournament, getTournament, tournamentKeys, updateTournament, type Tournament } from "@/lib/tournaments"
+import { DEFAULT_TIME_ZONE, timeZones } from "@/lib/dates"
+import { canManageTournament, createTournament, getTournament, isClosed, tournamentKeys, updateTournament, type Tournament } from "@/lib/tournaments"
 import { listVenues, venueKeys } from "@/lib/venues"
 
 /** Create a draft tournament for the active organization, or edit one (REQ-007). */
@@ -21,8 +21,8 @@ export function TournamentFormPage() {
   const t = existing.data
   const organization = id ? t?.organization : active?.organization
   const allowed = id ? !!t && canManageTournament(all, t) : can(active, "competitions.manage")
-  const closed = t?.status === "completed" || t?.status === "cancelled"
-  const defaultZone = active?.organization.timezone ?? "Africa/Nairobi"
+  const closed = !!t && isClosed(t)
+  const defaultZone = active?.organization.timezone ?? DEFAULT_TIME_ZONE
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">
@@ -114,7 +114,8 @@ function TournamentForm({ orgId, tournament: t, defaultZone }: { orgId: string; 
           )
         }
       >
-        <option value="">Not decided yet</option>
+        {/* Once published a tournament keeps a venue; it can move, not lose it. */}
+        {(!t || t.status === "draft" || !t.venue) && <option value="">Not decided yet</option>}
         {choices.map((venue) => (
           <option key={venue.id} value={venue.id}>
             {venue.name}, {venue.town}

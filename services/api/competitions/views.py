@@ -38,6 +38,15 @@ def reply(tournament: Tournament, code=status.HTTP_200_OK) -> Response:
     return Response(TournamentSerializer(tournaments().get(pk=tournament.pk)).data, status=code)
 
 
+def require_staff(user, tournament: Tournament) -> None:
+    """A draft is 'not found' for anyone but the host's competition staff; a published one is theirs to
+    read but staff-only beyond that."""
+    if not manages(user, tournament.organization):
+        if tournament.status == T.DRAFT:
+            raise Http404
+        raise ApiException("permission_denied", "Your role in this organization doesn't allow that.", 403)
+
+
 def staff_tournament(user, pk) -> Tournament:
     """The tournament, locked for a change by someone who runs competitions for its host. A draft is
     'not found' for everyone else; a published one is theirs to read but not to change. Call inside a
@@ -45,10 +54,7 @@ def staff_tournament(user, pk) -> Tournament:
     tournament = get_object_or_404(
         Tournament.objects.select_for_update(of=("self",)).select_related("organization"), pk=pk
     )
-    if not manages(user, tournament.organization):
-        if tournament.status == T.DRAFT:
-            raise Http404
-        raise ApiException("permission_denied", "Your role in this organization doesn't allow that.", 403)
+    require_staff(user, tournament)
     return tournament
 
 
@@ -99,7 +105,7 @@ class TournamentViewSet(viewsets.GenericViewSet):
         if when == "upcoming":
             found = found.exclude(over)
         elif when == "past":
-            found = found.filter(over).order_by("-starts_on", "name")
+            found = found.filter(over).order_by("-starts_on", "name", "id")
         page = self.paginate_queryset(found)
         return self.get_paginated_response(TournamentSerializer(page, many=True).data)
 
@@ -122,7 +128,13 @@ class TournamentViewSet(viewsets.GenericViewSet):
                 raise ApiException(
                     "structure_frozen", "The timezone can't change once the tournament has started.", 409
                 )
+            changed = any(
+                getattr(tournament, name) != value for name, value in serializer.validated_data.items()
+            )
             serializer.save()
+            # Once people can see it, every change to what was published is on the record.
+            if changed and tournament.status != T.DRAFT:
+                lifecycle.record(tournament, LifecycleEntry.Action.UPDATED, request.user)
         return reply(tournament)
 
     @extend_schema(responses={204: None})
@@ -166,10 +178,7 @@ class TournamentViewSet(viewsets.GenericViewSet):
     def history(self, request, pk):
         """Who published, started, completed or cancelled what, and the configuration at that moment."""
         tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=pk)
-        if not manages(request.user, tournament.organization):
-            if tournament.status == T.DRAFT:
-                raise Http404
-            raise ApiException("permission_denied", "Your role in this organization doesn't allow that.", 403)
+        require_staff(request.user, tournament)
         entries = tournament.lifecycle.select_related("actor")
         return Response(LifecycleEntrySerializer(entries, many=True).data)
 
@@ -187,7 +196,7 @@ class OrganizationTournamentViewSet(viewsets.GenericViewSet):
     def list(self, request, organization_pk):
         organization = self.get_organization()
         require_permission(request.user, organization, MANAGE)
-        found = tournaments().filter(organization=organization).order_by("-starts_on", "name")
+        found = tournaments().filter(organization=organization).order_by("-starts_on", "name", "id")
         page = self.paginate_queryset(found)
         return self.get_paginated_response(TournamentSerializer(page, many=True).data)
 
@@ -215,11 +224,11 @@ class EventViewSet(viewsets.GenericViewSet):
 
     @extend_schema(request=EventSerializer, responses={201: TournamentSerializer})
     def create(self, request, tournament_pk):
-        serializer = EventSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             tournament = staff_tournament(request.user, tournament_pk)
             ensure_open(tournament)
+            serializer = EventSerializer(data=request.data, context={"tournament": tournament})
+            serializer.is_valid(raise_exception=True)
             if tournament.events.count() >= MAX_EVENTS:
                 raise ApiException("too_many_events", f"A tournament can have {MAX_EVENTS} events.", 409)
             last = tournament.events.aggregate(last=Max("position"))["last"]
@@ -245,8 +254,7 @@ class EventViewSet(viewsets.GenericViewSet):
             changed = {
                 name for name, value in serializer.validated_data.items() if getattr(event, name) != value
             }
-            frozen = changed.intersection(Event.STRUCTURE_FIELDS)
-            if event.status != E.SCHEDULED and frozen:
+            if event.status != E.SCHEDULED and serializer.structure_changes:
                 raise ApiException(
                     "structure_frozen",
                     "This event has started, so its format, best of, seeding, groups and qualifiers "

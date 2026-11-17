@@ -78,6 +78,7 @@ export const SEEDING_LABEL: Record<Seeding, string> = { rating: "Seeded by ratin
 
 export const ACTION_LABEL: Record<LifecycleEntry["action"], string> = {
   published: "Published",
+  updated: "Details changed",
   started: "Started",
   completed: "Completed",
   cancelled: "Cancelled",
@@ -86,6 +87,9 @@ export const ACTION_LABEL: Record<LifecycleEntry["action"], string> = {
   event_cancelled: "Event cancelled",
   event_removed: "Event removed",
 }
+
+/** Completed or cancelled: nothing about it changes any more. */
+export const isClosed = (subject: { status: TournamentStatus | EventStatus }) => subject.status === "completed" || subject.status === "cancelled"
 
 /** "KES 500" or "Free". Declared only: mombasa-tt takes no payments (REQ-008). */
 export function formatFee(fee: Money) {
@@ -105,7 +109,7 @@ export function eventSummary(e: TournamentEvent) {
 
 /** "Starts in 12 days", "Starts tomorrow", "Day 2 of 3" — nothing once it is over. Days are the venue's. */
 export function countdown(t: Pick<Tournament, "starts_on" | "ends_on" | "timezone" | "status">, now = new Date()) {
-  if (t.status === "completed" || t.status === "cancelled") return null
+  if (isClosed(t)) return null
   const today = todayIn(t.timezone, now)
   const until = daysBetween(today, t.starts_on)
   if (until > 0) {

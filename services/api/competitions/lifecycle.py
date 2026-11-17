@@ -41,21 +41,22 @@ def record(tournament: Tournament, action: str, actor, *, event: Event | None = 
     )
 
 
-def _require(tournament: Tournament, *allowed: str, doing: str) -> None:
-    if tournament.status not in allowed:
+def _require(subject: Tournament | Event, *allowed: str, doing: str) -> None:
+    if subject.status not in allowed:
+        noun = "A tournament" if isinstance(subject, Tournament) else "An event"
         raise ApiException(
             "invalid_transition",
-            f"A tournament that is {tournament.get_status_display().lower()} can't be {doing}.",
+            f"{noun} that is {subject.get_status_display().lower()} can't be {doing}.",
             409,
         )
 
 
-def _move(record_, status: str, stamp: str, **fields) -> None:
-    record_.status = status
-    setattr(record_, stamp, timezone.now())
+def _move(subject, status: str, stamp: str, **fields) -> None:
+    subject.status = status
+    setattr(subject, stamp, timezone.now())
     for name, value in fields.items():
-        setattr(record_, name, value)
-    record_.save(update_fields=["status", stamp, *fields])
+        setattr(subject, name, value)
+    subject.save(update_fields=["status", stamp, *fields])
 
 
 def publish(tournament: Tournament, actor) -> None:
@@ -98,18 +99,9 @@ def cancel(tournament: Tournament, actor, reason: str) -> None:
     record(tournament, A.CANCELLED, actor, reason=reason)
 
 
-def _require_event(event: Event, *allowed: str, doing: str) -> None:
-    if event.status not in allowed:
-        raise ApiException(
-            "invalid_transition",
-            f"An event that is {event.get_status_display().lower()} can't be {doing}.",
-            409,
-        )
-
-
 def start_event(tournament: Tournament, event: Event, actor) -> None:
     """From here the event's structure (Event.STRUCTURE_FIELDS) is frozen."""
-    _require_event(event, E.SCHEDULED, doing="started")
+    _require(event, E.SCHEDULED, doing="started")
     if tournament.status != T.IN_PROGRESS:
         raise ApiException("tournament_not_started", "Start the tournament before starting its events.", 409)
     _move(event, E.IN_PROGRESS, "started_at")
@@ -117,12 +109,14 @@ def start_event(tournament: Tournament, event: Event, actor) -> None:
 
 
 def complete_event(tournament: Tournament, event: Event, actor) -> None:
-    _require_event(event, E.IN_PROGRESS, doing="completed")
+    _require(event, E.IN_PROGRESS, doing="completed")
     _move(event, E.COMPLETED, "completed_at")
     record(tournament, A.EVENT_COMPLETED, actor, event=event)
 
 
 def cancel_event(tournament: Tournament, event: Event, actor, reason: str) -> None:
-    _require_event(event, E.SCHEDULED, E.IN_PROGRESS, doing="cancelled")
+    _require(event, E.SCHEDULED, E.IN_PROGRESS, doing="cancelled")
+    if tournament.status == T.DRAFT:
+        raise ApiException("not_published", "Nobody has seen this event yet. Delete it instead.", 409)
     _move(event, E.CANCELLED, "cancelled_at", cancel_reason=reason)
     record(tournament, A.EVENT_CANCELLED, actor, event=event, reason=reason)

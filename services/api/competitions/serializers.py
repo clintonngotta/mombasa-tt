@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 
@@ -72,6 +74,13 @@ class EventSerializer(serializers.ModelSerializer):
         def current(name):
             return attrs[name] if name in attrs else getattr(self.instance, name, None)
 
+        # What the caller asked to change in the structure, before the clean-up below can hide it.
+        self.structure_changes = {
+            name
+            for name in Event.STRUCTURE_FIELDS
+            if self.instance is not None and name in attrs and attrs[name] != getattr(self.instance, name)
+        }
+
         if current("format") == Event.Format.GROUPS_KNOCKOUT:
             groups, qualifiers, capacity = (
                 current("group_count"),
@@ -102,6 +111,15 @@ class EventSerializer(serializers.ModelSerializer):
         if opens and closes and closes <= opens:
             raise serializers.ValidationError(
                 {"registration_closes_at": "Registration must close after it opens."}
+            )
+        tournament = self.context.get("tournament") or getattr(self.instance, "tournament", None)
+        if (
+            closes
+            and tournament
+            and closes.astimezone(ZoneInfo(tournament.timezone)).date() > tournament.ends_on
+        ):
+            raise serializers.ValidationError(
+                {"registration_closes_at": "Registration must close by the tournament's last day."}
             )
         return attrs
 
@@ -162,6 +180,8 @@ class TournamentSerializer(serializers.ModelSerializer):
     def validate_venue_id(self, venue):
         """The venue must be one of the host's own and in use (a tournament may keep the one it has)."""
         if venue is None:
+            if self.instance is not None and self.instance.status != Tournament.Status.DRAFT:
+                raise serializers.ValidationError("A published tournament keeps a venue.")
             return venue
         unchanged = self.instance is not None and self.instance.venue_id == venue.id
         organization = self.context["organization"]

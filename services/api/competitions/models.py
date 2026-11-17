@@ -44,7 +44,7 @@ class Tournament(models.Model):
     cancel_reason = models.CharField(max_length=300, blank=True)
 
     class Meta:
-        ordering = ["starts_on", "name"]
+        ordering = ["starts_on", "name", "id"]
         indexes = [models.Index(fields=["status", "starts_on"])]
         constraints = [
             models.CheckConstraint(
@@ -131,6 +131,7 @@ class LifecycleEntry(models.Model):
 
     class Action(models.TextChoices):
         PUBLISHED = "published"
+        UPDATED = "updated"
         STARTED = "started"
         COMPLETED = "completed"
         CANCELLED = "cancelled"
