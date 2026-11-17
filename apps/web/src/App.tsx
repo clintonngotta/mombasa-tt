@@ -28,6 +28,8 @@ import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
 import { MembersPage } from "@/pages/club/MembersPage"
 import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
+import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
+import { MemberFieldEditPage } from "@/pages/club/MemberFieldEditPage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +71,9 @@ function App() {
               <Route path="/club/roles" element={<RolesPage />} />
               <Route path="/club/roles/new" element={<RoleEditPage />} />
               <Route path="/club/roles/:id" element={<RoleEditPage />} />
+              <Route path="/club/fields" element={<MemberFieldsPage />} />
+              <Route path="/club/fields/new" element={<MemberFieldEditPage />} />
+              <Route path="/club/fields/:id" element={<MemberFieldEditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/players" element={<PlayersPage />} />

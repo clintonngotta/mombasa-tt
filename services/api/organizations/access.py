@@ -34,6 +34,14 @@ def effective_permissions(user, organization: Organization) -> frozenset[str]:
     return membership_permissions(membership) if membership else frozenset()
 
 
+def require_membership(user, organization: Organization) -> Membership:
+    """403 unless the user is an active member here. Returns the membership."""
+    membership = Membership.objects.active().filter(organization=organization, user=user).first()
+    if membership is None:
+        raise ApiException("permission_denied", "Only members of this organization can see that.", 403)
+    return membership
+
+
 def require_permission(user, organization: Organization, *any_of: str) -> frozenset[str]:
     """403 unless the user holds at least one of `any_of` here. Returns their effective permissions."""
     granted = effective_permissions(user, organization)

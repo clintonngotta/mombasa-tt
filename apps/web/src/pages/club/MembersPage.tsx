@@ -1,4 +1,5 @@
 import { useDeferredValue, useState } from "react"
+import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
@@ -8,10 +9,12 @@ import { errorMessage } from "@/lib/api"
 import {
   can,
   clubKeys,
+  getMemberValues,
   listMembers,
   listRoles,
   removeMember,
   roleNames,
+  saveMemberValues,
   setMemberRoles,
   useActiveMembership,
   withinAuthority,
@@ -21,8 +24,10 @@ import {
 } from "@/lib/clubs"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
+import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
 
-/** Members of the active organization and their roles (REQ-005). Names and roles only, never contact details. */
+/** Members of the active organization, their roles and, for member managers, their custom field values (REQ-005).
+ * Never contact details. */
 export function MembersPage() {
   const { memberships, active } = useActiveMembership()
   return (
@@ -73,6 +78,7 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const [selected, setSelected] = useState<string[]>(member.roles.map((r) => r.id))
   const name = member.display_name || "Unnamed player"
   const isSelf = member.id === membership.id
@@ -111,8 +117,13 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
         </span>
         <span className="text-sm text-muted-foreground">{roleNames(member.roles)}</span>
       </span>
-      {!editing && !confirmRemove && (
+      {!editing && !confirmRemove && !showDetails && (
         <div className="flex gap-2">
+          {can(membership, "members.manage") && (
+            <Button variant="outline" aria-label={`Club details for ${name}`} onClick={() => setShowDetails(true)}>
+              Details
+            </Button>
+          )}
           {can(membership, "roles.manage") && roles.length > 0 && (
             <Button
               variant="outline"
@@ -164,6 +175,8 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
         </form>
       )}
 
+      {showDetails && <MemberDetails orgId={orgId} member={member} name={name} onClose={() => setShowDetails(false)} />}
+
       {confirmRemove && (
         <div className="flex w-full flex-wrap items-center gap-2">
           <p className="flex-1 text-sm">Remove {name} from the club? Their roles end; they can ask to join again.</p>
@@ -177,5 +190,45 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
         </div>
       )}
     </li>
+  )
+}
+
+/** Staff view of one member's custom field values, staff-only fields included. */
+function MemberDetails({ orgId, member, name, onClose }: { orgId: string; member: Member; name: string; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const key = clubKeys.memberValues(orgId, member.id)
+  const details = useQuery({ queryKey: key, queryFn: () => getMemberValues(orgId, member.id) })
+  const accessLost = useAdminAccessLost(details.error)
+  return (
+    <section aria-label={`Club details for ${name}`} className="flex w-full flex-col gap-3">
+      {details.isPending && <p className="text-muted-foreground">Loading details…</p>}
+      {accessLost && <AccessLost />}
+      {details.isError && !accessLost && <FormAlert>{errorMessage(details.error, "We couldn't load these details.")}</FormAlert>}
+      {details.isSuccess && details.data.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          This club has no member fields yet.{" "}
+          <Link to="/club/fields" className="font-semibold text-brand-blue">
+            Add fields
+          </Link>
+        </p>
+      )}
+      {details.isSuccess && details.data.length > 0 ? (
+        <MemberFieldValuesForm
+          entries={details.data}
+          markStaffOnly
+          save={(values) => saveMemberValues(orgId, member.id, values)}
+          onSaved={(entries) => {
+            queryClient.setQueryData(key, entries)
+            // The member's own view of the same answers (if it's this player) is now stale.
+            void queryClient.invalidateQueries({ queryKey: clubKeys.myFieldValues(member.id) })
+          }}
+          onCancel={onClose}
+        />
+      ) : (
+        <Button variant="outline" className="self-start" onClick={onClose}>
+          Close
+        </Button>
+      )}
+    </section>
   )
 }

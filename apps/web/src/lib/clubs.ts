@@ -17,6 +17,12 @@ export type Permission = Schemas["PermissionEnum"]
 export type Role = Schemas["Role"]
 export type RoleInput = Schemas["PatchedRoleRequest"]
 export type Member = Schemas["Member"]
+export type MemberField = Schemas["MemberField"]
+export type MemberFieldKind = Schemas["MemberFieldKindEnum"]
+export type MemberFieldInput = Schemas["PatchedMemberFieldRequest"]
+export type MemberFieldEntry = Schemas["MemberFieldEntry"]
+export type FieldValue = MemberFieldEntry["value"]
+export type FieldValues = Record<string, FieldValue>
 
 /** Whether the membership's effective permissions include any of `perms` (REQ-005). The server checks
  * every request; this only decides which actions the app offers. */
@@ -36,6 +42,14 @@ export const KIND_LABEL: Record<OrganizationKind, string> = {
   club_facility: "Club and facility",
 }
 
+export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {
+  text: "Text",
+  number: "Number",
+  date: "Date",
+  boolean: "Yes or no",
+  choice: "Selection",
+}
+
 // Every club query lives under "clubs", so one invalidation (or removal on sign-out) covers them all.
 export const clubKeys = {
   all: ["clubs"] as const,
@@ -49,6 +63,12 @@ export const clubKeys = {
   members: (orgId: string, term: string) => ["clubs", orgId, "members", term] as const,
   membersAll: (orgId: string) => ["clubs", orgId, "members"] as const,
   permissions: ["clubs", "permissions"] as const,
+  memberFields: (orgId: string) => ["clubs", orgId, "member-fields"] as const,
+  /** Staff view of one member's custom field values. */
+  memberValues: (orgId: string, membershipId: string) => ["clubs", orgId, "member-values", membershipId] as const,
+  memberValuesAll: (orgId: string) => ["clubs", orgId, "member-values"] as const,
+  /** The player's own member-visible values. */
+  myFieldValues: (membershipId: string) => ["clubs", "my-fields", membershipId] as const,
 }
 
 const orgPath = (id: string) => `/organizations/${id}`
@@ -91,6 +111,23 @@ export const setMemberRoles = (orgId: string, membershipId: string, roles: strin
   api<Member>(`${orgPath(orgId)}/members/${membershipId}/roles/`, { method: "PUT", body: { roles } })
 export const removeMember = (orgId: string, membershipId: string) =>
   api<void>(`${orgPath(orgId)}/members/${membershipId}/remove/`, { body: {} })
+
+// Custom member fields (REQ-005). Staff manage definitions and every member's values; a member sees and
+// fills in only their own member-visible fields.
+export const listMemberFields = (orgId: string) => api<MemberField[]>(`${orgPath(orgId)}/member-fields/`)
+export const createMemberField = (orgId: string, body: Schemas["MemberFieldRequest"]) =>
+  api<MemberField>(`${orgPath(orgId)}/member-fields/`, { body })
+export const updateMemberField = (orgId: string, id: string, body: MemberFieldInput) =>
+  api<MemberField>(`${orgPath(orgId)}/member-fields/${id}/`, { method: "PATCH", body })
+export const setMemberFieldRetired = (orgId: string, id: string, retired: boolean) =>
+  api<MemberField>(`${orgPath(orgId)}/member-fields/${id}/${retired ? "retire" : "restore"}/`, { body: {} })
+export const getMemberValues = (orgId: string, membershipId: string) =>
+  api<MemberFieldEntry[]>(`${orgPath(orgId)}/members/${membershipId}/fields/`)
+export const saveMemberValues = (orgId: string, membershipId: string, values: FieldValues) =>
+  api<MemberFieldEntry[]>(`${orgPath(orgId)}/members/${membershipId}/fields/`, { method: "PATCH", body: { values } })
+export const getMyFieldValues = (membershipId: string) => api<MemberFieldEntry[]>(`/me/memberships/${membershipId}/fields/`)
+export const saveMyFieldValues = (membershipId: string, values: FieldValues) =>
+  api<MemberFieldEntry[]>(`/me/memberships/${membershipId}/fields/`, { method: "PATCH", body: { values } })
 
 /**
  * The signed-in player's active memberships. Disabled for signed-out visitors, and `results` is empty

@@ -2,7 +2,8 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .access import membership_permissions
-from .models import Invitation, JoinRequest, Membership, Organization, Role
+from .member_fields import MAX_OPTIONS
+from .models import Invitation, JoinRequest, MemberField, Membership, Organization, Role
 from .permissions import Permission
 
 
@@ -132,3 +133,59 @@ class MyInvitationSerializer(serializers.ModelSerializer):
         model = Invitation
         fields = ["id", "organization", "invited_by_name", "status", "created_at", "expires_at"]
         read_only_fields = fields
+
+
+class MemberFieldSerializer(serializers.ModelSerializer):
+    """A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+    never change meaning; `options` apply to selection fields only."""
+
+    label = serializers.CharField(max_length=80, trim_whitespace=True)
+    options = serializers.ListField(
+        child=serializers.CharField(max_length=60, trim_whitespace=True),
+        required=False,
+        max_length=MAX_OPTIONS,
+    )
+
+    class Meta:
+        model = MemberField
+        fields = ["id", "label", "kind", "options", "required", "visibility", "retired_at"]
+        read_only_fields = ["id", "retired_at"]
+
+    def validate_kind(self, value):
+        if self.instance and value != self.instance.kind:
+            raise serializers.ValidationError("A field's type can't change. Retire it and add a new one.")
+        return value
+
+    def validate(self, attrs):
+        kind = attrs.get("kind") or self.instance.kind
+        if "options" in attrs or not self.instance:
+            # Options differing only by case would be indistinguishable to members.
+            unique = {option.lower(): option for option in reversed(attrs.get("options", []))}
+            options = [option for option in attrs.get("options", []) if unique.get(option.lower()) is option]
+            if kind == MemberField.Kind.CHOICE and len(options) < 2:
+                raise serializers.ValidationError({"options": "Add at least two options."})
+            if kind != MemberField.Kind.CHOICE and options:
+                raise serializers.ValidationError({"options": "Only selection fields have options."})
+            attrs["options"] = options
+        return attrs
+
+
+@extend_schema_field(
+    {"oneOf": [{"type": "string"}, {"type": "number"}, {"type": "boolean"}], "nullable": True}
+)
+class FieldValueField(serializers.JSONField):
+    """Text, selection and ISO date values are strings; number and yes/no values keep their JSON type.
+    Null means no answer."""
+
+
+class MemberFieldEntrySerializer(serializers.Serializer):
+    """One field with the member's value for it."""
+
+    field = MemberFieldSerializer(read_only=True)
+    value = FieldValueField(read_only=True, allow_null=True)
+
+
+class MemberFieldValuesSerializer(serializers.Serializer):
+    """Values to change, keyed by field id. Fields left out keep their value; null clears one."""
+
+    values = serializers.DictField(child=FieldValueField(allow_null=True))
