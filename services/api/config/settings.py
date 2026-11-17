@@ -193,6 +193,7 @@ SPECTACULAR_SETTINGS = {
         "DrawStatusEnum": "competitions.models.DrawVersion.Status",
         "MatchStatusEnum": "competitions.models.Match.Status",
         "MatchStageEnum": "competitions.models.Match.Stage",
+        "MatchOutcomeEnum": "competitions.models.Match.Outcome",
     },
 }
 

@@ -59,6 +59,11 @@ urlpatterns = [
         name="tournament-event-draw",
     ),
     path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/standings/",
+        DrawViewSet.as_view({"get": "standings"}),
+        name="tournament-event-standings",
+    ),
+    path(
         "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/preview/",
         action(DrawViewSet, "preview"),
         name="tournament-event-draw-preview",

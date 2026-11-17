@@ -1417,6 +1417,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Standings of the published draw: each group ranked under ITTF 3.7.5 with the comparisons
+         *     that separated level members, and the knockout placements decided so far. Empty until a draw is
+         *     published.
+         */
+        get: operations["tournaments_events_standings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{id}/": {
         parameters: {
             query?: never;
@@ -1796,6 +1817,14 @@ export interface components {
          * @enum {string}
          */
         GripEnum: "shakehand" | "penhold" | "other";
+        GroupStanding: {
+            number: number;
+            name: string;
+            complete: boolean;
+            /** @description How many go through; 0 for a round robin event. */
+            qualifiers: number;
+            rows: components["schemas"]["StandingRow"][];
+        };
         /**
          * @description * `right` - Right
          *     * `left` - Left
@@ -1893,10 +1922,20 @@ export interface components {
             status: components["schemas"]["MatchStatusEnum"];
             /** Format: uuid */
             winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description Points of each game as [a, b], in playing order. */
+            games: number[][];
         };
         MatchLabels: {
             labels: string[];
         };
+        /**
+         * @description * `played` - Played
+         *     * `walkover` - Walkover
+         *     * `retired` - Retired
+         * @enum {string}
+         */
+        MatchOutcomeEnum: "played" | "walkover" | "retired";
         /**
          * @description * `win` - Win
          *     * `loss` - Loss
@@ -1938,6 +1977,15 @@ export interface components {
          * @enum {string}
          */
         MatchStatusEnum: "scheduled" | "bye" | "completed";
+        /**
+         * @description * `match_points` - match_points
+         *     * `rubbers` - rubbers
+         *     * `games` - games
+         *     * `points` - points
+         *     * `lot` - lot
+         * @enum {string}
+         */
+        MeasureEnum: "match_points" | "rubbers" | "games" | "points" | "lot";
         /** @description Staff view of a member: display name and roles, never email or contact details. */
         Member: {
             /** Format: uuid */
@@ -2446,6 +2494,10 @@ export interface components {
             notes?: string;
             games: components["schemas"]["GameRequest"][];
         };
+        Placement: {
+            label: string;
+            entries: components["schemas"]["DrawEntry"][];
+        };
         /**
          * @description Public player page: the directory card plus only the extended details the player published.
          *     Unpublished or blank details are null. Never email, location or contact details.
@@ -2533,6 +2585,29 @@ export interface components {
             email: string;
             password: string;
         };
+        StandingRow: {
+            rank: number;
+            entry: components["schemas"]["DrawEntry"];
+            played: number;
+            won: number;
+            lost: number;
+            match_points: number;
+            games_won: number;
+            games_lost: number;
+            points_won: number;
+            points_lost: number;
+            /** @description Not yet separated from a neighbouring row; the group isn't finished. */
+            level: boolean;
+            /** @description Null until the group is finished, and always in a round robin event. */
+            qualified: boolean | null;
+            tie_break: components["schemas"]["TieBreakStep"][];
+        };
+        /** @description Group tables with the reason for every separated tie, and what the knockout has decided. */
+        Standings: {
+            rules_version: string;
+            groups: components["schemas"]["GroupStanding"][];
+            placements: components["schemas"]["Placement"][];
+        };
         Table: {
             /** Format: uuid */
             readonly id: string;
@@ -2543,6 +2618,16 @@ export interface components {
         TableRequest: {
             label: string;
             active?: boolean;
+        };
+        /**
+         * @description One comparison made between members who were level, up to the one that separated them (or the
+         *     lot): the entries compared, what on
+         *     (`match_points`, `rubbers`, `games`, `points` won/lost between them, or `lot`) and this row's value.
+         */
+        TieBreakStep: {
+            among: string[];
+            measure: components["schemas"]["MeasureEnum"];
+            value: string;
         };
         TokenRequest: {
             token: string;
@@ -5556,6 +5641,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_standings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Standings"];
                 };
             };
             /** @description Error envelope */

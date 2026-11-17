@@ -326,6 +326,11 @@ class Match(models.Model):
         BYE = "bye"
         COMPLETED = "completed"
 
+    class Outcome(models.TextChoices):
+        PLAYED = "played"  # finished at the table
+        WALKOVER = "walkover"  # never started: the loser didn't play
+        RETIRED = "retired"  # started but not finished: the loser couldn't go on
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     draw = models.ForeignKey(DrawVersion, on_delete=models.CASCADE, related_name="matches")
     stage = models.CharField(max_length=10, choices=Stage.choices)
@@ -342,6 +347,9 @@ class Match(models.Model):
     b_from_rank = models.PositiveSmallIntegerField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    # How a completed match ended, and the points of each game as [a, b] pairs in playing order.
+    outcome = models.CharField(max_length=10, choices=Outcome.choices, blank=True)
+    games = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["stage", "group", "round", "position"]
