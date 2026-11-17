@@ -30,12 +30,15 @@ services:
       ATTACHMENTS_ROOT: /var/lib/mombasa-tt/attachments
       # The container runs as root over a bind mount; don't leave a root-owned .pytest_cache in the checkout.
       PYTEST_ADDOPTS: -p no:cacheprovider
+      # The scoring fixtures shared with the TypeScript reducer (tests/test_scoring.py).
+      SCORING_FIXTURES: /scoring-fixtures
       # Emails (verification, password reset) print to `docker compose logs -f api`.
     ports:
       - "127.0.0.1:${API_PORT:-8020}:8000"
     volumes:
       # Live reload: runserver restarts when API code changes.
       - ./services/api:/app
+      - ./packages/scoring/fixtures:/scoring-fixtures:ro
       - attachments-data:/var/lib/mombasa-tt/attachments
     depends_on:
       db:

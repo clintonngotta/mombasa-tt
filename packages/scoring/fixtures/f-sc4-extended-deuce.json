@@ -1,0 +1,97 @@
+{
+  "name": "F-SC4: extended deuce, the receiver of the first point wins 14-12",
+  "rules": "2.11.1, 2.13.3, 2.13.6",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "abababababababababab",
+      "expect": {
+        "points": [
+          10,
+          10
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          11,
+          10
+        ],
+        "server": "b1"
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          11,
+          11
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          12,
+          11
+        ],
+        "server": "b1"
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          12,
+          12
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          12,
+          13
+        ],
+        "server": "b1",
+        "games": []
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "games": [
+          [
+            12,
+            14
+          ]
+        ],
+        "games_won": [
+          0,
+          1
+        ],
+        "game_number": 2,
+        "server": "b1",
+        "receiver": "a1",
+        "a_end": "right"
+      }
+    }
+  ]
+}

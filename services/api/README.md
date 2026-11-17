@@ -60,7 +60,7 @@ uv run --env-file .env manage.py spectacular --fail-on-warn --file openapi.yaml
 cd ../../apps/web && pnpm gen:api
 ```
 
-CI (`.github/workflows/ci.yml`) also runs ruff, migration drift, pytest, `pip-audit`, oxlint, the web build,
+CI (`.github/workflows/ci.yml`) also runs ruff, migration drift, pytest, `pip-audit`, oxlint, the web build, the scoring reducer tests (`pnpm test:scoring`, see `packages/scoring/README.md`),
 `pnpm audit --prod` and a gitleaks secret scan on every PR into `dev` and `main`.
 
 ## Auth endpoints (`/api/v1/auth/`)

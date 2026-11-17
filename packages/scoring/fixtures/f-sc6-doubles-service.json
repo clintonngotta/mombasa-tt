@@ -1,0 +1,172 @@
+{
+  "name": "F-SC6: doubles order of serving and receiving, the choice of server in a later game, and deuce",
+  "rules": "2.13.3, 2.13.4, 2.13.5, 2.13.6",
+  "config": {
+    "best_of": 5,
+    "doubles": true
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left",
+        "receiver": "b1"
+      },
+      "expect": {
+        "server": "a1",
+        "receiver": "b1"
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "server": "b1",
+        "receiver": "a2"
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "server": "a2",
+        "receiver": "b2"
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "server": "b2",
+        "receiver": "a1"
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "server": "a1",
+        "receiver": "b1",
+        "points": [
+          8,
+          0
+        ]
+      }
+    },
+    {
+      "points": "aa",
+      "expect": {
+        "server": "b1",
+        "receiver": "a2",
+        "points": [
+          10,
+          0
+        ]
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "game_number": 2,
+        "server": "b1",
+        "receiver": "a1",
+        "first_server": "b1",
+        "first_receiver": "a1",
+        "a_end": "right"
+      }
+    },
+    {
+      "event": {
+        "type": "choose_server",
+        "player": "b2"
+      },
+      "expect": {
+        "server": "b2",
+        "receiver": "a2",
+        "first_server": "b2",
+        "first_receiver": "a2",
+        "points": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "choose_server",
+        "player": "b1"
+      },
+      "expect": {
+        "server": "b1",
+        "receiver": "a1",
+        "first_server": "b1",
+        "first_receiver": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "choose_server",
+        "player": "b1"
+      },
+      "expect": {
+        "server": "b1",
+        "receiver": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "choose_server",
+        "player": "a1"
+      },
+      "error": "not_serving_pair"
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          0,
+          1
+        ],
+        "server": "b1",
+        "receiver": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "choose_server",
+        "player": "b2"
+      },
+      "error": "game_under_way"
+    },
+    {
+      "points": "aababababababababab",
+      "expect": {
+        "points": [
+          10,
+          10
+        ],
+        "server": "b2",
+        "receiver": "a2"
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          11,
+          10
+        ],
+        "server": "a2",
+        "receiver": "b1"
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          11,
+          11
+        ],
+        "server": "b1",
+        "receiver": "a1"
+      }
+    }
+  ]
+}

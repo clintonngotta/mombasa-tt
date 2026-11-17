@@ -1,0 +1,69 @@
+{
+  "name": "F-SC5a: best of three is over after two games; nothing is scored afterwards",
+  "rules": "2.12.1",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "aaaaaaaaaaa",
+      "expect": {
+        "games_won": [
+          1,
+          0
+        ],
+        "status": "in_progress"
+      }
+    },
+    {
+      "points": "aaaaaaaaaaa",
+      "expect": {
+        "status": "completed",
+        "winner": "a",
+        "games": [
+          [
+            11,
+            0
+          ],
+          [
+            11,
+            0
+          ]
+        ],
+        "games_won": [
+          2,
+          0
+        ],
+        "game_number": 2,
+        "points": [
+          0,
+          0
+        ],
+        "server": null,
+        "receiver": null
+      }
+    },
+    {
+      "event": {
+        "type": "point",
+        "side": "b"
+      },
+      "error": "not_in_progress"
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "b"
+      },
+      "error": "not_in_progress"
+    }
+  ]
+}

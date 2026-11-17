@@ -51,6 +51,25 @@ Groups of four (A, B, C, D), best of five, worked out by hand from 3.7.5; implem
 | F-ST8 completion | X beats Y, who retires at 11-9, 5-11, 4-2 | Counted 11-9, 5-11, 11-2, 11-0: games 3-1, points 38-22; Y scores 0 match points. A best-of-seven walkover counts 4-0. |
 | F-ST-exact | One-game matches A>B 11-5, B>C 11-7, C>A 13-8 | Level on match points (3) and games (1/1); points A 19/18, C 20/19, B 16/18. A and C both show as 1.1 to one decimal, and A ranks above C. Ratios of exactly 1 (109/109, 20/20, 110/110) are equal and go to the lot. |
 
+### Scoring fixtures (Laws of Table Tennis 2.11–2.13, time-out 3.4.4.2)
+
+Hand-worked from the clauses in spec.md, not taken from the code under test. They live in `packages/scoring/fixtures/f-sc*.json` and are run by both the TypeScript reducer and the Python validator (TASK-023). Side a's first player is a1, side b's b1; "a1→b1" means a1 serves to b1. Awaiting the owner's review with the rest of TASK-003.
+
+| Fixture | Input | Expected |
+|---|---|---|
+| F-SC1 | Singles, a1 serves first, a starts left; a wins 11 points in a row | Service a1 for points 1–2, b1 for 3–4, and so on; at 10–0 b1 serves. 11–0 ends the game: game 2 starts 0–0 with b1 serving, a at the right end. |
+| F-SC2 | a and b alternate to 9–9, then a scores twice | b1 serves at 9–9 and at 10–9; 11–9 ends the game without deuce. |
+| F-SC3 | Alternate to 10–10, then a scores twice | a1 serves at 10–10, b1 at 11–10 (one point each); 11–10 is not a game; 12–10 is. |
+| F-SC4 | 10–10, then a, b, a, b, b, b | Server alternates every point: b1, a1, b1, a1, b1. 12–14 ends the game for b; b1, who received first, serves first in game 2. |
+| F-SC5a/b/c | Best of 3, 5 and 7 | Over after 2, 3 and 4 games won; a point or time-out after that is refused (`not_in_progress`). In best of 7 at 3–3 the seventh game is the deciding game. |
+| F-SC6 | Doubles, a1→b1 first | Order a1→b1, b1→a2, a2→b2, b2→a1, repeating every 2 points. Game 2: b1→a1 by default; naming b2 gives b2→a2; naming a player of the receiving pair, or naming anybody after the first point, is refused. From 10–10 the same order moves on every point. |
+| F-SC7a | Singles, 1–1 in games, deciding game | Ends change when a side first has 5, once only. |
+| F-SC7b | Doubles deciding game a1→b1, a wins the first 6 points | At 4–0 a2→b2. At 5–0 (no change of service) the receiving pair swaps: a2→b1, and ends change. At 6–0 b1→a1; 8–0 a1→b2; 10–0 b2→a2. |
+| F-SC7c | Same, points a a a a b a | At 4–1 a2→b2. 5–1 falls on a change of service: service passes to b2, and the pair now due to receive (a) changes its order: b2→a2. At 7–1 a2→b1. |
+| F-SC8 | 10–0, a point (game 2 begins), undo, undo, time-out, undo, time-out, two points, three undos | Undo across the game boundary restores 10–0 in game 1 with b1 serving and a at the left end; undoing a time-out gives it back; an undo is never itself undone. F-SC8b: undo back to before the start, then `nothing_to_undo`; the match can be started again differently. |
+| F-SC9 | Time-outs before the start, twice for a, once for b, again in game 2 | Before the start refused; one each accepted; a second for either side refused (`timeout_used`) in any game. |
+| F-SC10a/b | Point before the start; singles start with a2 or a wrong receiver; a second start; unknown events; doubles start without a receiver or with one from the same pair | Each refused with its code; the state is unchanged. |
+
 ## Foundation and Phase 1 evaluations
 
 ### EVAL-001
@@ -265,3 +284,4 @@ Report template: `EVAL ID | status | date | commit/build | environment | expecte
 | EVAL-006 onboarding resume | Pass after fix | 2026-11-17 | Same, with a new account | Answers kept across a reload, a later return, and a fresh login with empty local storage; finished onboarding logs in to Home / first run: login landed on Home and a device without a draft started empty, both fixed and re-run | Manual browser run. Goal/role and directory opt-out cases stay covered by tests/test_profiles.py. |
 | EVAL-010 four tabs and match detail | Pass (partial scope) | 2026-11-18 | Local pytest against PostgreSQL 17; Docker Compose stack, Chromium via agent-browser at 1280 and 390 px, branch feat/tournament-tabs | Each tab opens for knockout, groups-to-knockout and round robin; non-applicable tabs explain the format; round list and bracket show the same matches; an unfinished knockout lists no ranking; the match page has no score control / as expected | tests/test_match_detail.py plus a manual browser run with seeded data, removed afterwards. Standings fixtures are TASK-020's and still await the owner's review; no navigation recording was kept; team events not exercised (TASK-022). |
 | EVAL-011 team ties | Pass (partial scope) | 2026-11-18 | Local pytest against PostgreSQL 17; Docker Compose stack, Chromium via agent-browser, branch feat/team-ties | Wrong-size, off-roster, other-team and same-player-twice lineups rejected; valid lineup accepted; one rubber at a time; third win decides a first-to-3 tie; the surplus rubber is not played and can't be scored / as expected | tests/test_ties.py. "Participant conflicts enforced" (a player busy elsewhere) is TASK-027 and not covered; rubbers were decided by code because scoring is TASK-024; unrated surplus rubbers are asserted when ratings exist (TASK-030). |
+| EVAL-012 scoring parity (reducer and validator) | Pass (partial scope) | 2026-11-18 | Node 24 `node --test` for packages/scoring; local pytest for services/api/scoring; branch feat/scoring-engine | 11–0, 11–9, 10–10 to 12–10, extended deuce, best of 3/5/7, doubles service order, deciding-game end and receiver change, undo across a game boundary; both implementations give the fixture state at every checked step and the same state digest after each of 1,527 accepted random events; no stream reaches an impossible score / as expected | packages/scoring/test/scoring.test.ts and tests/test_scoring.py. Early-finish and unauthorized-scoring cases need the server route and are TASK-024. Fixtures await the owner's review (TASK-003). |

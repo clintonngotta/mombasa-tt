@@ -1,0 +1,93 @@
+{
+  "name": "F-SC10a: events the rules don't allow are refused and change nothing",
+  "rules": "REQ-012",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "point",
+        "side": "a"
+      },
+      "error": "not_in_progress"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a2",
+        "a_end": "left"
+      },
+      "error": "invalid_start"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left",
+        "receiver": "a1"
+      },
+      "error": "invalid_start"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "north"
+      },
+      "error": "invalid_start"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      },
+      "expect": {
+        "status": "in_progress",
+        "points": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      },
+      "error": "already_started"
+    },
+    {
+      "event": {
+        "type": "choose_server",
+        "player": "a1"
+      },
+      "error": "not_doubles"
+    },
+    {
+      "event": {
+        "type": "bogus"
+      },
+      "error": "unknown_event"
+    },
+    {
+      "event": {
+        "type": "point",
+        "side": "c"
+      },
+      "error": "unknown_event"
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          1,
+          0
+        ]
+      }
+    }
+  ]
+}
