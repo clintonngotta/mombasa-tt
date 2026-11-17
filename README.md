@@ -1,4 +1,4 @@
-# mombasa-tt
+# Coast TT
 
 Table-tennis club and tournament PWA: a React/Vite web app (`apps/web`) and a Django/DRF API (`services/api`).
 Product docs: `spec.md`, `tasks.md`, `test.md`, `intent.md`, `deployment.md`.

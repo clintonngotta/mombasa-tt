@@ -39,7 +39,7 @@ export function SignUpPage() {
   return (
     <AuthLayout
       title="Create your account"
-      description="One player profile works across every club and tournament on mombasa-tt."
+      description="One player profile works across every club and tournament on Coast TT."
       footer={
         <>
           Already have an account?{" "}

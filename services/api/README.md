@@ -1,6 +1,6 @@
-# mombasa-tt API
+# Coast TT API
 
-Django + DRF service for the mombasa-tt PWA. Versioned under `/api/v1/`; OpenAPI schema at `/api/v1/schema/`.
+Django + DRF service for the Coast TT PWA. Versioned under `/api/v1/`; OpenAPI schema at `/api/v1/schema/`.
 
 ## Local development
 

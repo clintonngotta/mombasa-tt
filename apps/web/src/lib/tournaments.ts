@@ -91,7 +91,7 @@ export const ACTION_LABEL: Record<LifecycleEntry["action"], string> = {
 /** Completed or cancelled: nothing about it changes any more. */
 export const isClosed = (subject: { status: TournamentStatus | EventStatus }) => subject.status === "completed" || subject.status === "cancelled"
 
-/** "KES 500" or "Free". Declared only: mombasa-tt takes no payments (REQ-008). */
+/** "KES 500" or "Free". Declared only: Coast TT takes no payments (REQ-008). */
 export function formatFee(fee: Money) {
   if (fee.amount_minor === 0) return "Free"
   const amount = fee.amount_minor / 100

@@ -1,4 +1,4 @@
-# mombasa-tt — product intent and decision record
+# Coast TT — product intent and decision record
 
 Status: approved planning baseline; application implementation has not started.
 Last updated: 2026-09-08.
@@ -16,7 +16,7 @@ Required sequence: complete and validate these documents, create/review the miss
 
 Help clubs run table tennis competitions without conflicting player/table assignments, give umpires a dependable scoring deck, and give players an enduring record of their matches and development. Extend that foundation to facility reservations, transparent club finances, training, recorded highlights, and social broadcasting.
 
-The platform is named **mombasa-tt**. **Coast Table Tennis Club, Mombasa** is a club using the platform, not the identity of every tenant.
+The platform is named **Coast TT** (renamed from mombasa-tt, user decision 2026-11-17). **Coast Table Tennis Club, Mombasa** is a club using the platform, not the identity of every tenant, although the platform carries its crest. Technical identifiers keep the old name so nothing deployed or stored has to move: the repository, database name and user, Compose project and volume paths, browser storage keys and the development accounts.
 
 ## People and outcomes
 
@@ -62,7 +62,7 @@ Success means that confirmed results produce correct progression and ratings; co
 | Annual report | Officials record all expenses in the app; the club publishes a year-end report of how funds were used, frozen once published with visible amendments (2026-11-15) |
 | Match-day operations | Staff run the whole match day in the app: schedules, table board, check-in and calls, real-time scoring with timeouts, yellow/red penalty cards, injury breaks, walkovers, retirements and disqualifications, and generated results announcement posts (2026-11-15) |
 | Role governance (TASK-013) | Admin always holds every permission and can only be renamed, so an organization can never lose the ability to manage roles; the other templates are editable. Editing, renaming, assigning or deleting a role requires holding every permission involved. Finances is split into view and manage. Members can leave and staff can remove members, both guarded by the last-admin rule. Open question for the user: whether the Member role (which applies to everyone) may carry management permissions such as roles.manage; currently allowed for whoever holds them (2026-11-15) |
-| Events calendar | Public listing of tournaments in the country, on and off mombasa-tt, including our club's; live events show their live link (2026-11-15) |
+| Events calendar | Public listing of tournaments in the country, on and off Coast TT, including our club's; live events show their live link (2026-11-15) |
 | Facilities | Member requests with staff approval |
 | Development | Personal training plus club sessions; private post-match analysis |
 | Notifications | Persistent in-app inbox and optional browser push where supported; native push later |
@@ -95,7 +95,7 @@ Decision revision on 2026-09-08: the user selected **React PWA + Django for laun
 Use the supplied coastal club crest's navy, blue, cyan, gold, and white. Light operational screens and a navy scoring deck replace the orange/dark PongForge appearance. Exact tokens are in [spec.md](spec.md#req-002).
 
 - [Existing Stitch project](https://stitch.withgoogle.com/projects/1275312862625402020), inspected 2026-09-07: 12 reference screens covering onboarding, profile, home, scoring, brackets, and media.
-- Original logo supplied as `/home/clinton/Downloads/Untitled design(1).png`; this is a reference location, not a portable application asset. Copy an approved asset into the project during design implementation.
+- Logo: the supplied Coast Table Tennis Club crest, in the project since 2026-11-17 as `apps/web/public/logo-512.png`, `logo-192.png`, `apple-touch-icon.png` and `favicon.png` (the circle cut out of the supplied sheet, transparent outside it). It sits beside the name in the wordmark and is the browser and home-screen icon.
 - New screen names and IDs must be added to the screen inventory in spec.md after generation.
 
 Two-sided comparisons always place players, teams or clubs left and right, including mobile scoring, match cards, results and head-to-head views. The umpire deck follows the user's two-panel reference; responsive layouts must never stack the opposing sides vertically.

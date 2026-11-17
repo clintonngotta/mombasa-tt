@@ -1,4 +1,4 @@
-"""Django settings for the mombasa-tt API. All environment-specific values come from env vars
+"""Django settings for the Coast TT API. All environment-specific values come from env vars
 (see .env.example and deployment.md "Configuration")."""
 
 import os
@@ -146,7 +146,7 @@ if os.environ.get("SMTP_HOST"):
 else:
     # Local development prints emails (verification/reset links) to the runserver console.
     EMAIL_BACKEND = "core.email.EmailBackend"
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "mombasa-tt <no-reply@localhost>")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Coast TT <no-reply@localhost>")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["core.authentication.SessionAuthentication"],
@@ -167,7 +167,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "mombasa-tt API",
+    "TITLE": "Coast TT API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
