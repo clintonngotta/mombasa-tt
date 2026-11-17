@@ -9,6 +9,7 @@ from facilities.models import Venue
 from facilities.serializers import VenueSummarySerializer
 from organizations.models import Organization
 
+from .draws import MAX_SEEDS
 from .models import MAX_TEAM_ROSTER, DrawVersion, Entry, EntryPlayer, Event, LifecycleEntry, Match, Tournament
 
 BEST_OF = (3, 5, 7)
@@ -362,7 +363,9 @@ class DrawSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=DrawVersion.Status.choices)
     rules_version = serializers.CharField()
     rng_seed = serializers.IntegerField()
-    stale = serializers.BooleanField(help_text="The accepted entries changed since this draw was made.")
+    stale = serializers.BooleanField(
+        help_text="The accepted entries or the event's format changed since this draw was made."
+    )
     created_at = serializers.DateTimeField()
     published_at = serializers.DateTimeField(allow_null=True)
     groups = DrawGroupSerializer(many=True)
@@ -380,5 +383,7 @@ class EventDrawSerializer(serializers.Serializer):
 class DrawRequestSerializer(serializers.Serializer):
     """Seeds in order, best first (accepted entries of the event). `rng_seed` repeats an earlier draw."""
 
-    seeded_entry_ids = serializers.ListField(child=serializers.UUIDField(), max_length=32, required=False)
+    seeded_entry_ids = serializers.ListField(
+        child=serializers.UUIDField(), max_length=MAX_SEEDS, required=False
+    )
     rng_seed = serializers.IntegerField(min_value=0, max_value=2**31 - 1, required=False)

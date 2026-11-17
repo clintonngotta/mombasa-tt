@@ -4,7 +4,6 @@ import type { Schemas } from "@/lib/schema"
 export type Draw = Schemas["Draw"]
 export type DrawMatch = Schemas["Match"]
 export type DrawSide = Schemas["MatchSide"]
-export type DrawPlace = Schemas["DrawPlace"]
 export type EventDraw = Schemas["EventDraw"]
 
 export const drawKeys = {

@@ -71,11 +71,18 @@ export function DrawPage() {
 /** Seeds in order, a preview that can be drawn again, and publication. */
 function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: TournamentEvent; draw: EventDraw }) {
   const queryClient = useQueryClient()
-  const [seeds, setSeeds] = useState<string[]>([])
+  // Start from the seeds of the draw already made, so drawing again keeps them.
+  const [seeds, setSeeds] = useState<string[]>(() =>
+    (draw.preview ?? draw.published)?.places
+      .filter((place) => place.seed)
+      .sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0))
+      .map((place) => place.entry.id) ?? []
+  )
   const open = t.status !== "draft" && !isClosed(t) && event.status === "scheduled"
   const seeded = event.seeding !== "none"
-  const entries = useQuery({ queryKey: entryKeys.event(event.id), queryFn: () => listEntries(t.id, event.id), enabled: open })
-  const accepted = (entries.data?.results ?? []).filter((entry) => entry.status === "accepted")
+  const entries = useQuery({ queryKey: entryKeys.accepted(event.id), queryFn: () => listEntries(t.id, event.id, "accepted"), enabled: open })
+  const accepted = entries.data?.results ?? []
+  const total = entries.data?.count ?? 0
   const byId = new Map(accepted.map((entry) => [entry.id, entry]))
   const chosen = seeds.filter((id) => byId.has(id)) // an entry withdrawn since is no longer a seed
   const settle = (fresh: EventDraw) => queryClient.setQueryData(drawKeys.event(event.id), fresh)
@@ -103,8 +110,9 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
       ) : (
         <>
           <p>
-            {accepted.length} accepted {accepted.length === 1 ? "entry" : "entries"} will be drawn. {SEEDING_LABEL[event.seeding]}.
+            {total} accepted {total === 1 ? "entry" : "entries"} will be drawn. {SEEDING_LABEL[event.seeding]}.
           </p>
+          {seeded && total > accepted.length && <FormAlert>Only the first {accepted.length} accepted entries can be picked as seeds here.</FormAlert>}
           {entries.isError && <FormAlert>{errorMessage(entries.error, "We couldn't load the entries.")}</FormAlert>}
           {seeded && (
             <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">

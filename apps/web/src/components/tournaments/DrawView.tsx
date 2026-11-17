@@ -11,19 +11,18 @@ function Side({ side, won }: { side: DrawSide; won: boolean }) {
   )
 }
 
+/** The two sides left and right, never one above the other (REQ-002). */
 function MatchLine({ match }: { match: DrawMatch }) {
   const won = (side: DrawSide) => !!side.entry && match.status === "completed" && match.winner_id === side.entry.id
   return (
-    <li className="flex flex-col rounded-lg border bg-card px-3 py-2">
-      <Side side={match.a} won={won(match.a)} />
-      {match.b ? (
-        <>
-          <span className="text-sm text-muted-foreground">v</span>
-          <Side side={match.b} won={won(match.b)} />
-        </>
-      ) : (
-        <span className="text-sm font-semibold text-muted-foreground">Bye: goes through without playing</span>
-      )}
+    <li className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border bg-card px-3 py-2">
+      <span className="min-w-0 break-words">
+        <Side side={match.a} won={won(match.a)} />
+      </span>
+      <span className="text-sm text-muted-foreground">{match.b ? "v" : "–"}</span>
+      <span className="min-w-0 text-right break-words">
+        {match.b ? <Side side={match.b} won={won(match.b)} /> : <span className="font-semibold text-muted-foreground">Bye</span>}
+      </span>
     </li>
   )
 }
@@ -34,7 +33,7 @@ function Rounds({ matches, label }: { matches: DrawMatch[]; label: string }) {
       {byRound(matches).map((round) => (
         <section key={round.name} aria-label={`${label}: ${roundHeading(round)}`} className="flex flex-col gap-2">
           <h4 className="font-semibold">{roundHeading(round)}</h4>
-          <ol className="grid gap-2 sm:grid-cols-2">
+          <ol className="flex flex-col gap-2">
             {round.matches.map((match) => (
               <MatchLine key={match.id} match={match} />
             ))}
@@ -78,7 +77,7 @@ export function DrawView({ draw }: { draw: Draw }) {
           <Rounds matches={knockout} label="Knockout" />
         </section>
       )}
-      <p className="text-sm text-muted-foreground">Numbers in brackets are seeds. Drawn under rules {draw.rules_version}, draw number {draw.rng_seed}.</p>
+      <p className="text-sm text-muted-foreground">Numbers in brackets are seeds. A bye goes through without playing. Drawn under rules {draw.rules_version}, draw number {draw.rng_seed}.</p>
     </div>
   )
 }

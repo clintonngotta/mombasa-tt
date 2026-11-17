@@ -34,11 +34,16 @@ def accepted_ids(event: Event) -> set[str]:
     return {str(pk) for pk in event.entries.filter(status=Entry.Status.ACCEPTED).values_list("pk", flat=True)}
 
 
-def is_stale(draw: DrawVersion) -> bool:
-    """The accepted entries are no longer the ones this draw was made for."""
+def is_stale(draw: DrawVersion, places=None) -> bool:
+    """The accepted entries or the event's format are no longer the ones this draw was made for."""
     if draw.status == D.SUPERSEDED:
         return False
-    return {str(place.entry_id) for place in draw.places.all()} != accepted_ids(draw.event)
+    event = draw.event
+    drawn_for = (draw.format, draw.group_count, draw.qualifiers_per_group)
+    if drawn_for != (event.format, event.group_count, event.qualifiers_per_group):
+        return True
+    places = draw.places.all() if places is None else places
+    return {str(place.entry_id) for place in places} != accepted_ids(event)
 
 
 def make_preview(event: Event, actor, seeds: list[str], rng_seed: int | None = None) -> DrawVersion:
@@ -62,7 +67,14 @@ def make_preview(event: Event, actor, seeds: list[str], rng_seed: int | None = N
     event.draws.filter(status=D.PREVIEW).delete()
     last = event.draws.order_by("-version").values_list("version", flat=True).first() or 0
     draw = DrawVersion.objects.create(
-        event=event, version=last + 1, rules_version=RULES_VERSION, rng_seed=rng_seed, created_by=actor
+        event=event,
+        version=last + 1,
+        rules_version=RULES_VERSION,
+        rng_seed=rng_seed,
+        format=event.format,
+        group_count=event.group_count,
+        qualifiers_per_group=event.qualifiers_per_group,
+        created_by=actor,
     )
     _save_plan(draw, plan)
     return draw
@@ -112,7 +124,9 @@ def publish(event: Event, actor) -> DrawVersion:
     if preview is None:
         raise _conflict("no_preview", "Make a draw to preview before publishing one.")
     if is_stale(preview):
-        raise _conflict("draw_stale", "The accepted entries changed since this draw was made. Draw again.")
+        raise _conflict(
+            "draw_stale", "The accepted entries or the format changed since this draw was made. Draw again."
+        )
     event.draws.filter(status=D.PUBLISHED).update(status=D.SUPERSEDED)
     preview.status = D.PUBLISHED
     preview.published_by = actor
@@ -124,6 +138,8 @@ def publish(event: Event, actor) -> DrawVersion:
 def record_winner(match: Match, winner: Entry) -> None:
     """The match is decided: the winner moves into the match it feeds. Results themselves (scores,
     walkovers, corrections) arrive with official results; this is only the progression."""
+    if match.draw.status != D.PUBLISHED:
+        raise _conflict("draw_not_published", "Only matches of the published draw are played.")
     if match.status != Match.Status.SCHEDULED:
         raise _conflict("match_decided", "This match is already decided.")
     if match.entry_a_id is None or match.entry_b_id is None:
@@ -162,8 +178,11 @@ def describe(draw: DrawVersion) -> dict:
     def side(entry_id, feeder_id, from_group, from_rank) -> dict:
         if entry_id:
             return {"entry": entries[entry_id], "seed": seeds.get(entry_id), "awaiting": ""}
-        if feeder_id:
-            feeder = by_id[feeder_id]
+        feeder = by_id.get(feeder_id)
+        if feeder and feeder.status == Match.Status.BYE:
+            # Through a bye: it is simply that qualifier's place.
+            from_group, from_rank, feeder = feeder.a_from_group, feeder.a_from_rank, None
+        if feeder:
             awaiting = f"Winner of {round_name(feeder.round, rounds).lower()} {feeder.position}"
         else:
             awaiting = f"{group_name(from_group)} {ordinal(from_rank)}"
@@ -193,7 +212,7 @@ def describe(draw: DrawVersion) -> dict:
         "status": draw.status,
         "rules_version": draw.rules_version,
         "rng_seed": draw.rng_seed,
-        "stale": draw.status != D.SUPERSEDED and {str(pk) for pk in entries} != accepted_ids(draw.event),
+        "stale": is_stale(draw, places),
         "created_at": draw.created_at,
         "published_at": draw.published_at,
         "groups": [{"number": number, "name": group_name(number)} for number in numbers],

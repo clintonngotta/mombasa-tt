@@ -3399,7 +3399,8 @@ components:
           type: integer
         stale:
           type: boolean
-          description: The accepted entries changed since this draw was made.
+          description: The accepted entries or the event's format changed since this
+            draw was made.
         created_at:
           type: string
           format: date-time

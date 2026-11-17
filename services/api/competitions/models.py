@@ -263,6 +263,10 @@ class DrawVersion(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PREVIEW)
     rules_version = models.CharField(max_length=40)
     rng_seed = models.BigIntegerField()
+    # The event's structure when this was drawn; a draw made for another structure is stale.
+    format = models.CharField(max_length=16, choices=Event.Format.choices)
+    group_count = models.PositiveSmallIntegerField(null=True, blank=True)
+    qualifiers_per_group = models.PositiveSmallIntegerField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )

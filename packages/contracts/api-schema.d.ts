@@ -1577,7 +1577,7 @@ export interface components {
             status: components["schemas"]["DrawStatusEnum"];
             rules_version: string;
             rng_seed: number;
-            /** @description The accepted entries changed since this draw was made. */
+            /** @description The accepted entries or the event's format changed since this draw was made. */
             stale: boolean;
             /** Format: date-time */
             created_at: string;

@@ -28,7 +28,7 @@ Worked out by hand from the clauses transcribed in spec.md, not from the impleme
 |---|---|---|
 | F-KO8 | 8 entries, seeds 1–4 | Line 1 is seed 1, line 8 seed 2, lines 4 and 5 hold seeds 3 and 4 (either way round); no byes; 4 + 2 + 1 matches; nobody meets themselves. |
 | F-KO6 | 6 entries, seeds 1–2 | 8 places, 2 byes: line 2 (seed 1 goes through) and line 7 (seed 2 goes through); the other four are drawn into lines 3–6; the seeds are already in the semi-finals. |
-| F-KO-byes | 2, 3, 5, 9, 12, 16, 17, 33 entries | Byes = places − entries (0, 1, 3, 7, 4, 0, 15, 31); never two byes in one match; halves and quarters differ by one bye at most. |
+| F-KO-byes | 2, 3, 5, 9, 10, 12, 16, 17, 20, 33 entries; then every field of 2–65 with 0–8 seeds | Byes = places − entries (0, 1, 3, 7, 6, 4, 0, 15, 12, 31); never two byes in one match; halves, quarters, eighths and sixteenths differ by one bye at most; seeds receive byes in seeding order. |
 | F-KO16 | 16 entries, seeds 1–8 | Seed 1 line 1, seed 2 line 16, seeds 3–4 on lines 8 and 9, seeds 5–8 on lines 4, 5, 12 and 13. |
 | F-RR | Groups of 2–7 | Every pair meets exactly once; nobody plays twice in a round; rounds = n − 1 (n even) or n (n odd); 1 v 2 is in the last round when one qualifies, 2 v 3 when two do. |
 | F-GK8 | 8 entries, 2 groups, 2 qualify, seeds 1–4 | Group A holds seeds 1 and 4, group B seeds 2 and 3; 6 matches a group, 2 v 3 last; semi-finals are A winner v B runner-up and A runner-up v B winner. |

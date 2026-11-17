@@ -76,14 +76,22 @@ def seed_tiers(size: int) -> list[list[int]]:
     return tiers
 
 
+def _drawn_evenly(places: list[int], rng: random.Random) -> list[int]:
+    """A drawn order of a tier's places in which every run from the start is spread as evenly as it can
+    be over the halves, quarters, ... of the draw: the two halves take turns (which one first is drawn),
+    and so on within each half. Byes that follow this order are even however many there are (3.6.1.2)."""
+    if len(places) <= 1:
+        return list(places)
+    middle = len(places) // 2
+    first, second = _drawn_evenly(places[:middle], rng), _drawn_evenly(places[middle:], rng)
+    if rng.random() < 0.5:
+        first, second = second, first
+    return [place for pair in zip(first, second, strict=True) for place in pair]
+
+
 def _seeded_places(size: int, rng: random.Random) -> list[int]:
     """Seeded places in seeding order, each tier drawn."""
-    order = []
-    for tier in seed_tiers(size):
-        drawn = list(tier)
-        rng.shuffle(drawn)
-        order.extend(drawn)
-    return order
+    return [place for tier in seed_tiers(size) for place in _drawn_evenly(tier, rng)]
 
 
 def knockout_lines(entries: list[str], seeds: list[str], rng: random.Random) -> list[str | None]:
@@ -154,8 +162,11 @@ def qualifier_lines(groups: int, per_group: int, rng: random.Random) -> list[tup
             if rank == 1:
                 choices = [place for place in seeded if place in open_places][:1] or open_places
             else:
-                away = [place for place in open_places if (place > size // 2) != winner_half[group]]
-                choices = away or open_places
+                # Away from the group's winner where there is room, and never straight into a match
+                # against somebody from the same group while another place is open.
+                apart = [place for place in open_places if lines.get(opponent(place), (0, 0))[0] != group]
+                away = [place for place in apart if (place > size // 2) != winner_half[group]]
+                choices = away or apart or open_places
             place = rng.choice(choices)
             lines[place] = (group, rank)
             if rank == 1:

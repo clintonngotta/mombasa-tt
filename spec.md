@@ -243,12 +243,12 @@ Source: ITTF Statutes 2026, Chapter 3, Regulations for International Competition
 | 3.6.2.5 | Seeding follows the latest ranking list. | Until ratings exist (TASK-030) the organizers give the seed order themselves, for events seeded by rating as well as by staff. An unseeded event takes no seeds. |
 | 3.7.5.1 | In a group, every member plays every other member. | Round robin by the circle method; with an odd number one member sits out each round. |
 | 3.7.5.5 | If 1 is to qualify, the final match in the group is between numbers 1 and 2; if 2 qualify, between 2 and 3; and so on. | That match is in the last round. Numbers in a group follow seed order, then the order drawn. |
-| 3.6.4, 3.6.5 | A completed draw is altered only to correct errors or for unavoidable deletions and additions. | A published draw is never edited. While the event has not started the organizers publish a new version, which supersedes the old one; the old one is kept. A draw whose entries have since changed is marked stale. |
+| 3.6.4, 3.6.5 | A completed draw is altered only to correct errors or for unavoidable deletions and additions. | A published draw is never edited. While the event has not started the organizers publish a new version, which supersedes the old one; the old one is kept. A draw whose entries or format have since changed is marked stale and can't be published. |
 
 House rules where the statutes leave the choice to the organizer:
 
 - Groups: seeds are spread in a snake (seed 1 to group A, 2 to B, …, then back), and the remaining entries are drawn into the same snake, so group sizes differ by one at most.
-- Groups to knockout: group winners take the seeded places of the knockout in group order (winner of A as seed 1, B as seed 2, …); byes go to the best qualifiers first; a lower qualifier is drawn into the half away from the winner of their own group when there is room.
+- Groups to knockout: group winners take the seeded places of the knockout in group order (winner of A as seed 1, B as seed 2, …); byes go to the best qualifiers first; a lower qualifier is drawn into the half away from the winner of their own group when there is room, and never straight into a first-round match against their own group while another place is open.
 - The lot is drawn from a recorded seed number, so the same entries, seeds and number always give the same draw.
 
 ## Planned entity groups

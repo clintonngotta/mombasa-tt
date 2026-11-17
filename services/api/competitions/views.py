@@ -20,7 +20,7 @@ from organizations.permissions import Permission
 
 from . import drawing, entries, lifecycle
 from .emails import send_entry_news
-from .models import MAX_EVENTS, Entry, Event, LifecycleEntry, Tournament
+from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Tournament
 from .serializers import (
     DrawRequestSerializer,
     EntryRequestSerializer,
@@ -540,8 +540,10 @@ class DrawViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
 
     def _shown(self, event: Event, staff: bool) -> Response:
-        by_status = {draw.status: draw for draw in event.draws.exclude(status="superseded")}
-        published, preview = by_status.get("published"), by_status.get("preview") if staff else None
+        status = DrawVersion.Status
+        by_status = {draw.status: draw for draw in event.draws.exclude(status=status.SUPERSEDED)}
+        published = by_status.get(status.PUBLISHED)
+        preview = by_status.get(status.PREVIEW) if staff else None
         return Response(
             EventDrawSerializer(
                 {

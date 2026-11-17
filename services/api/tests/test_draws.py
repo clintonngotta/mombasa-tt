@@ -77,7 +77,8 @@ def test_fko6_six_entries_two_seeds_have_two_byes_against_the_seeds(rng_seed):
 
 
 @pytest.mark.parametrize(
-    ("count", "byes"), [(2, 0), (3, 1), (5, 3), (9, 7), (12, 4), (16, 0), (17, 15), (33, 31)]
+    ("count", "byes"),
+    [(2, 0), (3, 1), (5, 3), (9, 7), (10, 6), (12, 4), (16, 0), (17, 15), (20, 12), (33, 31)],
 )
 def test_byes_fill_the_first_round_to_a_power_of_two_and_are_spread_evenly(count, byes):
     for rng_seed in range(10):
@@ -90,9 +91,26 @@ def test_byes_fill_the_first_round_to_a_power_of_two_and_are_spread_evenly(count
         assert all(lines[i] or lines[i + 1] for i in range(0, size, 2))
         top, bottom = lines[: size // 2].count(None), lines[size // 2 :].count(None)
         assert abs(top - bottom) <= 1
-        if size >= 8:
-            quarters = [lines[i : i + size // 4].count(None) for i in range(0, size, size // 4)]
-            assert max(quarters) - min(quarters) <= 1
+        for parts in (4, 8, 16):  # quarters, eighths, sixteenths: one bye apart at most
+            if size >= parts * 2:
+                width = size // parts
+                counts = [lines[i : i + width].count(None) for i in range(0, size, width)]
+                assert max(counts) - min(counts) <= 1
+
+
+@pytest.mark.parametrize("count", range(2, 66))
+def test_byes_are_even_for_every_field_size_and_any_number_of_seeds(count):
+    size = draws.bracket_size(count)
+    for seeds in {min(wanted, size // 2) for wanted in (0, 1, 2, 4, 8)}:
+        for rng_seed in range(8):
+            lines = draws.build("knockout", ids(count), ids(count)[:seeds], rng_seed).lines
+            assert lines.count(None) == size - count
+            assert all(lines[i] or lines[i + 1] for i in range(0, size, 2))
+            assert abs(lines[: size // 2].count(None) - lines[size // 2 :].count(None)) <= 1
+            # Seeds get the byes first, in seeding order.
+            at = {entry: line for line, entry in enumerate(lines, start=1)}
+            with_bye = [lines[draws.opponent(at[seed]) - 1] is None for seed in ids(count)[:seeds]]
+            assert with_bye == sorted(with_bye, reverse=True)
 
 
 def test_sixteen_entries_eight_seeds_go_to_the_places_named_for_them():
@@ -364,6 +382,12 @@ def test_groups_then_knockout_is_kept_with_its_placeholders(staff, cup):
     assert len(final) == 1 and final[0]["round_name"] == "Final"
     assert (final[0]["a"]["awaiting"], final[0]["b"]["awaiting"]) == ("Group A winner", "Group B winner")
 
+    # A qualifier with a bye is named in the next round, not as the "winner" of a match nobody plays.
+    staff.patch(url(cup, event=groups), {"group_count": 3}, format="json")
+    three = staff.post(draw_url(cup, groups, "preview"), {"rng_seed": 3}, format="json").json()["preview"]
+    last = [m for m in three["matches"] if m["stage"] == "knockout"][-1]
+    assert (last["a"]["awaiting"], last["b"]["awaiting"]) == ("Group A winner", "Winner of semi-final 2")
+
 
 def test_winners_move_on_and_a_bye_is_never_a_played_match(staff, cup):
     singles = cup["events"][0]
@@ -420,3 +444,23 @@ def test_draws_are_for_staff_before_the_event_starts(staff, club, cup):
     refused(singles, "draw_closed")
     assert staff.post(draw_url(cup, singles, "publish"), {}, format="json").json()["code"] == "draw_closed"
     assert stranger.get(draw_url(cup, singles)).json()["published"]["version"] == 1
+
+
+def test_a_qualifier_never_meets_their_own_group_in_the_first_knockout_round_when_avoidable():
+    for groups in range(2, 17):
+        for rng_seed in range(40):
+            first = draws.qualifier_lines(groups, 2, random.Random(rng_seed))
+            for top, bottom in zip(first[::2], first[1::2], strict=True):
+                assert not (top and bottom and top[0] == bottom[0]), (groups, rng_seed)
+
+
+def test_a_draw_made_for_another_format_is_stale(staff, cup):
+    singles = cup["events"][0]
+    fill(staff, cup, singles, 4)
+    staff.post(draw_url(cup, singles, "preview"), {}, format="json")
+    staff.post(draw_url(cup, singles, "publish"), {}, format="json")
+    staff.post(draw_url(cup, singles, "preview"), {}, format="json")
+    assert staff.patch(url(cup, event=singles), {"format": "round_robin"}, format="json").status_code == 200
+    shown = staff.get(draw_url(cup, singles)).json()
+    assert shown["published"]["stale"] is True and shown["preview"]["stale"] is True
+    assert staff.post(draw_url(cup, singles, "publish"), {}, format="json").json()["code"] == "draw_stale"
