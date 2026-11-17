@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, ClipboardList, Clock, KeyRound, LogOut, Mail, Plus, Search, ShieldCheck, Users } from "lucide-react"
+import { ChevronRight, ClipboardList, Clock, KeyRound, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
@@ -110,6 +110,8 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
   const isAdmin = membership.roles.some((role) => role.key === "admin")
   const manageMembers = can(membership, "members.manage")
   const manageRoles = can(membership, "roles.manage")
+  const manageCompetitions = can(membership, "competitions.manage")
+  const manageFacilities = can(membership, "facilities.manage")
   return (
     <>
       <OrganizationCard organization={membership.organization}>
@@ -118,11 +120,23 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           {roleNames(membership.roles)}
         </span>
       </OrganizationCard>
-      {(manageMembers || manageRoles) && (
+      {(manageMembers || manageRoles || manageCompetitions || manageFacilities) && (
         <nav aria-label="Club administration" className="flex flex-col gap-2">
-          <AdminLink to="/club/members" icon={<Users aria-hidden className="size-5 text-brand-blue" />}>
-            Members and their roles
-          </AdminLink>
+          {manageCompetitions && (
+            <AdminLink to="/club/tournaments" icon={<Trophy aria-hidden className="size-5 text-brand-blue" />}>
+              Tournaments
+            </AdminLink>
+          )}
+          {manageFacilities && (
+            <AdminLink to="/club/venues" icon={<MapPin aria-hidden className="size-5 text-brand-blue" />}>
+              Venues and tables
+            </AdminLink>
+          )}
+          {(manageMembers || manageRoles) && (
+            <AdminLink to="/club/members" icon={<Users aria-hidden className="size-5 text-brand-blue" />}>
+              Members and their roles
+            </AdminLink>
+          )}
           {manageRoles && (
             <AdminLink to="/club/roles" icon={<KeyRound aria-hidden className="size-5 text-brand-blue" />}>
               Roles and permissions

@@ -850,6 +850,105 @@ export interface paths {
         patch: operations["organizations_roles_partial_update"];
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/tournaments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every tournament an organization hosts, drafts included, for its competition staff. */
+        get: operations["organizations_tournaments_list"];
+        put?: never;
+        /** @description A new draft. The timezone defaults to the organization's. */
+        post: operations["organizations_tournaments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        get: operations["organizations_venues_list"];
+        put?: never;
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        post: operations["organizations_venues_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        patch: operations["organizations_venues_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/tables/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Add a table at the end of the venue's playing order. Replies with the whole venue. */
+        post: operations["organizations_venues_tables_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/tables/{table_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        patch: operations["organizations_venues_tables_partial_update"];
+        trace?: never;
+    };
     "/api/v1/organizations/{id}/": {
         parameters: {
             query?: never;
@@ -921,10 +1020,262 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Published tournaments, drafts never. `when=upcoming` (soonest first) covers those still to
+         *     finish; `when=past` (latest first) the completed, cancelled and ended ones.
+         */
+        get: operations["tournaments_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        get: operations["tournaments_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description Only a draft can be deleted; once published, a tournament is cancelled instead. */
+        delete: operations["tournaments_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        patch: operations["tournaments_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Terminal and audited. The reason is shown to everyone who can see the tournament. */
+        post: operations["tournaments_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who published, started, completed or cancelled what, and the configuration at that moment. */
+        get: operations["tournaments_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_start_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Only while the tournament is a draft; afterwards an event is cancelled, which keeps a record. */
+        delete: operations["tournaments_events_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Change an event's set-up. Once it has started its structure (type, format, best of, seeding,
+         *     groups and qualifiers) is frozen: asking to change it is a 409, never a silent no-op.
+         */
+        patch: operations["tournaments_events_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_start_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `published` - Published
+         *     * `started` - Started
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         *     * `event_started` - Event Started
+         *     * `event_completed` - Event Completed
+         *     * `event_cancelled` - Event Cancelled
+         *     * `event_removed` - Event Removed
+         * @enum {string}
+         */
+        ActionEnum: "published" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
         /**
          * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
          *
@@ -958,6 +1309,13 @@ export interface components {
              */
             file: string;
         };
+        /**
+         * @description * `3` - 3
+         *     * `5` - 5
+         *     * `7` - 7
+         * @enum {integer}
+         */
+        BestOfEnum: 3 | 5 | 7;
         /** @enum {unknown} */
         BlankEnum: "";
         /**
@@ -976,6 +1334,71 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        Event: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            kind: components["schemas"]["EventKindEnum"];
+            format: components["schemas"]["EventFormatEnum"];
+            capacity: number | null;
+            best_of: components["schemas"]["BestOfEnum"];
+            rest_minutes: number;
+            /** Format: date-time */
+            registration_opens_at: string | null;
+            /** Format: date-time */
+            registration_closes_at: string | null;
+            entry_fee: components["schemas"]["Money"];
+            seeding: components["schemas"]["SeedingEnum"];
+            group_count: number | null;
+            qualifiers_per_group: number | null;
+            readonly status: components["schemas"]["EventStatusEnum"];
+            readonly revision: number;
+            /** Format: date-time */
+            readonly started_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly cancelled_at: string | null;
+            readonly cancel_reason: string;
+        };
+        /**
+         * @description * `round_robin` - Round Robin
+         *     * `knockout` - Knockout
+         *     * `groups_knockout` - Groups Knockout
+         * @enum {string}
+         */
+        EventFormatEnum: "round_robin" | "knockout" | "groups_knockout";
+        /**
+         * @description * `singles` - Singles
+         *     * `doubles` - Doubles
+         *     * `team` - Team
+         * @enum {string}
+         */
+        EventKindEnum: "singles" | "doubles" | "team";
+        EventRequest: {
+            name: string;
+            kind: components["schemas"]["EventKindEnum"];
+            format: components["schemas"]["EventFormatEnum"];
+            capacity?: number | null;
+            best_of?: components["schemas"]["BestOfEnum"];
+            rest_minutes?: number;
+            /** Format: date-time */
+            registration_opens_at?: string | null;
+            /** Format: date-time */
+            registration_closes_at?: string | null;
+            entry_fee?: components["schemas"]["MoneyRequest"];
+            seeding?: components["schemas"]["SeedingEnum"];
+            group_count?: number | null;
+            qualifiers_per_group?: number | null;
+        };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `in_progress` - In Progress
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        EventStatusEnum: "scheduled" | "in_progress" | "completed" | "cancelled";
         /**
          * @description * `new` - New
          *     * `casual` - Casual
@@ -984,12 +1407,6 @@ export interface components {
          * @enum {string}
          */
         ExperienceEnum: "new" | "casual" | "club" | "competitive";
-        /**
-         * @description * `singles` - Singles
-         *     * `doubles` - Doubles
-         * @enum {string}
-         */
-        FormatEnum: "singles" | "doubles";
         Game: {
             my_points: number;
             opponent_points: number;
@@ -1086,6 +1503,18 @@ export interface components {
             played: number;
             won: number;
             lost: number;
+        };
+        LifecycleEntry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly action: components["schemas"]["ActionEnum"];
+            readonly event_name: string;
+            /** @default  */
+            readonly actor_name: string;
+            readonly reason: string;
+            readonly snapshot: unknown;
+            /** Format: date-time */
+            readonly created_at: string;
         };
         LogInRequest: {
             /** Format: email */
@@ -1194,6 +1623,18 @@ export interface components {
          * @enum {string}
          */
         MembershipStatusEnum: "active" | "left";
+        /** @description The event's declared entry fee in the REQ-032 money shape. */
+        Money: {
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+        };
+        /** @description The event's declared entry fee in the REQ-032 money shape. */
+        MoneyRequest: {
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+        };
         /** @description The invitee's view: which organization, and who invited them (display name only). */
         MyInvitation: {
             /** Format: uuid */
@@ -1226,11 +1667,19 @@ export interface components {
             name: string;
             town: string;
             kind: components["schemas"]["KindEnum"];
+            timezone: string;
         };
         OrganizationRequest: {
             name: string;
             town: string;
             kind?: components["schemas"]["KindEnum"];
+            timezone?: string;
+        };
+        OrganizationSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
         };
         PaginatedDirectoryPlayerList: {
             /** @example 123 */
@@ -1276,6 +1725,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["JoinRequest"][];
+        };
+        PaginatedLifecycleEntryList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["LifecycleEntry"][];
         };
         PaginatedMemberList: {
             /** @example 123 */
@@ -1367,10 +1831,41 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["PersonalMatch"][];
         };
+        PaginatedTournamentList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Tournament"][];
+        };
         PasswordResetConfirmRequest: {
             uid: string;
             token: string;
             password: string;
+        };
+        PatchedEventRequest: {
+            name?: string;
+            kind?: components["schemas"]["EventKindEnum"];
+            format?: components["schemas"]["EventFormatEnum"];
+            capacity?: number | null;
+            best_of?: components["schemas"]["BestOfEnum"];
+            rest_minutes?: number;
+            /** Format: date-time */
+            registration_opens_at?: string | null;
+            /** Format: date-time */
+            registration_closes_at?: string | null;
+            entry_fee?: components["schemas"]["MoneyRequest"];
+            seeding?: components["schemas"]["SeedingEnum"];
+            group_count?: number | null;
+            qualifiers_per_group?: number | null;
         };
         /**
          * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
@@ -1393,7 +1888,7 @@ export interface components {
             /** Format: date */
             played_on?: string;
             label?: string;
-            format?: components["schemas"]["FormatEnum"];
+            format?: components["schemas"]["PersonalMatchFormatEnum"];
             opponent_name?: string;
             partner_name?: string;
             venue?: string;
@@ -1416,6 +1911,32 @@ export interface components {
         PatchedRoleRequest: {
             name?: string;
             permissions?: components["schemas"]["PermissionEnum"][];
+        };
+        PatchedTableRequest: {
+            label?: string;
+            active?: boolean;
+        };
+        /**
+         * @description A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+         *     is private once the tournament is published, and drafts are served to the host's staff only.
+         */
+        PatchedTournamentRequest: {
+            /** Format: uuid */
+            venue_id?: string | null;
+            name?: string;
+            description?: string;
+            /** Format: date */
+            starts_on?: string;
+            /** Format: date */
+            ends_on?: string;
+            timezone?: string;
+        };
+        /** @description A venue with its tables in playing order. */
+        PatchedVenueRequest: {
+            name?: string;
+            town?: string;
+            address?: string;
+            active?: boolean;
         };
         /**
          * @description * `members.manage` - Invite members, decide join requests and remove members
@@ -1443,7 +1964,7 @@ export interface components {
             /** Format: date */
             played_on: string;
             label: string;
-            format: components["schemas"]["FormatEnum"];
+            format: components["schemas"]["PersonalMatchFormatEnum"];
             opponent_name: string;
             partner_name: string;
             venue: string;
@@ -1457,11 +1978,17 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /**
+         * @description * `singles` - Singles
+         *     * `doubles` - Doubles
+         * @enum {string}
+         */
+        PersonalMatchFormatEnum: "singles" | "doubles";
         PersonalMatchRequest: {
             /** Format: date */
             played_on: string;
             label: string;
-            format?: components["schemas"]["FormatEnum"];
+            format?: components["schemas"]["PersonalMatchFormatEnum"];
             opponent_name?: string;
             partner_name?: string;
             venue?: string;
@@ -1509,6 +2036,9 @@ export interface components {
          * @enum {string}
          */
         PublishedDetailsEnum: "hand" | "grip" | "style" | "experience" | "bio";
+        ReasonRequest: {
+            reason: string;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         Role: {
             /** Format: uuid */
@@ -1539,15 +2069,85 @@ export interface components {
             readonly key: components["schemas"]["RoleKeyEnum"];
             readonly name: string;
         };
+        /**
+         * @description * `rating` - Rating
+         *     * `manual` - Manual
+         *     * `none` - None
+         * @enum {string}
+         */
+        SeedingEnum: "rating" | "manual" | "none";
         SignUpRequest: {
             display_name: string;
             /** Format: email */
             email: string;
             password: string;
         };
+        Table: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            readonly position: number;
+            active: boolean;
+        };
+        TableRequest: {
+            label: string;
+            active?: boolean;
+        };
         TokenRequest: {
             token: string;
         };
+        /**
+         * @description A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+         *     is private once the tournament is published, and drafts are served to the host's staff only.
+         */
+        Tournament: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrganizationSummary"];
+            readonly venue: components["schemas"]["VenueSummary"];
+            name: string;
+            description: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone: string;
+            readonly status: components["schemas"]["TournamentStatusEnum"];
+            /** Format: date-time */
+            readonly published_at: string | null;
+            /** Format: date-time */
+            readonly started_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly cancelled_at: string | null;
+            readonly cancel_reason: string;
+            readonly events: components["schemas"]["Event"][];
+        };
+        /**
+         * @description A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+         *     is private once the tournament is published, and drafts are served to the host's staff only.
+         */
+        TournamentRequest: {
+            /** Format: uuid */
+            venue_id?: string | null;
+            name: string;
+            description?: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone?: string;
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `in_progress` - In Progress
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        TournamentStatusEnum: "draft" | "published" | "in_progress" | "completed" | "cancelled";
         User: {
             /** Format: uuid */
             readonly id: string;
@@ -1558,6 +2158,31 @@ export interface components {
             readonly email_verified_at: string | null;
             /** Format: date-time */
             readonly date_joined: string;
+        };
+        /** @description A venue with its tables in playing order. */
+        Venue: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            town: string;
+            address: string;
+            active: boolean;
+            readonly tables: components["schemas"]["Table"][];
+        };
+        /** @description A venue with its tables in playing order. */
+        VenueRequest: {
+            name: string;
+            town: string;
+            address?: string;
+            active?: boolean;
+        };
+        /** @description What anyone who can see a tournament sees of its venue. */
+        VenueSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
+            readonly address: string;
         };
         /** @description Envelope of every API error (REQ-032); see core.exceptions.api_exception_handler. */
         ApiError: {
@@ -3372,6 +3997,245 @@ export interface operations {
             };
         };
     };
+    organizations_tournaments_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTournamentList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_tournaments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TournamentRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VenueRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedVenueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_tables_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_tables_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                table_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTableRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_retrieve: {
         parameters: {
             query?: never;
@@ -3483,6 +4347,493 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Player"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_list: {
+        parameters: {
+            query?: {
+                /** @description Host organization id */
+                organization?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Tournament, host or town */
+                search?: string;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTournamentList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTournamentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_history_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedLifecycleEntryList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_start_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedEventRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_start_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
                 };
             };
             /** @description Error envelope */

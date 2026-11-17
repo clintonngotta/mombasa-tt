@@ -12,7 +12,8 @@ export type Invitation = Schemas["Invitation"]
 export type MyInvitation = Schemas["MyInvitation"]
 export type MyJoinRequest = Schemas["MyJoinRequest"]
 export type JoinDecision = "approve" | "reject"
-export type OrganizationInput = Required<Schemas["OrganizationRequest"]>
+// The timezone is left to the server default (Africa/Nairobi) when registering.
+export type OrganizationInput = Required<Omit<Schemas["OrganizationRequest"], "timezone">>
 export type Permission = Schemas["PermissionEnum"]
 export type Role = Schemas["Role"]
 export type RoleInput = Schemas["PatchedRoleRequest"]

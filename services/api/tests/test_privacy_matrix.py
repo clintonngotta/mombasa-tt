@@ -21,6 +21,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from attachments.models import Attachment
+from competitions.models import Event, LifecycleEntry, Tournament
+from facilities.models import Table, Venue
 from matchlog.models import PersonalMatch
 from organizations.models import (
     Invitation,
@@ -93,6 +95,26 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-member-field": {"patch": STAFF},
     "organization-member-field-retire": {"post": STAFF},
     "organization-member-field-restore": {"post": STAFF},
+    # Venues: members see the ones in use; facility staff see and change them all.
+    "organization-venues": {"get": MEMBER, "post": STAFF},
+    "organization-venue": {"patch": STAFF},
+    "organization-venue-tables": {"post": STAFF},
+    "organization-venue-table": {"patch": STAFF},
+    # Tournaments: published ones are for every signed-in player (signed-out pages come with TASK-035);
+    # drafts and every change are for the host's competition staff.
+    "organization-tournaments": {"get": STAFF, "post": STAFF},
+    "tournament-list": {"get": SIGNED_IN},
+    "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
+    "tournament-publish": {"post": STAFF},
+    "tournament-start": {"post": STAFF},
+    "tournament-complete": {"post": STAFF},
+    "tournament-cancel": {"post": STAFF},
+    "tournament-history": {"get": STAFF},
+    "tournament-events": {"post": STAFF},
+    "tournament-event": {"patch": STAFF, "delete": STAFF},
+    "tournament-event-start": {"post": STAFF},
+    "tournament-event-complete": {"post": STAFF},
+    "tournament-event-cancel": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
 }
@@ -108,20 +130,35 @@ BODIES = {
     ("organization-member-fields", "patch"): {"values": {}},
     ("organization-member-field-list", "post"): {"label": "Locker", "kind": "text"},
     ("organization-member-field", "patch"): {"label": "Renamed field"},
+    ("organization-venues", "post"): {"name": "Second hall", "town": "Mombasa"},
+    ("organization-venue", "patch"): {"town": "Nyali"},
+    ("organization-venue-tables", "post"): {"label": "Table 9"},
+    ("organization-venue-table", "patch"): {"label": "Table 10"},
+    ("organization-tournaments", "post"): {
+        "name": "New cup",
+        "starts_on": "2027-01-09",
+        "ends_on": "2027-01-09",
+    },
+    ("tournament-detail", "patch"): {"name": "Renamed cup"},
+    ("tournament-cancel", "post"): {"reason": "No hall"},
+    ("tournament-events", "post"): {"name": "Doubles", "kind": "doubles", "format": "knockout"},
+    ("tournament-event", "patch"): {"capacity": 8},
+    ("tournament-event-cancel", "post"): {"reason": "Too few entries"},
 }
 
 
 def api_routes():
     """(route name, methods, url keyword names) for everything under /api/v1/."""
 
-    def walk(patterns, prefix=""):
+    def walk(patterns, prefix="", names=frozenset()):
         for pattern in patterns:
+            found = names | set(pattern.pattern.regex.groupindex)  # ids may sit in an include() prefix
             if isinstance(pattern, URLResolver):
-                yield from walk(pattern.url_patterns, prefix + str(pattern.pattern))
+                yield from walk(pattern.url_patterns, prefix + str(pattern.pattern), found)
             elif prefix.startswith("api/v1/"):
-                yield pattern
+                yield pattern, found
 
-    for pattern in walk(get_resolver().url_patterns):
+    for pattern, names in walk(get_resolver().url_patterns):
         view = pattern.callback
         actions = getattr(view, "actions", None)
         if actions:
@@ -129,7 +166,7 @@ def api_routes():
         else:
             cls = view.view_class
             methods = {m for m in cls.http_method_names if m != "options" and hasattr(cls, m)}
-        yield pattern.name, methods, set(pattern.pattern.regex.groupindex)
+        yield pattern.name, methods, names
 
 
 ROUTES = list(api_routes())
@@ -211,6 +248,45 @@ class World:
         self.retired_field = field(
             "MARK-FIELD-RETIRED", visibility=MemberField.Visibility.MEMBER, retired_at=timezone.now()
         )
+        # A venue with a table in use and one switched off; a second venue switched off.
+        self.venue = Venue.objects.create(organization=self.coast, name="Makadara Hall", town="Mombasa")
+        self.table = Table.objects.create(venue=self.venue, label="Table 1")
+        Table.objects.create(venue=self.venue, label="MARK-TABLE-OFF", position=1, active=False)
+        Venue.objects.create(organization=self.coast, name="MARK-VENUE-OFF", town="Mombasa", active=False)
+
+        # One tournament per state, so every staff action has something it would be valid on.
+        def tournament(name, status, event_status=Event.Status.SCHEDULED):
+            made = Tournament.objects.create(
+                organization=self.coast,
+                venue=self.venue,
+                name=name,
+                starts_on="2026-12-05",
+                ends_on="2026-12-06",
+                timezone="Africa/Nairobi",
+                status=status,
+            )
+            made.event = Event.objects.create(
+                tournament=made,
+                name=f"{name} singles",
+                kind="singles",
+                format="knockout",
+                status=event_status,
+            )
+            return made
+
+        status = Tournament.Status
+        self.draft = tournament("MARK-DRAFT-CUP", status.DRAFT)
+        self.spare_draft = tournament("MARK-SPARE-DRAFT-CUP", status.DRAFT)
+        self.deletable = tournament("MARK-DELETABLE-CUP", status.DRAFT)  # the staff checks delete it
+        self.published = tournament("Published Cup", status.PUBLISHED)
+        self.to_cancel = tournament("Doomed Cup", status.PUBLISHED)
+        self.running = tournament("Running Cup", status.IN_PROGRESS)
+        self.finishing = tournament("Finishing Cup", status.IN_PROGRESS, Event.Status.COMPLETED)
+        self.playing = tournament("Playing Cup", status.IN_PROGRESS, Event.Status.IN_PROGRESS)
+        LifecycleEntry.objects.create(
+            tournament=self.published, action="published", actor=self.amina, reason="MARK-HISTORY-REASON"
+        )
+
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
             (self.staff_field, "MARK-FAITH-VALUE-STAFF"),
@@ -250,6 +326,19 @@ class World:
             "organization-role": self.custom_role.id,
             "organization-member-roles": self.baraka_membership.id,
             "organization-member-remove": self.baraka_membership.id,
+            "organization-venue": self.venue.id,
+            "organization-venue-tables": self.venue.id,
+            "organization-venue-table": self.venue.id,
+            "tournament-detail": self.deletable.id,
+            "tournament-publish": self.spare_draft.id,
+            "tournament-start": self.published.id,
+            "tournament-complete": self.finishing.id,
+            "tournament-cancel": self.to_cancel.id,
+            "tournament-history": self.published.id,
+            "tournament-event": self.draft.event.id,
+            "tournament-event-start": self.running.event.id,
+            "tournament-event-complete": self.playing.event.id,
+            "tournament-event-cancel": self.published.event.id,
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
         }
@@ -258,6 +347,12 @@ class World:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
             found["pk"] = pk[name]
+        if "table_pk" in names:
+            found["table_pk"] = self.table.id
+        if "tournament_pk" in names:
+            # The event addressed by `pk` decides which tournament it is reached through.
+            event = Event.objects.filter(pk=found.get("pk")).first()
+            found["tournament_pk"] = event.tournament_id if event else self.draft.id
         return found
 
     def url(self, name: str, names: set[str]) -> str:
@@ -277,6 +372,11 @@ class World:
                 MemberField.objects.values_list("label", "visibility", "required", "retired_at")
             ),
             "member_field_values": sorted(MemberFieldValue.objects.values_list("field__label", "value")),
+            "venues": sorted(Venue.objects.values_list("name", "town", "active")),
+            "tables": sorted(Table.objects.values_list("label", "active")),
+            "tournaments": sorted(Tournament.objects.values_list("name", "status", "cancel_reason")),
+            "events": sorted(Event.objects.values_list("name", "status", "capacity", "cancel_reason")),
+            "lifecycle": LifecycleEntry.objects.count(),
         }
 
 
@@ -415,9 +515,22 @@ def everything_served_to(world, user) -> str:
         reverse("organization-detail", kwargs={"pk": world.nyali.id}),
         reverse("me-membership-fields", kwargs={"pk": world.faith_membership.id}),
     ]
+    urls += [
+        reverse("tournament-detail", kwargs={"pk": t.id})
+        for t in (world.draft, world.spare_draft, world.published)
+    ]
     for term in ("MARK", "baraka", "Baraka Otieno", "Faith", "coast.example", "example", "Coast", "o"):
-        urls += [f"/api/v1/players/?search={term}", f"/api/v1/organizations/?search={term}"]
-    urls += ["/api/v1/players/?page_size=100", "/api/v1/organizations/?page_size=100"]
+        urls += [
+            f"/api/v1/players/?search={term}",
+            f"/api/v1/organizations/?search={term}",
+            f"/api/v1/tournaments/?search={term}",
+        ]
+    urls += [
+        "/api/v1/players/?page_size=100",
+        "/api/v1/organizations/?page_size=100",
+        "/api/v1/tournaments/?page_size=100",
+        f"/api/v1/tournaments/?organization={world.coast.id}&when=upcoming",
+    ]
     served = []
     for url in urls:
         response = client.get(url)
@@ -461,6 +574,15 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-FAITH-VALUE-MEMBER": {"amina", "faith"},
         "MARK-FAITH-VALUE-STAFF": {"amina"},
         "MARK-FAITH-VALUE-RETIRED": set(),
+        # Venues and tables switched off are for facility staff; drafts and the lifecycle log are for
+        # competition staff. A published tournament is for everyone (control).
+        "MARK-VENUE-OFF": {"amina"},
+        "MARK-TABLE-OFF": {"amina"},
+        "MARK-DRAFT-CUP": {"amina"},
+        "MARK-SPARE-DRAFT-CUP": {"amina"},
+        "MARK-DELETABLE-CUP": {"amina"},
+        "MARK-HISTORY-REASON": {"amina"},
+        "Published Cup": set(world.viewers),
     }
     for who, user in world.viewers.items():
         served = everything_served_to(world, user)
@@ -483,7 +605,28 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "name",
         "town",
         "kind",
+        "timezone",
     }
+    cup = viewer.get(f"/api/v1/tournaments/{world.published.id}/").json()
+    assert set(cup) == {
+        "id",
+        "organization",
+        "venue",
+        "name",
+        "description",
+        "starts_on",
+        "ends_on",
+        "timezone",
+        "status",
+        "published_at",
+        "started_at",
+        "completed_at",
+        "cancelled_at",
+        "cancel_reason",
+        "events",
+    }
+    assert set(cup["organization"]) == {"id", "name", "town"}
+    assert set(cup["venue"]) == {"id", "name", "town", "address"}
 
     staff = logged_in(world.amina)
     base = f"/api/v1/organizations/{world.coast.id}"
