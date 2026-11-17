@@ -19,8 +19,8 @@ uv run --env-file .env manage.py runserver 8010   # http://127.0.0.1:8010
 The web dev server (`apps/web`, port 5173) proxies `/api` to `127.0.0.1:8010` (8000 is often taken by other local projects), so the browser sees one origin and the
 session/CSRF cookies work without CORS. Override the target with `VITE_API_PROXY_TARGET`.
 
-Emails (verification, password reset) print to the `runserver` console unless `SMTP_HOST` is set. Open the link from
-there.
+Emails (verification, password reset) print readable bodies and copyable links to the `runserver` console unless
+`SMTP_HOST` is set. The local preview backend avoids MIME transfer encoding so long links remain intact.
 
 ### Test logins (`seed_dev`)
 
@@ -89,6 +89,7 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | POST | `onboarding/complete/` | 204. Repeat calls keep the first completion time |
 | GET | `memberships/` | Active memberships with their organization, roles held and effective `permissions` (basis for the club switcher and for which staff actions the app shows); paginated |
 | POST | `memberships/{mid}/leave/` | 204; drops the player's roles. 409 `last_admin` if they are the organization's only admin |
+| GET, PATCH | `memberships/{mid}/fields/` | The player's own member-visible custom fields here, each as `{field, value}`. PATCH `{values: {field id: value}}` changes the ones named (null clears an optional one). Staff-only and retired fields are never listed and their ids are a 400, the same as unknown ids |
 | GET | `join-requests/` | The player's own join requests with the organization (name, town, kind), newest first; paginated |
 | GET | `invitations/` | Open invitations addressed to the player's verified email; paginated |
 | POST | `invitations/{iid}/accept/` or `decline/` | Accepting joins as a member (an existing member keeps their roles) and withdraws the player's open join request to that organization; 404 for anyone else's, answered, revoked or expired invitation |
@@ -115,6 +116,12 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | PUT | `/api/v1/organizations/{id}/members/{mid}/roles/` | `{roles: [ids]}` replaces the member's roles; needs `roles.manage`. Every role added or removed must be within the actor's authority; role IDs from another organization or the Member role are a 400; 409 `last_admin` |
 | POST | `/api/v1/organizations/{id}/members/{mid}/remove/` | 204; needs `members.manage` and every permission the member holds; 409 `last_admin` |
 | GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname, photo link (`avatar`) and clubs, never email or bio |
+| GET | `/api/v1/organizations/{id}/member-fields/` | Custom member fields, not paginated (at most 30 active). Holders of `members.manage` get every field, retired ones included; other members get only active member-visible fields; non-members 403 |
+| POST | `/api/v1/organizations/{id}/member-fields/` | `{label, kind, options, required, visibility}`; needs `members.manage`. `kind` is text, number, date, boolean or choice; `options` (2 to 30) only for choice; `visibility` is member or staff (default). 400 on a duplicate active label; 409 `too_many_fields` |
+| PATCH | `/api/v1/organizations/{id}/member-fields/{fid}/` | Change label, options, required or visibility. `kind` can't change (400); a retired field is 409 `field_retired` |
+| POST | `/api/v1/organizations/{id}/member-fields/{fid}/retire/` or `restore/` | Retiring hides the field everywhere and keeps its values; restoring brings both back. 409 `label_taken` if an active field now uses the label |
+| GET, PATCH | `/api/v1/organizations/{id}/members/{mid}/fields/` | A member's values for every active field, staff-only ones included; needs `members.manage`. Same body and rules as the player's own endpoint |
+| GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname and clubs, never email or bio |
 | GET | `/api/v1/players/{id}/` | One opted-in player: the directory card plus only the details they published (others null); 404 once they opt out |
 | GET | `/api/v1/attachments/{id}/url/` | A fresh signed link `{id, url, expires_at}` to a private file; 404 for a missing file and for one the caller may not see |
 | GET | `/api/v1/attachments/{id}/content/?token=` | The file. Needs no session, only the token from a signed link; 403 `link_expired` when the token is expired, altered or for another file |
@@ -124,4 +131,12 @@ Committee and Member, and can add custom roles. Effective permissions are the un
 Member role, which applies to every active member. Admin always holds every permission. Nobody grants, removes or
 deletes a permission they don't hold. Role changes, removals and leaving lock the organization row, so concurrent
 changes can't remove the last admin; deactivated accounts don't count as admins (`organizations/access.py`).
+
+Custom member fields (REQ-005, `organizations/member_fields.py`): definitions belong to an organization, values to a
+membership. A member-visible field is shown to, and filled in by, the member it describes and by staff; a staff-only
+field and its values exist only for holders of `members.manage`. Other members never see anyone's values. Both
+audiences read and write values through `visible_fields`, so there is one place that decides what a viewer gets. Values are
+checked against the field type; a required field can't be saved blank. Fields are retired, never deleted, and values
+stay in the database when a field is retired or a member leaves.
+
 List endpoints share `core.pagination.StandardPagination` (`page`, `page_size` up to 100) and return `{count, next, previous, results}`.

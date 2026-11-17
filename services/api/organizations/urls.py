@@ -59,5 +59,30 @@ urlpatterns = [
         views.MemberViewSet.as_view({"post": "remove"}),
         name="organization-member-remove",
     ),
+    path(
+        "<uuid:organization_pk>/members/<uuid:pk>/fields/",
+        views.MemberFieldViewSet.as_view({"get": "member_values", "patch": "set_member_values"}),
+        name="organization-member-fields",
+    ),
+    path(
+        "<uuid:organization_pk>/member-fields/",
+        views.MemberFieldViewSet.as_view({"get": "list", "post": "create"}),
+        name="organization-member-field-list",
+    ),
+    path(
+        "<uuid:organization_pk>/member-fields/<uuid:pk>/",
+        views.MemberFieldViewSet.as_view({"patch": "partial_update"}),
+        name="organization-member-field",
+    ),
+    path(
+        "<uuid:organization_pk>/member-fields/<uuid:pk>/retire/",
+        views.MemberFieldViewSet.as_view({"post": "retire"}),
+        name="organization-member-field-retire",
+    ),
+    path(
+        "<uuid:organization_pk>/member-fields/<uuid:pk>/restore/",
+        views.MemberFieldViewSet.as_view({"post": "restore"}),
+        name="organization-member-field-restore",
+    ),
     *router.urls,
 ]

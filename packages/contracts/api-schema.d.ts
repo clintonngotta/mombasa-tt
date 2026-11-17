@@ -427,6 +427,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/memberships/{id}/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The player's own member-visible custom fields here (REQ-005). Staff-only fields never appear
+         *     and can't be written, even by a member who knows their ids.
+         */
+        get: operations["me_memberships_fields_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description The player's own member-visible custom fields here (REQ-005). Staff-only fields never appear
+         *     and can't be written, even by a member who knows their ids.
+         */
+        patch: operations["me_memberships_fields_partial_update"];
+        trace?: never;
+    };
     "/api/v1/me/memberships/{id}/leave/": {
         parameters: {
             query?: never;
@@ -608,6 +632,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/member-fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        get: operations["organizations_member_fields_list"];
+        put?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        post: operations["organizations_member_fields_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/member-fields/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        patch: operations["organizations_member_fields_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/member-fields/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        post: operations["organizations_member_fields_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/member-fields/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Stop using a field. It disappears from members' details; recorded values are kept. */
+        post: operations["organizations_member_fields_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/members/": {
         parameters: {
             query?: never;
@@ -626,6 +739,29 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/members/{id}/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A member's custom field values, staff-only ones included, for holders of members.manage. */
+        get: operations["organizations_members_fields_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        patch: operations["organizations_members_fields_partial_update"];
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/members/{id}/remove/": {
@@ -989,6 +1125,52 @@ export interface components {
             /** Format: date-time */
             readonly joined_at: string;
         };
+        /**
+         * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+         *     never change meaning; `options` apply to selection fields only.
+         */
+        MemberField: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options: string[];
+            required: boolean;
+            visibility: components["schemas"]["MemberFieldVisibilityEnum"];
+            /** Format: date-time */
+            readonly retired_at: string | null;
+        };
+        /** @description One field with the member's value for it. */
+        MemberFieldEntry: {
+            readonly field: components["schemas"]["MemberField"];
+            readonly value: (string | number | boolean) | null;
+        };
+        /**
+         * @description * `text` - Text
+         *     * `number` - Number
+         *     * `date` - Date
+         *     * `boolean` - Boolean
+         *     * `choice` - Choice
+         * @enum {string}
+         */
+        MemberFieldKindEnum: "text" | "number" | "date" | "boolean" | "choice";
+        /**
+         * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+         *     never change meaning; `options` apply to selection fields only.
+         */
+        MemberFieldRequest: {
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+        };
+        /**
+         * @description * `member` - Member
+         *     * `staff` - Staff
+         * @enum {string}
+         */
+        MemberFieldVisibilityEnum: "member" | "staff";
         MemberRolesRequest: {
             roles: string[];
         };
@@ -1189,6 +1371,23 @@ export interface components {
             uid: string;
             token: string;
             password: string;
+        };
+        /**
+         * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+         *     never change meaning; `options` apply to selection fields only.
+         */
+        PatchedMemberFieldRequest: {
+            label?: string;
+            kind?: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+        };
+        /** @description Values to change, keyed by field id. Fields left out keep their value; null clears one. */
+        PatchedMemberFieldValuesRequest: {
+            values?: {
+                [key: string]: (string | number | boolean) | null;
+            };
         };
         PatchedPersonalMatchRequest: {
             /** Format: date */
@@ -2222,6 +2421,72 @@ export interface operations {
             };
         };
     };
+    me_memberships_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_memberships_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldValuesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_memberships_leave_create: {
         parameters: {
             query?: never;
@@ -2649,6 +2914,167 @@ export interface operations {
             };
         };
     };
+    organizations_member_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberFieldRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_members_list: {
         parameters: {
             query?: {
@@ -2673,6 +3099,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedMemberList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_members_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_members_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldValuesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
                 };
             };
             /** @description Error envelope */

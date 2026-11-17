@@ -764,6 +764,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/memberships/{id}/fields/:
+    get:
+      operationId: me_memberships_fields_list
+      description: |-
+        The player's own member-visible custom fields here (REQ-005). Staff-only fields never appear
+        and can't be written, even by a member who knows their ids.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this membership.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberFieldEntry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: me_memberships_fields_partial_update
+      description: |-
+        The player's own member-visible custom fields here (REQ-005). Staff-only fields never appear
+        and can't be written, even by a member who knows their ids.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this membership.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMemberFieldValuesRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberFieldEntry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/memberships/{id}/leave/:
     post:
       operationId: me_memberships_leave_create
@@ -1187,6 +1257,193 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/member-fields/:
+    get:
+      operationId: organizations_member_fields_list
+      description: |-
+        Custom member field definitions of one organization (REQ-005). Members holding members.manage
+        create, edit, retire and restore them, see them all, and read and write any member's values. Other
+        members see only the active member-visible ones, which is what they need to fill in their own details
+        (through /me/memberships/{id}/fields/).
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_member_fields_create
+      description: |-
+        Custom member field definitions of one organization (REQ-005). Members holding members.manage
+        create, edit, retire and restore them, see them all, and read and write any member's values. Other
+        members see only the active member-visible ones, which is what they need to fill in their own details
+        (through /me/memberships/{id}/fields/).
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberFieldRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/member-fields/{id}/:
+    patch:
+      operationId: organizations_member_fields_partial_update
+      description: |-
+        Custom member field definitions of one organization (REQ-005). Members holding members.manage
+        create, edit, retire and restore them, see them all, and read and write any member's values. Other
+        members see only the active member-visible ones, which is what they need to fill in their own details
+        (through /me/memberships/{id}/fields/).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMemberFieldRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/member-fields/{id}/restore/:
+    post:
+      operationId: organizations_member_fields_restore_create
+      description: |-
+        Custom member field definitions of one organization (REQ-005). Members holding members.manage
+        create, edit, retire and restore them, see them all, and read and write any member's values. Other
+        members see only the active member-visible ones, which is what they need to fill in their own details
+        (through /me/memberships/{id}/fields/).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/member-fields/{id}/retire/:
+    post:
+      operationId: organizations_member_fields_retire_create
+      description: Stop using a field. It disappears from members' details; recorded
+        values are kept.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/members/:
     get:
       operationId: organizations_members_list
@@ -1227,6 +1484,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMemberList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/members/{id}/fields/:
+    get:
+      operationId: organizations_members_fields_list
+      description: A member's custom field values, staff-only ones included, for holders
+        of members.manage.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberFieldEntry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_members_fields_partial_update
+      description: |-
+        Custom member field definitions of one organization (REQ-005). Members holding members.manage
+        create, edit, retire and restore them, see them all, and read and write any member's values. Other
+        members see only the active member-visible ones, which is what they need to fill in their own details
+        (through /me/memberships/{id}/fields/).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMemberFieldValuesRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberFieldEntry'
           description: ''
         4XX:
           description: Error envelope
@@ -1999,6 +2337,110 @@ components:
       - joined_at
       - roles
       - user
+    MemberField:
+      type: object
+      description: |-
+        A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+        never change meaning; `options` apply to selection fields only.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+        retired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - id
+      - kind
+      - label
+      - options
+      - required
+      - retired_at
+      - visibility
+    MemberFieldEntry:
+      type: object
+      description: One field with the member's value for it.
+      properties:
+        field:
+          allOf:
+          - $ref: '#/components/schemas/MemberField'
+          readOnly: true
+        value:
+          oneOf:
+          - type: string
+          - type: number
+          - type: boolean
+          nullable: true
+          readOnly: true
+      required:
+      - field
+      - value
+    MemberFieldKindEnum:
+      enum:
+      - text
+      - number
+      - date
+      - boolean
+      - choice
+      type: string
+      description: |-
+        * `text` - Text
+        * `number` - Number
+        * `date` - Date
+        * `boolean` - Boolean
+        * `choice` - Choice
+    MemberFieldRequest:
+      type: object
+      description: |-
+        A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+        never change meaning; `options` apply to selection fields only.
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+      required:
+      - kind
+      - label
+    MemberFieldVisibilityEnum:
+      enum:
+      - member
+      - staff
+      type: string
+      description: |-
+        * `member` - Member
+        * `staff` - Staff
     MemberRolesRequest:
       type: object
       properties:
@@ -2406,6 +2848,42 @@ components:
       - password
       - token
       - uid
+    PatchedMemberFieldRequest:
+      type: object
+      description: |-
+        A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+        never change meaning; `options` apply to selection fields only.
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+    PatchedMemberFieldValuesRequest:
+      type: object
+      description: Values to change, keyed by field id. Fields left out keep their
+        value; null clears one.
+      properties:
+        values:
+          type: object
+          additionalProperties:
+            oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+            nullable: true
     PatchedPersonalMatchRequest:
       type: object
       properties:
