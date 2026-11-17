@@ -6,6 +6,7 @@ One named world, then every route of the API is exercised against it:
   endpoint can't ship without a decision about who may call it.
 - Signed-out callers get nothing but the public routes.
 - Staff routes of Coast Spinners refuse its plain member, the admin of another club and an outsider.
+- Member routes of Coast Spinners refuse everybody who isn't an active member of it.
 - Owner routes refuse everybody but the owner.
 - Private values are seeded as unique markers; each viewer then reads every GET route and no marker may
   appear in anything served to a viewer who isn't allowed to see it.
@@ -16,11 +17,21 @@ import importlib
 import pytest
 from django.apps import apps
 from django.urls import URLResolver, get_resolver, reverse
+from django.utils import timezone
 from rest_framework import serializers
 
 from attachments.models import Attachment
 from matchlog.models import PersonalMatch
-from organizations.models import Invitation, JoinRequest, Membership, Organization, Role, seed_roles
+from organizations.models import (
+    Invitation,
+    JoinRequest,
+    MemberField,
+    MemberFieldValue,
+    Membership,
+    Organization,
+    Role,
+    seed_roles,
+)
 from organizations.permissions import RoleKey
 from profiles.models import PlayerProfile
 
@@ -32,6 +43,7 @@ pytestmark = pytest.mark.django_db
 PUBLIC = "public"  # no login needed
 SIGNED_IN = "signed-in"  # any logged-in player; serves only directory-level data
 OWNER = "owner"  # the caller's own data only
+MEMBER = "member"  # any active member of that organization
 STAFF = "staff"  # needs a permission in that organization
 
 ACCESS: dict[str, dict[str, str]] = {
@@ -61,6 +73,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-invitation-decline": {"post": OWNER},
     "me-membership-list": {"get": OWNER},
     "me-membership-leave": {"post": OWNER},
+    "me-membership-fields": {"get": OWNER, "patch": OWNER},  # member-visible fields only
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN},
     "organization-permissions": {"get": SIGNED_IN},
@@ -74,6 +87,12 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-members": {"get": STAFF},
     "organization-member-roles": {"put": STAFF},
     "organization-member-remove": {"post": STAFF},
+    "organization-member-fields": {"get": STAFF, "patch": STAFF},
+    # Staff get every field definition here; other members get the active member-visible ones.
+    "organization-member-field-list": {"get": MEMBER, "post": STAFF},
+    "organization-member-field": {"patch": STAFF},
+    "organization-member-field-retire": {"post": STAFF},
+    "organization-member-field-restore": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
 }
@@ -85,6 +104,10 @@ BODIES = {
     ("organization-role", "patch"): {"name": "Renamed"},
     ("organization-member-roles", "put"): {"roles": []},
     ("personal-match-detail", "patch"): {"label": "Changed"},
+    ("me-membership-fields", "patch"): {"values": {}},
+    ("organization-member-fields", "patch"): {"values": {}},
+    ("organization-member-field-list", "post"): {"label": "Locker", "kind": "text"},
+    ("organization-member-field", "patch"): {"label": "Renamed field"},
 }
 
 
@@ -139,7 +162,7 @@ class World:
             self.coast.roles.get(key=RoleKey.COMMITTEE)
         )
         Membership.objects.create(organization=self.coast, user=self.hamisi, status=Membership.Status.LEFT)
-        Membership.objects.create(organization=self.coast, user=self.faith)
+        self.faith_membership = Membership.objects.create(organization=self.coast, user=self.faith)
         self.custom_role = Role.objects.create(organization=self.coast, name="Tea committee")
 
         # Baraka is not in the directory: nothing of his profile is for anyone else.
@@ -178,6 +201,23 @@ class World:
         )
         self.join_request = JoinRequest.objects.create(organization=self.coast, user=self.daudi)
 
+        # Custom member fields (REQ-005): one members see, one for staff, one retired. Faith has a value
+        # under each.
+        def field(label, **extra):
+            return MemberField.objects.create(organization=self.coast, label=label, kind="text", **extra)
+
+        self.member_field = field("MARK-FIELD-MEMBER", visibility=MemberField.Visibility.MEMBER)
+        self.staff_field = field("MARK-FIELD-STAFF", visibility=MemberField.Visibility.STAFF)
+        self.retired_field = field(
+            "MARK-FIELD-RETIRED", visibility=MemberField.Visibility.MEMBER, retired_at=timezone.now()
+        )
+        for which, value in (
+            (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
+            (self.staff_field, "MARK-FAITH-VALUE-STAFF"),
+            (self.retired_field, "MARK-FAITH-VALUE-RETIRED"),
+        ):
+            MemberFieldValue.objects.create(membership=self.faith_membership, field=which, value=value)
+
         self.viewers = {
             "amina": self.amina,
             "baraka": self.baraka,
@@ -198,6 +238,12 @@ class World:
             "me-invitation-accept": self.invitation.id,
             "me-invitation-decline": self.invitation.id,
             "me-membership-leave": self.baraka_membership.id,
+            "me-membership-fields": self.baraka_membership.id,
+            # Faith's, because the staff checks remove Baraka before they reach this route.
+            "organization-member-fields": self.faith_membership.id,
+            "organization-member-field": self.staff_field.id,
+            "organization-member-field-retire": self.staff_field.id,
+            "organization-member-field-restore": self.staff_field.id,
             "organization-join-request-approve": self.join_request.id,
             "organization-join-request-reject": self.join_request.id,
             "organization-invitation-revoke": self.invitation.id,
@@ -227,6 +273,10 @@ class World:
             "join_requests": sorted(JoinRequest.objects.values_list("user__email", "status")),
             "matches": sorted(PersonalMatch.objects.values_list("id", "label", "notes")),
             "avatars": sorted(PlayerProfile.objects.values_list("user__email", "avatar_id")),
+            "member_fields": sorted(
+                MemberField.objects.values_list("label", "visibility", "required", "retired_at")
+            ),
+            "member_field_values": sorted(MemberFieldValue.objects.values_list("field__label", "value")),
         }
 
 
@@ -271,6 +321,27 @@ def test_staff_routes_refuse_members_other_clubs_and_outsiders(world, who):
     assert world.state() == before
 
 
+@pytest.mark.parametrize("who", ["chiku", "daudi", "hamisi", "operator"])
+def test_member_routes_refuse_everyone_outside_the_club(world, who):
+    before = world.state()
+    client = logged_in(world.viewers[who])
+    for name, methods, names in ROUTES:
+        for method in methods:
+            if ACCESS[name][method] != MEMBER:
+                continue
+            response = call(client, method, name, world.url(name, names))
+            assert response.status_code in {403, 404}, f"{method.upper()} {name}: {response.status_code}"
+    assert world.state() == before
+
+
+@pytest.mark.parametrize("who", ["amina", "baraka", "faith", "grace"])
+def test_member_routes_serve_the_clubs_members(world, who):
+    client = logged_in(world.viewers[who])
+    for name, _methods, names in ROUTES:
+        if ACCESS[name].get("get") == MEMBER:
+            assert client.get(world.url(name, names)).status_code == 200, name
+
+
 def test_staff_routes_serve_the_clubs_own_admin(world):
     """The refusals above are about who is asking, not about the ids used."""
     client = logged_in(world.amina)
@@ -299,6 +370,9 @@ def test_owner_routes_serve_the_owner(world):
     match = reverse("personal-match-detail", kwargs={"pk": world.match.id})
     assert baraka.get(match).status_code == 200
     assert baraka.patch(match, BODIES["personal-match-detail", "patch"], format="json").status_code == 200
+    fields = reverse("me-membership-fields", kwargs={"pk": world.baraka_membership.id})
+    assert [entry["field"]["label"] for entry in baraka.get(fields).json()] == ["MARK-FIELD-MEMBER"]
+    assert baraka.patch(fields, BODIES["me-membership-fields", "patch"], format="json").status_code == 200
 
     imani = logged_in(world.imani)
     assert [i["id"] for i in imani.get("/api/v1/me/invitations/").json()["results"]] == [
@@ -339,6 +413,7 @@ def everything_served_to(world, user) -> str:
         reverse("player-detail", kwargs={"pk": world.faith.id}),
         reverse("attachment-link", kwargs={"pk": world.faith_avatar.id}),
         reverse("organization-detail", kwargs={"pk": world.nyali.id}),
+        reverse("me-membership-fields", kwargs={"pk": world.faith_membership.id}),
     ]
     for term in ("MARK", "baraka", "Baraka Otieno", "Faith", "coast.example", "example", "Coast", "o"):
         urls += [f"/api/v1/players/?search={term}", f"/api/v1/organizations/?search={term}"]
@@ -378,6 +453,14 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-FAITH-STYLE": set(world.viewers),
         str(world.faith_avatar.id): set(world.viewers),
         "Tea committee": {"amina"},  # role names are for staff
+        # Custom member fields: members see the member-visible definition and their own value under it;
+        # staff-only and retired definitions are for staff; a retired value is served to nobody.
+        "MARK-FIELD-MEMBER": {"amina", "baraka", "faith", "grace"},
+        "MARK-FIELD-STAFF": {"amina"},
+        "MARK-FIELD-RETIRED": {"amina"},
+        "MARK-FAITH-VALUE-MEMBER": {"amina", "faith"},
+        "MARK-FAITH-VALUE-STAFF": {"amina"},
+        "MARK-FAITH-VALUE-RETIRED": set(),
     }
     for who, user in world.viewers.items():
         served = everything_served_to(world, user)

@@ -143,7 +143,7 @@ if os.environ.get("SMTP_HOST"):
     EMAIL_USE_TLS = env_bool("SMTP_USE_TLS", True)
 else:
     # Local development prints emails (verification/reset links) to the runserver console.
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    EMAIL_BACKEND = "core.email.EmailBackend"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "mombasa-tt <no-reply@localhost>")
 
 REST_FRAMEWORK = {
@@ -180,6 +180,9 @@ SPECTACULAR_SETTINGS = {
         "InvitationStatusEnum": "organizations.models.Invitation.Status",
         "PermissionEnum": "organizations.permissions.Permission",
         "RoleKeyEnum": "organizations.permissions.RoleKey",
+        "KindEnum": "organizations.models.Organization.Kind",
+        "MemberFieldKindEnum": "organizations.models.MemberField.Kind",
+        "MemberFieldVisibilityEnum": "organizations.models.MemberField.Visibility",
     },
 }
 

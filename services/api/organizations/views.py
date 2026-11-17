@@ -14,20 +14,35 @@ from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
 
 from .access import (
+    effective_permissions,
     ensure_admin_remains,
     lock_organization,
     membership_permissions,
+    require_membership,
     require_permission,
     require_within_authority,
     roles_permissions,
 )
 from .emails import send_invitation_email
-from .models import Invitation, JoinRequest, Membership, Organization, Role, invitation_expiry, seed_roles
+from .member_fields import MAX_ACTIVE_FIELDS, entries, visible_fields, write_values
+from .models import (
+    Invitation,
+    JoinRequest,
+    MemberField,
+    Membership,
+    Organization,
+    Role,
+    invitation_expiry,
+    seed_roles,
+)
 from .permissions import ROLE_TEMPLATES, Permission, RoleKey
 from .serializers import (
     InvitationCreateSerializer,
     InvitationSerializer,
     JoinRequestSerializer,
+    MemberFieldEntrySerializer,
+    MemberFieldSerializer,
+    MemberFieldValuesSerializer,
     MemberRolesSerializer,
     MemberSerializer,
     MembershipSerializer,
@@ -322,6 +337,35 @@ class MyMembershipViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             leave(membership.organization, membership)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        methods=["get"],
+        responses={200: MemberFieldEntrySerializer(many=True)},
+        operation_id="me_memberships_fields_list",
+    )
+    @extend_schema(
+        methods=["patch"],
+        request=MemberFieldValuesSerializer,
+        responses={200: MemberFieldEntrySerializer(many=True)},
+    )
+    @action(detail=True, methods=["get", "patch"], pagination_class=None)
+    def fields(self, request, pk=None):
+        """The player's own member-visible custom fields here (REQ-005). Staff-only fields never appear
+        and can't be written, even by a member who knows their ids."""
+        with transaction.atomic():
+            membership = get_object_or_404(self.get_queryset(), pk=pk)
+            if request.method == "PATCH":
+                serializer = MemberFieldValuesSerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                lock_organization(membership.organization)  # ordered after field changes
+                write_values(
+                    membership,
+                    visible_fields(membership.organization, staff=False),
+                    serializer.validated_data["values"],
+                    request.user,
+                )
+            found = entries(membership, visible_fields(membership.organization, staff=False))
+        return Response(MemberFieldEntrySerializer(found, many=True).data)
+
 
 class PermissionCatalogView(generics.GenericAPIView):
     """Every permission a role can hold (REQ-005), with a plain-language label for the role editor."""
@@ -498,6 +542,134 @@ class MemberViewSet(viewsets.GenericViewSet):
             require_within_authority(granted, membership_permissions(member))
             leave(organization, member)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MemberFieldViewSet(viewsets.GenericViewSet):
+    """Custom member field definitions of one organization (REQ-005). Members holding members.manage
+    create, edit, retire and restore them, see them all, and read and write any member's values. Other
+    members see only the active member-visible ones, which is what they need to fill in their own details
+    (through /me/memberships/{id}/fields/)."""
+
+    serializer_class = MemberFieldSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_organization(self) -> Organization:
+        return get_object_or_404(Organization, pk=self.kwargs["organization_pk"])
+
+    def get_field(self, organization: Organization, pk) -> MemberField:
+        return get_object_or_404(MemberField.objects.select_for_update(), pk=pk, organization=organization)
+
+    @extend_schema(responses={200: MemberFieldSerializer(many=True)})
+    def list(self, request, organization_pk):
+        organization = self.get_organization()
+        require_membership(request.user, organization)
+        if MANAGE_MEMBERS in effective_permissions(request.user, organization):
+            fields = organization.member_fields.all()  # retired ones too, so staff can restore them
+        else:
+            fields = visible_fields(organization, staff=False)
+        return Response(MemberFieldSerializer(fields, many=True).data)
+
+    @extend_schema(request=MemberFieldSerializer, responses={201: MemberFieldSerializer})
+    def create(self, request, organization_pk):
+        organization = self.get_organization()
+        serializer = MemberFieldSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            lock_organization(organization)
+            require_permission(request.user, organization, MANAGE_MEMBERS)
+            self._ensure_room(organization)
+            field = self._save(serializer, organization=organization)
+        return Response(MemberFieldSerializer(field).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=MemberFieldSerializer, responses={200: MemberFieldSerializer})
+    def partial_update(self, request, organization_pk, pk):
+        organization = self.get_organization()
+        with transaction.atomic():
+            lock_organization(organization)
+            require_permission(request.user, organization, MANAGE_MEMBERS)
+            field = self.get_field(organization, pk)
+            if field.retired_at:
+                raise ApiException("field_retired", "Restore this field before changing it.", 409)
+            serializer = MemberFieldSerializer(field, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            field = self._save(serializer)
+        return Response(MemberFieldSerializer(field).data)
+
+    @extend_schema(request=None, responses={200: MemberFieldSerializer})
+    def retire(self, request, organization_pk, pk):
+        """Stop using a field. It disappears from members' details; recorded values are kept."""
+        return self._set_retired(request, pk, retired=True)
+
+    @extend_schema(request=None, responses={200: MemberFieldSerializer})
+    def restore(self, request, organization_pk, pk):
+        return self._set_retired(request, pk, retired=False)
+
+    def _set_retired(self, request, pk, *, retired: bool):
+        organization = self.get_organization()
+        with transaction.atomic():
+            lock_organization(organization)
+            require_permission(request.user, organization, MANAGE_MEMBERS)
+            field = self.get_field(organization, pk)
+            if bool(field.retired_at) != retired:  # repeating the request is harmless
+                if not retired:
+                    self._ensure_room(organization)
+                field.retired_at = timezone.now() if retired else None
+                try:
+                    with transaction.atomic():
+                        field.save(update_fields=["retired_at"])
+                except IntegrityError as error:
+                    raise ApiException(
+                        "label_taken", "Another field uses this label now. Rename that one first.", 409
+                    ) from error
+        return Response(MemberFieldSerializer(field).data)
+
+    def get_member(self, organization: Organization, pk) -> Membership:
+        return get_object_or_404(
+            Membership.objects.active().select_for_update(), pk=pk, organization=organization
+        )
+
+    @extend_schema(responses={200: MemberFieldEntrySerializer(many=True)})
+    def member_values(self, request, organization_pk, pk):
+        """A member's custom field values, staff-only ones included, for holders of members.manage."""
+        organization = self.get_organization()
+        require_permission(request.user, organization, MANAGE_MEMBERS)
+        member = get_object_or_404(Membership.objects.active(), pk=pk, organization=organization)
+        found = entries(member, visible_fields(organization, staff=True))
+        return Response(MemberFieldEntrySerializer(found, many=True).data)
+
+    @extend_schema(
+        request=MemberFieldValuesSerializer, responses={200: MemberFieldEntrySerializer(many=True)}
+    )
+    def set_member_values(self, request, organization_pk, pk):
+        organization = self.get_organization()
+        serializer = MemberFieldValuesSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            lock_organization(organization)
+            require_permission(request.user, organization, MANAGE_MEMBERS)
+            member = self.get_member(organization, pk)
+            fields = visible_fields(organization, staff=True)
+            write_values(member, fields, serializer.validated_data["values"], request.user)
+            found = entries(member, fields)
+        return Response(MemberFieldEntrySerializer(found, many=True).data)
+
+    @staticmethod
+    def _ensure_room(organization: Organization) -> None:
+        if visible_fields(organization, staff=True).count() >= MAX_ACTIVE_FIELDS:
+            raise ApiException(
+                "too_many_fields",
+                f"An organization can have {MAX_ACTIVE_FIELDS} member fields. Retire one first.",
+                409,
+            )
+
+    @staticmethod
+    def _save(serializer, **extra) -> MemberField:
+        try:
+            with transaction.atomic():
+                return serializer.save(**extra)
+        except IntegrityError as error:  # case-insensitive unique label among active fields
+            raise ValidationError({"label": "Another field already has this label."}) from error
 
 
 class MyJoinRequestsView(generics.ListAPIView):
