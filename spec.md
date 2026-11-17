@@ -230,6 +230,27 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 *Results announcements.* Staff generate a results announcement for a session, round, day, event or the whole tournament. The generator builds a draft only from official results: each match with both sides in the same first/second order as the match card (REQ-002 left/right), games won and per-game scores (e.g. "3-1 (11-7, 9-11, 11-5, 11-8)"), W/O, ret. and DQ marked, winners and podium/placements (REQ-018), group standings where applicable, and outstanding matches listed as pending. It never invents commentary, shot descriptions or rating values not yet projected. Staff edit the draft text, preview it as a plain-text post (for WhatsApp and social media) and a branded image card, and publish it to the tournament news feed (members or public according to the tournament's publication state), with optional notification (REQ-019) and copy/share actions. Publishing freezes the version; a later result correction marks the post outdated and offers an amended version that keeps the original visible.
 
+## Competition rules: version `ITTF-2026-ch3`
+
+Source: ITTF Statutes 2026, Chapter 3, Regulations for International Competitions ([ITTF statutes](https://www.ittf.com/statutes/)). Transcribed 2026-11-17 for TASK-019 from a copy of the 2026 chapter; the transcription and the fixtures in test.md still need the owner's review against the ITTF original before TASK-003 is closed. A draw stores the rules version it was made under (`services/api/competitions/rules.py`). The scoring, standings and incident clauses are added here by the tasks that implement them (TASK-020, TASK-023, TASK-083).
+
+| Clause | What it says | How mombasa-tt applies it |
+|---|---|---|
+| 3.6.1.1 | The first round proper of a knockout has a number of places that is a power of 2; with fewer entries than places, byes make up the number. | Bracket size is the smallest power of 2 that holds the accepted entries. Qualifying competitions (3.6.1.1.2) are not used: every accepted entry is in the first round. |
+| 3.6.1.2 | Byes are spread as evenly as possible through the first round, placed first against seeded places, in seeding order. | Bye 1 is opposite seed 1's place, bye 2 opposite seed 2's, and so on through the seeded places of 3.6.2.3 whether or not a seed sits there. A bye is shown as a bye, is never a match and is never rated. |
+| 3.6.2.1–3.6.2.2 | The highest ranked entries are seeded so that they cannot meet before the closing rounds; no more seeds than first-round entries. | At most one seed per first-round match (half the bracket) and at most 32. |
+| 3.6.2.3 | Seed 1 at the top of the first half, seed 2 at the bottom of the second half; 3–4 drawn between the bottom of the first half and the top of the second; 5–8 among the bottom places of the odd-numbered quarters and the top places of the even-numbered quarters; 9–16 likewise in eighths; 17–32 in sixteenths. | Implemented as written. Unseeded entries are drawn by lot into the remaining places. |
+| 3.6.2.5 | Seeding follows the latest ranking list. | Until ratings exist (TASK-030) the organizers give the seed order themselves, for events seeded by rating as well as by staff. An unseeded event takes no seeds. |
+| 3.7.5.1 | In a group, every member plays every other member. | Round robin by the circle method; with an odd number one member sits out each round. |
+| 3.7.5.5 | If 1 is to qualify, the final match in the group is between numbers 1 and 2; if 2 qualify, between 2 and 3; and so on. | That match is in the last round. Numbers in a group follow seed order, then the order drawn. |
+| 3.6.4, 3.6.5 | A completed draw is altered only to correct errors or for unavoidable deletions and additions. | A published draw is never edited. While the event has not started the organizers publish a new version, which supersedes the old one; the old one is kept. A draw whose entries or format have since changed is marked stale and can't be published. |
+
+House rules where the statutes leave the choice to the organizer:
+
+- Groups: seeds are spread in a snake (seed 1 to group A, 2 to B, …, then back), and the remaining entries are drawn into the same snake, so group sizes differ by one at most.
+- Groups to knockout: group winners take the seeded places of the knockout in group order (winner of A as seed 1, B as seed 2, …); byes go to the best qualifiers first; a lower qualifier is drawn into the half away from the winner of their own group when there is room, and never straight into a first-round match against their own group while another place is open.
+- The lot is drawn from a recorded seed number, so the same entries, seeds and number always give the same draw.
+
 ## Planned entity groups
 
 | Domain | Records and ownership |

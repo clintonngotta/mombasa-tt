@@ -2558,6 +2558,120 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/:
+    get:
+      operationId: tournaments_events_draw_retrieve
+      description: |-
+        The draw of one event (REQ-009). The published draw is open to every signed-in player; the
+        preview, and making and publishing draws, are for the host's competition staff.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDraw'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/preview/:
+    post:
+      operationId: tournaments_events_draw_preview_create
+      description: |-
+        Draw the accepted entries (again). Seeds are given best first; the rest is drawn by lot from
+        `rng_seed`, so the same request always gives the same draw. Replaces the last preview and
+        changes nothing anybody else can see.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrawRequestRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDraw'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/publish/:
+    post:
+      operationId: tournaments_events_draw_publish_create
+      description: |-
+        Publish the preview as the event's draw, superseding the one before. Refused when the
+        accepted entries have changed since it was drawn (`draw_stale`).
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDraw'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/:
     get:
       operationId: tournaments_events_entries_list
@@ -3267,6 +3381,135 @@ components:
       - display_name
       - id
       - nickname
+    Draw:
+      type: object
+      description: 'One version of an event''s draw: who sits where, and every match
+        with its sides.'
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        status:
+          $ref: '#/components/schemas/DrawStatusEnum'
+        rules_version:
+          type: string
+        rng_seed:
+          type: integer
+        stale:
+          type: boolean
+          description: The accepted entries or the event's format changed since this
+            draw was made.
+        created_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrawGroup'
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrawPlace'
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/Match'
+      required:
+      - created_at
+      - groups
+      - id
+      - matches
+      - places
+      - published_at
+      - rng_seed
+      - rules_version
+      - stale
+      - status
+      - version
+    DrawEntry:
+      type: object
+      description: 'An accepted entry as a draw shows it: its name and players.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntryPlayer'
+          readOnly: true
+      required:
+      - id
+      - players
+      - title
+    DrawGroup:
+      type: object
+      properties:
+        number:
+          type: integer
+        name:
+          type: string
+      required:
+      - name
+      - number
+    DrawPlace:
+      type: object
+      properties:
+        entry:
+          $ref: '#/components/schemas/DrawEntry'
+        seed:
+          type: integer
+          nullable: true
+        group:
+          type: integer
+          nullable: true
+        group_position:
+          type: integer
+          nullable: true
+        bracket_position:
+          type: integer
+          nullable: true
+      required:
+      - bracket_position
+      - entry
+      - group
+      - group_position
+      - seed
+    DrawRequestRequest:
+      type: object
+      description: Seeds in order, best first (accepted entries of the event). `rng_seed`
+        repeats an earlier draw.
+      properties:
+        seeded_entry_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 32
+        rng_seed:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+    DrawStatusEnum:
+      enum:
+      - preview
+      - published
+      - superseded
+      type: string
+      description: |-
+        * `preview` - Preview
+        * `published` - Published
+        * `superseded` - Superseded
     EmailOnlyRequest:
       type: object
       properties:
@@ -3541,6 +3784,22 @@ components:
       - seeding
       - started_at
       - status
+    EventDraw:
+      type: object
+      description: The event's published draw and, for competition staff only, the
+        preview being worked on.
+      properties:
+        published:
+          allOf:
+          - $ref: '#/components/schemas/Draw'
+          nullable: true
+        preview:
+          allOf:
+          - $ref: '#/components/schemas/Draw'
+          nullable: true
+      required:
+      - preview
+      - published
     EventFormatEnum:
       enum:
       - round_robin
@@ -3895,6 +4154,47 @@ components:
       required:
       - email
       - password
+    Match:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+        group:
+          type: integer
+          nullable: true
+        round:
+          type: integer
+        round_name:
+          type: string
+        position:
+          type: integer
+        a:
+          $ref: '#/components/schemas/MatchSide'
+        b:
+          allOf:
+          - $ref: '#/components/schemas/MatchSide'
+          nullable: true
+          description: 'Null is a bye: `a` goes through without playing.'
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        winner_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - a
+      - b
+      - group
+      - id
+      - position
+      - round
+      - round_name
+      - stage
+      - status
+      - winner_id
     MatchLabels:
       type: object
       properties:
@@ -3914,6 +4214,33 @@ components:
         * `win` - Win
         * `loss` - Loss
         * `draw` - Draw
+    MatchSide:
+      type: object
+      description: |-
+        An entry, or (while `entry` is null) `awaiting` says whose place it is, e.g. "Winner of
+        semi-final 1" or "Group A winner".
+      properties:
+        entry:
+          allOf:
+          - $ref: '#/components/schemas/DrawEntry'
+          nullable: true
+        seed:
+          type: integer
+          nullable: true
+        awaiting:
+          type: string
+      required:
+      - awaiting
+      - entry
+      - seed
+    MatchStageEnum:
+      enum:
+      - group
+      - knockout
+      type: string
+      description: |-
+        * `group` - Group
+        * `knockout` - Knockout
     MatchStats:
       type: object
       properties:
@@ -3951,6 +4278,16 @@ components:
       - recent_form
       - win_rate
       - won
+    MatchStatusEnum:
+      enum:
+      - scheduled
+      - bye
+      - completed
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `bye` - Bye
+        * `completed` - Completed
     Member:
       type: object
       description: 'Staff view of a member: display name and roles, never email or

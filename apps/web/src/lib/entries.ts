@@ -13,13 +13,15 @@ export const MAX_TEAM_ROSTER = 10
 
 export const entryKeys = {
   event: (eventId: string) => ["entries", "event", eventId] as const,
+  accepted: (eventId: string) => ["entries", "event", eventId, "accepted"] as const,
   mine: ["entries", "mine"] as const,
 }
 
 const base = (id: string, eventId: string) => `/tournaments/${id}/events/${eventId}/entries/`
 
 /** Accepted entries plus the caller's own; staff get every entry. Up to 100, the API's largest page. */
-export const listEntries = (id: string, eventId: string) => api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100`)
+export const listEntries = (id: string, eventId: string, status: EntryStatus | "" = "") =>
+  api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100${status ? `&status=${status}` : ""}`)
 export const createEntry = (id: string, eventId: string, body: EntryInput) => api<Entry>(base(id, eventId), { body })
 export const withdrawEntry = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/withdraw/`, { body: {} })
 export const changeEntry = (id: string, eventId: string, entryId: string, action: StaffEntryAction, reason?: string) =>

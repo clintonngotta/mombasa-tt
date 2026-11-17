@@ -9,7 +9,8 @@ from facilities.models import Venue
 from facilities.serializers import VenueSummarySerializer
 from organizations.models import Organization
 
-from .models import MAX_TEAM_ROSTER, Entry, EntryPlayer, Event, LifecycleEntry, Tournament
+from .draws import MAX_SEEDS
+from .models import MAX_TEAM_ROSTER, DrawVersion, Entry, EntryPlayer, Event, LifecycleEntry, Match, Tournament
 
 BEST_OF = (3, 5, 7)
 MAX_CAPACITY = 512
@@ -302,3 +303,87 @@ class EntryRequestSerializer(serializers.Serializer):
 
 class OptionalReasonSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=300, trim_whitespace=True, allow_blank=True, required=False)
+
+
+class DrawEntrySerializer(serializers.ModelSerializer):
+    """An accepted entry as a draw shows it: its name and players."""
+
+    title = serializers.SerializerMethodField()
+    players = EntryPlayerSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Entry
+        fields = ["id", "title", "players"]
+        read_only_fields = fields
+
+    def get_title(self, entry) -> str:
+        return entry.team_name or " / ".join(place.user.display_name for place in entry.players.all())
+
+
+class DrawPlaceSerializer(serializers.Serializer):
+    entry = DrawEntrySerializer()
+    seed = serializers.IntegerField(allow_null=True)
+    group = serializers.IntegerField(allow_null=True)
+    group_position = serializers.IntegerField(allow_null=True)
+    bracket_position = serializers.IntegerField(allow_null=True)
+
+
+class MatchSideSerializer(serializers.Serializer):
+    """An entry, or (while `entry` is null) `awaiting` says whose place it is, e.g. "Winner of
+    semi-final 1" or "Group A winner"."""
+
+    entry = DrawEntrySerializer(allow_null=True)
+    seed = serializers.IntegerField(allow_null=True)
+    awaiting = serializers.CharField(allow_blank=True)
+
+
+class MatchSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    stage = serializers.ChoiceField(choices=Match.Stage.choices)
+    group = serializers.IntegerField(allow_null=True)
+    round = serializers.IntegerField()
+    round_name = serializers.CharField()
+    position = serializers.IntegerField()
+    a = MatchSideSerializer()
+    b = MatchSideSerializer(allow_null=True, help_text="Null is a bye: `a` goes through without playing.")
+    status = serializers.ChoiceField(choices=Match.Status.choices)
+    winner_id = serializers.UUIDField(allow_null=True)
+
+
+class DrawGroupSerializer(serializers.Serializer):
+    number = serializers.IntegerField()
+    name = serializers.CharField()
+
+
+class DrawSerializer(serializers.Serializer):
+    """One version of an event's draw: who sits where, and every match with its sides."""
+
+    id = serializers.UUIDField()
+    version = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=DrawVersion.Status.choices)
+    rules_version = serializers.CharField()
+    rng_seed = serializers.IntegerField()
+    stale = serializers.BooleanField(
+        help_text="The accepted entries or the event's format changed since this draw was made."
+    )
+    created_at = serializers.DateTimeField()
+    published_at = serializers.DateTimeField(allow_null=True)
+    groups = DrawGroupSerializer(many=True)
+    places = DrawPlaceSerializer(many=True)
+    matches = MatchSerializer(many=True)
+
+
+class EventDrawSerializer(serializers.Serializer):
+    """The event's published draw and, for competition staff only, the preview being worked on."""
+
+    published = DrawSerializer(allow_null=True)
+    preview = DrawSerializer(allow_null=True)
+
+
+class DrawRequestSerializer(serializers.Serializer):
+    """Seeds in order, best first (accepted entries of the event). `rng_seed` repeats an earlier draw."""
+
+    seeded_entry_ids = serializers.ListField(
+        child=serializers.UUIDField(), max_length=MAX_SEEDS, required=False
+    )
+    rng_seed = serializers.IntegerField(min_value=0, max_value=2**31 - 1, required=False)
