@@ -1,0 +1,387 @@
+"""Public, tenant and private data boundaries (REQ-020, REQ-032; EVAL-020, EVAL-032; TASK-016).
+
+One named world, then every route of the API is exercised against it:
+
+- ACCESS says who each route and method is for. A route missing from it fails the first test, so a new
+  endpoint can't ship without a decision about who may call it.
+- Signed-out callers get nothing but the public routes.
+- Staff routes of Coast Spinners refuse its plain member, the admin of another club and an outsider.
+- Owner routes refuse everybody but the owner.
+- Private values are seeded as unique markers; each viewer then reads every GET route and no marker may
+  appear in anything served to a viewer who isn't allowed to see it.
+"""
+
+import importlib
+from io import BytesIO
+
+import pytest
+from django.apps import apps
+from django.urls import URLResolver, get_resolver, reverse
+from PIL import Image
+from rest_framework import serializers
+
+from attachments.models import Attachment
+from matchlog.models import PersonalMatch
+from organizations.models import Invitation, JoinRequest, Membership, Organization, Role, seed_roles
+from organizations.permissions import RoleKey
+from profiles.models import PlayerProfile
+
+from .conftest import BrowserClient
+from .helpers import logged_in, make_user
+
+pytestmark = pytest.mark.django_db
+
+PUBLIC = "public"  # no login needed
+SIGNED_IN = "signed-in"  # any logged-in player; serves only directory-level data
+OWNER = "owner"  # the caller's own data only
+STAFF = "staff"  # needs a permission in that organization
+
+ACCESS: dict[str, dict[str, str]] = {
+    "auth-csrf": {"get": PUBLIC},
+    "auth-signup": {"post": PUBLIC},
+    "auth-verification-resend": {"post": PUBLIC},
+    "auth-verification-confirm": {"post": PUBLIC},
+    "auth-login": {"post": PUBLIC},
+    "auth-logout": {"post": PUBLIC},
+    "auth-password-reset": {"post": PUBLIC},
+    "auth-password-reset-confirm": {"post": PUBLIC},
+    "schema": {"get": PUBLIC},
+    "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
+    "auth-me": {"get": OWNER},
+    "attachment-link": {"get": SIGNED_IN},  # per-attachment policy, see test_attachments.py
+    "personal-match-list": {"get": OWNER, "post": OWNER},
+    "personal-match-labels": {"get": OWNER},
+    "personal-match-stats": {"get": OWNER},
+    "personal-match-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
+    "me-profile": {"get": OWNER, "patch": OWNER},
+    "me-avatar": {"put": OWNER, "delete": OWNER},
+    "me-goals": {"put": OWNER},
+    "me-onboarding-complete": {"post": OWNER},
+    "me-join-requests": {"get": OWNER},
+    "me-invitation-list": {"get": OWNER},
+    "me-invitation-accept": {"post": OWNER},
+    "me-invitation-decline": {"post": OWNER},
+    "me-membership-list": {"get": OWNER},
+    "me-membership-leave": {"post": OWNER},
+    "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
+    "organization-detail": {"get": SIGNED_IN},
+    "organization-permissions": {"get": SIGNED_IN},
+    "organization-join-requests": {"get": STAFF, "post": SIGNED_IN},  # anyone may ask to join
+    "organization-join-request-approve": {"post": STAFF},
+    "organization-join-request-reject": {"post": STAFF},
+    "organization-invitations": {"get": STAFF, "post": STAFF},
+    "organization-invitation-revoke": {"post": STAFF},
+    "organization-roles": {"get": STAFF, "post": STAFF},
+    "organization-role": {"patch": STAFF, "delete": STAFF},
+    "organization-members": {"get": STAFF},
+    "organization-member-roles": {"put": STAFF},
+    "organization-member-remove": {"post": STAFF},
+    "player-directory": {"get": SIGNED_IN},
+    "player-detail": {"get": SIGNED_IN},
+}
+
+# Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
+BODIES = {
+    ("organization-invitations", "post"): {"email": "newcomer@example.com"},
+    ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
+    ("organization-role", "patch"): {"name": "Renamed"},
+    ("organization-member-roles", "put"): {"roles": []},
+    ("personal-match-detail", "patch"): {"label": "Changed"},
+}
+
+
+def api_routes():
+    """(route name, methods, url keyword names) for everything under /api/v1/."""
+
+    def walk(patterns, prefix=""):
+        for pattern in patterns:
+            if isinstance(pattern, URLResolver):
+                yield from walk(pattern.url_patterns, prefix + str(pattern.pattern))
+            elif prefix.startswith("api/v1/"):
+                yield pattern
+
+    for pattern in walk(get_resolver().url_patterns):
+        view = pattern.callback
+        actions = getattr(view, "actions", None)
+        if actions:
+            methods = set(actions)
+        else:
+            cls = view.view_class
+            methods = {m for m in cls.http_method_names if m != "options" and hasattr(cls, m)}
+        yield pattern.name, methods, set(pattern.pattern.regex.groupindex)
+
+
+ROUTES = list(api_routes())
+
+
+def avatar_bytes() -> BytesIO:
+    out = BytesIO()
+    Image.new("RGB", (64, 64), "teal").save(out, "PNG")
+    out.seek(0)
+    out.name = "me.png"
+    return out
+
+
+class World:
+    """Coast Spinners (Amina admin, Baraka and Faith members), Nyali Loop (Chiku admin), and Daudi, who
+    belongs to neither and has asked to join Coast Spinners."""
+
+    def __init__(self):
+        self.amina = make_user("amina.admin@coast.example", display_name="Amina Said")
+        self.baraka = make_user("baraka.member@coast.example", display_name="Baraka Otieno")
+        self.faith = make_user("faith.listed@coast.example", display_name="Faith Mwende")
+        self.chiku = make_user("chiku.admin@nyali.example", display_name="Chiku Nyali")
+        self.daudi = make_user("daudi.outsider@else.example", display_name="Daudi Kazi")
+
+        self.coast = Organization.objects.create(name="Coast Spinners", town="Mombasa")
+        self.nyali = Organization.objects.create(name="Nyali Loop", town="Nyali")
+        for org, admin in ((self.coast, self.amina), (self.nyali, self.chiku)):
+            roles = seed_roles(org)
+            Membership.objects.create(organization=org, user=admin).roles.add(roles[RoleKey.ADMIN])
+        self.baraka_membership = Membership.objects.create(organization=self.coast, user=self.baraka)
+        Membership.objects.create(organization=self.coast, user=self.faith)
+        self.custom_role = Role.objects.create(organization=self.coast, name="Tea committee")
+
+        # Baraka is not in the directory: nothing of his profile is for anyone else.
+        PlayerProfile.objects.create(
+            user=self.baraka,
+            nickname="MARK-BARAKA-NICK",
+            style="MARK-BARAKA-STYLE",
+            bio="MARK-BARAKA-BIO",
+            published_details=["style", "bio"],  # published, but only shown while listed
+        )
+        # Faith is listed and published her style only.
+        PlayerProfile.objects.create(
+            user=self.faith,
+            directory_opt_in=True,
+            style="MARK-FAITH-STYLE",
+            bio="MARK-FAITH-BIO",
+            published_details=["style"],
+        )
+        for user in (self.baraka, self.faith):
+            response = logged_in(user).put("/api/v1/me/avatar/", {"file": avatar_bytes()}, format="multipart")
+            assert response.status_code == 200, response.content
+        self.baraka_avatar = Attachment.objects.get(owner=self.baraka)
+        self.faith_avatar = Attachment.objects.get(owner=self.faith)
+
+        self.match = PersonalMatch.objects.create(
+            owner=self.baraka,
+            played_on="2026-11-01",
+            label="MARK-BARAKA-LABEL",
+            opponent_name="MARK-BARAKA-OPPONENT",
+            notes="MARK-BARAKA-NOTE",
+        )
+        self.invitation = Invitation.objects.create(
+            organization=self.coast, email="mark.invitee@else.example", invited_by=self.amina
+        )
+        self.join_request = JoinRequest.objects.create(organization=self.coast, user=self.daudi)
+
+        self.viewers = {
+            "amina": self.amina,
+            "baraka": self.baraka,
+            "faith": self.faith,
+            "chiku": self.chiku,
+            "daudi": self.daudi,
+        }
+
+    def kwargs(self, name: str, names: set[str]) -> dict:
+        """Real ids of Coast Spinners or Baraka for a route, so a refusal is never just 'no such id'."""
+        pk = {
+            "attachment-link": self.baraka_avatar.id,
+            "attachment-content": self.baraka_avatar.id,
+            "personal-match-detail": self.match.id,
+            "me-invitation-accept": self.invitation.id,
+            "me-invitation-decline": self.invitation.id,
+            "me-membership-leave": self.baraka_membership.id,
+            "organization-join-request-approve": self.join_request.id,
+            "organization-join-request-reject": self.join_request.id,
+            "organization-invitation-revoke": self.invitation.id,
+            "organization-role": self.custom_role.id,
+            "organization-member-roles": self.baraka_membership.id,
+            "organization-member-remove": self.baraka_membership.id,
+            "organization-detail": self.coast.id,
+            "player-detail": self.baraka.id,
+        }
+        found = {}
+        if "organization_pk" in names:
+            found["organization_pk"] = self.coast.id
+        if "pk" in names:
+            found["pk"] = pk[name]
+        return found
+
+    def url(self, name: str, names: set[str]) -> str:
+        return reverse(name, kwargs=self.kwargs(name, names))
+
+    def state(self) -> dict:
+        """Everything the refused requests could have changed."""
+        return {
+            "members": sorted(Membership.objects.values_list("user__email", "organization__name", "status")),
+            "member_roles": sorted(Membership.roles.through.objects.values_list("membership_id", "role_id")),
+            "roles": sorted(Role.objects.values_list("organization__name", "name", "permissions")),
+            "invitations": sorted(Invitation.objects.values_list("email", "status")),
+            "join_requests": sorted(JoinRequest.objects.values_list("user__email", "status")),
+            "matches": sorted(PersonalMatch.objects.values_list("id", "label", "notes")),
+            "avatars": sorted(PlayerProfile.objects.values_list("user__email", "avatar_id")),
+        }
+
+
+@pytest.fixture
+def world(db):
+    return World()
+
+
+def call(client, method: str, name: str, url: str):
+    return getattr(client, method)(url, BODIES.get((name, method), {}), format="json")
+
+
+def test_every_route_has_a_decision_about_who_may_call_it():
+    actual = {(name, method) for name, methods, _ in ROUTES for method in methods}
+    decided = {(name, method) for name, methods in ACCESS.items() for method in methods}
+    assert actual - decided == set(), "add these routes to ACCESS (and to the checks below)"
+    assert decided - actual == set(), "ACCESS lists routes that no longer exist"
+
+
+def test_signed_out_callers_reach_only_public_routes(world):
+    before = world.state()
+    anonymous = BrowserClient()
+    for name, methods, names in ROUTES:
+        for method in methods:
+            if ACCESS[name][method] == PUBLIC:
+                continue
+            response = call(anonymous, method, name, world.url(name, names))
+            assert response.status_code == 401, f"{method.upper()} {name}: {response.status_code}"
+    assert world.state() == before
+
+
+@pytest.mark.parametrize("who", ["baraka", "faith", "chiku", "daudi"])
+def test_staff_routes_refuse_members_other_clubs_and_outsiders(world, who):
+    before = world.state()
+    client = logged_in(world.viewers[who])
+    for name, methods, names in ROUTES:
+        for method in methods:
+            if ACCESS[name][method] != STAFF:
+                continue
+            response = call(client, method, name, world.url(name, names))
+            assert response.status_code in {403, 404}, f"{method.upper()} {name}: {response.status_code}"
+    assert world.state() == before
+
+
+def test_staff_routes_serve_the_clubs_own_admin(world):
+    """The refusals above are about who is asking, not about the ids used."""
+    client = logged_in(world.amina)
+    for name, _methods, names in ROUTES:
+        if ACCESS[name].get("get") == STAFF:
+            assert client.get(world.url(name, names)).status_code == 200, name
+
+
+@pytest.mark.parametrize("who", ["amina", "faith", "chiku", "daudi"])
+def test_owner_routes_refuse_everyone_else(world, who):
+    """Baraka's match, membership and the invitee's invitation, addressed by id by somebody else."""
+    before = world.state()
+    client = logged_in(world.viewers[who])
+    for name, methods, names in ROUTES:
+        for method in methods:
+            if ACCESS[name][method] != OWNER or "pk" not in names:
+                continue
+            response = call(client, method, name, world.url(name, names))
+            assert response.status_code in {403, 404}, f"{method.upper()} {name}: {response.status_code}"
+    assert world.state() == before
+
+
+def everything_served_to(world, user) -> str:
+    """The bodies of every GET route (with searches that would match the private markers)."""
+    client = logged_in(user)
+    urls = [world.url(name, names) for name, methods, names in ROUTES if "get" in methods]
+    urls += [
+        reverse("player-detail", kwargs={"pk": world.faith.id}),
+        reverse("attachment-link", kwargs={"pk": world.faith_avatar.id}),
+        reverse("organization-detail", kwargs={"pk": world.nyali.id}),
+    ]
+    for term in ("MARK", "baraka", "Baraka Otieno", "Faith", "coast.example", "example", "Coast", "o"):
+        urls += [f"/api/v1/players/?search={term}", f"/api/v1/organizations/?search={term}"]
+    urls += ["/api/v1/players/?page_size=100", "/api/v1/organizations/?page_size=100"]
+    served = []
+    for url in urls:
+        response = client.get(url)
+        if hasattr(response, "streaming_content"):
+            continue  # file bytes, covered in test_attachments.py
+        served.append(response.content.decode())
+    return "\n".join(served)
+
+
+def test_private_values_reach_only_the_people_they_are_for(world):
+    # marker -> the viewers allowed to receive it anywhere in the API
+    allowed = {
+        world.amina.email: {"amina"},
+        world.baraka.email: {"baraka"},
+        world.faith.email: {"faith"},
+        world.chiku.email: {"chiku"},
+        world.daudi.email: {"daudi"},
+        "mark.invitee@else.example": {"amina"},  # staff of the inviting club
+        "MARK-BARAKA-NICK": {"baraka"},
+        "MARK-BARAKA-STYLE": {"baraka"},
+        "MARK-BARAKA-BIO": {"baraka"},
+        "MARK-BARAKA-LABEL": {"baraka"},
+        "MARK-BARAKA-OPPONENT": {"baraka"},
+        "MARK-BARAKA-NOTE": {"baraka"},
+        str(world.baraka_avatar.id): {"baraka"},
+        str(world.match.id): {"baraka"},
+        "MARK-FAITH-BIO": {"faith"},  # unpublished
+        # Controls: a listed player's published detail and picture reach every signed-in viewer, which
+        # shows the crawl really reads the pages where a leak would appear.
+        "MARK-FAITH-STYLE": set(world.viewers),
+        str(world.faith_avatar.id): set(world.viewers),
+        "Tea committee": {"amina"},  # role names are for staff
+    }
+    for who, user in world.viewers.items():
+        served = everything_served_to(world, user)
+        for marker, viewers in allowed.items():
+            if who in viewers:
+                assert marker in served, f"{who} should be able to see {marker}"
+            else:
+                assert marker not in served, f"{marker} leaked to {who}"
+
+
+def test_views_of_other_people_carry_only_allowlisted_fields(world):
+    """Exact key sets: adding a field to one of these replies has to be a deliberate change here."""
+    viewer = logged_in(world.daudi)
+    card = viewer.get("/api/v1/players/?search=Faith").json()["results"][0]
+    assert set(card) == {"id", "display_name", "nickname", "avatar", "clubs"}
+    page = viewer.get(f"/api/v1/players/{world.faith.id}/").json()
+    assert set(page) == set(card) | {"hand", "grip", "style", "experience", "bio"}
+    assert set(viewer.get(f"/api/v1/organizations/{world.coast.id}/").json()) == {
+        "id",
+        "name",
+        "town",
+        "kind",
+    }
+
+    staff = logged_in(world.amina)
+    base = f"/api/v1/organizations/{world.coast.id}"
+    member = staff.get(f"{base}/members/").json()["results"][0]
+    assert set(member) == {"id", "user", "display_name", "roles", "joined_at"}
+    request = staff.get(f"{base}/join-requests/").json()["results"][0]
+    assert set(request) == {"id", "user", "display_name", "status", "created_at", "decided_at"}
+
+
+def test_model_serializers_name_every_field_they_expose():
+    """Public and tenant serializers are allowlists (REQ-020): no `__all__`, no `exclude`."""
+    for config in apps.get_app_configs():
+        try:
+            importlib.import_module(f"{config.name}.serializers")
+        except ModuleNotFoundError:
+            continue
+
+    def subclasses(cls):
+        for sub in cls.__subclasses__():
+            yield sub
+            yield from subclasses(sub)
+
+    ours = [
+        s for s in subclasses(serializers.ModelSerializer) if not s.__module__.startswith("rest_framework")
+    ]
+    assert len(ours) > 5
+    for serializer in ours:
+        meta = serializer.Meta
+        assert isinstance(meta.fields, list | tuple), f"{serializer.__name__} must list its fields"
+        assert not hasattr(meta, "exclude"), f"{serializer.__name__} must not use exclude"

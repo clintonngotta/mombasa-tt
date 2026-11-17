@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from attachments.serializers import AttachmentLinkSerializer
+
 from .models import PlayerProfile
 
 
@@ -11,11 +13,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         source="user.display_name", max_length=80, trim_whitespace=True, allow_blank=True
     )
     onboarding_completed = serializers.SerializerMethodField()
+    # Changed through /me/avatar/ (a file upload), not through this serializer.
+    avatar = AttachmentLinkSerializer(source="avatar_id", read_only=True, allow_null=True)
 
     class Meta:
         model = PlayerProfile
         fields = [
             "display_name",
+            "avatar",
             "nickname",
             "hand",
             "grip",
@@ -27,7 +32,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "goals",
             "onboarding_completed",
         ]
-        read_only_fields = ["goals", "onboarding_completed"]
+        read_only_fields = ["avatar", "goals", "onboarding_completed"]
 
     def get_onboarding_completed(self, obj) -> bool:
         return obj.onboarding_completed_at is not None
@@ -57,12 +62,18 @@ class GoalsSerializer(serializers.Serializer):
         return list(dict.fromkeys(value))  # drop duplicates, keep order
 
 
+class AvatarUploadSerializer(serializers.Serializer):
+    file = serializers.FileField(help_text="JPEG, PNG or WebP, up to 5 MB")
+
+
 class DirectoryPlayerSerializer(serializers.Serializer):
-    """Public directory card: name and organizations only. No email, bio, location or other details."""
+    """Directory card of a listed player: name, picture and organizations only. No email, bio, location
+    or other details."""
 
     id = serializers.UUIDField(source="user.id")
     display_name = serializers.CharField(source="user.display_name")
     nickname = serializers.CharField()
+    avatar = AttachmentLinkSerializer(source="avatar_id", read_only=True, allow_null=True)
     clubs = serializers.SerializerMethodField()
 
     def get_clubs(self, obj) -> list[str]:

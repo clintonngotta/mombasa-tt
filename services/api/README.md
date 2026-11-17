@@ -34,6 +34,14 @@ All three belong to "Mombasa Dev TT Club": admin as Admin, umpire as Assistant c
 Re-running the command resets their passwords and club roles. Override the password with `DEV_LOGIN_PASSWORD`. The
 command refuses to run when `DJANGO_DEBUG` is off.
 
+## Attachments
+
+Uploaded files (profile photos so far) are private. They are stored through `STORAGES["attachments"]` (a local
+folder, `ATTACHMENTS_ROOT`, default `var/attachments`) and are never served directly. A client gets a file only
+through a signed link: the API checks the viewer's access (`attachments/access.py`), then issues a link that works
+without a session for `ATTACHMENT_URL_TTL` seconds (default 300). `GET /api/v1/attachments/<id>/url/` issues a
+fresh link. Images are re-encoded on upload, which also removes location and camera metadata.
+
 ## Checks
 
 ```sh

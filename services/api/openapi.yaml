@@ -3,6 +3,73 @@ info:
   title: mombasa-tt API
   version: 1.0.0
 paths:
+  /api/v1/attachments/{id}/content/:
+    get:
+      operationId: attachments_content_retrieve
+      description: |-
+        The file itself. The signed token is the authorization (it was checked when the link was issued),
+        so no session is needed and an image tag can load it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: token
+        schema:
+          type: string
+        description: From a signed link
+        required: true
+      tags:
+      - attachments
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/attachments/{id}/url/:
+    get:
+      operationId: attachments_url_retrieve
+      description: |-
+        Issue a fresh signed link. An attachment the caller may not read answers 404, exactly like one
+        that doesn't exist.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - attachments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentLink'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/auth/csrf/:
     get:
       operationId: auth_csrf_retrieve
@@ -207,6 +274,51 @@ paths:
       - {}
       responses:
         '202':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/avatar/:
+    put:
+      operationId: me_avatar_update
+      description: The player's own picture (REQ-006). Stored privately; others get
+        it only through the directory.
+      tags:
+      - me
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AvatarUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_avatar_destroy
+      description: The player's own picture (REQ-006). Stored privately; others get
+        it only through the directory.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
           description: No response body
         4XX:
           description: Error envelope
@@ -1462,13 +1574,64 @@ paths:
                 $ref: '#/components/schemas/ApiError'
 components:
   schemas:
+    AttachmentLink:
+      type: object
+      description: |-
+        A short-lived link to an attachment's content. `url` is a path on the API origin.
+
+        Serializing one issues the link, so only use it where the viewer has already been allowed to read
+        the attachment. Give it the attachment id.
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - expires_at
+      - id
+      - url
+    AttachmentLinkRequest:
+      type: object
+      description: |-
+        A short-lived link to an attachment's content. `url` is a path on the API origin.
+
+        Serializing one issues the link, so only use it where the viewer has already been allowed to read
+        the attachment. Give it the attachment id.
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          minLength: 1
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - expires_at
+      - id
+      - url
+    AvatarUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: JPEG, PNG or WebP, up to 5 MB
+      required:
+      - file
     BlankEnum:
       enum:
       - ''
     DirectoryPlayer:
       type: object
-      description: 'Public directory card: name and organizations only. No email,
-        bio, location or other details.'
+      description: |-
+        Directory card of a listed player: name, picture and organizations only. No email, bio, location
+        or other details.
       properties:
         id:
           type: string
@@ -1477,12 +1640,18 @@ components:
           type: string
         nickname:
           type: string
+        avatar:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          readOnly: true
+          nullable: true
         clubs:
           type: array
           items:
             type: string
           readOnly: true
       required:
+      - avatar
       - clubs
       - display_name
       - id
@@ -2460,6 +2629,11 @@ components:
           type: string
         nickname:
           type: string
+        avatar:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          readOnly: true
+          nullable: true
         clubs:
           type: array
           items:
@@ -2492,6 +2666,7 @@ components:
           readOnly: true
           nullable: true
       required:
+      - avatar
       - bio
       - clubs
       - display_name
@@ -2509,6 +2684,11 @@ components:
         display_name:
           type: string
           maxLength: 80
+        avatar:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          readOnly: true
+          nullable: true
         nickname:
           type: string
           maxLength: 40
@@ -2545,6 +2725,7 @@ components:
           type: boolean
           readOnly: true
       required:
+      - avatar
       - bio
       - directory_opt_in
       - display_name

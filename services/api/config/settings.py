@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "core",
     "accounts",
+    "attachments",
     "matchlog",
     "profiles",
     "organizations",
@@ -119,6 +120,20 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Private attachments (REQ-020). Never served directly: content leaves only through signed links that
+# last ATTACHMENT_URL_TTL seconds. Swap the "attachments" backend for S3-compatible storage in
+# production (deployment.md); the API streams from whichever backend is configured.
+ATTACHMENTS_ROOT = Path(os.environ.get("ATTACHMENTS_ROOT", BASE_DIR / "var" / "attachments"))
+ATTACHMENT_URL_TTL = int(os.environ.get("ATTACHMENT_URL_TTL", "300"))
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "attachments": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": ATTACHMENTS_ROOT},
+    },
+}
+
 if os.environ.get("SMTP_HOST"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = os.environ["SMTP_HOST"]
@@ -144,6 +159,7 @@ REST_FRAMEWORK = {
         "auth_login": os.environ.get("THROTTLE_AUTH_LOGIN", "10/min"),
         "auth_email": os.environ.get("THROTTLE_AUTH_EMAIL", "5/min"),
         "invitations": os.environ.get("THROTTLE_INVITATIONS", "30/hour"),
+        "uploads": os.environ.get("THROTTLE_UPLOADS", "30/hour"),
     },
 }
 

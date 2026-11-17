@@ -1,18 +1,29 @@
+from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, status
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from attachments.images import OUTPUT_CONTENT_TYPE, normalize_image
+from attachments.models import Attachment
 from core.pagination import StandardPagination, search_term
 from organizations.models import Membership
 
 from .models import PlayerProfile, profile_for
-from .serializers import DirectoryPlayerSerializer, GoalsSerializer, PlayerSerializer, ProfileSerializer
+from .serializers import (
+    AvatarUploadSerializer,
+    DirectoryPlayerSerializer,
+    GoalsSerializer,
+    PlayerSerializer,
+    ProfileSerializer,
+)
 
 MIN_SEARCH_LENGTH = 2
+AVATAR_SIDE = 512
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
@@ -22,6 +33,41 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return profile_for(self.request.user)
+
+
+class AvatarView(APIView):
+    """The player's own picture (REQ-006). Stored privately; others get it only through the directory."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+    throttle_scope = "uploads"
+
+    def _replace(self, user, content: bytes | None) -> PlayerProfile:
+        profile = PlayerProfile.objects.select_for_update().get(pk=profile_for(user).pk)
+        old = profile.avatar
+        profile.avatar = content and Attachment.store(
+            owner=user, purpose=Attachment.Purpose.AVATAR, content=content, content_type=OUTPUT_CONTENT_TYPE
+        )
+        profile.save(update_fields=["avatar", "updated_at"])
+        if old:
+            old.delete()
+        return profile
+
+    @extend_schema(
+        request={"multipart/form-data": AvatarUploadSerializer}, responses={200: ProfileSerializer}
+    )
+    @transaction.atomic
+    def put(self, request):
+        serializer = AvatarUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        content = normalize_image(serializer.validated_data["file"], max_side=AVATAR_SIDE)
+        return Response(ProfileSerializer(self._replace(request.user, content)).data)
+
+    @extend_schema(request=None, responses={204: None})
+    @transaction.atomic
+    def delete(self, request):
+        self._replace(request.user, None)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GoalsView(APIView):

@@ -4,6 +4,46 @@
  */
 
 export interface paths {
+    "/api/v1/attachments/{id}/content/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The file itself. The signed token is the authorization (it was checked when the link was issued),
+         *     so no session is needed and an image tag can load it.
+         */
+        get: operations["attachments_content_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments/{id}/url/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Issue a fresh signed link. An attachment the caller may not read answers 404, exactly like one
+         *     that doesn't exist.
+         */
+        get: operations["attachments_url_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/csrf/": {
         parameters: {
             query?: never;
@@ -167,6 +207,24 @@ export interface paths {
          */
         post: operations["auth_verification_resend_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/avatar/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description The player's own picture (REQ-006). Stored privately; others get it only through the directory. */
+        put: operations["me_avatar_update"];
+        post?: never;
+        /** @description The player's own picture (REQ-006). Stored privately; others get it only through the directory. */
+        delete: operations["me_avatar_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -731,14 +789,51 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
+         *
+         *     Serializing one issues the link, so only use it where the viewer has already been allowed to read
+         *     the attachment. Give it the attachment id.
+         */
+        AttachmentLink: {
+            /** Format: uuid */
+            id: string;
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        /**
+         * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
+         *
+         *     Serializing one issues the link, so only use it where the viewer has already been allowed to read
+         *     the attachment. Give it the attachment id.
+         */
+        AttachmentLinkRequest: {
+            /** Format: uuid */
+            id: string;
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        AvatarUploadRequest: {
+            /**
+             * Format: binary
+             * @description JPEG, PNG or WebP, up to 5 MB
+             */
+            file: string;
+        };
         /** @enum {unknown} */
         BlankEnum: "";
-        /** @description Public directory card: name and organizations only. No email, bio, location or other details. */
+        /**
+         * @description Directory card of a listed player: name, picture and organizations only. No email, bio, location
+         *     or other details.
+         */
         DirectoryPlayer: {
             /** Format: uuid */
             id: string;
             display_name: string;
             nickname: string;
+            readonly avatar: components["schemas"]["AttachmentLink"] | null;
             readonly clubs: string[];
         };
         EmailOnlyRequest: {
@@ -1183,6 +1278,7 @@ export interface components {
             id: string;
             display_name: string;
             nickname: string;
+            readonly avatar: components["schemas"]["AttachmentLink"] | null;
             readonly clubs: string[];
             readonly hand: (components["schemas"]["HandEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly grip: (components["schemas"]["GripEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -1193,6 +1289,7 @@ export interface components {
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         Profile: {
             display_name: string;
+            readonly avatar: components["schemas"]["AttachmentLink"] | null;
             nickname: string;
             hand: components["schemas"]["HandEnum"] | components["schemas"]["BlankEnum"];
             grip: components["schemas"]["GripEnum"] | components["schemas"]["BlankEnum"];
@@ -1283,6 +1380,69 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    attachments_content_retrieve: {
+        parameters: {
+            query: {
+                /** @description From a signed link */
+                token: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/webp": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    attachments_url_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentLink"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     auth_csrf_retrieve: {
         parameters: {
             query?: never;
@@ -1537,6 +1697,65 @@ export interface operations {
         responses: {
             /** @description No response body */
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_avatar_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["AvatarUploadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_avatar_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

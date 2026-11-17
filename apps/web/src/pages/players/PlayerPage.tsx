@@ -1,8 +1,9 @@
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Building2, UserRound } from "lucide-react"
+import { Building2 } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
+import { Avatar } from "@/components/profile/Avatar"
 import { ApiError, errorMessage } from "@/lib/api"
 import { DETAIL_LABEL, PUBLISHED_DETAILS, detailText, getPlayer, playerKeys } from "@/lib/profile"
 
@@ -38,9 +39,7 @@ export function PlayerPage() {
     <div className="flex max-w-[640px] flex-col gap-6">
       <BackLink to="/players">Players</BackLink>
       <header className="flex items-center gap-4">
-        <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-surface-selected">
-          <UserRound aria-hidden className="size-8 text-brand-blue" />
-        </span>
+        <Avatar link={data.avatar} className="size-16" />
         <div className="flex min-w-0 flex-col">
           <h1 className="text-[28px] leading-8 font-bold">{data.display_name}</h1>
           {data.nickname && <p className="text-muted-foreground">“{data.nickname}”</p>}

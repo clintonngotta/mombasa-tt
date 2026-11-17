@@ -7,6 +7,7 @@ from profiles.views import PlayerDetailView, PlayerDirectoryView
 
 api_v1 = [
     path("auth/", include("accounts.urls")),
+    path("attachments/", include("attachments.urls")),
     path("me/", include("matchlog.urls")),
     path("me/", include("profiles.urls")),
     path("me/", include("organizations.me_urls")),

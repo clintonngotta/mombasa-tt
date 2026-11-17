@@ -81,6 +81,8 @@ Document a deployment-specific environment file outside source control and reada
 | `APP_DOMAIN`, `API_DOMAIN` | Reverse proxy hostnames |
 | `SMTP_HOST`, `SMTP_PORT`, SMTP credentials | Transactional account/recovery email; configure SPF/DKIM/DMARC |
 | Object storage endpoint/bucket/credentials | Private attachments, separate backup credentials/bucket |
+| `ATTACHMENTS_ROOT` | Private attachment folder while the `attachments` storage is the local filesystem; a persistent volume outside the web root, never served by the proxy. Replaced by the object storage settings above once TASK-058 switches the backend |
+| `ATTACHMENT_URL_TTL` | Seconds a signed attachment link stays valid (default 300). Keep it short: a link works without a session until it expires |
 | Push provider credentials | Server only; environment-specific |
 | `VITE_API_URL` | Public HTTPS API base only; never put server tokens here; Expo public URL added only with later native app |
 | `APP_IMAGE`, `WEB_IMAGE` | Immutable release tag/digest, including previous release in history |

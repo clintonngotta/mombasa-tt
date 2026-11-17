@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { Toggle } from "@/components/forms/Toggle"
+import { AvatarField } from "@/components/profile/AvatarField"
 import { BioField } from "@/components/profile/BioField"
 import { ApiError, errorMessage } from "@/lib/api"
 import { meQueryKey } from "@/lib/session"
@@ -38,6 +39,7 @@ export function ProfileEditPage() {
       </div>
       {profile.isPending && <p className="text-muted-foreground">Loading your profile…</p>}
       {profile.isError && <FormAlert>{errorMessage(profile.error, "We couldn't load your profile.")}</FormAlert>}
+      {profile.data && <AvatarField avatar={profile.data.avatar} />}
       {profile.data && <ProfileForm initial={profile.data} />}
     </div>
   )
@@ -51,8 +53,8 @@ function ProfileForm({ initial }: { initial: Profile }) {
 
   const save = useMutation({
     mutationFn: async (next: Profile) => {
-      // goals go through their own endpoint; onboarding_completed is read-only.
-      const { goals, onboarding_completed: _readOnly, ...fields } = next
+      // goals and the photo go through their own endpoints; onboarding_completed is read-only.
+      const { goals, onboarding_completed: _readOnly, avatar: _photo, ...fields } = next
       await updateProfile(fields)
       await saveGoals(goals)
     },

@@ -26,6 +26,8 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,api
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:${WEB_PORT:-8080},http://127.0.0.1:${WEB_PORT:-8080}
       FRONTEND_URL: http://localhost:${WEB_PORT:-8080}
+      # Uploaded files (profile photos) live in a volume, not in the bind-mounted checkout.
+      ATTACHMENTS_ROOT: /var/lib/mombasa-tt/attachments
       # The container runs as root over a bind mount; don't leave a root-owned .pytest_cache in the checkout.
       PYTEST_ADDOPTS: -p no:cacheprovider
       # Emails (verification, password reset) print to `docker compose logs -f api`.
@@ -34,6 +36,7 @@ services:
     volumes:
       # Live reload: runserver restarts when API code changes.
       - ./services/api:/app
+      - attachments-data:/var/lib/mombasa-tt/attachments
     depends_on:
       db:
         condition: service_healthy
@@ -66,3 +69,4 @@ services:
 
 volumes:
   db-data:
+  attachments-data:
