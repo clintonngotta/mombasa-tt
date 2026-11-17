@@ -196,7 +196,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
         value={fee}
         onChange={(e) => setFee(e.target.value)}
         error={errors.entry_fee}
-        hint="Shown to players as information. mombasa-tt doesn't collect payments."
+        hint="Shown to players as information. Coast TT doesn't collect payments."
       />
       <div className="grid gap-5 sm:grid-cols-2">
         <Field

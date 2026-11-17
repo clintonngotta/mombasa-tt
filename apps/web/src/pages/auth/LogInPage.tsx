@@ -50,7 +50,7 @@ export function LogInPage() {
       title="Log in"
       footer={
         <>
-          New to mombasa-tt?{" "}
+          New to Coast TT?{" "}
           <Link to="/signup" className="font-semibold text-brand-blue underline-offset-4 hover:underline">
             Create an account
           </Link>

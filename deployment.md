@@ -1,4 +1,4 @@
-# mombasa-tt — deployment and operating runbook
+# Coast TT — deployment and operating runbook
 
 Updated 2026-09-08. Requirements: [spec.md](spec.md#req-034). Tasks: [tasks.md](tasks.md). Acceptance: [EVAL-034](test.md#eval-034), [EVAL-035](test.md#eval-035).
 

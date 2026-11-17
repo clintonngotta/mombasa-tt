@@ -123,8 +123,8 @@ function MatchForm({ match }: { match?: PersonalMatch }) {
         <p className="flex gap-2 rounded-xl bg-surface-selected p-3 text-sm">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-brand-blue" />
           <span>
-            For matches you play elsewhere: friendlies, practice, or tournaments outside mombasa-tt. Official
-            mombasa-tt matches are already recorded; you'll add your private notes to those on the match itself.
+            For matches you play elsewhere: friendlies, practice, or tournaments outside Coast TT. Official
+            Coast TT matches are already recorded; you'll add your private notes to those on the match itself.
           </span>
         </p>
       )}

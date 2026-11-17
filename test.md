@@ -1,4 +1,4 @@
-# mombasa-tt — evaluations and release gates
+# Coast TT — evaluations and release gates
 
 Updated 2026-09-08. Source: [spec.md](spec.md). Work: [tasks.md](tasks.md).
 
@@ -149,7 +149,7 @@ Groups of four (A, B, C, D), best of five, worked out by hand from 3.7.5; implem
 
 ### EVAL-042
 
-**Events calendar and live links — integration/UI.** Setup: published mombasa-tt tournaments from our club and another club, one external event submitted by our club staff, one submitted with an http live link, and a cancelled event. Steps: view the listing as the public, a member of the submitting club and a curator; approve and reject submissions; move the clock into an event's live window; mark an external event live; report and remove a link. Pass: unreviewed external events are visible only to the submitting club's members with "awaiting review"; http links are rejected; live events show the badge and correct link (tournament page/broadcast for internal, stream URL for external); external events never gain draws, entries or ratings; filters and the "our club" view are correct; cancelled events show their status. Evidence: API tests and screenshots of list, calendar and live states.
+**Events calendar and live links — integration/UI.** Setup: published Coast TT tournaments from our club and another club, one external event submitted by our club staff, one submitted with an http live link, and a cancelled event. Steps: view the listing as the public, a member of the submitting club and a curator; approve and reject submissions; move the clock into an event's live window; mark an external event live; report and remove a link. Pass: unreviewed external events are visible only to the submitting club's members with "awaiting review"; http links are rejected; live events show the badge and correct link (tournament page/broadcast for internal, stream URL for external); external events never gain draws, entries or ratings; filters and the "our club" view are correct; cancelled events show their status. Evidence: API tests and screenshots of list, calendar and live states.
 
 ### EVAL-043
 

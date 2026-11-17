@@ -1,7 +1,7 @@
 [project]
 name = "mombasa-tt-api"
 version = "0.1.0"
-description = "mombasa-tt Django API"
+description = "Coast TT Django API"
 requires-python = ">=3.13"
 dependencies = [
     "dj-database-url>=3.1.2",

@@ -1,4 +1,4 @@
-# mombasa-tt — delivery checklist
+# Coast TT — delivery checklist
 
 Updated 2026-11-17. Requirements: [spec.md](spec.md). Acceptance: [test.md](test.md). Operations: [deployment.md](deployment.md).
 

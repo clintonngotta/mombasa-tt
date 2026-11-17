@@ -8,10 +8,10 @@ def send_invitation_email(invitation: Invitation) -> None:
     """Sent whether or not the address has an account, so inviting never reveals who is registered."""
     inviter = invitation.invited_by.display_name if invitation.invited_by else "A club admin"
     send_mail(
-        f"You're invited to join {invitation.organization.name} on mombasa-tt",
+        f"You're invited to join {invitation.organization.name} on Coast TT",
         f"{inviter} invited you to join {invitation.organization.name} ({invitation.organization.town}).\n\n"
         f"Log in with this email address to accept or decline: {settings.FRONTEND_URL}/club/invitations\n"
-        f"New to mombasa-tt? Sign up with this address first: {settings.FRONTEND_URL}/signup\n\n"
+        f"New to Coast TT? Sign up with this address first: {settings.FRONTEND_URL}/signup\n\n"
         f"The invitation expires on {invitation.expires_at:%d %b %Y}. "
         "If you don't want to join, ignore this email.",
         None,

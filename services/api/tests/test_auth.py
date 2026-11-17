@@ -27,7 +27,7 @@ def test_signup_with_existing_email_looks_identical_and_creates_nothing(client, 
     assert res.status_code == 201
     assert res.json() == signup(BrowserClient(), email="new@example.com").json()
     assert User.objects.filter(email="ama@example.com").count() == 1
-    assert "already have a mombasa-tt account" in mailoutbox[0].subject
+    assert "already have a Coast TT account" in mailoutbox[0].subject
 
 
 def test_signup_rejects_weak_password_with_field_error(client):
