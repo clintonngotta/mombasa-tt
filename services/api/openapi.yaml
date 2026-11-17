@@ -3076,6 +3076,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/:
+    get:
+      operationId: tournaments_events_standings_retrieve
+      description: |-
+        Standings of the published draw: each group ranked under ITTF 3.7.5 with the comparisons
+        that separated level members, and the knockout placements decided so far. Empty until a draw is
+        published.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Standings'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{id}/:
     patch:
       operationId: tournaments_events_partial_update
@@ -3966,6 +4003,28 @@ components:
         * `shakehand` - Shakehand
         * `penhold` - Penhold
         * `other` - Other
+    GroupStanding:
+      type: object
+      properties:
+        number:
+          type: integer
+        name:
+          type: string
+        complete:
+          type: boolean
+        qualifiers:
+          type: integer
+          description: How many go through; 0 for a round robin event.
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/StandingRow'
+      required:
+      - complete
+      - name
+      - number
+      - qualifiers
+      - rows
     HandEnum:
       enum:
       - right
@@ -4184,11 +4243,26 @@ components:
           type: string
           format: uuid
           nullable: true
+        outcome:
+          oneOf:
+          - $ref: '#/components/schemas/MatchOutcomeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+          description: Points of each game as [a, b], in playing order.
       required:
       - a
       - b
+      - games
       - group
       - id
+      - outcome
       - position
       - round
       - round_name
@@ -4204,6 +4278,16 @@ components:
             type: string
       required:
       - labels
+    MatchOutcomeEnum:
+      enum:
+      - played
+      - walkover
+      - retired
+      type: string
+      description: |-
+        * `played` - Played
+        * `walkover` - Walkover
+        * `retired` - Retired
     MatchResultEnum:
       enum:
       - win
@@ -4288,6 +4372,20 @@ components:
         * `scheduled` - Scheduled
         * `bye` - Bye
         * `completed` - Completed
+    MeasureEnum:
+      enum:
+      - match_points
+      - rubbers
+      - games
+      - points
+      - lot
+      type: string
+      description: |-
+        * `match_points` - match_points
+        * `rubbers` - rubbers
+        * `games` - games
+        * `points` - points
+        * `lot` - lot
     Member:
       type: object
       description: 'Staff view of a member: display name and roles, never email or
@@ -5417,6 +5515,18 @@ components:
       - games
       - label
       - played_on
+    Placement:
+      type: object
+      properties:
+        label:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrawEntry'
+      required:
+      - entries
+      - label
     Player:
       type: object
       description: |-
@@ -5667,6 +5777,74 @@ components:
       - display_name
       - email
       - password
+    StandingRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+        entry:
+          $ref: '#/components/schemas/DrawEntry'
+        played:
+          type: integer
+        won:
+          type: integer
+        lost:
+          type: integer
+        match_points:
+          type: integer
+        games_won:
+          type: integer
+        games_lost:
+          type: integer
+        points_won:
+          type: integer
+        points_lost:
+          type: integer
+        level:
+          type: boolean
+          description: Not yet separated from a neighbouring row; the group isn't
+            finished.
+        qualified:
+          type: boolean
+          nullable: true
+          description: Null until the group is finished.
+        tie_break:
+          type: array
+          items:
+            $ref: '#/components/schemas/TieBreakStep'
+      required:
+      - entry
+      - games_lost
+      - games_won
+      - level
+      - lost
+      - match_points
+      - played
+      - points_lost
+      - points_won
+      - qualified
+      - rank
+      - tie_break
+      - won
+    Standings:
+      type: object
+      description: Group tables with the reason for every separated tie, and what
+        the knockout has decided.
+      properties:
+        rules_version:
+          type: string
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupStanding'
+        placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Placement'
+      required:
+      - groups
+      - placements
+      - rules_version
     Table:
       type: object
       properties:
@@ -5698,6 +5876,25 @@ components:
           type: boolean
       required:
       - label
+    TieBreakStep:
+      type: object
+      description: |-
+        One comparison used to separate members who were level: the entries compared, what on
+        (`match_points`, `rubbers`, `games`, `points` won/lost between them, or `lot`) and this row's value.
+      properties:
+        among:
+          type: array
+          items:
+            type: string
+            format: uuid
+        measure:
+          $ref: '#/components/schemas/MeasureEnum'
+        value:
+          type: string
+      required:
+      - among
+      - measure
+      - value
     TokenRequest:
       type: object
       properties:

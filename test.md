@@ -35,6 +35,22 @@ Worked out by hand from the clauses transcribed in spec.md, not from the impleme
 | F-GK6 | 6 entries, 3 groups, 1 qualifies | 4 places, 1 bye for the winner of group A; the other first-round match is C winner v B winner. |
 | F-repeat | 13 entries, any format | The same entries (in any order), seeds and seed number give the same draw; a different number gives a different one. |
 
+### Standings fixtures (rules version `ITTF-2026-ch3`)
+
+Groups of four (A, B, C, D), best of five, worked out by hand from 3.7.5; implemented in `services/api/tests/test_standings.py`. Pending the owner's review under TASK-003. "X>Y 3-1" is a played match; w/o is a walkover.
+
+| Fixture | Results | Expected |
+|---|---|---|
+| F-ST1 normal | A beats B, C, D; B beats C, D; C beats D | A 6, B 5, C 4, D 3 match points; ranks A, B, C, D; no tie-break used. |
+| F-ST2 two-way | A>B, A>C, D>A, B>C, B>D, C>D | A 5, B 5, C 4, D 4. A above B (A beat B); C above D (C beat D). |
+| F-ST3 three-way, games | A>B 3-0, B>C 3-1, C>A 3-2; all beat D | A, B, C on 5. Between them match points 3 each; games A 5/3, C 4/5, B 3/4. Ranks A, C, B, D. |
+| F-ST4 three-way, points | A>B 11-5 11-7 9-11 11-8; B>C 11-9 11-9 8-11 11-9; C>A 11-6 12-10 5-11 11-9; all beat D | Between them match points 3 each, games 4/4 each; points A 78/70, C 77/77, B 72/80. Ranks A, C, B, D. |
+| F-ST5 unplayed, restart | A>B, A>D, C>A w/o, B>C, D>B, D>C | D 5; A, B, C on 4 (A scores 0 for the walkover). Between A, B, C: A 2, B 3, C 3, so A is last of the three; B and C start again on their own match, which B won. Ranks D, B, C, A. C is credited 3-0, 33-0 for the walkover. |
+| F-ST6 ultimate tie | A>B, B>C, C>A, all 3-0 at 11-5; all beat D | A, B, C level on match points (3), games (3/3) and points (48/48) between them: decided by lot, the same lot every time. With only those three matches played and the group unfinished, the three are shown level and nothing is drawn. |
+| F-ST7 forfeit | F-ST2 results, D forfeits afterwards | D loses all three unplayed: A 6, B 5, C 4, D 0. |
+| F-ST8 completion | X beats Y, who retires at 11-9, 5-11, 4-2 | Counted 11-9, 5-11, 11-2, 11-0: games 3-1, points 38-22; Y scores 0 match points. A best-of-seven walkover counts 4-0. |
+| F-ST-exact | Ratios 10/9 and 11/10 | 10/9 ranks higher although both round to 1.1; ratios of exactly 1 (109/109, 20/20, 110/110) are equal and go to the lot. |
+
 ## Foundation and Phase 1 evaluations
 
 ### EVAL-001

@@ -129,6 +129,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-entries": {"get": OWNER},
     # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
     "tournament-event-draw": {"get": SIGNED_IN},
+    "tournament-event-standings": {"get": SIGNED_IN},
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},

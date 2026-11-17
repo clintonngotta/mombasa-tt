@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from core.exceptions import ApiException
 
-from . import draws
+from . import draws, standings
 from .models import DrawPlace, DrawVersion, Entry, Event, Match, Tournament
 from .rules import RULES_VERSION
 
@@ -135,9 +135,10 @@ def publish(event: Event, actor) -> DrawVersion:
     return preview
 
 
-def record_winner(match: Match, winner: Entry) -> None:
-    """The match is decided: the winner moves into the match it feeds. Results themselves (scores,
-    walkovers, corrections) arrive with official results; this is only the progression."""
+def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.PLAYED, games=()) -> None:
+    """The match is decided: the winner moves into the match it feeds, and a finished group sends its
+    qualifiers into the knockout. `games` are [a, b] points in playing order. Who may decide a match,
+    score validation and corrections arrive with official results; this is the progression."""
     if match.draw.status != D.PUBLISHED:
         raise _conflict("draw_not_published", "Only matches of the published draw are played.")
     if match.status != Match.Status.SCHEDULED:
@@ -148,9 +149,84 @@ def record_winner(match: Match, winner: Entry) -> None:
         raise _conflict("not_in_match", "The winner is one of the two sides of the match.")
     match.winner = winner
     match.status = Match.Status.COMPLETED
-    match.save(update_fields=["winner", "status"])
-    Match.objects.filter(feeder_a=match).update(entry_a=winner)
-    Match.objects.filter(feeder_b=match).update(entry_b=winner)
+    match.outcome = outcome
+    match.games = [list(game) for game in games]
+    match.save(update_fields=["winner", "status", "outcome", "games"])
+    _send_on(match)
+    if match.stage == Match.Stage.GROUP:
+        place_qualifiers(match.draw, match.group)
+
+
+def _send_on(match: Match) -> None:
+    Match.objects.filter(feeder_a=match).update(entry_a=match.winner_id)
+    Match.objects.filter(feeder_b=match).update(entry_b=match.winner_id)
+
+
+def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], bool]:
+    """The group in ranking order (3.7.5) and whether every match in it is decided. Until then members
+    nobody can separate stay level; afterwards what is left is drawn by lot from the draw's own number,
+    so the lot is the same every time it is looked at."""
+    members = [
+        str(pk)
+        for pk in draw.places.filter(group=group)
+        .order_by("group_position")
+        .values_list("entry_id", flat=True)
+    ]
+    matches = list(draw.matches.filter(stage=Match.Stage.GROUP, group=group))
+    results = []
+    for match in matches:
+        if match.status != Match.Status.COMPLETED:
+            continue
+        a_won = match.winner_id == match.entry_a_id
+        loser = match.entry_b_id if a_won else match.entry_a_id
+        games = tuple((a, b) if a_won else (b, a) for a, b in match.games)
+        results.append(
+            standings.Result(
+                str(match.winner_id), str(loser), match.outcome, games, best_of=draw.event.best_of
+            )
+        )
+    complete = len(results) == len(matches)
+    rows = standings.rank(members, results, final=complete, lot_seed=draw.rng_seed + group)
+    return rows, complete
+
+
+def place_qualifiers(draw: DrawVersion, group: int) -> None:
+    """Once a group is finished, write its qualifiers into the knockout places that wait for them."""
+    rows, complete = group_table(draw, group)
+    if not complete:
+        return
+    knockout = draw.matches.filter(stage=Match.Stage.KNOCKOUT)
+    for row in rows:
+        knockout.filter(a_from_group=group, a_from_rank=row.rank).update(entry_a=row.member)
+        knockout.filter(b_from_group=group, b_from_rank=row.rank).update(entry_b=row.member)
+    # A qualifier whose first knockout match is a bye is through it now that we know who it is.
+    for bye in knockout.filter(status=Match.Status.BYE, winner__isnull=True, entry_a__isnull=False):
+        bye.winner_id = bye.entry_a_id
+        bye.save(update_fields=["winner"])
+        _send_on(bye)
+
+
+def placements(draw: DrawVersion) -> list[dict]:
+    """What the knockout has decided so far: the winner and runner-up once the final is played, and who
+    went out in each round that is finished. Nothing is ranked that hasn't been decided."""
+    by_round: dict[int, list[Match]] = {}
+    for match in draw.matches.filter(stage=Match.Stage.KNOCKOUT):
+        by_round.setdefault(match.round, []).append(match)
+    found = []
+    for number in sorted(by_round, reverse=True):
+        played = [match for match in by_round[number] if match.status != Match.Status.BYE]
+        if not played or any(match.status != Match.Status.COMPLETED for match in played):
+            continue
+        losers = [m.entry_b_id if m.winner_id == m.entry_a_id else m.entry_a_id for m in played]
+        name = round_name(number, len(by_round))
+        if name == "Final":
+            found.append({"label": "Winner", "entry_ids": [played[0].winner_id]})
+            found.append({"label": "Runner-up", "entry_ids": losers})
+        else:
+            found.append(
+                {"label": f"Lost in the {name.lower()}{'s' if len(played) > 1 else ''}", "entry_ids": losers}
+            )
+    return found
 
 
 def group_name(number: int) -> str:
@@ -203,6 +279,8 @@ def describe(draw: DrawVersion) -> dict:
             else side(match.entry_b_id, match.feeder_b_id, match.b_from_group, match.b_from_rank),
             "status": match.status,
             "winner_id": match.winner_id,
+            "outcome": match.outcome,
+            "games": match.games,
         }
 
     numbers = sorted({place.group for place in places if place.group})
@@ -219,3 +297,56 @@ def describe(draw: DrawVersion) -> dict:
         "places": places,
         "matches": [shown(match) for match in matches],
     }
+
+
+def standings_of(draw: DrawVersion) -> dict:
+    """The published draw's standings as StandingsSerializer shows them."""
+    places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
+    entries = {str(place.entry_id): place.entry for place in places}
+    knockout_follows = draw.format == Event.Format.GROUPS_KNOCKOUT
+    qualifiers = draw.qualifiers_per_group if knockout_follows else 0
+    groups = []
+    for number in sorted({place.group for place in places if place.group}):
+        rows, complete = group_table(draw, number)
+        groups.append(
+            {
+                "number": number,
+                "name": group_name(number),
+                "complete": complete,
+                "qualifiers": qualifiers,
+                "rows": [
+                    {
+                        **{name: getattr(row, name) for name in STANDING_FIELDS},
+                        "entry": entries[row.member],
+                        "qualified": (row.rank <= qualifiers) if complete and knockout_follows else None,
+                        "tie_break": [
+                            {"among": step.among, "measure": step.measure, "value": step.value}
+                            for step in row.steps
+                        ],
+                    }
+                    for row in rows
+                ],
+            }
+        )
+    return {
+        "rules_version": draw.rules_version,
+        "groups": groups,
+        "placements": [
+            {"label": found["label"], "entries": [entries[str(pk)] for pk in found["entry_ids"]]}
+            for found in placements(draw)
+        ],
+    }
+
+
+STANDING_FIELDS = (
+    "rank",
+    "played",
+    "won",
+    "lost",
+    "match_points",
+    "games_won",
+    "games_lost",
+    "points_won",
+    "points_lost",
+    "level",
+)

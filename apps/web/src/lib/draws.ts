@@ -8,12 +8,15 @@ export type EventDraw = Schemas["EventDraw"]
 
 export const drawKeys = {
   event: (eventId: string) => ["draws", "event", eventId] as const,
+  standings: (eventId: string) => ["draws", "standings", eventId] as const,
 }
 
 const base = (id: string, eventId: string) => `/tournaments/${id}/events/${eventId}/draw/`
 
 /** The published draw and, for competition staff, the preview. */
 export const getDraw = (id: string, eventId: string) => api<EventDraw>(base(id, eventId))
+/** Group tables and knockout placements of the published draw; empty until there is one. */
+export const getStandings = (id: string, eventId: string) => api<Schemas["Standings"]>(`/tournaments/${id}/events/${eventId}/standings/`)
 /** Draw the accepted entries (again); seeds are entry ids, best first. */
 export const previewDraw = (id: string, eventId: string, seeds: string[]) => api<EventDraw>(`${base(id, eventId)}preview/`, { body: { seeded_entry_ids: seeds } })
 export const publishDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}publish/`, { body: {} })

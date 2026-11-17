@@ -232,7 +232,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 ## Competition rules: version `ITTF-2026-ch3`
 
-Source: ITTF Statutes 2026, Chapter 3, Regulations for International Competitions ([ITTF statutes](https://www.ittf.com/statutes/)). Transcribed 2026-11-17 for TASK-019 from a copy of the 2026 chapter; the transcription and the fixtures in test.md still need the owner's review against the ITTF original before TASK-003 is closed. A draw stores the rules version it was made under (`services/api/competitions/rules.py`). The scoring, standings and incident clauses are added here by the tasks that implement them (TASK-020, TASK-023, TASK-083).
+Source: ITTF Statutes 2026, Chapter 3, Regulations for International Competitions ([ITTF statutes](https://www.ittf.com/statutes/)). Transcribed 2026-11-17 for TASK-019 from a copy of the 2026 chapter; the transcription and the fixtures in test.md still need the owner's review against the ITTF original before TASK-003 is closed. A draw stores the rules version it was made under (`services/api/competitions/rules.py`). The scoring and incident clauses are added here by the tasks that implement them (TASK-023, TASK-083).
 
 | Clause | What it says | How mombasa-tt applies it |
 |---|---|---|
@@ -243,12 +243,19 @@ Source: ITTF Statutes 2026, Chapter 3, Regulations for International Competition
 | 3.6.2.5 | Seeding follows the latest ranking list. | Until ratings exist (TASK-030) the organizers give the seed order themselves, for events seeded by rating as well as by staff. An unseeded event takes no seeds. |
 | 3.7.5.1 | In a group, every member plays every other member. | Round robin by the circle method; with an odd number one member sits out each round. |
 | 3.7.5.5 | If 1 is to qualify, the final match in the group is between numbers 1 and 2; if 2 qualify, between 2 and 3; and so on. | That match is in the last round. Numbers in a group follow seed order, then the order drawn. |
+| 3.7.5.1 | 2 match points for a win, 1 for a loss in a played match, 0 for a loss in an unplayed or unfinished match; ranking is first by match points. A member defaulted after a match is deemed to have lost it unplayed. | Implemented as written. A member who forfeits (withdrawn or disqualified from the group) loses every match unplayed, whatever happened at the table; opponents are credited with wins. |
+| 3.7.5.2 | Members level on match points are separated only by the matches between them, taking in turn match points, the ratio of wins to losses in individual matches (team events), in games and in points, as far as needed. | Implemented as written. Ratios are compared as exact fractions, never rounded; a ratio with nothing lost ranks above any other. |
+| 3.7.5.3 | When a step settles some members while others stay level, the matches of the settled members are left out of what follows. | Members still level start again from match points on the matches among themselves alone. |
+| 3.7.5.4 | What the procedure can't separate is decided by lot. | The lot is drawn from the draw's recorded number, so it is the same whenever the table is looked at, and the table says "by lot". Nothing is drawn while the group still has matches to play: such members are shown level. |
 | 3.6.4, 3.6.5 | A completed draw is altered only to correct errors or for unavoidable deletions and additions. | A published draw is never edited. While the event has not started the organizers publish a new version, which supersedes the old one; the old one is kept. A draw whose entries or format have since changed is marked stale and can't be published. |
 
 House rules where the statutes leave the choice to the organizer:
 
 - Groups: seeds are spread in a snake (seed 1 to group A, 2 to B, …, then back), and the remaining entries are drawn into the same snake, so group sizes differ by one at most.
 - Groups to knockout: group winners take the seeded places of the knockout in group order (winner of A as seed 1, B as seed 2, …); byes go to the best qualifiers first; a lower qualifier is drawn into the half away from the winner of their own group when there is room, and never straight into a first-round match against their own group while another place is open.
+- Unplayed and unfinished matches in the game and point ratios (the statutes give the match points only): the match is completed in the winner's favour. A walkover counts as the games needed at 11–0; in a retirement the games played stand, the game in progress goes to the winner at 11 (or two clear) and the games still needed at 11–0. **Owner to confirm** against the ITTF Handbook for Tournament Referees.
+- Standings rank groups only. A knockout shows the winner, the runner-up and who went out in each finished round; nothing else is ranked.
+- A finished group writes its qualifiers into the knockout places waiting for them; a qualifier with a bye goes straight to the next round.
 - The lot is drawn from a recorded seed number, so the same entries, seeds and number always give the same draw.
 
 ## Planned entity groups

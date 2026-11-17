@@ -400,20 +400,20 @@ def test_winners_move_on_and_a_bye_is_never_a_played_match(staff, cup):
     assert (bye.status, bye.entry_a, bye.entry_b, bye.winner) == ("bye", seed, None, seed)
     assert final.entry_a == seed and final.entry_b is None and final.feeder_b == semi
     with pytest.raises(Exception, match="already decided"):
-        drawing.record_winner(bye, seed)
+        drawing.record_result(bye, seed)
     with pytest.raises(Exception, match="aren't known yet"):
-        drawing.record_winner(final, seed)
+        drawing.record_result(final, seed)
     with pytest.raises(Exception, match="one of the two sides"):
-        drawing.record_winner(semi, seed)
+        drawing.record_result(semi, seed)
 
-    drawing.record_winner(semi, semi.entry_b)
+    drawing.record_result(semi, semi.entry_b)
     final.refresh_from_db()
     assert final.entry_b == semi.entry_b and final.status == "scheduled"
-    drawing.record_winner(final, seed)
+    drawing.record_result(final, seed)
     final.refresh_from_db()
     assert final.winner == seed and final.status == "completed"
     with pytest.raises(Exception, match="already decided"):
-        drawing.record_winner(final, seed)
+        drawing.record_result(final, seed)
 
 
 def test_draws_are_for_staff_before_the_event_starts(staff, club, cup):

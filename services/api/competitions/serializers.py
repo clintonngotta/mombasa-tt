@@ -348,6 +348,11 @@ class MatchSerializer(serializers.Serializer):
     b = MatchSideSerializer(allow_null=True, help_text="Null is a bye: `a` goes through without playing.")
     status = serializers.ChoiceField(choices=Match.Status.choices)
     winner_id = serializers.UUIDField(allow_null=True)
+    outcome = serializers.ChoiceField(choices=Match.Outcome.choices, allow_blank=True)
+    games = serializers.ListField(
+        child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2),
+        help_text="Points of each game as [a, b], in playing order.",
+    )
 
 
 class DrawGroupSerializer(serializers.Serializer):
@@ -387,3 +392,51 @@ class DrawRequestSerializer(serializers.Serializer):
         child=serializers.UUIDField(), max_length=MAX_SEEDS, required=False
     )
     rng_seed = serializers.IntegerField(min_value=0, max_value=2**31 - 1, required=False)
+
+
+class TieBreakStepSerializer(serializers.Serializer):
+    """One comparison used to separate members who were level: the entries compared, what on
+    (`match_points`, `rubbers`, `games`, `points` won/lost between them, or `lot`) and this row's value."""
+
+    among = serializers.ListField(child=serializers.UUIDField())
+    measure = serializers.ChoiceField(choices=["match_points", "rubbers", "games", "points", "lot"])
+    value = serializers.CharField(allow_blank=True)
+
+
+class StandingRowSerializer(serializers.Serializer):
+    rank = serializers.IntegerField()
+    entry = DrawEntrySerializer()
+    played = serializers.IntegerField()
+    won = serializers.IntegerField()
+    lost = serializers.IntegerField()
+    match_points = serializers.IntegerField()
+    games_won = serializers.IntegerField()
+    games_lost = serializers.IntegerField()
+    points_won = serializers.IntegerField()
+    points_lost = serializers.IntegerField()
+    level = serializers.BooleanField(
+        help_text="Not yet separated from a neighbouring row; the group isn't finished."
+    )
+    qualified = serializers.BooleanField(allow_null=True, help_text="Null until the group is finished.")
+    tie_break = TieBreakStepSerializer(many=True)
+
+
+class GroupStandingSerializer(serializers.Serializer):
+    number = serializers.IntegerField()
+    name = serializers.CharField()
+    complete = serializers.BooleanField()
+    qualifiers = serializers.IntegerField(help_text="How many go through; 0 for a round robin event.")
+    rows = StandingRowSerializer(many=True)
+
+
+class PlacementSerializer(serializers.Serializer):
+    label = serializers.CharField()
+    entries = DrawEntrySerializer(many=True)
+
+
+class StandingsSerializer(serializers.Serializer):
+    """Group tables with the reason for every separated tie, and what the knockout has decided."""
+
+    rules_version = serializers.CharField(allow_blank=True)
+    groups = GroupStandingSerializer(many=True)
+    placements = PlacementSerializer(many=True)
