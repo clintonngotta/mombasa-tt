@@ -101,7 +101,7 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
         </div>
       </header>
 
-      {m.scoring && (
+      {m.scoring && (m.scoring.status !== "unassigned" || !decided) && (
         <section aria-labelledby="scoring-heading" className="flex flex-col gap-2 rounded-xl border bg-card p-4">
           <h2 id="scoring-heading" className="text-xl font-bold">
             Scoring

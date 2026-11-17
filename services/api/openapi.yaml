@@ -2320,7 +2320,9 @@ paths:
     post:
       operationId: scorecards_events_create
       description: |-
-        Send score events in order. Each is replayed through the server's own scoring rules. A retry
+        Send score events in order. Each is replayed through the server's own scoring rules. Only the
+        sheet is locked, not the tournament: points arrive from every table at once and change nothing
+        outside their own sheet until it is confirmed. A retry
         of an accepted event is skipped; the first event out of sequence or against the rules stops the
         batch and is reported in `refused`, with everything before it kept.
       parameters:
@@ -3788,13 +3790,18 @@ components:
       - ''
     ConfirmRequest:
       type: object
-      description: The revision the deck shows, so a result is never confirmed over
-        points still on their way.
+      description: |-
+        The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
+        revision it shows (a result is never confirmed over points still on their way).
       properties:
+        assignment_id:
+          type: string
+          format: uuid
         revision:
           type: integer
           minimum: 0
       required:
+      - assignment_id
       - revision
     DeckPlayer:
       type: object

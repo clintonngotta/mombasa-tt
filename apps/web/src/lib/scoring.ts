@@ -21,7 +21,11 @@ export const scoringKeys = {
 export const listMyScorecards = () => api<Schemas["PaginatedMyScorecardList"]>("/me/scorecards/")
 export const getScorecard = (id: string) => api<Scorecard>(`/scorecards/${id}/`)
 export const sendEvents = (id: string, assignmentId: string, events: Envelope[]) => api<SubmitResult>(`/scorecards/${id}/events/`, { body: { assignment_id: assignmentId, events } })
-export const confirmScorecard = (id: string, revision: number) => api<Scorecard>(`/scorecards/${id}/confirm/`, { body: { revision } })
+export const confirmScorecard = (card: Pick<Scorecard, "id" | "assignment_id" | "revision">) =>
+  api<Scorecard>(`/scorecards/${card.id}/confirm/`, { body: { assignment_id: card.assignment_id, revision: card.revision } })
+
+/** The most events the server takes in one request. */
+export const MAX_BATCH = 200
 
 /** The host's members who can be given a match to score; competition staff only. */
 export const listUmpires = (tournamentId: string, eventId: string) => api<Umpire[]>(`/tournaments/${tournamentId}/events/${eventId}/umpires/`)

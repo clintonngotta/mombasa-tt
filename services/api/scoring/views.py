@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
@@ -9,7 +10,7 @@ from rest_framework.response import Response
 from accounts.models import User
 from competitions.models import DrawVersion, Event, Match, Rubber, Tournament
 from competitions.serializers import MatchDetailSerializer
-from competitions.views import match_reply, staff_tournament
+from competitions.views import match_reply, require_staff, staff_tournament
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
 from organizations.access import membership_permissions
@@ -51,8 +52,8 @@ class UmpireViewSet(viewsets.GenericViewSet):
     def list(self, request, tournament_pk, event_pk):
         """The host's members who can be given a match to score: those whose role lets them score, and
         those who run competitions or results."""
-        with transaction.atomic():
-            tournament = staff_tournament(request.user, tournament_pk)
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        require_staff(request.user, tournament)
         get_object_or_404(Event, pk=event_pk, tournament=tournament)
         members = (
             Membership.objects.active()
@@ -108,15 +109,20 @@ class ScorecardViewSet(viewsets.GenericViewSet):
             scorecards()
             .filter(umpire=request.user, confirmed_at__isnull=True)
             .filter(
-                Q(match__draw__event__tournament__status__in=running, match__status=Match.Status.SCHEDULED)
+                Q(
+                    match__draw__event__tournament__status__in=running,
+                    match__draw__status=DrawVersion.Status.PUBLISHED,
+                    match__status=Match.Status.SCHEDULED,
+                )
                 | Q(
                     rubber__match__draw__event__tournament__status__in=running,
+                    rubber__match__draw__status=DrawVersion.Status.PUBLISHED,
                     rubber__status=Rubber.Status.SCHEDULED,
                 )
             )
             .order_by("assigned_at", "id")
         )
-        page = self.paginate_queryset(mine)
+        page = [card for card in self.paginate_queryset(mine) if service.is_umpire_of(card, request.user)]
         return self.get_paginated_response(MyScorecardSerializer(page, many=True).data)
 
     def _reply(self, scorecard: Scorecard) -> Response:
@@ -124,12 +130,19 @@ class ScorecardViewSet(viewsets.GenericViewSet):
         return Response(ScorecardSerializer(fresh).data)
 
     def retrieve(self, request, pk):
-        scorecard = get_object_or_404(scorecards().prefetch_related("events"), pk=pk, umpire=request.user)
-        return Response(ScorecardSerializer(scorecard).data)
+        return Response(ScorecardSerializer(self._mine(scorecards().prefetch_related("events"), pk)).data)
+
+    def _mine(self, found, pk) -> Scorecard:
+        scorecard = get_object_or_404(found, pk=pk, umpire=self.request.user)
+        if not service.is_umpire_of(scorecard, self.request.user):
+            raise Http404
+        return scorecard
 
     @extend_schema(request=SubmitEventsSerializer, responses={200: SubmitResultSerializer})
     def events(self, request, pk):
-        """Send score events in order. Each is replayed through the server's own scoring rules. A retry
+        """Send score events in order. Each is replayed through the server's own scoring rules. Only the
+        sheet is locked, not the tournament: points arrive from every table at once and change nothing
+        outside their own sheet until it is confirmed. A retry
         of an accepted event is skipped; the first event out of sequence or against the rules stops the
         batch and is reported in `refused`, with everything before it kept."""
         serializer = SubmitEventsSerializer(data=request.data)
@@ -156,9 +169,10 @@ class ScorecardViewSet(viewsets.GenericViewSet):
         serializer = ConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
-            found = get_object_or_404(scorecards(), pk=pk, umpire=request.user)
+            found = self._mine(scorecards(), pk)
             # Like every change to a tournament: its row first, then the sheet.
             Tournament.objects.select_for_update(of=("self",)).get(pk=service.event_of(found).tournament_id)
             scorecard = service.locked(pk, request.user)
-            service.confirm(scorecard, request.user, serializer.validated_data["revision"])
+            asked = serializer.validated_data
+            service.confirm(scorecard, request.user, asked["assignment_id"], asked["revision"])
         return self._reply(scorecard)

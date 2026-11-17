@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CircleCheck, CloudOff, LoaderCircle, Undo2 } from "lucide-react"
+import { ArrowLeft, ArrowLeftRight, CircleCheck, CloudOff, LoaderCircle, Undo2 } from "lucide-react"
 import { gamesNeeded, partnerOf, sideOf, type End, type Player, type Side, type State } from "@scoring"
 import { errorMessage } from "@/lib/api"
 import { useDeck, type LogLine, type Sync } from "@/lib/deck"
@@ -57,7 +57,7 @@ function ScoringDeckPage({ id }: { id: string }) {
         {!!deck.failure && !deck.lost && (
           <Message title="We couldn't load the match">
             {errorMessage(deck.failure)}{" "}
-            <button type="button" className="underline" onClick={() => void deck.reload()}>
+            <button type="button" className={cn(deckButton, "mt-3 flex")} onClick={() => void deck.reload()}>
               Try again
             </button>
           </Message>
@@ -67,7 +67,7 @@ function ScoringDeckPage({ id }: { id: string }) {
             {deck.problem}
           </p>
         )}
-        {card && state && !deck.lost && (
+        {card && state && !deck.lost && !deck.failure && (
           <>
             {card.confirmed_at ? (
               <Confirmed card={card} state={state} back={back} />
@@ -198,7 +198,7 @@ function Panel({ side, state, names, card, onPoint, live }: { side: Side; state:
       type="button"
       disabled={!live}
       onClick={onPoint}
-      aria-label={`Point for ${names[side]}. Now ${state.points[index]}.`}
+      aria-label={`Point for ${names[side]}. Now ${state.points[index]}, ${state.games_won[index]} games${serving ? ", serving" : ""}.`}
       className="flex min-h-[260px] flex-col items-center gap-2 p-3 text-center outline-none hover:bg-white/5 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-brand-cyan active:bg-white/10 disabled:hover:bg-transparent"
     >
       <span className="text-lg leading-6 font-semibold break-words">{names[side]}</span>
@@ -225,7 +225,10 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
   const config = configOf(card)
   const finished = state.status === "completed"
   // The panels follow the ends: whoever is at the left end of the table is on the left of the deck.
-  const order: Side[] = state.a_end === "right" ? ["b", "a"] : ["a", "b"]
+  // The umpire can turn the deck round (sitting on the other side of the table); a side moves with
+  // everything that belongs to it: name, points, games, service and time-out.
+  const [turned, setTurned] = useState(false)
+  const order: Side[] = (state.a_end === "right") !== turned ? ["b", "a"] : ["a", "b"]
   const deciding = !finished && state.game_number === config.best_of
   const choosing = config.doubles && !finished && state.game_number > 1 && state.points[0] + state.points[1] === 0 && state.server
   const column = (side: Side) => (side === "a" ? 0 : 1)
@@ -258,7 +261,7 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
       {choosing && state.server && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/20 bg-white/5 p-3">
           <p className="flex-1 font-semibold">Who serves first in this game?</p>
-          {[state.server, partnerOf(state.server)].map((player) => (
+          {[state.server, partnerOf(state.server)].sort().map((player) => (
             <button key={player} type="button" aria-pressed={state.server === player} className={cn(deckButton, state.server === player && "border-brand-gold text-brand-gold")} onClick={() => deck.act({ type: "choose_server", player })}>
               {names[player]}
             </button>
@@ -281,6 +284,9 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
             Time-out
             <span className="sr-only"> for {names[order[1]]}</span>
           </button>
+          <button type="button" className={cn(deckButton, "col-span-3")} aria-pressed={turned} onClick={() => setTurned(!turned)}>
+            <ArrowLeftRight aria-hidden className="size-5" /> Swap the sides on screen
+          </button>
           <p className="col-span-3 text-center text-sm text-white/70">
             Tap a side to give it the point. Each side has one time-out{state.timeouts.some(Boolean) ? `; used: ${order.filter((side) => state.timeouts[column(side)]).map((side) => names[side]).join(", ")}` : ""}.
           </p>
@@ -295,7 +301,7 @@ function Finish({ card, state, deck }: { card: Scorecard; state: State; deck: Re
   const queryClient = useQueryClient()
   const names = namesOf(card)
   const confirm = useMutation({
-    mutationFn: () => confirmScorecard(card.id, card.revision),
+    mutationFn: () => confirmScorecard(card),
     onSuccess: async () => {
       void queryClient.invalidateQueries({ queryKey: scoringKeys.mine })
       void queryClient.invalidateQueries({ queryKey: drawKeys.event(card.event_id) })

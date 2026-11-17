@@ -87,7 +87,10 @@ class Deck:
         return response.json()
 
     def confirm(self, revision=None, expect=200) -> dict:
-        body = {"revision": self.sequence if revision is None else revision}
+        body = {
+            "assignment_id": self.assignment_id,
+            "revision": self.sequence if revision is None else revision,
+        }
         response = self.client.post(self.path + "confirm/", body, format="json")
         assert response.status_code == expect, response.json()
         return response.json()
@@ -150,7 +153,9 @@ def test_staff_assign_an_umpire_and_only_that_umpire_gets_the_sheet(staff, club,
         assert sent.status_code == 404
         assert (
             client.post(
-                f"/api/v1/scorecards/{mine['scorecard_id']}/confirm/", {"revision": 0}, format="json"
+                f"/api/v1/scorecards/{mine['scorecard_id']}/confirm/",
+                {"assignment_id": sheet["assignment_id"], "revision": 0},
+                format="json",
             ).status_code
             == 404
         )
@@ -275,6 +280,7 @@ def test_reassigning_cuts_off_the_old_device_and_keeps_the_score(staff, final, u
     # The same umpire assigned again (a new device): the old assignment id no longer works.
     assign(staff, final, umpire)
     assert deck.send(point("a"), expect=409)["code"] == "stale_assignment"
+    assert deck.confirm(revision=2, expect=409)["code"] == "stale_assignment"
     fresh = Deck(as_umpire, deck.path.split("/")[-2])
     assert fresh.sequence == 2 and fresh.assignment_id != deck.assignment_id
     assert fresh.send(point("a"))["state"]["points"] == [2, 0]
@@ -384,3 +390,70 @@ def test_a_tie_is_scored_rubber_by_rubber(staff, club, umpire):
     assert (third["status"], third["scoring"]["can_score"]) == ("not_played", False)
     last = Deck(as_umpire, by_position[3]["scorecard_id"])
     assert last.send(START, expect=409)["code"] == "match_decided"
+
+
+def test_an_umpire_who_loses_the_role_loses_the_sheet(staff, club, final, umpire):
+    assign(staff, final, umpire)
+    as_umpire = logged_in(umpire)
+    deck = Deck(as_umpire, as_umpire.get(match_url(final)).json()["scoring"]["scorecard_id"])
+    deck.send(START, *[point("a")] * 22)
+    membership = club.memberships.get(user=umpire)
+    membership.roles.clear()  # still a member, no longer trusted with scoring
+
+    assert as_umpire.get(deck.path).status_code == 404
+    assert as_umpire.get("/api/v1/me/scorecards/").json()["results"] == []
+    body = {"assignment_id": deck.assignment_id, "events": [deck.envelope({"type": "undo"})]}
+    assert as_umpire.post(deck.path + "events/", body, format="json").status_code == 404
+    assert deck.confirm(revision=23, expect=404) is not None
+    shown = as_umpire.get(match_url(final)).json()["scoring"]
+    assert (shown["scorecard_id"], shown["can_score"]) == (None, False)
+    assert Match.objects.get(pk=final["match"].pk).status == "scheduled"
+    # Given the role back, the sheet and everything scored are there again.
+    membership.roles.add(scorers(club))
+    assert as_umpire.get(deck.path).json()["revision"] == 23
+
+
+def test_lineups_cannot_be_cleared_under_a_rubber_being_scored(staff, club, umpire):
+    tournament = make_tournament(staff, club, make_venue(staff, club))
+    tournament = add_event(
+        staff, tournament, name="Teams", kind="team", format="round_robin", tie_rubbers=["singles"]
+    )
+    tournament = do(staff, tournament, "publish")
+    event = tournament["events"][0]
+    tudor, tudor_players = team(staff, tournament, event, "Tudor")
+    nyali, nyali_players = team(staff, tournament, event, "Nyali")
+    staff.post(draw_url(tournament, event, "preview"), {"rng_seed": 1}, format="json")
+    staff.post(draw_url(tournament, event, "publish"), {}, format="json")
+    do(staff, tournament, "start")
+    do(staff, tournament, "start", event=event)
+    match = Match.objects.get(draw__event_id=event["id"])
+    tie = {"cup": tournament, "event": event, "match": match, "tudor": tudor, "nyali": nyali}
+    from .test_ties import hand_in, picks
+
+    hand_in(staff, tie, "tudor", picks(tudor_players, ((0,),)))
+    hand_in(staff, tie, "nyali", picks(nyali_players, ((0,),)))
+    rubber = Rubber.objects.get(match=match)
+    assign(staff, tie, umpire, rubber_id=str(rubber.id))
+    as_umpire = logged_in(umpire)
+    sheet = as_umpire.get(match_url(tie)).json()["tie"]["rubbers"][0]["scoring"]["scorecard_id"]
+    Deck(as_umpire, sheet).send(START, point("a"))
+    refused = staff.post(match_url(tie, "lineup/reset/"), {}, format="json")
+    assert (refused.status_code, refused.json()["code"]) == (409, "tie_under_way")
+    assert ScoreEvent.objects.count() == 2
+
+
+def test_a_sheet_of_a_superseded_draw_is_no_longer_listed(staff, club, umpire):
+    tournament = make_tournament(staff, club, make_venue(staff, club))
+    tournament = add_event(staff, tournament, name="Singles", format="knockout")
+    tournament = do(staff, tournament, "publish")
+    event = tournament["events"][0]
+    fill(staff, tournament, event, 2)
+    staff.post(draw_url(tournament, event, "preview"), {}, format="json")
+    staff.post(draw_url(tournament, event, "publish"), {}, format="json")
+    game = {"cup": tournament, "event": event, "match": Match.objects.get(draw__event_id=event["id"])}
+    assign(staff, game, umpire)
+    as_umpire = logged_in(umpire)
+    assert len(as_umpire.get("/api/v1/me/scorecards/").json()["results"]) == 1
+    staff.post(draw_url(tournament, event, "preview"), {}, format="json")
+    assert staff.post(draw_url(tournament, event, "publish"), {}, format="json").status_code == 200
+    assert as_umpire.get("/api/v1/me/scorecards/").json()["results"] == []

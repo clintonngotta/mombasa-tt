@@ -1104,7 +1104,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Send score events in order. Each is replayed through the server's own scoring rules. A retry
+         * @description Send score events in order. Each is replayed through the server's own scoring rules. Only the
+         *     sheet is locked, not the tournament: points arrive from every table at once and change nothing
+         *     outside their own sheet until it is confirmed. A retry
          *     of an accepted event is skipped; the first event out of sequence or against the rules stops the
          *     batch and is reported in `refused`, with everything before it kept.
          */
@@ -1771,8 +1773,13 @@ export interface components {
         BestOfEnum: 3 | 5 | 7;
         /** @enum {unknown} */
         BlankEnum: "";
-        /** @description The revision the deck shows, so a result is never confirmed over points still on their way. */
+        /**
+         * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
+         *     revision it shows (a result is never confirmed over points still on their way).
+         */
         ConfirmRequest: {
+            /** Format: uuid */
+            assignment_id: string;
             revision: number;
         };
         DeckPlayer: {

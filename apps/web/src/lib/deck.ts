@@ -4,7 +4,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { Scoring, ScoringError, type ScoreEvent, type State } from "@scoring"
 import { ApiError } from "@/lib/api"
-import { configOf, getScorecard, namesOf, REFUSAL, sendEvents, type Envelope, type Names, type Scorecard } from "@/lib/scoring"
+import { configOf, getScorecard, MAX_BATCH, namesOf, REFUSAL, sendEvents, type Envelope, type Names, type Scorecard } from "@/lib/scoring"
 
 export type Sync = "saved" | "sending" | "waiting"
 
@@ -119,18 +119,21 @@ export class DeckStore {
     for (const listener of this.listeners) listener()
   }
 
+  /** Take the sheet as the server holds it. Anything queued and not yet accepted is given up. */
   load = async () => {
     try {
       this.session = build(await getScorecard(this.scorecardId))
       this.show({ failure: null, sync: "saved" })
     } catch (error) {
+      // Without the server's copy there is nothing sure to show: the deck stops until it loads.
+      if (this.session) this.session.queue = []
       this.show(error instanceof ApiError && error.status === 404 ? { lost: true } : { failure: error })
     }
   }
 
   act = (event: ScoreEvent) => {
     const session = this.session
-    if (!session || this.view.lost) return
+    if (!session || this.view.lost || this.view.failure) return
     try {
       const next = session.scoring.push(event)
       if (next === session.scoring) return // changed nothing, so there is nothing to send
@@ -147,35 +150,43 @@ export class DeckStore {
     void this.flush()
   }
 
-  /** Send what is queued, in order, one request at a time. */
+  /**
+   * Send what is queued, in order, one request at a time, until the queue is empty. Actions taken
+   * while a request is on its way join the queue and go with the next one. If the server refuses
+   * something, the deck goes back to what the server holds: actions not yet accepted, including any
+   * tapped in the meantime, are given up and the umpire is told.
+   */
   flush = async () => {
-    const session = this.session
-    if (!session || this.sending || session.queue.length === 0) return
+    if (this.sending) return
     this.sending = true
-    this.show({ sync: "sending" })
-    let again = false
     try {
-      const reply = await sendEvents(session.card.id, session.card.assignment_id, [...session.queue])
-      if (reply.refused) {
-        // The server is the authority: show what it holds and say what it wouldn't take.
-        await this.load()
-        this.show({ problem: `The server didn't take the last action. ${REFUSAL[reply.refused.code] ?? ""} The score shown is what is saved.` })
-      } else {
+      for (;;) {
+        const session = this.session
+        if (!session || session.queue.length === 0 || this.view.lost) break
+        this.show({ sync: "sending" })
+        // After a long break the queue can be longer than one request takes: it goes in parts.
+        const reply = await sendEvents(session.card.id, session.card.assignment_id, session.queue.slice(0, MAX_BATCH))
+        if (this.session !== session) continue // the sheet was reloaded meanwhile: start from what it holds now
+        if (reply.refused) {
+          await this.resync(`The server didn't take the last action. ${REFUSAL[reply.refused.code] ?? ""}`)
+          break
+        }
         session.queue = session.queue.filter((sent) => sent.sequence > reply.revision)
         session.card = { ...session.card, revision: reply.revision }
-        again = session.queue.length > 0
-        this.show({ sync: again ? "sending" : "saved" })
       }
+      if (!this.view.failure && !this.view.lost) this.show({ sync: "saved" })
     } catch (error) {
       if (error instanceof ApiError && (error.status === 404 || error.code === "stale_assignment")) this.show({ lost: true })
-      else if (error instanceof ApiError && error.status === 409) {
-        await this.load()
-        this.show({ problem: error.serverMessage ?? "The server didn't take the last action." })
-      } else this.show({ sync: "waiting" }) // offline or a server hiccup: the actions stay queued
+      else if (error instanceof ApiError && error.status < 500) await this.resync(error.serverMessage ?? "The server didn't take the last action.")
+      else this.show({ sync: "waiting" }) // offline or a server hiccup: the actions stay queued for a retry
     } finally {
       this.sending = false
     }
-    if (again) void this.flush()
+  }
+
+  private async resync(why: string) {
+    await this.load()
+    if (!this.view.failure && !this.view.lost) this.show({ problem: `${why} The score shown is what is saved; anything after it was not kept.` })
   }
 }
 

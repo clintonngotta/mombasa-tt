@@ -70,7 +70,8 @@ def label_of(scorecard: Scorecard) -> str:
 
 def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
     """Where scoring stands for a match or rubber, as ScoringSummarySerializer shows it to `viewer`."""
-    scorecard = Scorecard.objects.filter(**({"rubber": rubber} if rubber else {"match": match})).first()
+    target = {"rubber": rubber} if rubber else {"match": match}
+    scorecard = Scorecard.objects.select_related("umpire").filter(**target).first()
     try:
         ensure_scorable(match, rubber)
         scorable = True
@@ -80,11 +81,12 @@ def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
     status = ScoringStatus.UNASSIGNED
     if scorecard and (umpire or scorecard.revision or scorecard.confirmed_at):
         status = scorecard.shown_status
+    mine = scorecard is not None and is_umpire_of(scorecard, viewer)
     return {
-        "scorecard_id": scorecard.id if scorecard and umpire and umpire.id == viewer.id else None,
+        "scorecard_id": scorecard.id if mine else None,
         "status": status,
         "umpire_name": umpire.display_name if umpire else "",
-        "can_score": scorable and umpire is not None and umpire.id == viewer.id,
+        "can_score": mine and scorable and not scorecard.confirmed_at,
         "can_assign": staff and scorable,
     }
 
@@ -138,15 +140,24 @@ def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
     return scorecard
 
 
+def is_umpire_of(scorecard: Scorecard, user) -> bool:
+    """The user is assigned to the sheet and still holds a role that lets them score here. Losing the
+    role or the membership takes the sheet away at once, not at the next assignment."""
+    return scorecard.umpire_id == user.id and can_umpire(user, event_of(scorecard))
+
+
 def locked(scorecard_id, user) -> Scorecard:
     """The sheet, locked for a change by the umpire assigned to it. For anybody else it doesn't exist."""
     scorecard = (
         Scorecard.objects.select_for_update(of=("self",))
-        .select_related("match__draw__event__tournament", "rubber__match__draw__event__tournament")
+        .select_related(
+            "match__draw__event__tournament__organization",
+            "rubber__match__draw__event__tournament__organization",
+        )
         .filter(pk=scorecard_id, umpire=user)
         .first()
     )
-    if scorecard is None:
+    if scorecard is None or not is_umpire_of(scorecard, user):
         raise ApiException("not_found", "Not found.", 404)
     return scorecard
 
@@ -225,10 +236,11 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict]) -> di
     return {"accepted": accepted, "refused": refused}
 
 
-def confirm(scorecard: Scorecard, actor, revision: int) -> None:
-    """The umpire confirms the result. Refused unless the events accepted so far, replayed here, are a
-    finished match: an early finish is not a result. Call with the tournament row and the sheet locked."""
-    _ensure_in_play(scorecard, scorecard.assignment_id)
+def confirm(scorecard: Scorecard, actor, assignment_id, revision: int) -> None:
+    """The umpire confirms the result, from the device that holds the current assignment. Refused
+    unless the events accepted so far, replayed here, are a finished match: an early finish is not a
+    result. Call with the tournament row and the sheet locked."""
+    _ensure_in_play(scorecard, assignment_id)
     if revision != scorecard.revision:
         raise _conflict("stale_revision", "Not every point has reached the server yet. Wait for it to save.")
     state = replayed(scorecard).state

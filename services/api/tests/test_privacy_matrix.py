@@ -195,7 +195,7 @@ BODIES = {
             }
         ],
     },
-    ("scorecard-confirm", "post"): {"revision": 0},
+    ("scorecard-confirm", "post"): {"assignment_id": "00000000-0000-4000-8000-000000000000", "revision": 0},
 }
 
 
@@ -389,7 +389,13 @@ class World:
             )
         drawing.make_preview(self.scored_cup.event, self.amina, [], rng_seed=1)
         self.scored_match = drawing.publish(self.scored_cup.event, self.amina).matches.get()
-        self.scorecard = Scorecard.objects.create(match=self.scored_match, umpire=self.baraka)
+        # Its umpire holds a role that only lets them score; nobody else can reach the sheet.
+        self.scorer = make_user("zuri.scorer@coast.example", display_name="Zuri Scorer")
+        scoring_only = Role.objects.create(
+            organization=self.coast, name="Table umpires", permissions=["scoring.assigned"]
+        )
+        Membership.objects.create(organization=self.coast, user=self.scorer).roles.add(scoring_only)
+        self.scorecard = Scorecard.objects.create(match=self.scored_match, umpire=self.scorer)
 
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
@@ -609,11 +615,11 @@ def test_owner_routes_serve_the_owner(world):
     assert [entry["field"]["label"] for entry in baraka.get(fields).json()] == ["MARK-FIELD-MEMBER"]
     assert baraka.patch(fields, BODIES["me-membership-fields", "patch"], format="json").status_code == 200
 
-    sheet = baraka.get(reverse("scorecard-detail", kwargs={"pk": world.scorecard.id}))
+    scorer = logged_in(world.scorer)
+    sheet = scorer.get(reverse("scorecard-detail", kwargs={"pk": world.scorecard.id}))
     assert sheet.status_code == 200 and sheet.json()["status"] == "assigned"
-    assert [s["id"] for s in baraka.get("/api/v1/me/scorecards/").json()["results"]] == [
-        str(world.scorecard.id)
-    ]
+    listed = scorer.get("/api/v1/me/scorecards/").json()["results"]
+    assert [found["id"] for found in listed] == [str(world.scorecard.id)]
 
     mine = baraka.get("/api/v1/me/entries/").json()["results"]
     assert {e["status"] for e in mine} == {"pending", "rejected"}

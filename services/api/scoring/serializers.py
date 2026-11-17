@@ -198,6 +198,8 @@ class SubmitResultSerializer(serializers.Serializer):
 
 
 class ConfirmSerializer(serializers.Serializer):
-    """The revision the deck shows, so a result is never confirmed over points still on their way."""
+    """The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
+    revision it shows (a result is never confirmed over points still on their way)."""
 
+    assignment_id = serializers.UUIDField()
     revision = serializers.IntegerField(min_value=0)
