@@ -1,0 +1,9 @@
+# Applies to images built with the repository root as context (apps/web/Dockerfile).
+.git
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.env
+**/.env.*
+services

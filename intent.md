@@ -24,7 +24,7 @@ The platform is named **mombasa-tt**. **Coast Table Tennis Club, Mombasa** is a 
 |---|---|
 | Player | Register, know when/where to play, inspect ratings/history, pay club dues externally and track their status, plan training, and later receive highlights |
 | Umpire | Score assigned singles/doubles matches, recover after connectivity loss, and confirm official results |
-| Club administrator/captain/committee | Configure actual club responsibilities, manage membership, competitions, contributions, spending, and announcements |
+| Club administrator/captain/committee | Configure actual club responsibilities, manage membership, competitions, contributions, welfare projects, social activities, spending, and announcements |
 | Facility staff | Approve table reservations and coordinate tournaments, training, and casual use |
 | Organizer | Dispatch the next eligible match and explain idle tables or delayed fixtures |
 | Spectator | Open public tournament pages and watch social broadcasts without installing the mobile app |
@@ -52,9 +52,17 @@ Success means that confirmed results produce correct progression and ratings; co
 | Offline | Continue downloaded assigned match; global dispatch/progression needs connectivity |
 | Ratings | Shared platform Elo with separate singles/doubles ledgers |
 | Casual games | Quick Score is unrated and does not reserve a table |
+| Personal match log | Players privately record their own matches (custom labels, sets, scores, notes) to track progress; official matches allow private notes only (2026-10-03) |
 | Club governance | Editable role templates, custom permission bundles, custom member fields |
 | Payments | Manual records initially; no payment gateway at launch |
-| Contributions | Multiple purposes with descriptions, periodic dues, balances, and expenses |
+| Contributions | Multiple purposes with descriptions, periodic dues, balances, and expenses; weekly/monthly club operations dues fund running costs (2026-11-15) |
+| Welfare projects | Clubs run welfare projects (e.g. a sick member) with a suggested per-member contribution such as KES 50, recorded manually, plus a planned visit (2026-11-15) |
+| Club activities | Clubs post social activities (nights out, fun days, visits) with RSVPs on a members-only club schedule (2026-11-15) |
+| Soda games | Players challenge each other to friendly unrated matches; the challenger may pledge a stake if they lose, the opponent may match it or play without staking. The app records pledges only, never handles money; stakes need legal sign-off before production (2026-11-15) |
+| Annual report | Officials record all expenses in the app; the club publishes a year-end report of how funds were used, frozen once published with visible amendments (2026-11-15) |
+| Match-day operations | Staff run the whole match day in the app: schedules, table board, check-in and calls, real-time scoring with timeouts, yellow/red penalty cards, injury breaks, walkovers, retirements and disqualifications, and generated results announcement posts (2026-11-15) |
+| Role governance (TASK-013) | Admin always holds every permission and can only be renamed, so an organization can never lose the ability to manage roles; the other templates are editable. Editing, renaming, assigning or deleting a role requires holding every permission involved. Finances is split into view and manage. Members can leave and staff can remove members, both guarded by the last-admin rule. Open question for the user: whether the Member role (which applies to everyone) may carry management permissions such as roles.manage; currently allowed for whoever holds them (2026-11-15) |
+| Events calendar | Public listing of tournaments in the country, on and off mombasa-tt, including our club's; live events show their live link (2026-11-15) |
 | Facilities | Member requests with staff approval |
 | Development | Personal training plus club sessions; private post-match analysis |
 | Notifications | Persistent in-app inbox and optional browser push where supported; native push later |

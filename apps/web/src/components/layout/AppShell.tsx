@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { House, Swords, Users, UserRound, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Wordmark } from "@/components/brand/Wordmark"
+import { OrganizationSwitcher } from "@/components/clubs/OrganizationSwitcher"
 
 type NavItem = { to: string; label: string; icon: LucideIcon }
 
@@ -12,19 +14,12 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/profile", label: "Profile", icon: UserRound },
 ]
 
-export function Wordmark({ className }: { className?: string }) {
-  return (
-    <span className={cn("font-display text-xl font-bold tracking-tight text-brand-navy", className)}>
-      mombasa<span className="text-brand-blue">-tt</span>
-    </span>
-  )
-}
-
 export function AppShell() {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="hidden border-r bg-card lg:flex lg:flex-col lg:gap-6 lg:p-4">
         <Wordmark className="px-3 pt-2" />
+        <OrganizationSwitcher />
         <nav aria-label="Main" className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (
             <SidebarLink key={item.to} item={item} />
@@ -33,8 +28,9 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-h-dvh flex-col">
-        <header className="sticky top-0 z-10 flex h-14 items-center border-b bg-card/95 px-4 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur lg:hidden">
           <Wordmark />
+          <OrganizationSwitcher className="max-w-[55%]" />
         </header>
 
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 pb-24 lg:px-8 lg:pb-8">

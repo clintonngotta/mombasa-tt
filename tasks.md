@@ -1,6 +1,6 @@
 # mombasa-tt — delivery checklist
 
-Updated 2026-09-08. Requirements: [spec.md](spec.md). Acceptance: [test.md](test.md). Operations: [deployment.md](deployment.md).
+Updated 2026-11-15. Requirements: [spec.md](spec.md). Acceptance: [test.md](test.md). Operations: [deployment.md](deployment.md).
 
 ## Execution rules
 
@@ -12,7 +12,7 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 - [x] **TASK-001** — Write and cross-check the five planning documents. Depends: none. REQ-036 / EVAL-036. Done: no orphan requirement/task/evaluation IDs, broken local links, or superseded stack choices. Evidence: 2026-09-08 documentation validation passed all 36 traceability rows, 70 task IDs, local links/anchors and code fences; see test.md execution record. No application tests claimed.
 - [ ] **TASK-002** — Create the shared Stitch brand system and missing mobile/desktop screens, adapt relevant references, record screen IDs in spec.md. Depends: TASK-001. REQ-002, REQ-036 / EVAL-002, EVAL-036. Done: player/club/score comparisons use left/right columns at every viewport, the umpire deck follows the supplied two-panel reference, and all inventory workflows have reviewed references; future screens have phase labels in inventory; no app coding has begun before this gate.
-- [ ] **TASK-003** — Validate competition rules from current authoritative ITTF clauses and create a reviewed rule/fixture table in spec.md/test.md. Depends: TASK-001. REQ-009, REQ-010, REQ-012 / EVAL-009, EVAL-010, EVAL-012. Done: normal scoring and group tie resolution, walkovers, withdrawals, byes and ultimate ties are unambiguous before their implementation.
+- [ ] **TASK-003** — Validate competition rules from current authoritative ITTF clauses and create a reviewed rule/fixture table in spec.md/test.md. Depends: TASK-001. REQ-009, REQ-010, REQ-012 / EVAL-009, EVAL-010, EVAL-012. Done: normal scoring and group tie resolution, walkovers, withdrawals, byes, ultimate ties, timeouts, the penalty-card ladder and carry-over, injury suspension and expedite (REQ-043) are unambiguous before their implementation.
 
 ## Foundation
 
@@ -27,10 +27,10 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 - [ ] **TASK-010** — Implement signup, verification, login/logout, reset, secure PWA session cookies and CSRF. Depends: TASK-006, TASK-009. REQ-003 / EVAL-003. Done: expiry/revocation/recovery cases pass without identity enumeration; reauthentication preserves pending scores.
 - [ ] **TASK-011** — Implement guest creation, invitation claim and conflict resolution. Depends: TASK-010. REQ-003 / EVAL-003. Done: verified claim preserves match references and rejects reused invitations.
-- [ ] **TASK-012** — Implement organization creation/types, join requests, invitations, memberships and switcher. Depends: TASK-010. REQ-004 / EVAL-004. Done: first admin and multiple memberships work; public event entry remains independent.
-- [ ] **TASK-013** — Implement permission catalog, role templates/editor and grant restrictions. Depends: TASK-012. REQ-005 / EVAL-005. Done: cross-tenant and escalation attempts fail, including last-admin race.
+- [ ] **TASK-012** — Implement organization creation/types, join requests, invitations, memberships and switcher. Depends: TASK-010. REQ-004 / EVAL-004. Done: first admin and multiple memberships work; public event entry remains independent. Progress 2026-11-15 (partial, stays unchecked): API for organization create/search, first admin, join requests with admin approve/reject, and my memberships, covered by tests/test_organizations.py. Email invitations API added the same day: admin invite/list/revoke, invitee accept/decline on a verified email, 14-day expiry, no account or member enumeration. Club UI added the same day: organization switcher (header/sidebar), Club tab with admin join-request approval and invitation management, find/join, register organization, and the invitations inbox. Still to do: public event entry (needs TASK-018).
+- [x] **TASK-013** — Implement permission catalog, role templates/editor and grant restrictions. Depends: TASK-012. REQ-005 / EVAL-005. Done: cross-tenant and escalation attempts fail, including last-admin race. Done 2026-11-15: permission catalog (`organizations/permissions.py`), Admin/Captain/Assistant captain/Committee/Member templates seeded per organization, custom roles, role editor and member role screens, union of roles plus the implicit Member role, grants/removals/deletions limited to the actor's own permissions, Admin locked to every permission, last-admin protection serialized by an organization row lock (concurrent test in tests/test_roles.py), leave and remove member. Live events and files will apply the same `require_permission` checks when they arrive (TASK-016, TASK-084).
 - [ ] **TASK-014** — Implement custom member fields and field access rules. Depends: TASK-013. REQ-005 / EVAL-005. Done: staff-only values never leak to member/public serializers.
-- [ ] **TASK-015** — Implement profiles, resumable onboarding, preferences and directories. Depends: TASK-012. REQ-006 / EVAL-006. Done: opt-out removes player-directory discoverability and goals do not grant roles.
+- [ ] **TASK-015** — Implement profiles, resumable onboarding, preferences and directories. Depends: TASK-012. REQ-006 / EVAL-006. Done: opt-out removes player-directory discoverability and goals do not grant roles. Progress 2026-11-15 (partial, stays unchecked): profile/goals/onboarding-complete API and opted-in player directory, wired to the existing onboarding screens and covered by tests/test_profiles.py. Progress 2026-11-15: profile edit screen (details, directory opt-in, goals), player directory search and player page; players choose which extended details (hand, grip, style, experience, bio) to publish, shown only while listed, and the page 404s after opting out. Still to do: avatar (needs the attachment/signed-URL work in TASK-016).
 - [ ] **TASK-016** — Implement public/private serializers, attachment access and signed URLs. Depends: TASK-013, TASK-015. REQ-020, REQ-032 / EVAL-020, EVAL-032. Done: public/tenant/private data matrix passes.
 
 ## Phase 1: competitions and operations
@@ -55,17 +55,39 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 - [ ] **TASK-034** — Implement optional browser push with feature detection, opt-in, device setup guidance and expired-subscription cleanup. Depends: TASK-033, TASK-009. REQ-019 / EVAL-019. Done: supported real-device delivery tested; unsupported/denied permission does not break inbox or scheduling.
 - [ ] **TASK-035** — Finish public tournament/player views and organizer web dashboard. Depends: TASK-021, TASK-028, TASK-032, TASK-016. REQ-020 / EVAL-020. Done: unauthenticated tournament journey and authorized admin journey pass.
 
+- [ ] **TASK-081** — Implement day schedule sessions, time estimates, table/slot moves rechecked against reservations, versioned publication with change notifications, and table delays. Depends: TASK-027, TASK-028. REQ-043, REQ-014 / EVAL-043. Done: invalid moves rejected; published changes notify only affected people and keep history.
+- [ ] **TASK-082** — Implement the match-day control centre: table board, check-in desk, call/recall, umpire and table assignment, no-show grace flags, referee-only walkovers and disqualifications, and an audit log. Depends: TASK-081, TASK-024, TASK-033. REQ-043 / EVAL-043. Done: board reflects reservations and live state; referee permission matrix tests pass; desktop/tablet screenshots recorded.
+- [ ] **TASK-083** — Extend the scoring reducer/validator and umpire deck with timeout countdowns, penalty cards and points, adviser cards, injury suspension, expedite, retirement and disqualification outcomes. Depends: TASK-003, TASK-023, TASK-024. REQ-043, REQ-012 / EVAL-043, EVAL-012. Done: shared incident fixtures give identical states in TypeScript and Python; W/O/ret./DQ produce no fabricated scores or Elo.
+- [ ] **TASK-084** — Implement the real-time live score channel (server push with polling fallback) and public/member live views, score strip and match detail. Depends: TASK-029, TASK-021. REQ-043, REQ-033 / EVAL-043, EVAL-033. Done: controlled latency trace meets p95 under 2 seconds; live views never show umpire controls.
+- [ ] **TASK-085** — Implement the results announcement generator and editor (session/round/day/event/tournament scope), plain-text and image-card previews, publish to the tournament news feed with notification and share, frozen versions and amendments after corrections. Depends: TASK-032, TASK-029. REQ-043, REQ-018 / EVAL-043, EVAL-018. Done: generated text matches official results fixtures, marks W/O/ret./DQ/pending and contains no private fields.
+
+## Phase 1: personal progress
+
+- [ ] **TASK-071** — Implement the private personal match log: records with free-text labels, sets/scores and notes, owner-only API, progress summary and mobile/web views. Depends: TASK-010. REQ-037 / EVAL-037. Done: owner-only access matrix, set validation and summary tests pass; official matches remain notes-only (REQ-025, TASK-041).
+
+## Phase 1: club life
+
+- [ ] **TASK-072** — Implement club activities (types, schedule fields, audience, capacity, draft/publish/cancel), RSVPs with transactional capacity and waitlist, and the members-only club schedule merging activities, tournaments and training sessions with .ics export. Depends: TASK-013, TASK-017. REQ-039 / EVAL-039. Done: capacity race, visibility and timezone tests pass.
+- [ ] **TASK-073** — Implement activity and club schedule mobile/web views, RSVP controls and publish/change/cancel notifications. Depends: TASK-072, TASK-033. REQ-039 / EVAL-039. Done: audience-only notifications and schedule screenshots recorded; cost notes never imply payment.
+- [ ] **TASK-076** — Implement soda game challenges: create/accept (with or without matching stake)/counter-time/decline/withdraw, pledge records, two-player result confirmation and disputes, settled marking, organization disable switches, and the stake policy feature flag. Depends: TASK-013, TASK-031. REQ-040 / EVAL-040. Done: stake visibility, no-rating impact and dispute tests pass with the flag off and on.
+- [ ] **TASK-077** — Implement soda game mobile/web views (challenge inbox, challenge form, result confirmation, pledge history) and challenge notifications. Depends: TASK-076, TASK-033. REQ-040 / EVAL-040. Done: screenshots recorded; stake fields hidden while the policy gate is off.
+- [ ] **TASK-078** — Obtain and record legal/policy sign-off for soda game stakes (Kenyan betting/gaming rules, age 18+, limits, wording). Depends: none. REQ-040. Done: written decision recorded in intent.md; until then stakes stay disabled in production. Needs user/legal sign-off.
+- [ ] **TASK-080** — Implement the events listing: internal tournament feed, external event submissions with curator review, list/calendar views, filters, countdown, live badge and https-validated live links with reporting. Depends: TASK-017, TASK-013. REQ-042 / EVAL-042. Done: review visibility, live window and link validation tests pass; screenshots recorded.
+
 ## Phase 2: reservations and finances
 
 - [ ] **TASK-036** — Implement opening hours, closures, booking requests, approval/rejection/cancellation and views. Depends: TASK-027, TASK-033. REQ-021 / EVAL-021. Done: approvals race safely against matches and other bookings.
 - [ ] **TASK-037** — Implement charges, manual payments, allocations, excess credit and reversals. Depends: TASK-013, TASK-018, TASK-036. REQ-022 / EVAL-022. Done: ledger arithmetic reconciles and currency mismatches are rejected.
-- [ ] **TASK-038** — Implement contribution campaigns, period generation, assignments and waivers. Depends: TASK-037, TASK-007. REQ-023 / EVAL-023. Done: retries/month-end/leap-year cases create exactly one correct due per period.
+- [ ] **TASK-038** — Implement contribution campaigns, period generation, assignments and waivers. Depends: TASK-037, TASK-007. REQ-023 / EVAL-023. Done: retries/month-end/leap-year cases create exactly one correct due per period; the weekly/monthly "Club operations" template creates all-member dues with overrides/waivers and none for periods before joining or after leaving.
 - [ ] **TASK-039** — Implement contribution member/staff views and reminders. Depends: TASK-038, TASK-033. REQ-023 / EVAL-023. Done: pending/partial/overdue status and visibility match records.
 - [ ] **TASK-040** — Implement purpose expenses, receipts, reversals and transparent summaries. Depends: TASK-037, TASK-038, TASK-016. REQ-024 / EVAL-024. Done: received/spent/remaining totals reconcile, including deficits and reversals.
+- [ ] **TASK-074** — Implement welfare projects: setup with suggested per-member amount, target, deadline, beneficiary and audience; voluntary contributions through the manual ledger; expenses, close/hide, and contributor anonymity. Depends: TASK-037, TASK-040. REQ-038 / EVAL-038. Done: ledger reconciliation, no implied overdue status and beneficiary-privacy tests pass.
+- [ ] **TASK-075** — Implement welfare project member/staff views, progress against target, linked visit activities (REQ-039) and Phase 2 activity cost sharing via one-time campaigns. Depends: TASK-074, TASK-073. REQ-038, REQ-039 / EVAL-038, EVAL-039. Done: member sees totals and own contribution only; screenshots recorded.
+- [ ] **TASK-079** — Implement expense categories, financial-year settings and annual report draft/review/publish with frozen versioned snapshots, amendments, member/public visibility and PDF/CSV export. Depends: TASK-040. REQ-041 / EVAL-041. Done: report reconciles with ledger fixtures; amendments never alter the published snapshot.
 
 ## Phase 3: player development
 
-- [ ] **TASK-041** — Implement private match notes and recap entry point. Depends: TASK-032, TASK-016. REQ-025 / EVAL-025. Done: another player or club admin cannot access notes.
+- [ ] **TASK-041** — Implement private match notes and recap entry point. Depends: TASK-032, TASK-016. REQ-025 / EVAL-025. Done: another player or club admin cannot access notes; official sets/scores stay read-only to the player.
 - [ ] **TASK-042** — Implement equipment enrichment and personal/club drill libraries. Depends: TASK-015, TASK-013. REQ-026 / EVAL-026. Done: editing/sharing permissions and required drill fields pass.
 - [ ] **TASK-043** — Implement personal training plans, calendar commitments and completion. Depends: TASK-042, TASK-027. REQ-027 / EVAL-027. Done: calendar conflicts differ correctly from non-reserving checklist items.
 - [ ] **TASK-044** — Implement club sessions, invitations, accepted commitments, attendance and reminders. Depends: TASK-043, TASK-036, TASK-033. REQ-027 / EVAL-027. Done: acceptance and reservation are atomic and duplicate acceptance is harmless.
@@ -153,3 +175,10 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-034](spec.md#req-034) | [EVAL-034](test.md#eval-034) | TASK-058, TASK-059, TASK-060 |
 | [REQ-035](spec.md#req-035) | [EVAL-035](test.md#eval-035) | TASK-009, TASK-062; native later TASK-069, TASK-070 |
 | [REQ-036](spec.md#req-036) | [EVAL-036](test.md#eval-036) | TASK-001, TASK-002 |
+| [REQ-037](spec.md#req-037) | [EVAL-037](test.md#eval-037) | TASK-071 |
+| [REQ-038](spec.md#req-038) | [EVAL-038](test.md#eval-038) | TASK-074, TASK-075 |
+| [REQ-039](spec.md#req-039) | [EVAL-039](test.md#eval-039) | TASK-072, TASK-073, TASK-075 |
+| [REQ-040](spec.md#req-040) | [EVAL-040](test.md#eval-040) | TASK-076, TASK-077, TASK-078 |
+| [REQ-041](spec.md#req-041) | [EVAL-041](test.md#eval-041) | TASK-079 |
+| [REQ-042](spec.md#req-042) | [EVAL-042](test.md#eval-042) | TASK-080 |
+| [REQ-043](spec.md#req-043) | [EVAL-043](test.md#eval-043) | TASK-003, TASK-081, TASK-082, TASK-083, TASK-084, TASK-085 |
