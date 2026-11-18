@@ -38,6 +38,8 @@ class Row:
     state: str = READY
     position: int | None = None  # its rank among the matches that can be played now
     table: Table | None = None  # the free table suggested for it
+    called_back: bool = False  # staff took it off a table: only a person sends it out again
+    umpire: object = None  # whoever scores it, who can't be playing at the same time
 
     @property
     def order(self):
@@ -93,11 +95,8 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
             for blocked in service.standing_in_the_way(match, people, rubber)
         ]
         row = Row(match, people, since, reasons, BLOCKED if reasons else READY)
-        if not reasons and match.id in called_back:
-            row.state = WAITING
-            row.reasons = [
-                _reason("called_back", "It was called back from a table: send it from the match's page.")
-            ]
+        row.called_back = match.id in called_back
+        row.umpire = service._umpire_of(match, rubber) if not reasons else None
         rows.append(row)
     rows.sort(key=lambda row: row.order)
     return rows, to_come
@@ -112,21 +111,34 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
     """Give the free tables to the ready matches, in queue order. A match that shares a player with
     one ahead of it waits for that one; a match with no table left waits for a table."""
     free = list(free)
-    going: dict = {}  # person id -> the row they are about to play in
+    going: dict = {}  # person or team id -> the row they are about to play in
     rank = 0
     for row in rows:
         if row.state != READY:
             continue
         rank += 1
         row.position = rank
-        shared = next((user for user in row.people if user.id in going), None)
+        if row.called_back:
+            row.state = WAITING
+            row.reasons = [
+                _reason("called_back", "It was called back from a table: send it from the match's page.")
+            ]
+            continue
+        match = row.match
+        # A tie's later rubbers need its other players: the whole team counts as about to play.
+        teams = [match.entry_a, match.entry_b] if match.draw.event.is_team else []
+        needed = [(user.id, user.display_name) for user in row.people]
+        needed += [(entry.id, service._entry_title(entry)) for entry in teams]
+        if row.umpire is not None:
+            needed.append((row.umpire.id, f"The umpire, {row.umpire.display_name},"))
+        shared = next((name for key, name in needed if key in going), None)
         if shared is not None:
-            ahead = going[shared.id]
+            ahead = going[next(key for key, _ in needed if key in going)]
             row.state = WAITING
             row.reasons = [
                 _reason(
                     "plays_earlier_match",
-                    f"{shared.display_name} is in a match ahead in the queue ({_title(ahead.match)}).",
+                    f"{shared} is in a match ahead in the queue ({_title(ahead.match)}).",
                 )
             ]
             continue
@@ -134,11 +146,9 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
             row.state = WAITING
             row.reasons = [_reason("no_free_table", "Every table is in use.")]
             continue
-        planned = next((table for table in free if table.id == row.match.table_id), None)
-        row.table = planned or free[0]
-        free.remove(row.table)
-        for user in row.people:
-            going[user.id] = row
+        row.table = free.pop(0)
+        for key, _ in needed:
+            going[key] = row
 
 
 def _title(match: Match) -> str:
@@ -232,15 +242,21 @@ def run_auto(tournament: Tournament, actor=None) -> list[Reservation]:
         return []
     service.lock()
     sent, refused = [], set()
-    while True:
-        rows, _ = _rows(tournament)
+    # The suggestions of one reading share no table and no player, so they are sent without reading
+    # again. A second reading only follows a refusal, which left a table free for somebody else.
+    for _ in range(2):
+        rows, _to_come = _rows(tournament)
         rows = [row for row in rows if row.match.id not in refused]
         _suggest(rows, _free_tables(tournament))
-        row = next((row for row in rows if row.table), None)
-        if row is None:
-            return sent
-        try:
-            with transaction.atomic():
-                sent.append(service.dispatch(row.match, row.table, actor, automatic=True))
-        except service.Blocked:
-            refused.add(row.match.id)
+        before = len(refused)
+        for row in rows:
+            if row.table is None:
+                continue
+            try:
+                with transaction.atomic():
+                    sent.append(service.dispatch(row.match, row.table, actor, automatic=True))
+            except service.Blocked:
+                refused.add(row.match.id)
+        if len(refused) == before:
+            break
+    return sent

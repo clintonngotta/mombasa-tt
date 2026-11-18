@@ -7284,6 +7284,9 @@ components:
         since:
           type: string
           format: date-time
+        automatic:
+          type: boolean
+          description: Sent by automatic dispatch, not by a person.
         people:
           type: array
           items:
@@ -7297,6 +7300,7 @@ components:
           type: string
       required:
       - a
+      - automatic
       - b
       - event_id
       - event_name

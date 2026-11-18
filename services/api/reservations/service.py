@@ -13,6 +13,7 @@ Staff may set aside the check-in and rest checks with a reason. Nothing sets asi
 """
 
 import hashlib
+import logging
 from datetime import timedelta
 
 from django.db import IntegrityError, connection, transaction
@@ -24,6 +25,8 @@ from core.exceptions import ApiException
 from facilities.models import Table
 
 from .models import Hold, Reservation
+
+logger = logging.getLogger(__name__)
 
 CHECK_IN, REST = "check_in", "rest"
 OVERRIDABLE = (CHECK_IN, REST)
@@ -56,7 +59,7 @@ def players_of_match(match: Match) -> list:
         place.user
         for entry in (match.entry_a, match.entry_b)
         if entry is not None
-        for place in entry.players.select_related("user")
+        for place in entry.players.all()  # callers listing many matches prefetch players and users
     ]
 
 
@@ -186,6 +189,21 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
     dispatch refuses them. The ready queue shows the same list, so what it says is what would happen."""
     event = match.draw.event
     found = []
+    if event.is_team:
+        # A tie holds its players rubber by rubber, but a team still plays one tie at a time.
+        sides = [match.entry_a_id, match.entry_b_id]
+        elsewhere = (
+            Reservation.objects.filter(status=Reservation.Status.ACTIVE)
+            .filter(Q(match__entry_a__in=sides) | Q(match__entry_b__in=sides))
+            .exclude(match=match)
+            .select_related("table", "match__entry_a", "match__entry_b")
+        )
+        for held in elsewhere:
+            for entry in (held.match.entry_a, held.match.entry_b):
+                if entry.id in sides:
+                    found.append(
+                        Blocked("team_busy", f"{_entry_title(entry)} is playing a tie on {held.table.label}.")
+                    )
     busy = Hold.objects.filter(user__in=people, active=True).select_related("user", "reservation__table")
     for hold in busy:
         found.append(
@@ -289,6 +307,20 @@ def recall(match: Match, actor, reason: str) -> None:
     lock()
     release(reservation, actor, Reservation.Ending.RECALLED, reason)
     _off_the_table(match)
+    _look_for_the_next(match.draw.event.tournament, actor)
+
+
+def _look_for_the_next(tournament: Tournament, actor=None) -> None:
+    """A table or a player has just become free: automatic dispatch, if it is on, looks at once."""
+    from . import board  # the board is built on this module
+
+    try:
+        with transaction.atomic():
+            board.run_auto(tournament, actor)
+    except Exception:
+        # Sending the next match out is a convenience. Whatever goes wrong with it, the result or the
+        # recall that freed the table stands; a person can still send the match from the board.
+        logger.exception("Automatic dispatch failed for tournament %s", tournament.id)
 
 
 def _off_the_table(match: Match) -> None:
@@ -298,13 +330,11 @@ def _off_the_table(match: Match) -> None:
 
 
 def on_match_decided(sender, match: Match, **kwargs) -> None:
-    from . import board  # the board is built on this module
-
     for reservation in match.reservations.filter(status=Reservation.Status.ACTIVE):
         lock()
         release(reservation, None, Reservation.Ending.DECIDED)
-    # A result frees a table and may make the next match ready: automatic dispatch looks at once.
-    board.run_auto(match.draw.event.tournament)
+    # A result frees a table and may make the next match ready.
+    _look_for_the_next(match.draw.event.tournament)
 
 
 def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
@@ -315,6 +345,7 @@ def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
         lock()
         release(reservation, actor, Reservation.Ending.CLOSED)
         _off_the_table(reservation.match)
+    _look_for_the_next(event.tournament, actor)
 
 
 def on_rubber_decided(sender, rubber: Rubber, tie_decided: bool = False, **kwargs) -> None:
@@ -403,6 +434,7 @@ def describe(reservation: Reservation) -> dict:
         "a": _entry_title(match.entry_a),
         "b": _entry_title(match.entry_b),
         "since": reservation.created_at,
+        "automatic": reservation.automatic,
         "people": sorted(
             hold.user.display_name for hold in reservation.holds.all() if hold.user_id and hold.active
         ),

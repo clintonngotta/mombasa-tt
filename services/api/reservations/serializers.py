@@ -40,6 +40,7 @@ class ReservationSerializer(serializers.Serializer):
     a = serializers.CharField()
     b = serializers.CharField()
     since = serializers.DateTimeField()
+    automatic = serializers.BooleanField(help_text="Sent by automatic dispatch, not by a person.")
     people = serializers.ListField(child=serializers.CharField(), help_text="Players held with the table.")
     overrides = serializers.ListField(child=serializers.CharField())
     override_reason = serializers.CharField(allow_blank=True)

@@ -54,14 +54,18 @@ export function DispatchBoardPage() {
   const look = useMutation({ mutationFn: () => runAutoDispatch(id), onSuccess: keep })
   const automatic = board.data?.auto_dispatch ?? false
   const lookNow = look.mutate
+  const looking = look.isPending
 
   // While the board is open and automatic dispatch is on, it looks again regularly: a rest that has
   // just ended frees a match without any result arriving to trigger it.
   useEffect(() => {
     if (!automatic) return
-    const timer = setInterval(() => lookNow(), LOOK_EVERY)
+    if (looking) return // one look at a time: a slow one isn't followed by another on its heels
+    const timer = setInterval(() => {
+      if (!document.hidden) lookNow()
+    }, LOOK_EVERY)
     return () => clearInterval(timer)
-  }, [automatic, lookNow])
+  }, [automatic, looking, lookNow])
 
   const t = tournament.data
   const data = board.data
@@ -83,11 +87,15 @@ export function DispatchBoardPage() {
           {!data.in_play && <FormAlert>This tournament isn't under way, so no match can go to a table.</FormAlert>}
           <Toggle
             checked={automatic}
-            onChange={(enabled) => auto.mutate(enabled)}
+            onChange={(enabled) => {
+              if (!auto.isPending) auto.mutate(enabled)
+            }}
             label="Send matches out automatically"
             description="When a table is free, the first match in the queue that can be played goes to it without anybody pressing Send. Check-in and rest are never set aside. While this page is open it looks again every few seconds; otherwise it looks whenever a result comes in."
           />
+          {auto.isPending && <p className="text-sm text-muted-foreground">Saving…</p>}
           {auto.isError && <FormAlert>{errorMessage(auto.error)}</FormAlert>}
+          {automatic && look.isError && <FormAlert>Automatic sending couldn't look just now: {errorMessage(look.error)} It tries again shortly; you can still send matches yourself.</FormAlert>}
 
           <section aria-labelledby="board-tables" className="flex flex-col gap-3">
             <h2 id="board-tables" className="text-2xl font-bold">
@@ -160,7 +168,9 @@ function TableCard({ tournamentId, table, next, timeZone }: { tournamentId: stri
         <>
           <p className="text-sm font-semibold text-muted-foreground">{playing.event_name}</p>
           <Sides a={playing.a} b={playing.b} />
-          <p className="text-sm">Since {formatInstant(playing.since, timeZone)}. Held until the result is official.</p>
+          <p className="text-sm">
+            {playing.automatic ? "Sent automatically, on" : "On"} the table since {formatInstant(playing.since, timeZone)}. Held until the result is official.
+          </p>
           <Link to={matchPath(tournamentId, playing)} className={buttonVariants({ variant: "outline", className: "self-start" })}>
             Open the match
           </Link>
@@ -178,7 +188,7 @@ function TableCard({ tournamentId, table, next, timeZone }: { tournamentId: stri
           </Button>
         </>
       )}
-      {send.isError && sentFor && <FormAlert>Not sent: {errorMessage(send.error)}</FormAlert>}
+      {send.isError && sentFor === next?.match_id && <FormAlert>Not sent: {errorMessage(send.error)}</FormAlert>}
       {table.free && !next && <p className="text-sm text-muted-foreground">{table.idle_reason}</p>}
     </li>
   )

@@ -3299,6 +3299,8 @@ export interface components {
             b: string;
             /** Format: date-time */
             since: string;
+            /** @description Sent by automatic dispatch, not by a person. */
+            automatic: boolean;
             /** @description Players held with the table. */
             people: string[];
             overrides: string[];

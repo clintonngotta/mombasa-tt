@@ -6,7 +6,7 @@ import pytest
 from django.utils import timezone
 
 from competitions import drawing
-from competitions.models import Entry, Match, Tournament
+from competitions.models import Entry, Event, Match, Tournament
 from reservations.models import Hold, Reservation
 
 from .test_reservations import recall, send, started, tables
@@ -60,7 +60,9 @@ def test_the_queue_orders_by_planned_start_then_longest_wait_then_id(staff, club
     game = league(staff, club, hall, ["Amina", "Brian", "Chege", "Daudi", "Eli", "Faith"])
     first, second, third, fourth, *_ = matches_of(game)
     now = timezone.now()
-    Match.objects.filter(draw__event_id=game["event"]["id"]).update(ready_since=now)
+    # The event began an hour ago (waiting never counts from before it), all its matches ready since.
+    Event.objects.filter(pk=game["event"]["id"]).update(started_at=now - timedelta(hours=1))
+    Match.objects.filter(draw__event_id=game["event"]["id"]).update(ready_since=now - timedelta(minutes=5))
     # A planned start goes first, the earlier one before the later; without one, the longest wait.
     Match.objects.filter(pk=fourth.pk).update(scheduled_at=now + timedelta(minutes=30))
     Match.objects.filter(pk=third.pk).update(scheduled_at=now + timedelta(minutes=5))
@@ -101,12 +103,14 @@ def test_a_held_up_match_and_an_idle_table_say_what_really_stands_in_the_way(sta
     assert {row["a"], row["b"]} == {"Amina", "Brian"}
     assert row["reasons"][0]["message"] == absent
     assert shown["tables"][0]["idle_reason"] == f"Next would be {row['a']} v {row['b']}, but: {absent}"
-    # A player resting: the queue says who, how long, and until when.
+    # A player on another table, in another tournament: the queue names the player and the table.
     other = started(staff, club, hall, [["Amina"], ["Chege"]], tournament="Veterans Cup")
     send(staff, other, one)
     busy = board(staff, game["cup"])
     assert [reason["code"] for reason in busy["queue"][0]["reasons"]] == ["player_busy", "not_checked_in"]
+    assert busy["queue"][0]["reasons"][0]["message"] == "Amina is playing on Table 1."
     assert busy["tables"][0]["held_by"] == "Veterans Cup: Singles"
+    # After the result she rests: the queue says who, how long, and until when.
     drawing.record_result(other["match"], other["match"].entry_a, games=[(11, 5)] * 3)
     resting = board(staff, game["cup"])["queue"][0]["reasons"]
     assert [reason["code"] for reason in resting] == ["not_checked_in", "resting"]
@@ -191,6 +195,7 @@ def test_automatic_dispatch_leaves_unchecked_in_and_called_back_matches_to_peopl
     shown = run(staff, late["cup"])
     assert not Reservation.objects.filter(status="active").exists()
     assert (shown["queue"][0]["state"], shown["queue"][0]["reasons"][0]["code"]) == ("waiting", "called_back")
+    assert shown["queue"][0]["position"] == 1  # it can be played, so it has its rank
     one, _ = tables(hall)
     send(staff, late, one)  # by hand it goes
     assert auto(staff, late["cup"], enabled=False)["auto_dispatch"] is False
@@ -208,3 +213,58 @@ def test_the_board_is_for_competition_staff(staff, club, hall, client):
     )
     assert player.post(url(game["cup"]) + "dispatch/run/", {}, format="json").status_code == 403
     assert Tournament.objects.get(pk=game["cup"]["id"]).auto_dispatch is False
+
+
+def test_a_team_plays_one_tie_at_a_time_and_a_failing_look_never_undoes_a_result(
+    staff, club, hall, monkeypatch
+):
+    from reservations import board as boards
+
+    from .test_draws import draw_url
+    from .test_ties import team
+    from .test_tournaments import add_event, do, make_tournament
+
+    one, two = tables(hall)
+    cup = make_tournament(staff, club, hall)
+    cup = add_event(staff, cup, name="Teams", kind="team", format="round_robin", tie_rubbers=["singles"] * 3)
+    cup = do(staff, cup, "publish")
+    event = cup["events"][0]
+    squads = {name: team(staff, cup, event, name) for name in ("Tudor", "Nyali", "Bamburi")}
+    for entry, _ in squads.values():
+        staff.post(url(cup, event=event) + f"entries/{entry['id']}/check-in/", {}, format="json")
+    staff.post(draw_url(cup, event, "preview"), {"rng_seed": 1}, format="json")
+    staff.post(draw_url(cup, event, "publish"), {}, format="json")
+    do(staff, cup, "start")
+    do(staff, cup, "start", event=event)
+    by_entry = {entry["id"]: players for entry, players in squads.values()}
+    ties_ = list(Match.objects.filter(draw__event_id=event["id"]))
+    for tie in ties_:
+        for entry_id in (tie.entry_a_id, tie.entry_b_id):
+            # Each tie fields a different player first, so the two ties of a team share no first player.
+            first = ties_.index(tie) % 3
+            order = [[str(by_entry[str(entry_id)][(first + n) % 3].id)] for n in range(3)]
+            path = url(cup, event=event) + f"matches/{tie.id}/lineup/"
+            assert (
+                staff.post(path, {"entry_id": str(entry_id), "picks": order}, format="json").status_code
+                == 200
+            )
+    # Three ties, each sharing a team with the others: only one is offered a table.
+    shown = board(staff, cup)
+    assert [row["state"] for row in shown["queue"]] == ["ready", "waiting", "waiting"]
+    assert shown["queue"][1]["reasons"][0]["code"] == "plays_earlier_match"
+    first = next(tie for tie in ties_ if str(tie.id) == shown["queue"][0]["match_id"])
+    second = next(tie for tie in ties_ if tie.id != first.id)
+    send(staff, {"cup": cup, "event": event, "match": first}, one)
+    refused = send(staff, {"cup": cup, "event": event, "match": second}, two, expect=409)
+    assert refused["code"] == "team_busy" and "is playing a tie on Table 1." in refused["message"]
+
+    # Automatic dispatch breaking down must not take the result that triggered it with it.
+    auto(staff, cup)
+
+    def broken(tournament):
+        raise RuntimeError("the board is broken")
+
+    monkeypatch.setattr(boards, "_rows", broken)
+    drawing.record_result(first, first.entry_a, outcome="walkover")
+    assert Match.objects.get(pk=first.pk).status == "completed"
+    assert not Hold.objects.filter(active=True).exists()
