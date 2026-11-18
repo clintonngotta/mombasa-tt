@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .result_views import ResultViewSet
-from .schedule_views import ScheduleViewSet
+from .schedule_views import ScheduleSessionViewSet, ScheduleViewSet
 from .views import (
     DrawViewSet,
     EntryViewSet,
@@ -38,6 +38,36 @@ urlpatterns = [
         "<uuid:tournament_pk>/schedule/check/",
         action(ScheduleViewSet, "check_plan"),
         name="tournament-schedule-check",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/publish/",
+        action(ScheduleViewSet, "publish"),
+        name="tournament-schedule-publish",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/delay/",
+        action(ScheduleViewSet, "delay"),
+        name="tournament-schedule-delay",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/versions/",
+        ScheduleViewSet.as_view({"get": "versions"}),
+        name="tournament-schedule-versions",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/versions/<int:number>/",
+        ScheduleViewSet.as_view({"get": "version"}),
+        name="tournament-schedule-version",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/sessions/",
+        ScheduleSessionViewSet.as_view({"get": "list", "post": "create"}),
+        name="tournament-schedule-sessions",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/sessions/<uuid:pk>/",
+        ScheduleSessionViewSet.as_view({"patch": "partial_update", "delete": "destroy"}),
+        name="tournament-schedule-session",
     ),
     path(
         "<uuid:pk>/",

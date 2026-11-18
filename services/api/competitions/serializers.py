@@ -223,6 +223,12 @@ class TournamentSerializer(serializers.ModelSerializer):
     timezone = serializers.CharField(max_length=64, required=False, validators=[validate_timezone])
     events = EventSerializer(many=True, read_only=True)
     registration_fee = RegistrationFeeSerializer(source="*", required=False)
+    schedule_notice_minutes = serializers.IntegerField(
+        min_value=0,
+        max_value=240,
+        required=False,
+        help_text="A published match moved by more than this, or to another table, is news for its people.",
+    )
 
     class Meta:
         model = Tournament
@@ -239,6 +245,7 @@ class TournamentSerializer(serializers.ModelSerializer):
             "scope",
             "approval_status",
             "registration_fee",
+            "schedule_notice_minutes",
             "status",
             "published_at",
             "started_at",

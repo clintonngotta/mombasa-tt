@@ -14,6 +14,7 @@ One named world, then every route of the API is exercised against it:
 
 import importlib
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from django.apps import apps
@@ -34,6 +35,8 @@ from competitions.models import (
     OfficialResult,
     Resolution,
     Rubber,
+    ScheduleSession,
+    ScheduleVersion,
     Tournament,
 )
 from facilities.models import Table, Venue
@@ -129,6 +132,12 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-schedule": {"get": STAFF, "put": STAFF},
     "tournament-schedule-recommend": {"post": STAFF},
     "tournament-schedule-check": {"post": STAFF},
+    "tournament-schedule-publish": {"post": STAFF},
+    "tournament-schedule-delay": {"post": STAFF},
+    "tournament-schedule-versions": {"get": STAFF},
+    "tournament-schedule-version": {"get": STAFF},
+    "tournament-schedule-sessions": {"get": STAFF, "post": STAFF},
+    "tournament-schedule-session": {"patch": STAFF, "delete": STAFF},
     # Lists only the drafts the caller may approve; see test_authority.
     "tournament-awaiting-approval": {"get": SIGNED_IN},
     "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
@@ -209,6 +218,14 @@ CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 BODIES = {
     ("tournament-schedule", "put"): {"slots": []},
     ("tournament-schedule-check", "post"): {"slots": []},
+    ("tournament-schedule-delay", "post"): {"table_id": SPARE_TABLE, "minutes": 20, "reason": "late_start"},
+    ("tournament-schedule-sessions", "post"): {
+        "day": "2026-12-05",
+        "starts": "09:00",
+        "ends": "13:00",
+        "table_ids": [SPARE_TABLE],
+    },
+    ("tournament-schedule-session", "patch"): {"name": "Morning"},
     ("organization-detail", "patch"): {"country": "KE", "region": "Mombasa", "town": "Mombasa"},
     ("organization-invitations", "post"): {"email": "newcomer@example.com"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
@@ -500,6 +517,16 @@ class World:
         first = next(e for e in (self.decided.entry_a, self.decided.entry_b) if str(e.id) != CORRECTED_WINNER)
         drawing.record_result(self.decided, first, outcome="walkover")
         self.question_cup, self.in_question = under_way("Question Cup", ("q1", "q2"))
+        # A day schedule with a session, a published version and a working plan still to publish.
+        self.planned_cup, planned = under_way("Planned Cup", ("s1", "s2"))
+        Match.objects.filter(pk=planned.pk).update(
+            draft_table=self.spare_table, draft_at=datetime(2026, 12, 5, 7, 0, tzinfo=UTC)
+        )
+        self.session = ScheduleSession.objects.create(
+            tournament=self.planned_cup, day="2026-12-05", starts="09:00", ends="21:00"
+        )
+        self.session.tables.add(self.spare_table)
+        ScheduleVersion.objects.create(tournament=self.planned_cup, number=1, kind="published")
         self.resolution = Resolution.objects.create(
             event=self.question_cup.event,
             match=self.in_question,
@@ -594,6 +621,7 @@ class World:
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
             "player-ratings": self.baraka.id,
+            "tournament-schedule-session": self.session.id,
         }
         found = {}
         if "code" in names:
@@ -604,6 +632,11 @@ class World:
             found["pk"] = pk[name]
         if "table_pk" in names:
             found["table_pk"] = self.table.id
+        if name.startswith("tournament-schedule"):
+            found["tournament_pk"] = self.planned_cup.id
+            if "number" in names:
+                found["number"] = 1
+            return found
         whole = ("tournament-tables", "tournament-reservations")
         if name.startswith(("tournament-scoring", "tournament-dispatch")) or name in whole:
             found["tournament_pk"] = self.scored_cup.id
@@ -675,6 +708,9 @@ class World:
             "lineups": Lineup.objects.count(),
             "rubbers": Rubber.objects.count(),
             "draws": sorted(DrawVersion.objects.values_list("event__name", "version", "status", "rng_seed")),
+            "plans": sorted(Match.objects.values_list("id", "draft_at", "scheduled_at")),
+            "schedule_versions": ScheduleVersion.objects.count(),
+            "sessions": sorted(ScheduleSession.objects.values_list("id", "name")),
         }
 
 
@@ -937,6 +973,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "scope",
         "approval_status",
         "registration_fee",
+        "schedule_notice_minutes",
         "status",
         "published_at",
         "started_at",

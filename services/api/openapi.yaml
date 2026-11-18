@@ -4539,8 +4539,9 @@ paths:
     put:
       operationId: tournaments_schedule_update
       description: |-
-        Keep these tables and starts. Refused with `schedule_conflicts` and the list of conflicts
-        when a table, a player or a match's order wouldn't work; warnings don't stop it.
+        Keep these tables and starts in the working plan; nobody else sees them until the schedule
+        is published. Refused with `schedule_conflicts` and the list of conflicts when a table, a
+        player or a match's order wouldn't work; warnings don't stop it.
       parameters:
       - in: path
         name: tournament_pk
@@ -4606,6 +4607,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/delay/:
+    post:
+      operationId: tournaments_schedule_delay_create
+      description: |-
+        A table starts late or goes out of service: its published matches still to play move on by
+        the minutes given, and so does everything that then clashes with them. Published at once, as
+        a version of its own, with the same notices as publishing.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableDelayRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delayed'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/publish/:
+    post:
+      operationId: tournaments_schedule_publish_create
+      description: |-
+        Publish the working plan as the next version. Players and umpires of matches that move
+        table, or move by more than the notice threshold, are told; nobody else. Refused with
+        `schedule_conflicts` while the plan has conflicts, and `nothing_to_publish` without changes.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishNoteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleVersion'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/schedule/recommend/:
     post:
       operationId: tournaments_schedule_recommend_create
@@ -4635,6 +4709,201 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Recommendation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/sessions/:
+    get:
+      operationId: tournaments_schedule_sessions_list
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: tournaments_schedule_sessions_create
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/sessions/{id}/:
+    patch:
+      operationId: tournaments_schedule_sessions_partial_update
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_schedule_sessions_destroy
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/versions/:
+    get:
+      operationId: tournaments_schedule_versions_list
+      description: Every published version, latest first.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduleVersionSummary'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/versions/{number}/:
+    get:
+      operationId: tournaments_schedule_versions_retrieve
+      description: 'One version: every match as published then, and what changed from
+        the one before.'
+      parameters:
+      - in: path
+        name: number
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleVersion'
           description: ''
         4XX:
           description: Error envelope
@@ -5055,6 +5324,30 @@ components:
       - playing
       - since
       - suggested_match_id
+    Change:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        title:
+          type: string
+        before:
+          $ref: '#/components/schemas/Place'
+        after:
+          $ref: '#/components/schemas/Place'
+        notify:
+          type: boolean
+          description: Its players and umpire are told.
+      required:
+      - after
+      - before
+      - label
+      - match_id
+      - notify
+      - title
     Checked:
       type: object
       properties:
@@ -5240,6 +5533,34 @@ components:
       required:
       - players
       - title
+    DelayReasonEnum:
+      enum:
+      - late_start
+      - out_of_service
+      - other
+      type: string
+      description: |-
+        * `late_start` - Late start
+        * `out_of_service` - Table out of service
+        * `other` - Other
+    Delayed:
+      type: object
+      properties:
+        version:
+          $ref: '#/components/schemas/ScheduleVersion'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+          description: What the published schedule still has wrong.
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - version
+      - warnings
     Device:
       type: object
       description: Which device is scoring the sheet. `here` compares with the caller's
@@ -7922,6 +8243,33 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PermissionEnum'
+    PatchedSessionRequest:
+      type: object
+      description: A block of one day's play. No events means every event.
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        day:
+          type: string
+          format: date
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: At least one.
+        event_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
     PatchedTableRequest:
       type: object
       properties:
@@ -7963,6 +8311,12 @@ components:
           $ref: '#/components/schemas/TournamentScopeEnum'
         registration_fee:
           $ref: '#/components/schemas/RegistrationFeeRequest'
+        schedule_notice_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
     PatchedVenueRequest:
       type: object
       description: A venue with its tables in playing order.
@@ -8114,6 +8468,20 @@ components:
       - games
       - label
       - played_on
+    Place:
+      type: object
+      properties:
+        table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - scheduled_at
+      - table
     Placement:
       type: object
       properties:
@@ -8350,6 +8718,12 @@ components:
         * `on_table` - on_table
         * `being_scored` - being_scored
         * `not_started` - not_started
+    PublishNoteRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 300
     PublishedDetailsEnum:
       enum:
       - hand
@@ -8699,6 +9073,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecommendedSlot'
+          description: A match no session can hold has neither table nor start.
         conflicts:
           type: array
           items:
@@ -9177,6 +9552,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ScheduleTable'
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
         rows:
           type: array
           items:
@@ -9189,9 +9568,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Problem'
+        published_version:
+          type: integer
+          nullable: true
+          description: The latest version's number.
+        notice_minutes:
+          type: integer
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
       required:
       - conflicts
+      - notice_minutes
+      - published_version
       - rows
+      - sessions
       - tables
       - warnings
     ScheduleRow:
@@ -9218,19 +9608,37 @@ components:
           type: string
           format: uuid
           nullable: true
+          description: In the working plan.
         scheduled_at:
           type: string
           format: date-time
           nullable: true
+          description: In the working plan.
+        published_table_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: As everybody sees it.
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: As everybody sees it.
+        unpublished:
+          type: boolean
+          description: The working plan differs from what is published.
       required:
       - event
       - event_id
       - label
       - match_id
       - minutes
+      - published_at
+      - published_table_id
       - scheduled_at
       - table_id
       - title
+      - unpublished
     ScheduleTable:
       type: object
       properties:
@@ -9242,6 +9650,150 @@ components:
       required:
       - id
       - label
+    ScheduleVersion:
+      type: object
+      properties:
+        number:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleVersionKindEnum'
+          readOnly: true
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/DelayReasonEnum'
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        delayed_table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          readOnly: true
+          nullable: true
+        delay_minutes:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_by_name:
+          type: string
+          readOnly: true
+          default: ''
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+        change_count:
+          type: integer
+          readOnly: true
+        notify_count:
+          type: integer
+          description: Matches whose people are told.
+          readOnly: true
+        notified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        notified_count:
+          type: integer
+          readOnly: true
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Change'
+          readOnly: true
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionSlot'
+          readOnly: true
+      required:
+      - change_count
+      - changes
+      - delay_minutes
+      - delayed_table
+      - kind
+      - note
+      - notified_at
+      - notified_count
+      - notify_count
+      - number
+      - published_at
+      - published_by_name
+      - reason
+      - slots
+    ScheduleVersionKindEnum:
+      enum:
+      - published
+      - delay
+      type: string
+      description: |-
+        * `published` - Published
+        * `delay` - Delay
+    ScheduleVersionSummary:
+      type: object
+      properties:
+        number:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleVersionKindEnum'
+          readOnly: true
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/DelayReasonEnum'
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        delayed_table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          readOnly: true
+          nullable: true
+        delay_minutes:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_by_name:
+          type: string
+          readOnly: true
+          default: ''
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+        change_count:
+          type: integer
+          readOnly: true
+        notify_count:
+          type: integer
+          description: Matches whose people are told.
+          readOnly: true
+        notified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        notified_count:
+          type: integer
+          readOnly: true
+      required:
+      - change_count
+      - delay_minutes
+      - delayed_table
+      - kind
+      - note
+      - notified_at
+      - notified_count
+      - notify_count
+      - number
+      - published_at
+      - published_by_name
+      - reason
     ScoreConflict:
       type: object
       description: A device's unaccepted events beside what the server holds at the
@@ -9555,6 +10107,77 @@ components:
       - event
       - id
       - sequence
+    Session:
+      type: object
+      description: A block of one day's play. No events means every event.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        day:
+          type: string
+          format: date
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: At least one.
+        event_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - day
+      - ends
+      - event_ids
+      - id
+      - name
+      - starts
+      - table_ids
+    SessionRequest:
+      type: object
+      description: A block of one day's play. No events means every event.
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        day:
+          type: string
+          format: date
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: At least one.
+        event_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - day
+      - ends
+      - starts
+      - table_ids
     SheetContext:
       type: object
       description: Which match a sheet is for, as the organizers' scoring page shows
@@ -9828,6 +10451,25 @@ components:
       - id
       - label
       - position
+    TableDelayRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 300
+        table_id:
+          type: string
+          format: uuid
+        minutes:
+          type: integer
+          maximum: 480
+          minimum: 1
+        reason:
+          $ref: '#/components/schemas/DelayReasonEnum'
+      required:
+      - minutes
+      - reason
+      - table_id
     TableRequest:
       type: object
       properties:
@@ -9991,6 +10633,12 @@ components:
           readOnly: true
         registration_fee:
           $ref: '#/components/schemas/RegistrationFee'
+        schedule_notice_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
         status:
           allOf:
           - $ref: '#/components/schemas/TournamentStatusEnum'
@@ -10036,6 +10684,7 @@ components:
       - organization
       - published_at
       - registration_fee
+      - schedule_notice_minutes
       - scope
       - started_at
       - starts_on
@@ -10074,6 +10723,12 @@ components:
           $ref: '#/components/schemas/TournamentScopeEnum'
         registration_fee:
           $ref: '#/components/schemas/RegistrationFeeRequest'
+        schedule_notice_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
       required:
       - ends_on
       - name
@@ -10217,6 +10872,30 @@ components:
       - id
       - name
       - town
+    VersionSlot:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        title:
+          type: string
+        table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - label
+      - match_id
+      - scheduled_at
+      - table
+      - title
     ApiError:
       type: object
       description: Envelope of every API error (REQ-032); see core.exceptions.api_exception_handler.
