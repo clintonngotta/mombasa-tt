@@ -6,6 +6,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { SelectField } from "@/components/forms/SelectField"
+import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { PlayerPicker, type Picked } from "@/components/tournaments/PlayerPicker"
 import { EntryStatusChip, EventStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
@@ -21,6 +22,7 @@ import {
   listEntries,
   listMyEntries,
   MAX_TEAM_ROSTER,
+  POOL_LABEL,
   placesTaken,
   selfCheckIn,
   withdrawEntry,
@@ -203,7 +205,12 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
   )
 }
 
-const ROSTER_SIZE: Record<TournamentEvent["kind"], number> = { singles: 1, doubles: 2, team: MAX_TEAM_ROSTER }
+const ROSTER_SIZE: Record<TournamentEvent["kind"], number> = { singles: 1, doubles: 2, team: MAX_TEAM_ROSTER, jumbles: 1 }
+type Pool = keyof typeof POOL_LABEL
+const POOLS: { value: Pool; label: string; description: string }[] = [
+  { value: "men", label: POOL_LABEL.men, description: "Partnered with a woman each round" },
+  { value: "women", label: POOL_LABEL.women, description: "Partnered with a man each round" },
+]
 const DIRECTORY_HINT = "Only players listed in the player directory can be found. Anyone can list themselves from their profile."
 
 /** Enter the event: yourself (with a partner or a team), or anybody when the organizers do it. */
@@ -213,6 +220,7 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
   const [picked, setPicked] = useState<Picked[]>([])
   const [teamName, setTeamName] = useState("")
   const [captain, setCaptain] = useState("")
+  const [pool, setPool] = useState<Pool | "">("")
   const fixed = !staff && me ? [{ id: me.id, display_name: me.display_name }] : []
   const players = [...fixed, ...picked]
   const captainId = players.some((player) => player.id === captain) ? captain : (players[0]?.id ?? "")
@@ -221,16 +229,18 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
       createEntry(t.id, event.id, {
         player_ids: players.map((player) => player.id),
         ...(event.kind === "team" ? { team_name: teamName.trim(), captain_id: captainId || null } : {}),
+        ...(event.kind === "jumbles" && pool ? { pool } : {}),
       }),
     onSuccess: () => {
       setPicked([])
       setTeamName("")
+      setPool("")
       onDone()
     },
   })
   const fieldErrors = enter.error instanceof ApiError ? enter.error.fieldErrors() : {}
   const other = enter.isError && Object.keys(fieldErrors).length === 0
-  const needsPicker = staff || event.kind !== "singles"
+  const needsPicker = staff || (event.kind !== "singles" && event.kind !== "jumbles")
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -242,9 +252,12 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
       {event.kind === "team" && (
         <Field label="Team name" required maxLength={80} value={teamName} onChange={(e) => setTeamName(e.target.value)} error={fieldErrors.team_name} />
       )}
+      {event.kind === "jumbles" && (
+        <ChoiceGroup legend="Pool" options={POOLS} value={pool} onChange={setPool} error={fieldErrors.pool} />
+      )}
       {needsPicker ? (
         <PlayerPicker
-          label={event.kind === "singles" ? "Player" : event.kind === "doubles" ? (staff ? "The two players" : "Your partner") : "Players"}
+          label={event.kind === "singles" || event.kind === "jumbles" ? "Player" : event.kind === "doubles" ? (staff ? "The two players" : "Your partner") : "Players"}
           hint={DIRECTORY_HINT}
           picked={picked}
           fixed={fixed}
@@ -295,6 +308,7 @@ function Accepted({ entries }: { entries: Entry[] }) {
           {entries.map((entry) => (
             <li key={entry.id} className="flex flex-col gap-1 rounded-lg border bg-card p-3">
               <p className="font-semibold break-words">{entryTitle(entry)}</p>
+              {entry.pool && <p className="text-sm text-muted-foreground">{POOL_LABEL[entry.pool]}</p>}
               <Players entry={entry} />
             </li>
           ))}

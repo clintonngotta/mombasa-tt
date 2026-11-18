@@ -99,7 +99,7 @@ export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
   cancelled: "Cancelled",
 }
 
-export const KIND_LABEL: Record<EventKind, string> = { singles: "Singles", doubles: "Doubles", team: "Teams" }
+export const KIND_LABEL: Record<EventKind, string> = { singles: "Singles", doubles: "Doubles", team: "Teams", jumbles: "Jumbles" }
 
 export const FORMAT_LABEL: Record<EventFormat, string> = {
   round_robin: "Round robin",

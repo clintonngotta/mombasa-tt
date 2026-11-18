@@ -36,6 +36,7 @@ const KINDS: { value: EventKind; label: string; description: string }[] = [
   { value: "singles", label: "Singles", description: "One player per entry" },
   { value: "doubles", label: "Doubles", description: "Two players per entry" },
   { value: "team", label: "Teams", description: "A roster and a captain" },
+  { value: "jumbles", label: "Jumbles", description: "Mixed doubles, a new partner every round" },
 ]
 
 const FORMATS: { value: EventFormat; label: string; description: string }[] = [
@@ -169,8 +170,25 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
             hint="Open events accept eligible entries while space is available. Closed events send entries to the organizer for approval."
             error={errors.admission}
           />
-          <ChoiceGroup legend="Who enters" columns={3} options={KINDS} value={kind} onChange={setKind} error={errors.kind} />
-          <ChoiceGroup legend="Format" columns={3} options={FORMATS} value={format} onChange={setFormat} error={errors.format} />
+          <ChoiceGroup
+            legend="Who enters"
+            columns={2}
+            options={KINDS}
+            value={kind}
+            onChange={(next) => {
+              setKind(next)
+              if (next === "jumbles") setFormat("round_robin")
+            }}
+            error={errors.kind}
+          />
+          {kind === "jumbles" ? (
+            <p className="rounded-lg border bg-surface-selected p-3 text-sm">
+              Players enter alone, in the men's or the women's pool, and the two pools must be the same size. It is a round robin: every round each man plays with a
+              different woman, and the final table ranks everybody by the points they scored over all their matches. Jumbles isn't seeded or rated.
+            </p>
+          ) : (
+            <ChoiceGroup legend="Format" columns={3} options={FORMATS} value={format} onChange={setFormat} error={errors.format} />
+          )}
           {format === "groups_knockout" && (
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Groups" type="number" inputMode="numeric" min={2} required value={groups} onChange={(e) => setGroups(e.target.value)} error={errors.group_count} />
@@ -228,7 +246,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
             </fieldset>
           )}
           <ChoiceGroup legend="Match length" columns={3} options={BEST_OF} value={bestOf} onChange={setBestOf} error={errors.best_of} />
-          <ChoiceGroup legend="Seeding" columns={3} options={SEEDINGS} value={seeding} onChange={setSeeding} error={errors.seeding} />
+          {kind !== "jumbles" && <ChoiceGroup legend="Seeding" columns={3} options={SEEDINGS} value={seeding} onChange={setSeeding} error={errors.seeding} />}
         </>
       )}
 

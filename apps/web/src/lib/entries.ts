@@ -35,7 +35,10 @@ export const ENTRY_STATUS_LABEL: Record<EntryStatus, string> = {
   waitlisted: "On the waiting list",
   rejected: "Not accepted",
   withdrawn: "Withdrawn",
+  pairing: "Jumbles pair",
 }
+
+export const POOL_LABEL = { men: "Men's pool", women: "Women's pool" } as const
 
 /** Still standing: pending, accepted or on the waiting list. */
 export const isLive = (entry: { status: EntryStatus }) => entry.status === "pending" || entry.status === "accepted" || entry.status === "waitlisted"
