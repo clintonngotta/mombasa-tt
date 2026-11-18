@@ -13,6 +13,21 @@ urlpatterns = [
         name="tournament-reservations",
     ),
     path(
+        "<uuid:tournament_pk>/dispatch/",
+        DispatchViewSet.as_view({"get": "board"}),
+        name="tournament-dispatch",
+    ),
+    path(
+        "<uuid:tournament_pk>/dispatch/auto/",
+        DispatchViewSet.as_view({"post": "set_auto"}),
+        name="tournament-dispatch-auto",
+    ),
+    path(
+        "<uuid:tournament_pk>/dispatch/run/",
+        DispatchViewSet.as_view({"post": "run"}),
+        name="tournament-dispatch-run",
+    ),
+    path(
         "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/dispatch/",
         DispatchViewSet.as_view({"post": "dispatch_match"}),
         name="tournament-event-match-dispatch",

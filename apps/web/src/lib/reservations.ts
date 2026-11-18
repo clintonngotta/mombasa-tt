@@ -6,9 +6,21 @@ export type Reservation = Schemas["Reservation"]
 /** A check staff may set aside when sending a match to a table. Exclusivity is never one. */
 export type Override = "check_in" | "rest"
 
+export type Board = Schemas["Board"]
+export type BoardTable = Schemas["BoardTable"]
+export type QueuedMatch = Schemas["QueuedMatch"]
+
 export const reservationKeys = {
   tables: (tournamentId: string) => ["reservations", "tables", tournamentId] as const,
+  board: (tournamentId: string) => ["reservations", "board", tournamentId] as const,
 }
+
+/** The dispatch board: tables, the ready queue in its fixed order and what is suggested; staff only. */
+export const getBoard = (tournamentId: string) => api<Board>(`/tournaments/${tournamentId}/dispatch/`)
+/** Switch automatic dispatch on or off; on, it sends what is ready at once. */
+export const setAutoDispatch = (tournamentId: string, enabled: boolean) => api<Board>(`/tournaments/${tournamentId}/dispatch/auto/`, { body: { enabled } })
+/** Let automatic dispatch look now (a rest may have just ended). Sends nothing while it is off. */
+export const runAutoDispatch = (tournamentId: string) => api<Board>(`/tournaments/${tournamentId}/dispatch/run/`, { body: {} })
 
 const match = (tournamentId: string, eventId: string, matchId: string) => `/tournaments/${tournamentId}/events/${eventId}/matches/${matchId}/`
 

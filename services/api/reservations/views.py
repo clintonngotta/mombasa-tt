@@ -10,8 +10,15 @@ from competitions.serializers import MatchDetailSerializer
 from competitions.views import match_reply, require_staff, staff_tournament
 from facilities.models import Table
 
-from . import service
-from .serializers import DispatchSerializer, RecallSerializer, ReservationSerializer, TableStateSerializer
+from . import board, service
+from .serializers import (
+    AutoDispatchSerializer,
+    BoardSerializer,
+    DispatchSerializer,
+    RecallSerializer,
+    ReservationSerializer,
+    TableStateSerializer,
+)
 
 
 class DispatchViewSet(viewsets.GenericViewSet):
@@ -39,6 +46,36 @@ class DispatchViewSet(viewsets.GenericViewSet):
         tournament = self._tournament(request, tournament_pk)
         held = [service.describe(reservation) for reservation in service.active_for(tournament)]
         return Response(ReservationSerializer(held, many=True).data)
+
+    @extend_schema(responses={200: BoardSerializer})
+    def board(self, request, tournament_pk):
+        """The dispatch board: every table, the ready queue in its fixed order (planned start, then
+        longest wait, then id), what keeps each held-up match from a table, and which match is
+        suggested for which free table."""
+        return Response(BoardSerializer(board.build(self._tournament(request, tournament_pk))).data)
+
+    @extend_schema(request=AutoDispatchSerializer, responses={200: BoardSerializer})
+    def set_auto(self, request, tournament_pk):
+        """Switch automatic dispatch on or off. On, ready matches go to free tables in queue order
+        without anybody pressing Send; no check is ever set aside for them."""
+        serializer = AutoDispatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            tournament.auto_dispatch = serializer.validated_data["enabled"]
+            tournament.save(update_fields=["auto_dispatch", "updated_at"])
+            board.run_auto(tournament, request.user)
+        return Response(BoardSerializer(board.build(tournament)).data)
+
+    @extend_schema(request=None, responses={200: BoardSerializer})
+    def run(self, request, tournament_pk):
+        """Let automatic dispatch look now: it sends what it can and leaves the rest. Does nothing
+        while automatic dispatch is off. The open board calls this, so a rest that has just ended is
+        noticed without waiting for the next result."""
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            board.run_auto(tournament, request.user)
+        return Response(BoardSerializer(board.build(tournament)).data)
 
     def _match(self, tournament: Tournament, event_pk, pk) -> Match:
         return get_object_or_404(

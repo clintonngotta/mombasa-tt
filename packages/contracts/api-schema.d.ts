@@ -1297,6 +1297,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/dispatch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The dispatch board: every table, the ready queue in its fixed order (planned start, then
+         *     longest wait, then id), what keeps each held-up match from a table, and which match is
+         *     suggested for which free table.
+         */
+        get: operations["tournaments_dispatch_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/dispatch/auto/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Switch automatic dispatch on or off. On, ready matches go to free tables in queue order
+         *     without anybody pressing Send; no check is ever set aside for them.
+         */
+        post: operations["tournaments_dispatch_auto_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/dispatch/run/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Let automatic dispatch look now: it sends what it can and leaves the rest. Does nothing
+         *     while automatic dispatch is off. The open board calls this, so a rest that has just ended is
+         *     noticed without waiting for the next result.
+         */
+        post: operations["tournaments_dispatch_run_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/": {
         parameters: {
             query?: never;
@@ -1932,6 +1994,9 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
         };
+        AutoDispatchRequest: {
+            enabled: boolean;
+        };
         AvatarUploadRequest: {
             /**
              * Format: binary
@@ -1948,6 +2013,35 @@ export interface components {
         BestOfEnum: 3 | 5 | 7;
         /** @enum {unknown} */
         BlankEnum: "";
+        /**
+         * @description The dispatch board: the tables, the queue in its fixed order and what is suggested. A suggestion
+         *     is only that: sending it checks everything again.
+         */
+        Board: {
+            auto_dispatch: boolean;
+            in_play: boolean;
+            tables: components["schemas"]["BoardTable"][];
+            queue: components["schemas"]["QueuedMatch"][];
+            /** @description Matches still waiting for an earlier result. */
+            to_come: number;
+        };
+        /** @description One of the tournament's tables and whether a match holds it right now. */
+        BoardTable: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            free: boolean;
+            /** @description Tournament and event of the match on it. */
+            held_by: string;
+            /** Format: date-time */
+            since: string | null;
+            /** @description This tournament's match on the table. */
+            playing: components["schemas"]["Reservation"] | null;
+            /** Format: uuid */
+            suggested_match_id: string | null;
+            /** @description Why a free table has no match. */
+            idle_reason: string;
+        };
         /**
          * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
          *     revision it shows (a result is never confirmed over points still on their way).
@@ -3143,6 +3237,41 @@ export interface components {
          * @enum {string}
          */
         PublishedDetailsEnum: "hand" | "grip" | "style" | "experience" | "bio";
+        /**
+         * @description A match in the ready queue. `ready` has a free table suggested; `waiting` could be played but
+         *     waits for a table, for a match ahead of it that shares a player, or for staff; `blocked` can't.
+         */
+        QueuedMatch: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            label: string;
+            a: string;
+            b: string;
+            /** Format: date-time */
+            planned_at: string | null;
+            /** Format: date-time */
+            ready_since: string;
+            state: components["schemas"]["StateEnum"];
+            /** @description Rank among matches playable now. */
+            position: number | null;
+            reasons: components["schemas"]["Reason"][];
+            /** Format: uuid */
+            suggested_table_id: string | null;
+            suggested_table: string;
+        };
+        /** @description One thing that keeps a match from a table, in the words a refusal would use. */
+        Reason: {
+            code: string;
+            message: string;
+            /**
+             * Format: date-time
+             * @description For a rest: when it is over.
+             */
+            until: string | null;
+        };
         ReasonRequest: {
             reason: string;
         };
@@ -3170,6 +3299,8 @@ export interface components {
             b: string;
             /** Format: date-time */
             since: string;
+            /** @description Sent by automatic dispatch, not by a person. */
+            automatic: boolean;
             /** @description Players held with the table. */
             people: string[];
             overrides: string[];
@@ -3415,6 +3546,13 @@ export interface components {
             groups: components["schemas"]["GroupStanding"][];
             placements: components["schemas"]["Placement"][];
         };
+        /**
+         * @description * `ready` - ready
+         *     * `waiting` - waiting
+         *     * `blocked` - blocked
+         * @enum {string}
+         */
+        StateEnum: "ready" | "waiting" | "blocked";
         StreamEvent: {
             sequence: number;
             event: unknown;
@@ -6270,6 +6408,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dispatch_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dispatch_auto_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoDispatchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dispatch_run_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
                 };
             };
             /** @description Error envelope */

@@ -133,7 +133,18 @@ def publish(event: Event, actor) -> DrawVersion:
     preview.published_by = actor
     preview.published_at = timezone.now()
     preview.save(update_fields=["status", "published_by", "published_at"])
+    mark_ready(preview)
     return preview
+
+
+def mark_ready(draw: DrawVersion) -> None:
+    """Note the moment a match of the draw has both its sides: its waiting starts here."""
+    draw.matches.filter(
+        status=Match.Status.SCHEDULED,
+        entry_a__isnull=False,
+        entry_b__isnull=False,
+        ready_since__isnull=True,
+    ).update(ready_since=timezone.now())
 
 
 def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.PLAYED, games=()) -> None:
@@ -178,6 +189,7 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
     _send_on(match)
     if match.stage == Match.Stage.GROUP:
         place_qualifiers(match.draw, match.group)
+    mark_ready(match.draw)
     # Whatever the match held (its table, its players) is released in this same transaction.
     signals.match_decided.send(sender=Match, match=match)
 
