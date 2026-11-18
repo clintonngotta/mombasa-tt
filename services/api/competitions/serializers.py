@@ -559,7 +559,7 @@ class ResolutionSerializer(serializers.Serializer):
     new_entry = serializers.CharField(
         allow_blank=True, help_text="Who should be; empty when an earlier match is played again first."
     )
-    progress = serializers.ChoiceField(choices=["decided", "on_table", "being_scored"])
+    progress = serializers.ChoiceField(choices=["decided", "on_table", "being_scored", "not_started"])
     reason = serializers.CharField(help_text="The reason given for the correction.")
     corrected_by = serializers.CharField(allow_blank=True)
     created_at = serializers.DateTimeField()
@@ -570,7 +570,7 @@ class ResolutionSerializer(serializers.Serializer):
 
 
 class ResolveSerializer(serializers.Serializer):
-    choice = serializers.ChoiceField(choices=Resolution.Choice.choices)
+    choice = serializers.ChoiceField(choices=[Resolution.Choice.KEEP, Resolution.Choice.REPLACE])
     note = serializers.CharField(max_length=300, trim_whitespace=True)
 
 

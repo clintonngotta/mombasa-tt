@@ -221,8 +221,16 @@ def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
 
 
 def _send_on(match: Match) -> None:
-    Match.objects.filter(feeder_a=match).update(entry_a=match.winner_id)
-    Match.objects.filter(feeder_b=match).update(entry_b=match.winner_id)
+    from . import corrections  # corrections builds on this module
+
+    for side in ("a", "b"):
+        for later in Match.objects.filter(**{f"feeder_{side}": match}).select_related("draw__event"):
+            # A match played again after a correction never overwrites a later match that is in
+            # question or that the organizers decided to keep as played.
+            if corrections.winner_known(later, side, match.winner):
+                continue
+            setattr(later, f"entry_{side}", match.winner)
+            later.save(update_fields=[f"entry_{side}"])
 
 
 def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], bool]:

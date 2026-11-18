@@ -8,27 +8,44 @@ from django.utils import timezone
 
 
 def backfill(apps, schema_editor):
-    """Results recorded before this history existed become its first versions."""
+    """Results recorded before this history existed become its first versions. When each was decided
+    was never kept, so they are given the order they must have been played in: event by event, groups
+    before the knockout, round by round, a tie after its rubbers. Each gets its own instant, a
+    microsecond after the one before, so anything rebuilt from results in that order (REQ-016) reads
+    the same order every time."""
+    from datetime import timedelta
+
     Match = apps.get_model("competitions", "Match")
     Rubber = apps.get_model("competitions", "Rubber")
     OfficialResult = apps.get_model("competitions", "OfficialResult")
     now = timezone.now()
-    made = [
-        OfficialResult(
-            match_id=match.id, winner_id=match.winner_id, outcome=match.outcome or "played",
-            games=match.games, source="umpire", first_accepted_at=now, projected_at=now,
-        )
-        for match in Match.objects.filter(status="completed", winner__isnull=False)
-    ]  # fmt: skip
-    made += [
-        OfficialResult(
-            match_id=rubber.match_id, rubber_id=rubber.id, winner_id=rubber.winner_id,
-            outcome=rubber.outcome or "played", games=rubber.games, source="umpire",
-            first_accepted_at=now, projected_at=now,
-        )
-        for rubber in Rubber.objects.filter(status="completed", winner__isnull=False)
-    ]  # fmt: skip
-    OfficialResult.objects.bulk_create(made)
+    rubbers: dict = {}
+    for rubber in Rubber.objects.filter(status="completed", winner__isnull=False).order_by("position"):
+        rubbers.setdefault(rubber.match_id, []).append(rubber)
+    matches = Match.objects.filter(draw__status="published").order_by(
+        "draw__event__started_at", "draw__event_id", "stage", "round", "id"
+    )
+    made = []
+    for match in matches.iterator(chunk_size=500):
+        for rubber in rubbers.get(match.id, []):
+            made.append(
+                OfficialResult(
+                    match_id=match.id, rubber_id=rubber.id, winner_id=rubber.winner_id,
+                    outcome=rubber.outcome or "played", games=rubber.games, source="umpire",
+                )
+            )  # fmt: skip
+        if match.status == "completed" and match.winner_id:
+            made.append(
+                OfficialResult(
+                    match_id=match.id, winner_id=match.winner_id, outcome=match.outcome or "played",
+                    games=match.games, source="umpire",
+                )
+            )  # fmt: skip
+    start = now - timedelta(microseconds=len(made))
+    for index, result in enumerate(made):
+        result.first_accepted_at = start + timedelta(microseconds=index)
+        result.projected_at = now
+    OfficialResult.objects.bulk_create(made, batch_size=500)
 
 
 class Migration(migrations.Migration):
@@ -58,9 +75,9 @@ class Migration(migrations.Migration):
                 ('current', models.BooleanField(default=True)),
                 ('voided_at', models.DateTimeField(blank=True, null=True)),
                 ('projected_at', models.DateTimeField(blank=True, null=True)),
-                ('match', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='results', to='competitions.match')),
+                ('match', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='results', to='competitions.match')),
                 ('recorded_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL)),
-                ('rubber', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='results', to='competitions.rubber')),
+                ('rubber', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='results', to='competitions.rubber')),
                 ('winner', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='+', to='competitions.entry')),
             ],
             options={
@@ -73,13 +90,13 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('side', models.CharField(max_length=1)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('choice', models.CharField(blank=True, choices=[('keep', 'Keep'), ('replace', 'Replace')], max_length=10)),
+                ('choice', models.CharField(blank=True, choices=[('keep', 'Keep'), ('replace', 'Replace'), ('withdrawn', 'Withdrawn')], max_length=10)),
                 ('note', models.CharField(blank=True, max_length=300)),
                 ('resolved_at', models.DateTimeField(blank=True, null=True)),
                 ('struck_out', models.JSONField(blank=True, default=dict)),
                 ('cause', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='resolutions', to='competitions.officialresult')),
                 ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='resolutions', to='competitions.event')),
-                ('match', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='resolutions', to='competitions.match')),
+                ('match', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='resolutions', to='competitions.match')),
                 ('new_entry', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='+', to='competitions.entry')),
                 ('old_entry', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='+', to='competitions.entry')),
                 ('resolved_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL)),

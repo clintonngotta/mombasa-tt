@@ -29,6 +29,8 @@ def describe_resolution(resolution: Resolution) -> dict:
         else "on_table"
         if match.dispatched_at
         else "being_scored"
+        if corrections.started(match)
+        else "not_started"
     )
     return {
         "id": resolution.id,

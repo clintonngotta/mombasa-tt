@@ -10,6 +10,7 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { drawKeys } from "@/lib/draws"
 import { reservationKeys } from "@/lib/reservations"
+import { scoringKeys } from "@/lib/scoring"
 import { getCorrections, resolveCorrection, resultKeys, type Resolution } from "@/lib/results"
 import { getTournament, tournamentKeys } from "@/lib/tournaments"
 
@@ -17,6 +18,7 @@ const PROGRESS: Record<Resolution["progress"], string> = {
   decided: "has already been played and decided",
   on_table: "is on a table",
   being_scored: "is being scored",
+  not_started: "hasn't started",
 }
 
 /**
@@ -72,10 +74,16 @@ export function CorrectionsPage() {
                     <Heading resolution={one} />
                     <p className="flex items-start gap-2 text-sm">
                       <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-success" />
-                      <span>
-                        {one.choice === "keep" ? `Kept as played, with ${one.old_entry}` : one.new_entry ? `${one.new_entry} put in for ${one.old_entry}; what was played was struck out` : `${one.old_entry} taken out; what was played was struck out`}
-                        . Decided by {one.resolved_by || "staff"}, {formatInstant(one.resolved_at!, t.timezone)}: {one.note}
-                      </span>
+                      {one.choice === "withdrawn" ? (
+                        <span>
+                          Nothing was changed: a later correction overtook this before anyone decided ({formatInstant(one.resolved_at!, t.timezone)}).
+                        </span>
+                      ) : (
+                        <span>
+                          {one.choice === "keep" ? `Kept as played, with ${one.old_entry}` : one.new_entry ? `${one.new_entry} put in for ${one.old_entry}; what was played was struck out` : `${one.old_entry} taken out; what was played was struck out`}
+                          . Decided by {one.resolved_by || "staff"}, {formatInstant(one.resolved_at!, t.timezone)}: {one.note}
+                        </span>
+                      )}
                     </p>
                   </li>
                 ))}
@@ -107,14 +115,16 @@ function Heading({ resolution: one }: { resolution: Resolution }) {
 function Waiting({ tournamentId, resolution: one, timeZone }: { tournamentId: string; resolution: Resolution; timeZone: string }) {
   const queryClient = useQueryClient()
   const [note, setNote] = useState("")
+  const [sure, setSure] = useState(false) // replaying strikes out play: it takes a second tap
   const decide = useMutation({
     mutationFn: (choice: "keep" | "replace") => resolveCorrection(tournamentId, one.id, choice, note.trim()),
     onSuccess: (fresh: Resolution[]) => {
       queryClient.setQueryData(resultKeys.corrections(tournamentId), fresh)
       void queryClient.invalidateQueries({ queryKey: tournamentKeys.detail(tournamentId) })
-      void queryClient.invalidateQueries({ queryKey: drawKeys.event(one.event_id) })
-      void queryClient.invalidateQueries({ queryKey: drawKeys.match(one.match_id) })
+      // Replaying reaches the match after this one too, and empties score sheets.
+      void queryClient.invalidateQueries({ queryKey: drawKeys.all })
       void queryClient.invalidateQueries({ queryKey: reservationKeys.board(tournamentId) })
+      void queryClient.invalidateQueries({ queryKey: scoringKeys.overview(tournamentId) })
     },
   })
   const should = one.new_entry ? `${one.new_entry} should be there now` : "that place is open again until an earlier match is replayed"
@@ -138,14 +148,25 @@ function Waiting({ tournamentId, resolution: one, timeZone }: { tournamentId: st
           <Button type="button" disabled={!note.trim() || decide.isPending} onClick={() => decide.mutate("keep")}>
             Keep the match as played
           </Button>
-          <Button type="button" variant="destructive" disabled={!note.trim() || decide.isPending} onClick={() => decide.mutate("replace")}>
-            {one.new_entry ? `Put ${one.new_entry} in and replay` : `Take ${one.old_entry} out and replay`}
-          </Button>
+          {sure ? (
+            <>
+              <Button type="button" variant="destructive" disabled={!note.trim() || decide.isPending} onClick={() => decide.mutate("replace")}>
+                Yes, strike out what was played
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setSure(false)}>
+                Not yet
+              </Button>
+            </>
+          ) : (
+            <Button type="button" variant="destructive" disabled={!note.trim() || decide.isPending} onClick={() => setSure(true)}>
+              {one.new_entry ? `Put ${one.new_entry} in and replay` : `Take ${one.old_entry} out and replay`}
+            </Button>
+          )}
           <Link to={`/tournaments/${tournamentId}/events/${one.event_id}/matches/${one.match_id}`} className={buttonVariants({ variant: "outline" })}>
             Open the match
           </Link>
         </div>
-        <p className="text-sm text-muted-foreground">Replaying takes the match off its table and strikes out its score and result. They are kept on record, not deleted.</p>
+        <p className="text-sm text-muted-foreground">Replaying takes the match off its table and strikes out its score and result. They are kept on record, not deleted. The match is kept or replayed as a whole: if both its sides are in question, this decides both.</p>
       </form>
     </li>
   )

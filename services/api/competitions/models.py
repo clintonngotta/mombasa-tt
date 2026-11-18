@@ -487,9 +487,10 @@ class OfficialResult(models.Model):
         CORRECTION = "correction"  # replaces an earlier version, with a reason
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="results")
+    # Results are the record: a match that has one can't be deleted from under it.
+    match = models.ForeignKey(Match, on_delete=models.PROTECT, related_name="results")
     rubber = models.ForeignKey(
-        Rubber, on_delete=models.CASCADE, null=True, blank=True, related_name="results"
+        Rubber, on_delete=models.PROTECT, null=True, blank=True, related_name="results"
     )
     version = models.PositiveSmallIntegerField(default=1)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name="+")
@@ -535,10 +536,11 @@ class Resolution(models.Model):
     class Choice(models.TextChoices):
         KEEP = "keep"  # the later match stands as it was played
         REPLACE = "replace"  # the right entry goes in; what was played there is struck out
+        WITHDRAWN = "withdrawn"  # a later correction overtook the question before anyone decided
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="resolutions")
-    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="resolutions")
+    match = models.ForeignKey(Match, on_delete=models.PROTECT, related_name="resolutions")
     side = models.CharField(max_length=1)  # "a" or "b": the place in `match` that is in question
     old_entry = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
     # Who should be there now; empty when the match that decides it has to be played again first.

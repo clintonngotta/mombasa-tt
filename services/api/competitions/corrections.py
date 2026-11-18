@@ -39,6 +39,14 @@ def enter(match: Match, rubber: Rubber | None, winner: Entry, outcome: str, game
         raise _conflict("not_in_play", "Start the tournament and the event before recording results.")
     from . import ties  # ties builds on drawing, as this does
 
+    standing = official.current(match, rubber)
+    same = standing is not None and (standing.winner_id, standing.outcome, standing.games) == (
+        winner.id,
+        outcome,
+        [list(game) for game in games],
+    )
+    if same and standing.source == Source.STAFF and standing.recorded_by_id == actor.id:
+        return  # the same entry sent again (its first answer was lost): nothing changes
     if rubber is not None:
         ties.record_rubber(rubber, winner, outcome=outcome, games=games, actor=actor, source=Source.STAFF)
     else:
@@ -52,6 +60,9 @@ def started(match: Match) -> bool:
     if match.status == Match.Status.COMPLETED or match.dispatched_at is not None:
         return True
     if match.rubbers.exclude(status=Rubber.Status.SCHEDULED).exists():
+        return True
+    # A device's report about a rubber is kept with the rubber's sheet, which new lineups would drop.
+    if match.rubbers.filter(scorecard__conflicts__isnull=False).exists():
         return True
     return Scorecard.objects.filter(Q(match=match) | Q(rubber__match=match), revision__gt=0).exists()
 
@@ -124,22 +135,55 @@ def _ensure_tie_ends_the_same(match: Match, rubber: Rubber, winner: Entry) -> No
         )
 
 
-def _set_sides(match: Match, changes: dict[str, Entry | None], cause) -> list[Resolution]:
-    """Put the right entries into `match` ({"a": entry, "b": entry}), or ask when it has started."""
-    changes = {
+def _differing(match: Match, changes: dict[str, Entry | None]) -> dict[str, Entry | None]:
+    """The places of `match` that don't hold the entry they should, leaving out those the organizers
+    already decided to keep as played against that very entry."""
+    return {
         side: entry
         for side, entry in changes.items()
         if getattr(match, f"entry_{side}_id") != (entry.id if entry else None)
+        and not Resolution.objects.filter(
+            match=match, side=side, choice=Resolution.Choice.KEEP, new_entry=entry
+        ).exists()
     }
+
+
+def _withdraw(match: Match, sides) -> None:
+    """A newer correction says again who belongs in these places: a question still open about them
+    is overtaken. It stays on record as withdrawn."""
+    Resolution.objects.filter(match=match, side__in=list(sides), resolved_at__isnull=True).update(
+        choice=Resolution.Choice.WITHDRAWN,
+        note="Overtaken by a later correction.",
+        resolved_at=timezone.now(),
+    )
+
+
+def _carry_on(event: Event) -> bool:
+    """Lift the pause when nothing is left to decide."""
+    if event.paused_at is None or event.resolutions.filter(resolved_at__isnull=True).exists():
+        return False
+    event.paused_at = None
+    event.save(update_fields=["paused_at"])
+    return True
+
+
+def _drop_lineups(match: Match) -> None:
+    """Lineups handed in for a tie against another team no longer mean anything. Callers have made
+    sure no rubber was played, scored or reported on."""
+    match.rubbers.all().delete()
+    match.lineups.all().delete()
+
+
+def _set_sides(match: Match, changes: dict[str, Entry | None], cause, ask: bool = False) -> list[Resolution]:
+    """Put the right entries into `match` ({"a": entry, "b": entry}), or ask when it has started.
+    `ask` asks even when it hasn't: another match of the same swap has, and the two go together."""
+    event = match.draw.event
+    _withdraw(match, changes)
+    changes = _differing(match, changes)
     if not changes:
+        _carry_on(event)
         return []
-    if match.status == Match.Status.BYE:
-        # Nothing is played in a bye: whoever stands there is through, and so moves on in turn.
-        match.entry_a = match.winner = changes["a"]
-        match.save(update_fields=["entry_a", "winner"])
-        return _move_on(match, changes["a"], cause)
-    if started(match):
-        event = match.draw.event
+    if ask or (match.status != Match.Status.BYE and started(match)):
         if event.paused_at is None:
             event.paused_at = timezone.now()
             event.save(update_fields=["paused_at"])
@@ -154,13 +198,23 @@ def _set_sides(match: Match, changes: dict[str, Entry | None], cause) -> list[Re
             )
             for side, entry in changes.items()
         ]
+    opened = _put_in(match, changes, cause)
+    _carry_on(event)
+    return opened
+
+
+def _put_in(match: Match, changes: dict[str, Entry | None], cause) -> list[Resolution]:
+    """Write the entries into a match in which nothing has happened (or nothing that still counts)."""
+    if match.status == Match.Status.BYE:
+        # Nothing is played in a bye: whoever stands there is through, and so moves on in turn.
+        match.entry_a = match.winner = changes["a"]
+        match.save(update_fields=["entry_a", "winner"])
+        return _move_on(match, changes["a"], cause)
     for side, entry in changes.items():
         setattr(match, f"entry_{side}", entry)
     match.ready_since = None  # its waiting starts again when both sides are known (mark_ready)
     match.save(update_fields=["entry_a", "entry_b", "ready_since"])
-    # Lineups handed in for a tie against the other team no longer mean anything.
-    match.rubbers.all().delete()
-    match.lineups.all().delete()
+    _drop_lineups(match)
     return []
 
 
@@ -172,6 +226,23 @@ def _move_on(match: Match, winner: Entry | None, cause) -> list[Resolution]:
         for later in Match.objects.filter(**{f"feeder_{side}": match}).select_related("draw__event"):
             opened += _set_sides(later, {side: winner}, cause)
     return opened
+
+
+def winner_known(later: Match, side: str, winner: Entry) -> bool:
+    """`drawing` is about to send a winner on into `later`. True when that place is not simply filled:
+    a question is open about it (which now knows who should be there), or the organizers decided the
+    match stands as it was played."""
+    waiting = Resolution.objects.filter(match=later, side=side, resolved_at__isnull=True)
+    if waiting.exists():
+        if getattr(later, f"entry_{side}_id") == winner.id:
+            _withdraw(later, [side])  # the entry that was there won again: nothing to decide
+            _carry_on(later.draw.event)
+        else:
+            waiting.update(new_entry=winner)
+        return True
+    return Resolution.objects.filter(match=later, side=side, choice=Resolution.Choice.KEEP).exists() and (
+        later.status == Match.Status.COMPLETED
+    )
 
 
 def _requalify(draw: DrawVersion, group: int, cause) -> list[Resolution]:
@@ -188,9 +259,15 @@ def _requalify(draw: DrawVersion, group: int, cause) -> list[Resolution]:
                 from_here = getattr(match, f"{side}_from_group") == group
                 if from_here and getattr(match, f"{side}_from_rank") == row.rank:
                     wanted.setdefault(match.id, {})[side] = entries[_as_key(row.member, entries)]
+    # Qualifiers swap places together. If one of the matches they swap between has started, none is
+    # changed silently: every place of the swap waits for the organizers, so nobody ends up in two.
+    moved = [
+        knockout[match_id] for match_id, changes in wanted.items() if _differing(knockout[match_id], changes)
+    ]
+    ask = any(match.status != Match.Status.BYE and started(match) for match in moved)
     opened = []
     for match_id, changes in wanted.items():
-        opened += _set_sides(knockout[match_id], changes, cause)
+        opened += _set_sides(knockout[match_id], changes, cause, ask=ask)
     return opened
 
 
@@ -202,34 +279,46 @@ def _as_key(member, entries: dict):
 def resolve(resolution: Resolution, choice: str, note: str, actor) -> list[Resolution]:
     """The organizers decide about a later match that had started. `keep`: it stands as played, with
     the entry that was there. `replace`: the right entry goes in and what was played there is struck
-    out (kept on the resolution for the record). Returns resolutions that striking it out opened in
-    turn, when the match after it had started as well."""
+    out (kept on the resolution for the record). A match is kept or replaced as a whole, so every
+    place of it still in question is decided with this one. Returns resolutions that striking it out
+    opened in turn, when the match after it had started as well."""
     if resolution.resolved_at is not None:
         raise _conflict("already_resolved", "This has already been decided.")
+    if choice not in (Resolution.Choice.KEEP, Resolution.Choice.REPLACE):
+        raise _conflict("not_a_choice", "Choose between keeping the match and replacing the entry.")
     match = resolution.match
+    others = Resolution.objects.filter(match=match, resolved_at__isnull=True).exclude(pk=resolution.pk)
+    together = [resolution, *others.select_related("new_entry", "old_entry")]
     opened: list[Resolution] = []
     if choice == Resolution.Choice.REPLACE:
-        opened = _replace(resolution, match, actor)
-    resolution.choice = choice
-    resolution.note = note
-    resolution.resolved_by = actor
-    resolution.resolved_at = timezone.now()
-    resolution.save(update_fields=["choice", "note", "resolved_by", "resolved_at", "struck_out"])
-    event = resolution.event
-    if not event.resolutions.filter(resolved_at__isnull=True).exists():
-        event.paused_at = None
-        event.save(update_fields=["paused_at"])
+        opened = _replace(together, match, actor)
+    now = timezone.now()
+    for one in together:
+        one.choice, one.note, one.resolved_by, one.resolved_at = choice, note, actor, now
+        one.save(update_fields=["choice", "note", "resolved_by", "resolved_at", "struck_out"])
     drawing.mark_ready(match.draw)
+    if _carry_on(resolution.event):
+        from reservations import service as reservations  # both build on competitions
+
+        reservations.look_for_the_next(resolution.event.tournament, actor)
     return opened
 
 
-def _replace(resolution: Resolution, match: Match, actor) -> list[Resolution]:
+def _replace(resolutions: list[Resolution], match: Match, actor) -> list[Resolution]:
     from reservations import service as reservations  # both build on competitions
     from scoring import service as scoring
     from scoring.models import Scorecard
 
+    _ensure_open(match)
+    changes = {one.side: one.new_entry for one in resolutions}
+    if any(getattr(match, f"entry_{one.side}_id") != one.old_entry_id for one in resolutions):
+        raise _conflict("out_of_date", "This match has changed since. Reload and look at it again.")
+    cause = resolutions[0].cause
+    if match.status == Match.Status.BYE:
+        return _put_in(match, changes, cause)
     scored = Scorecard.objects.filter(rubber__match=match, revision__gt=0).exists()
-    if scored or match.rubbers.exclude(status=Rubber.Status.SCHEDULED).exists():
+    reported = match.rubbers.filter(scorecard__conflicts__isnull=False).exists()
+    if scored or reported or match.rubbers.exclude(status=Rubber.Status.SCHEDULED).exists():
         raise _conflict(
             "tie_started",
             "Rubbers of this tie have been played or scored. It can only be kept as played here.",
@@ -237,7 +326,7 @@ def _replace(resolution: Resolution, match: Match, actor) -> list[Resolution]:
     if match.dispatched_at is not None and match.status == Match.Status.SCHEDULED:
         reservations.recall(match, actor, "A corrected result changed who plays this match.")
         match.refresh_from_db()
-    struck = {"sheets": scoring.strike_out(match)}
+    struck = {"sheets": scoring.strike_out(match, actor)}
     opened: list[Resolution] = []
     if match.status == Match.Status.COMPLETED:
         standing = official.current(match)
@@ -253,12 +342,12 @@ def _replace(resolution: Resolution, match: Match, actor) -> list[Resolution]:
         match.winner, match.outcome, match.games = None, "", []
         match.save(update_fields=["status", "winner", "outcome", "games"])
         # Whoever went on from here no longer has: the match after it waits for this one again.
-        opened = _move_on(match, None, resolution.cause)
-    setattr(match, f"entry_{resolution.side}", resolution.new_entry)
+        opened = _move_on(match, None, cause)
+    for side, entry in changes.items():
+        setattr(match, f"entry_{side}", entry)
     match.ready_since = None
-    match.dispatched_at = None
-    match.save(update_fields=["entry_a", "entry_b", "ready_since", "dispatched_at"])
-    match.rubbers.all().delete()
-    match.lineups.all().delete()
-    resolution.struck_out = struck
+    match.table = match.dispatched_at = None
+    match.save(update_fields=["entry_a", "entry_b", "ready_since", "table", "dispatched_at"])
+    _drop_lineups(match)
+    resolutions[0].struck_out = struck
     return opened

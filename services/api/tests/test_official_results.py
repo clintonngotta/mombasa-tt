@@ -6,7 +6,7 @@ import pytest
 from django.db import transaction
 from django.utils import timezone
 
-from competitions import drawing, official
+from competitions import drawing, lifecycle, official
 from competitions.models import Event, Match, OfficialResult, Resolution
 from core.exceptions import ApiException
 from outbox import service as outbox
@@ -87,7 +87,9 @@ def test_a_result_is_written_once_with_its_history_and_the_work_that_follows(sta
     # In the same transaction: the table and players are free and the winner is in the final.
     assert not Hold.objects.filter(active=True).exists()
     assert semi.entry_a_id in (fresh(game["final"]).entry_a_id, fresh(game["final"]).entry_b_id)
-    # Entering it again is refused: nothing progresses twice.
+    # The same entry sent again (its first answer was lost) changes nothing and succeeds.
+    assert enter(staff, game, semi, semi.entry_a, games=GAMES)["result"]["version"] == 1
+    # Entering something else is refused: nothing progresses twice.
     assert enter(staff, game, semi, semi.entry_b, expect=409, games=LOST)["code"] == "match_decided"
     assert OfficialResult.objects.filter(match=semi).count() == 1
     assert Job.objects.filter(kind="result.project").count() == 1
@@ -243,8 +245,6 @@ def test_replacing_strikes_out_what_was_played_and_keeps_it_on_record(staff, clu
     correct(staff, game, first, first.entry_b, games=LOST)
     waiting = staff.get(url(game["cup"]) + "corrections/").json()[0]
     assert waiting["progress"] == "decided"
-    # While it waits, nothing of the paused event goes to a table.
-    assert send(staff, {**game, "match": final}, tables(hall)[0], expect=409)["code"] == "match_decided"
     path = url(game["cup"]) + f"corrections/{waiting['id']}/resolve/"
     settled = staff.post(path, {"choice": "replace", "note": "Final to be replayed"}, format="json")
     assert settled.status_code == 200, settled.json()
@@ -258,6 +258,8 @@ def test_replacing_strikes_out_what_was_played_and_keeps_it_on_record(staff, clu
     kept = Resolution.objects.get().struck_out
     assert kept["result"]["winner_id"] == str(first.entry_a_id)
     assert kept["sheets"][0]["events"][0]["event"] == {"type": "start"}
+    assert kept["sheets"][0]["events"][0]["received_at"]
+    assert sheet.assignments.filter(kind="reset", revision=1, assignment_id=old_assignment).exists()
     sheet.refresh_from_db()
     assert (sheet.revision, sheet.confirmed_at) == (0, None) and sheet.assignment_id != old_assignment
     assert not ScoreEvent.objects.exists()
@@ -267,6 +269,59 @@ def test_replacing_strikes_out_what_was_played_and_keeps_it_on_record(staff, clu
     # And it can be played again.
     enter(staff, game, final, first.entry_b, games=GAMES if side == "a" else LOST)
     assert OfficialResult.objects.filter(match=final, current=True).count() == 1
+
+
+def paused_final(staff, club, hall) -> tuple[dict, Match, str]:
+    """A final on a table whose one side a correction put in question."""
+    game = knockout(staff, club, hall)
+    first, second = game["semis"]
+    enter(staff, game, first, first.entry_a, games=GAMES)
+    enter(staff, game, second, second.entry_a, games=GAMES)
+    Hold.objects.filter(active=False).update(released_at=timezone.now() - timedelta(minutes=11))
+    final = fresh(game["final"])
+    send(staff, {**game, "match": final}, tables(hall)[0])
+    correct(staff, game, first, first.entry_b, games=LOST)
+    return game, final, "a" if final.entry_a_id == first.entry_a_id else "b"
+
+
+def test_a_paused_event_sends_nothing_out_and_cannot_be_completed(staff, club, hall):
+    game, final, _side = paused_final(staff, club, hall)
+    event = Event.objects.select_related("tournament").get(pk=game["event"]["id"])
+    with pytest.raises(ApiException) as refused, transaction.atomic():
+        lifecycle.complete_event(event.tournament, event, None)
+    assert code_of(refused) == "event_paused"
+    with transaction.atomic():
+        reservations.recall(final, None, "Table needed")
+    answer = send(staff, {**game, "match": final}, tables(hall)[0], expect=409)
+    assert answer["code"] == "event_paused"
+
+
+def test_correcting_back_withdraws_the_question_and_the_event_carries_on(staff, club, hall):
+    game, final, side = paused_final(staff, club, hall)
+    first = game["semis"][0]
+    correct(staff, game, first, first.entry_a, games=GAMES, reason="The first sheet was right after all")
+    listed = staff.get(url(game["cup"]) + "corrections/").json()
+    assert [one["choice"] for one in listed] == ["withdrawn"]
+    assert Event.objects.get(pk=game["event"]["id"]).paused_at is None
+    assert getattr(fresh(final), f"entry_{side}_id") == first.entry_a_id
+    # Nothing is left to decide: the withdrawn question can't put the loser into the final.
+    path = url(game["cup"]) + f"corrections/{listed[0]['id']}/resolve/"
+    settled = staff.post(path, {"choice": "replace", "note": "Too late"}, format="json")
+    assert settled.status_code == 409 and settled.json()["code"] == "already_resolved"
+
+
+def test_replacing_takes_the_match_off_its_table_and_the_replay_fills_the_place(staff, club, hall):
+    game, final, side = paused_final(staff, club, hall)
+    first = game["semis"][0]
+    waiting = staff.get(url(game["cup"]) + "corrections/").json()[0]
+    path = url(game["cup"]) + f"corrections/{waiting['id']}/resolve/"
+    assert staff.post(path, {"choice": "replace", "note": "Not begun"}, format="json").status_code == 200
+    final = fresh(final)
+    assert (final.table_id, final.dispatched_at) == (None, None)
+    assert getattr(final, f"entry_{side}_id") == first.entry_b_id
+    assert not Reservation.objects.filter(match=final, status="active").exists()
+    assert not Hold.objects.filter(active=True).exists()
+    assert Event.objects.get(pk=game["event"]["id"]).paused_at is None
 
 
 def test_only_competition_staff_enter_and_correct_results_and_players_see_no_history(staff, club, hall):
@@ -281,6 +336,8 @@ def test_only_competition_staff_enter_and_correct_results_and_players_see_no_his
     assert visitor.get(url(game["cup"]) + "corrections/").status_code == 403
     seen = visitor.get(url(game["cup"], event=game["event"]) + f"matches/{semi.id}/").json()
     assert seen["result"]["version"] == 1 and seen["result_history"] == []
+    # Who recorded it, and why a correction was made, is the organizers' record.
+    assert (seen["result"]["recorded_by"], seen["result"]["reason"]) == ("", "")
     assert seen["can_record_result"] is False
     assert fresh(semi).winner_id == semi.entry_a_id
 
@@ -305,6 +362,80 @@ def test_a_corrected_group_result_puts_the_right_qualifier_into_the_knockout(sta
     correct(staff, game, group, group.entry_b, games=LOST)
     assert getattr(fresh(final), f"entry_{side}_id") == group.entry_b_id
     assert not Resolution.objects.exists()
+
+
+def groups(staff, club, hall, size: int, qualifiers: int) -> tuple[dict, Match, list[Match]]:
+    """Two groups, both decided. Returns the match between the first group's first two (the first of
+    them won it, and every other match of theirs) and the knockout's first round."""
+    names = ["Amina", "Brian", "Chege", "Daudi", "Esther", "Faraji"][: size * 2]
+    game = started(
+        staff,
+        club,
+        hall,
+        [[name] for name in names],
+        format="groups_knockout",
+        group_count=2,
+        qualifiers_per_group=qualifiers,
+    )
+    matches = Match.objects.filter(draw__event_id=game["event"]["id"])
+    first = list(matches.filter(stage="group", group=1).order_by("id"))
+    order = sorted({entry for match in first for entry in (match.entry_a_id, match.entry_b_id)})
+    for match in matches.filter(stage="group"):
+        a_wins = match.group != 1 or order.index(match.entry_a_id) < order.index(match.entry_b_id)
+        enter(staff, game, match, match.entry_a if a_wins else match.entry_b, games=GAMES if a_wins else LOST)
+    top = next(match for match in first if {match.entry_a_id, match.entry_b_id} == set(order[:2]))
+    first_round = matches.filter(stage="knockout", round=1).order_by("position")
+    return game, fresh(top), [fresh(match) for match in first_round]
+
+
+def flip(staff, game, match: Match, **body) -> None:
+    """Correct `match` so that its other side won it."""
+    a_won = match.winner_id == match.entry_a_id
+    loser = match.entry_b if a_won else match.entry_a
+    correct(staff, game, match, loser, games=LOST if a_won else GAMES, **body)
+
+
+def test_a_match_kept_as_played_is_not_put_in_question_again_by_the_same_group(staff, club, hall):
+    game, group, (final,) = groups(staff, club, hall, size=2, qualifiers=1)
+    enter(staff, game, final, final.entry_a, games=GAMES)
+    flip(staff, game, group)
+    waiting = staff.get(url(game["cup"]) + "corrections/").json()[0]
+    path = url(game["cup"]) + f"corrections/{waiting['id']}/resolve/"
+    assert staff.post(path, {"choice": "keep", "note": "Final stands"}, format="json").status_code == 200
+    # Only a game's points change: the same entry still leads the group, and the final was kept.
+    group = fresh(group)
+    a_won = group.winner_id == group.entry_a_id
+    games = [[11, 5], [11, 7], [11, 8]] if a_won else [[5, 11], [7, 11], [8, 11]]
+    correct(staff, game, group, group.winner, games=games, reason="8, not 9")
+    assert Resolution.objects.count() == 1
+    assert Event.objects.get(pk=game["event"]["id"]).paused_at is None
+
+
+def test_qualifiers_that_swap_between_matches_are_decided_together(staff, club, hall):
+    game, group, knockout_round = groups(staff, club, hall, size=3, qualifiers=2)
+    pair = (group.entry_a_id, group.entry_b_id)
+    holds = {
+        (match.id, side): getattr(match, f"entry_{side}_id")
+        for match in knockout_round
+        for side in ("a", "b")
+        if getattr(match, f"entry_{side}_id") in pair
+    }
+    assert len(holds) == 2 and len({match_id for match_id, _ in holds}) == 2
+    played = next(match for match in knockout_round if (match.id, "a") in holds or (match.id, "b") in holds)
+    enter(staff, game, played, played.entry_a, games=GAMES)
+    flip(staff, game, group)
+    # One of the two matches has been played, so neither place of the swap changes by itself.
+    for (match_id, side), entry in holds.items():
+        assert getattr(Match.objects.get(pk=match_id), f"entry_{side}_id") == entry
+    listed = staff.get(url(game["cup"]) + "corrections/").json()
+    assert sorted(one["progress"] for one in listed) == ["decided", "not_started"]
+    for one in listed:
+        path = url(game["cup"]) + f"corrections/{one['id']}/resolve/"
+        assert staff.post(path, {"choice": "replace", "note": "Swap both"}, format="json").status_code == 200
+    swapped = {pair[0]: pair[1], pair[1]: pair[0]}
+    for (match_id, side), entry in holds.items():
+        assert getattr(Match.objects.get(pk=match_id), f"entry_{side}_id") == swapped[entry]
+    assert Event.objects.get(pk=game["event"]["id"]).paused_at is None
 
 
 def test_a_rubber_is_corrected_only_while_the_tie_still_ends_the_same(staff, club):

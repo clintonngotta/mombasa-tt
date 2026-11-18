@@ -326,7 +326,11 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
     scorecard.save(update_fields=["state", "confirmed_at", "confirmed_by"])
 
 
-def strike_out(match: Match) -> list[dict]:
+def _who(user_id) -> str | None:
+    return str(user_id) if user_id else None
+
+
+def strike_out(match: Match, actor=None) -> list[dict]:
     """Empty the match's score sheet because the match is to be played again with another entry
     (REQ-015). What was scored is returned, to be kept with the decision; the sheet itself starts
     over under a new assignment id, so a device still holding the old one is cut off."""
@@ -340,12 +344,22 @@ def strike_out(match: Match) -> list[dict]:
                 "revision": scorecard.revision,
                 "state": scorecard.state,
                 "confirmed_at": scorecard.confirmed_at.isoformat() if scorecard.confirmed_at else None,
+                "confirmed_by": _who(scorecard.confirmed_by_id),
+                "umpire": _who(scorecard.umpire_id),
                 "events": [
-                    {"id": str(event.id), "sequence": event.sequence, "event": event.payload}
+                    {
+                        "id": str(event.id),
+                        "sequence": event.sequence,
+                        "event": event.payload,
+                        "actor": _who(event.actor_id),
+                        "device_time": event.device_time.isoformat() if event.device_time else None,
+                        "received_at": event.received_at.isoformat(),
+                    }
                     for event in scorecard.events.all()
                 ],
             }
         )
+        _log(scorecard, ScoreAssignment.Kind.RESET, actor)  # who held it and how far it had got
         scorecard.events.all().delete()
         scorecard.revision = 0
         scorecard.state = initial_state()

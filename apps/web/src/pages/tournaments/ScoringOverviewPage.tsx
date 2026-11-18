@@ -16,6 +16,7 @@ const STEP: Record<OpenSheet["history"][number]["kind"], string> = {
   unassigned: "Taken back from its umpire",
   device: "Opened on",
   take_over: "Taken over on",
+  reset: "Emptied so the match can be played again",
 }
 
 type Sent = { type?: string; side?: string; player?: string }
@@ -194,7 +195,7 @@ function Sheet({ tournamentId, sheet, timeZone }: { tournamentId: string; sheet:
         <ol className="flex flex-col gap-1">
           {sheet.history.map((step, index) => (
             <li key={index}>
-              {formatInstant(step.created_at, timeZone)}: {STEP[step.kind]} {step.kind === "assigned" ? step.umpire : step.kind === "unassigned" ? "" : `${step.device_label || "a device"} (${step.umpire})`}
+              {formatInstant(step.created_at, timeZone)}: {STEP[step.kind]} {step.kind === "assigned" ? step.umpire : step.kind === "unassigned" || step.kind === "reset" ? "" : `${step.device_label || "a device"} (${step.umpire})`}
               {step.kind !== "device" && step.kind !== "take_over" && step.actor && ` by ${step.actor}`}, after {step.revision} {step.revision === 1 ? "action" : "actions"}.
             </li>
           ))}

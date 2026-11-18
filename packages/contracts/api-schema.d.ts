@@ -2048,9 +2048,10 @@ export interface components {
          *     * `unassigned` - Unassigned
          *     * `device` - Device
          *     * `take_over` - Take Over
+         *     * `reset` - Reset
          * @enum {string}
          */
-        AssignmentStepKindEnum: "assigned" | "unassigned" | "device" | "take_over";
+        AssignmentStepKindEnum: "assigned" | "unassigned" | "device" | "take_over" | "reset";
         /**
          * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
          *
@@ -2125,12 +2126,6 @@ export interface components {
             /** @description Why a free table has no match. */
             idle_reason: string;
         };
-        /**
-         * @description * `keep` - Keep
-         *     * `replace` - Replace
-         * @enum {string}
-         */
-        ChoiceEnum: "keep" | "replace";
         /**
          * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
          *     revision it shows (a result is never confirmed over points still on their way).
@@ -3356,9 +3351,10 @@ export interface components {
          * @description * `decided` - decided
          *     * `on_table` - on_table
          *     * `being_scored` - being_scored
+         *     * `not_started` - not_started
          * @enum {string}
          */
-        ProgressEnum: "decided" | "on_table" | "being_scored";
+        ProgressEnum: "decided" | "on_table" | "being_scored" | "not_started";
         /**
          * @description * `hand` - Hand
          *     * `grip` - Grip
@@ -3460,18 +3456,31 @@ export interface components {
             corrected_by: string;
             /** Format: date-time */
             created_at: string;
-            choice: components["schemas"]["ChoiceEnum"] | components["schemas"]["BlankEnum"];
+            choice: components["schemas"]["ResolutionChoiceEnum"] | components["schemas"]["BlankEnum"];
             note: string;
             resolved_by: string;
             /** Format: date-time */
             resolved_at: string | null;
         };
+        /**
+         * @description * `keep` - Keep
+         *     * `replace` - Replace
+         *     * `withdrawn` - Withdrawn
+         * @enum {string}
+         */
+        ResolutionChoiceEnum: "keep" | "replace" | "withdrawn";
+        /**
+         * @description * `keep` - keep
+         *     * `replace` - replace
+         * @enum {string}
+         */
+        ResolveChoiceEnum: "keep" | "replace";
         /** @description What was done about it, for the record. */
         ResolveConflictRequest: {
             note: string;
         };
         ResolveRequest: {
-            choice: components["schemas"]["ChoiceEnum"];
+            choice: components["schemas"]["ResolveChoiceEnum"];
             note: string;
         };
         /**

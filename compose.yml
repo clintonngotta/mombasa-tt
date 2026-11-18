@@ -57,6 +57,7 @@ services:
   worker:
     build: ./services/api
     command: python manage.py work_outbox
+    restart: unless-stopped
     environment:
       DJANGO_DEBUG: "true"
       DATABASE_URL: postgres://mombasa:mombasa-dev-only@db:5432/mombasa_tt

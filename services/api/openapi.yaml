@@ -4332,12 +4332,14 @@ components:
       - unassigned
       - device
       - take_over
+      - reset
       type: string
       description: |-
         * `assigned` - Assigned
         * `unassigned` - Unassigned
         * `device` - Device
         * `take_over` - Take Over
+        * `reset` - Reset
     AttachmentLink:
       type: object
       description: |-
@@ -4475,14 +4477,6 @@ components:
       - playing
       - since
       - suggested_match_id
-    ChoiceEnum:
-      enum:
-      - keep
-      - replace
-      type: string
-      description: |-
-        * `keep` - Keep
-        * `replace` - Replace
     ConfirmRequest:
       type: object
       description: |-
@@ -7416,11 +7410,13 @@ components:
       - decided
       - on_table
       - being_scored
+      - not_started
       type: string
       description: |-
         * `decided` - decided
         * `on_table` - on_table
         * `being_scored` - being_scored
+        * `not_started` - not_started
     PublishedDetailsEnum:
       enum:
       - hand
@@ -7639,7 +7635,7 @@ components:
           format: date-time
         choice:
           oneOf:
-          - $ref: '#/components/schemas/ChoiceEnum'
+          - $ref: '#/components/schemas/ResolutionChoiceEnum'
           - $ref: '#/components/schemas/BlankEnum'
         note:
           type: string
@@ -7668,6 +7664,24 @@ components:
       - resolved_at
       - resolved_by
       - side
+    ResolutionChoiceEnum:
+      enum:
+      - keep
+      - replace
+      - withdrawn
+      type: string
+      description: |-
+        * `keep` - Keep
+        * `replace` - Replace
+        * `withdrawn` - Withdrawn
+    ResolveChoiceEnum:
+      enum:
+      - keep
+      - replace
+      type: string
+      description: |-
+        * `keep` - keep
+        * `replace` - replace
     ResolveConflictRequest:
       type: object
       description: What was done about it, for the record.
@@ -7682,7 +7696,7 @@ components:
       type: object
       properties:
         choice:
-          $ref: '#/components/schemas/ChoiceEnum'
+          $ref: '#/components/schemas/ResolveChoiceEnum'
         note:
           type: string
           minLength: 1

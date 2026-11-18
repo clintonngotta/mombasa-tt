@@ -1,8 +1,12 @@
+import logging
 import time
 
 from django.core.management.base import BaseCommand
+from django.db import Error, close_old_connections
 
 from outbox import service
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -14,7 +18,17 @@ class Command(BaseCommand):
 
     def handle(self, *args, once: bool, every: float, **options):
         while True:
-            tried = service.work()
+            close_old_connections()  # a connection the database dropped is replaced, not reused
+            try:
+                tried = service.work()
+            except Error:
+                if once:
+                    raise
+                # The database went away for a moment: the jobs are still written there. Try again.
+                logger.exception("The outbox worker could not reach the database")
+                close_old_connections()
+                time.sleep(every)
+                continue
             if once:
                 self.stdout.write(f"{tried} job(s) tried")
                 return

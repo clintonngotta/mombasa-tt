@@ -313,10 +313,10 @@ def recall(match: Match, actor, reason: str) -> None:
     lock()
     release(reservation, actor, Reservation.Ending.RECALLED, reason)
     _off_the_table(match)
-    _look_for_the_next(match.draw.event.tournament, actor)
+    look_for_the_next(match.draw.event.tournament, actor)
 
 
-def _look_for_the_next(tournament: Tournament, actor=None) -> None:
+def look_for_the_next(tournament: Tournament, actor=None) -> None:
     """A table or a player has just become free: automatic dispatch, if it is on, looks at once."""
     from . import board  # the board is built on this module
 
@@ -340,7 +340,7 @@ def on_match_decided(sender, match: Match, **kwargs) -> None:
         lock()
         release(reservation, None, Reservation.Ending.DECIDED)
     # A result frees a table and may make the next match ready.
-    _look_for_the_next(match.draw.event.tournament)
+    look_for_the_next(match.draw.event.tournament)
 
 
 def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
@@ -351,7 +351,7 @@ def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
         lock()
         release(reservation, actor, Reservation.Ending.CLOSED)
         _off_the_table(reservation.match)
-    _look_for_the_next(event.tournament, actor)
+    look_for_the_next(event.tournament, actor)
 
 
 def on_rubber_decided(sender, rubber: Rubber, tie_decided: bool = False, **kwargs) -> None:

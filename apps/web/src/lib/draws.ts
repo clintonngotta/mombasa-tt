@@ -11,6 +11,7 @@ export type Tie = Schemas["Tie"]
 export type Rubber = Schemas["Rubber"]
 
 export const drawKeys = {
+  all: ["draws"] as const,
   event: (eventId: string) => ["draws", "event", eventId] as const,
   standings: (eventId: string) => ["draws", "standings", eventId] as const,
   match: (matchId: string) => ["draws", "match", matchId] as const,

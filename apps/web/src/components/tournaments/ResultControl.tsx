@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Hourglass, TriangleAlert } from "lucide-react"
+import { Hourglass, TriangleAlert, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
-import { Segmented } from "@/components/forms/Segmented"
 import { SelectField } from "@/components/forms/SelectField"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
@@ -12,6 +11,7 @@ import { reservationKeys } from "@/lib/reservations"
 import { correctResult, enterResult, gamesText, parseGames, resultKeys, SOURCE_LABEL, type OfficialResult, type Outcome } from "@/lib/results"
 import { scoringKeys } from "@/lib/scoring"
 import { tournamentKeys } from "@/lib/tournaments"
+import { cn } from "@/lib/utils"
 
 type Ids = { tournamentId: string; eventId: string; matchId: string }
 type Target = { key: string; label: string; rubberId: string | null; decided: boolean; winner: "a" | "b" | ""; outcome: Outcome | ""; games: number[][] }
@@ -68,7 +68,8 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
   function start(chosen: Target) {
     setTargetKey(chosen.key)
     setWinner(chosen.winner)
-    setOutcome(chosen.outcome || "played")
+    // A whole tie is never "played" here: it is awarded when a team didn't play or couldn't go on.
+    setOutcome(chosen.outcome || (m.tie && !chosen.rubberId ? "walkover" : "played"))
     setGames(gamesText(chosen.games))
     save.reset()
   }
@@ -131,18 +132,28 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
           )}
           <div className="flex flex-col gap-2">
             <span className="font-semibold">Winner</span>
-            <Segmented
-              label="Winner"
-              value={winner}
-              onChange={setWinner}
-              options={[
-                { value: "a", label: names.a },
-                { value: "b", label: names.b },
-              ]}
-            />
+            {/* The two sides stay left and right, and long names wrap inside their half (REQ-002). */}
+            <div role="group" aria-label="Winner" className="grid grid-cols-2 gap-2">
+              {(["a", "b"] as const).map((side) => (
+                <button
+                  key={side}
+                  type="button"
+                  aria-pressed={winner === side}
+                  onClick={() => setWinner(side)}
+                  className={cn(
+                    "flex min-h-12 min-w-0 items-center gap-2 rounded-lg border bg-card px-3 py-2 font-semibold break-words text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    side === "b" && "flex-row-reverse text-right",
+                    winner === side && "border-brand-blue bg-surface-selected text-brand-blue"
+                  )}
+                >
+                  {winner === side && <Trophy aria-hidden className="size-5 shrink-0" />}
+                  <span className="min-w-0">{names[side]}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <SelectField label="How it ended" value={outcome} onChange={(e) => setOutcome(e.target.value as Outcome)}>
-            {(["played", "walkover", "retired"] as const).map((value) => (
+            {(m.tie && !target.rubberId ? (["walkover", "retired"] as const) : (["played", "walkover", "retired"] as const)).map((value) => (
               <option key={value} value={value}>
                 {OUTCOME_LABEL[value]}
               </option>
@@ -195,14 +206,32 @@ function Version({ version, names, aId, timeZone }: { version: OfficialResult; n
       <p className="font-semibold">
         {version.rubber ? `Rubber ${version.rubber}, version ${version.version}` : `Version ${version.version}`} ({state})
       </p>
+      <p className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
+        <Side name={names.a} won={version.winner_id === aId} />
+        <span className="text-muted-foreground">v</span>
+        <Side name={names.b} won={version.winner_id !== aId} right />
+      </p>
       <p>
-        {version.winner_id === aId ? names.a : names.b} won{version.outcome !== "played" && ` (${OUTCOME_LABEL[version.outcome].toLowerCase()})`}
-        {version.games.length > 0 && `: ${gamesText(version.games)}`}.
+        {version.outcome !== "played" && `${OUTCOME_LABEL[version.outcome]}. `}
+        {version.games.length > 0 && `Games: ${gamesText(version.games)}.`}
       </p>
       <p className="text-muted-foreground">
         {SOURCE_LABEL[version.source]}
         {version.recorded_by && ` by ${version.recorded_by}`}, {formatInstant(version.accepted_at, timeZone)}.{version.reason && ` Reason: ${version.reason}`}
       </p>
     </li>
+  )
+}
+
+function Side({ name, won, right }: { name: string; won: boolean; right?: boolean }) {
+  return (
+    <span className={cn("flex min-w-0 flex-col", right && "items-end text-right")}>
+      <span className={cn("min-w-0 break-words", won && "font-semibold")}>{name}</span>
+      {won && (
+        <span className="flex items-center gap-1 text-sm font-semibold text-success">
+          <Trophy aria-hidden className="size-4 shrink-0" /> Won
+        </span>
+      )}
+    </span>
   )
 }

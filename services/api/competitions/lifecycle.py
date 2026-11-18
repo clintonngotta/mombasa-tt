@@ -113,6 +113,12 @@ def start_event(tournament: Tournament, event: Event, actor) -> None:
 
 def complete_event(tournament: Tournament, event: Event, actor) -> None:
     _require(event, E.IN_PROGRESS, doing="completed")
+    if event.paused_at is not None:
+        raise ApiException(
+            "event_paused",
+            "A corrected result left a later match to decide. Settle it before completing the event.",
+            409,
+        )
     _move(event, E.COMPLETED, "completed_at")
     signals.event_closed.send(sender=Event, event=event, actor=actor)
     record(tournament, A.EVENT_COMPLETED, actor, event=event)

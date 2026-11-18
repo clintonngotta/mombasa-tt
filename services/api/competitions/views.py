@@ -106,7 +106,11 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
         shown["scoring"] = scoring.summary(match, None, request.user, staff)
     shown["can_dispatch"] = staff and reservations.is_dispatchable(match)
     versions = official.history(match)
-    shown["result"] = next((v for v in versions if v["current"] and v["rubber"] is None), None)
+    standing = next((v for v in versions if v["current"] and v["rubber"] is None), None)
+    if standing and not staff:
+        # Who recorded a result and why it was corrected is the organizers' record, not the public's.
+        standing = {**standing, "reason": "", "recorded_by": ""}
+    shown["result"] = standing
     shown["result_history"] = versions if staff else []
     closed = draw.event.is_closed or draw.event.tournament.is_closed
     shown["can_record_result"] = staff and not closed and draw.status == DrawVersion.Status.PUBLISHED
