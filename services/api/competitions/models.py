@@ -37,6 +37,18 @@ class Tournament(models.Model):
         COMPLETED = "completed"
         CANCELLED = "cancelled"
 
+    class Scope(models.TextChoices):
+        LOCAL = "local", "Local"
+        REGIONAL = "regional", "Regional"
+        NATIONAL = "national", "National"
+        INTERNATIONAL = "international", "International"
+
+    class Approval(models.TextChoices):
+        NOT_REQUESTED = "not_requested", "Not requested"
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="tournaments")
     venue = models.ForeignKey(
@@ -47,6 +59,12 @@ class Tournament(models.Model):
     starts_on = models.DateField()
     ends_on = models.DateField()
     timezone = models.CharField(max_length=64)
+    scope = models.CharField(max_length=13, choices=Scope.choices, default=Scope.LOCAL)
+    approval_status = models.CharField(
+        max_length=13, choices=Approval.choices, default=Approval.NOT_REQUESTED
+    )
+    registration_fee_minor = models.PositiveIntegerField(default=0)
+    registration_fee_currency = models.CharField(max_length=3, default="KES")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
@@ -89,6 +107,13 @@ class Event(models.Model):
         SINGLES = "singles"
         DOUBLES = "doubles"
         TEAM = "team"
+        # Mixed doubles round robin: players enter alone, in the men's or women's pool, and play every
+        # round with a different partner from the other pool (TASK-100).
+        JUMBLES = "jumbles"
+
+    class Admission(models.TextChoices):
+        OPEN = "open", "Open"
+        CLOSED = "closed", "Closed"
 
     class Format(models.TextChoices):
         ROUND_ROBIN = "round_robin"
@@ -116,6 +141,7 @@ class Event(models.Model):
         "qualifiers_per_group",
         "tie_rubbers",
         "tie_wins_needed",
+        "admission",
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -128,6 +154,7 @@ class Event(models.Model):
     rest_minutes = models.PositiveSmallIntegerField(default=10)
     registration_opens_at = models.DateTimeField(null=True, blank=True)
     registration_closes_at = models.DateTimeField(null=True, blank=True)
+    admission = models.CharField(max_length=6, choices=Admission.choices, default=Admission.CLOSED)
     # Declared only (REQ-008); payments are recorded in Phase 2.
     entry_fee_minor = models.PositiveIntegerField(default=0)
     entry_fee_currency = models.CharField(max_length=3, default="KES")
@@ -171,6 +198,8 @@ class LifecycleEntry(models.Model):
 
     class Action(models.TextChoices):
         PUBLISHED = "published"
+        APPROVAL_REQUESTED = "approval_requested"
+        APPROVAL_REJECTED = "approval_rejected"
         UPDATED = "updated"
         STARTED = "started"
         COMPLETED = "completed"
@@ -214,6 +243,12 @@ class Entry(models.Model):
         WAITLISTED = "waitlisted"  # staff will offer a place if one opens
         REJECTED = "rejected"
         WITHDRAWN = "withdrawn"
+        # A Jumbles round's pair, made by the draw: a man and a woman who play one match together.
+        PAIRING = "pairing"
+
+    class Pool(models.TextChoices):
+        MEN = "men", "Men"
+        WOMEN = "women", "Women"
 
     # Statuses in which the entry still stands, so its players can't be in another entry of the event.
     LIVE = (Status.PENDING, Status.ACCEPTED, Status.WAITLISTED)
@@ -222,6 +257,11 @@ class Entry(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="entries")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     team_name = models.CharField(max_length=80, blank=True)  # team events only
+    pool = models.CharField(max_length=5, choices=Pool.choices, blank=True)  # Jumbles entries only
+    # A pairing belongs to the draw that made it, and goes when that draw is replaced.
+    pairing_draw = models.ForeignKey(
+        "DrawVersion", on_delete=models.CASCADE, null=True, blank=True, related_name="pairings"
+    )
     captain = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
@@ -259,6 +299,7 @@ class EntryPlayer(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entry_places")
     position = models.PositiveSmallIntegerField(default=0)
     live = models.BooleanField(default=True)
+    checked_in_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["position"]
@@ -380,6 +421,11 @@ class Match(models.Model):
     # is an estimate, never a promise (REQ-014).
     table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     scheduled_at = models.DateTimeField(null=True, blank=True)
+    # The table the day schedule plans it for (TASK-099). `table` is where it is actually sent, which a
+    # recall clears; the plan stays, and the dispatch board offers this table first when it is free.
+    planned_table = models.ForeignKey(
+        Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     # When it was sent to its table; empty while it isn't on one (REQ-014).
     dispatched_at = models.DateTimeField(null=True, blank=True)
     # When both its sides became known: how long it has waited orders the ready queue (REQ-014).

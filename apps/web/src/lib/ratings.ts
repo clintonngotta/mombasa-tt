@@ -3,6 +3,9 @@ import type { Schemas } from "@/lib/schema"
 
 export type Ranking = Schemas["Ranking"]
 export type RankingRow = Schemas["RankingRow"]
+export type ClubRanking = Schemas["ClubRanking"]
+export type GeographyRanking = Schemas["GeographyRanking"]
+export type GeographyLevel = GeographyRanking["level"]
 export type PlayerRatings = Schemas["PlayerRatings"]
 export type RatingSummary = Schemas["RatingSummary"]
 export type RatingChange = Schemas["RatingChange"]
@@ -13,11 +16,16 @@ export const DISCIPLINE_LABEL: Record<Discipline, string> = { singles: "Singles"
 
 export const ratingKeys = {
   ranking: (discipline: Discipline, organizationId: string) => ["ratings", "ranking", discipline, organizationId] as const,
+  clubs: (discipline: Discipline) => ["ratings", "clubs", discipline] as const,
+  geography: (discipline: Discipline, level: GeographyLevel) => ["ratings", "geography", discipline, level] as const,
   player: (userId: string, discipline: Discipline, result: ResultFilter) => ["ratings", "player", userId, discipline, result] as const,
 }
 
 /** The ranking of one discipline: the whole platform, or one of the caller's clubs. */
 export const getRanking = (discipline: Discipline, organizationId: string) => api<Ranking>(`/rankings/?discipline=${discipline}${organizationId ? `&organization=${organizationId}` : ""}`)
+export const getClubRanking = (discipline: Discipline) => api<ClubRanking>(`/rankings/clubs/?discipline=${discipline}`)
+export const getGeographyRanking = (discipline: Discipline, level: GeographyLevel) =>
+  api<GeographyRanking>(`/rankings/geography/?discipline=${discipline}&level=${level}`)
 /** One player's ratings and the rating changes of one discipline, newest first. */
 export const getPlayerRatings = (userId: string, discipline: Discipline, result: ResultFilter) => api<PlayerRatings>(`/players/${userId}/ratings/?discipline=${discipline}&result=${result}`)
 

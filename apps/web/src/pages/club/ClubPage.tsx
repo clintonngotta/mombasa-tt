@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ChevronRight, ClipboardList, Clock, KeyRound, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
+import { LocationFields } from "@/components/forms/LocationFields"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
 import { ApiError, errorMessage } from "@/lib/api"
 import {
@@ -21,9 +22,13 @@ import {
   saveMyFieldValues,
   sendInvitation,
   useActiveMembership,
+  updateOrganizationLocation,
   type JoinDecision,
   type Membership,
+  type Organization,
 } from "@/lib/clubs"
+import { locationErrors } from "@/lib/geography"
+import { tournamentKeys } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { AccessLost } from "@/components/clubs/AccessLost"
@@ -117,9 +122,10 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
       <OrganizationCard organization={membership.organization}>
         <span className={cn("flex items-center gap-1 text-sm font-semibold", isAdmin ? "text-brand-blue" : "text-muted-foreground")}>
           {isAdmin && <ShieldCheck aria-hidden className="size-4" />}
-          {roleNames(membership.roles)}
+          {membership.authority === "platform" ? "Platform super admin" : membership.authority === "country" ? "Country official" : membership.authority === "regional" ? "Regional official" : roleNames(membership.roles)}
         </span>
       </OrganizationCard>
+      {manageRoles && <ClubLocation organization={membership.organization} />}
       {(manageMembers || manageRoles || manageCompetitions || manageFacilities) && (
         <nav aria-label="Club administration" className="flex flex-col gap-2">
           {manageCompetitions && (
@@ -149,15 +155,66 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           )}
         </nav>
       )}
-      <MyClubDetails membershipId={membership.id} />
+      {!membership.managedOnly && <MyClubDetails membershipId={membership.id} />}
       {manageMembers && (
         <>
           <JoinRequestsPanel orgId={orgId} />
           <InvitationsPanel orgId={orgId} />
         </>
       )}
-      <LeaveOrganization membership={membership} />
+      {!membership.managedOnly && <LeaveOrganization membership={membership} />}
     </>
+  )
+}
+
+function ClubLocation({ organization }: { organization: Organization }) {
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [location, setLocation] = useState({
+    country: organization.country, region: organization.region, city: organization.town,
+  })
+  const save = useMutation({
+    mutationFn: () => updateOrganizationLocation(organization.id, {
+      country: location.country, region: location.region, town: location.city,
+    }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: clubKeys.all }),
+        queryClient.invalidateQueries({ queryKey: tournamentKeys.all }),
+      ])
+      setEditing(false)
+    },
+  })
+  const missing = locationErrors(location)
+  const fields = save.error instanceof ApiError ? save.error.fieldErrors() : {}
+
+  if (!editing) {
+    return (
+      <Button type="button" variant="outline" className="self-start" onClick={() => {
+        setLocation({ country: organization.country, region: organization.region, city: organization.town })
+        setSubmitted(false)
+        save.reset()
+        setEditing(true)
+      }}>
+        {organization.country ? "Edit club location" : "Set club location"}
+      </Button>
+    )
+  }
+
+  return (
+    <form className="flex flex-col gap-3 rounded-xl border bg-card p-4" noValidate onSubmit={(event) => {
+      event.preventDefault()
+      setSubmitted(true)
+      if (Object.keys(missing).length === 0) save.mutate()
+    }}>
+      <LocationFields value={location} onChange={setLocation} errors={submitted ? { ...fields, ...missing } : fields} cityLimit={80} />
+      {save.isError && Object.keys(fields).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={save.isPending}>Save location</Button>
+        <Button type="button" variant="ghost" onClick={() => setEditing(false)} disabled={save.isPending}>Cancel</Button>
+      </div>
+    </form>
   )
 }
 

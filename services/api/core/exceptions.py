@@ -7,9 +7,10 @@ from rest_framework.views import exception_handler as drf_exception_handler
 class ApiException(exceptions.APIException):
     """Domain error with a stable machine-readable code."""
 
-    def __init__(self, code: str, message: str, status_code: int = status.HTTP_400_BAD_REQUEST):
+    def __init__(self, code: str, message: str, status_code: int = status.HTTP_400_BAD_REQUEST, extra=None):
         super().__init__(detail=message, code=code)
         self.status_code = status_code
+        self.extra = extra or {}  # further keys of the error body, such as a list of conflicts
 
 
 def _flatten(detail) -> str:
@@ -48,5 +49,6 @@ def api_exception_handler(exc, context):
         "message": message,
         "fields": fields,
         "request_id": getattr(request, "request_id", None),
+        **getattr(exc, "extra", {}),
     }
     return response

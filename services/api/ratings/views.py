@@ -1,6 +1,8 @@
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.db.models import Count, F, Min, Sum
+from django.db.models.functions import Lower
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated
@@ -8,16 +10,32 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
+from core.permissions import is_platform_super_admin
+from organizations.access import official_for
 from organizations.models import Membership, Organization
 from profiles.models import PlayerProfile
 
 from . import service
 from .models import Discipline, Rating, RatingEvent
-from .serializers import PlayerRatingsSerializer, RankingSerializer
+from .serializers import (
+    ClubRankingSerializer,
+    GeographyRankingSerializer,
+    PlayerRatingsSerializer,
+    RankingSerializer,
+)
 
 FORM_LENGTH = 5
 RANKING_LIMIT = 200
 HISTORY_LIMIT = 50
+GEOGRAPHY_LEVELS = ("country", "region", "city")
+
+
+def _rank_totals(totals):
+    rank, last = 0, None
+    for place, row in enumerate(totals, 1):
+        if row["total_points"] != last:
+            rank, last = place, row["total_points"]
+        yield {"rank": rank, **row}
 
 
 def _discipline(request) -> str:
@@ -76,7 +94,11 @@ class RankingView(APIView):
                 raise ApiException("unknown_organization", "That isn't a club.", 400) from None
             organization = get_object_or_404(Organization, pk=asked)
             members = Membership.objects.active().filter(organization=organization)
-            if not members.filter(user=request.user).exists():
+            if not (
+                is_platform_super_admin(request.user)
+                or official_for(request.user, organization)
+                or members.filter(user=request.user).exists()
+            ):
                 raise ApiException("permission_denied", "Only the club's members see its ranking.", 403)
             rated = rated.filter(user_id__in=members.values("user_id"))
         count = rated.count()
@@ -118,6 +140,88 @@ class RankingView(APIView):
             "rows": rows,
         }
         return Response(RankingSerializer(shown).data)
+
+
+class ClubRankingView(APIView):
+    """Rank clubs by the sum of their active members' ratings for one discipline."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("discipline", str, enum=Discipline.values, description="Default singles.")
+        ],
+        responses={200: ClubRankingSerializer},
+    )
+    def get(self, request):
+        discipline = _discipline(request)
+        totals = (
+            Membership.objects.active()
+            .filter(
+                organization__kind__in=(Organization.Kind.CLUB, Organization.Kind.CLUB_FACILITY),
+                user__is_active=True,
+                user__ratings__discipline=discipline,
+                user__ratings__played__gt=0,
+            )
+            .values("organization_id", name=F("organization__name"), town=F("organization__town"))
+            .annotate(total_points=Sum("user__ratings__rating"), rated_members=Count("user_id"))
+            .order_by("-total_points", "name", "town", "organization_id")
+        )
+        return Response(
+            ClubRankingSerializer(
+                {
+                    "discipline": discipline,
+                    "processing": service.pending(discipline),
+                    "rows": list(_rank_totals(totals)),
+                }
+            ).data
+        )
+
+
+class GeographyRankingView(APIView):
+    """Aggregate player ratings by the location each player provides in their profile."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("discipline", str, enum=Discipline.values),
+            OpenApiParameter("level", str, enum=GEOGRAPHY_LEVELS),
+        ],
+        responses={200: GeographyRankingSerializer},
+    )
+    def get(self, request):
+        discipline = _discipline(request)
+        level = request.query_params.get("level", "country")
+        if level not in GEOGRAPHY_LEVELS:
+            raise ApiException("unknown_geography_level", "Choose country, region or city.", 400)
+        dimensions = GEOGRAPHY_LEVELS[: GEOGRAPHY_LEVELS.index(level) + 1]
+        profiles = Rating.objects.filter(
+            discipline=discipline, played__gt=0, user__is_active=True, user__profile__country__gt=""
+        )
+        groups = {"country": F("user__profile__country")}
+        labels = {}
+        for dimension in dimensions[1:]:
+            field = f"user__profile__{dimension}"
+            profiles = profiles.filter(**{f"{field}__gt": ""})
+            groups[f"{dimension}_key"] = Lower(field)
+            labels[dimension] = Min(field)
+
+        totals = (
+            profiles.values(**groups)
+            .annotate(total_points=Sum("rating"), rated_players=Count("user_id"), **labels)
+            .order_by("-total_points", *groups)
+        )
+        return Response(
+            GeographyRankingSerializer(
+                {
+                    "discipline": discipline,
+                    "level": level,
+                    "processing": service.pending(discipline),
+                    "rows": [{"region": "", "city": "", **row} for row in _rank_totals(totals)],
+                }
+            ).data
+        )
 
 
 class PlayerRatingsView(APIView):

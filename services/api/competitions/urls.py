@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .result_views import ResultViewSet
+from .schedule_views import ScheduleViewSet
 from .views import (
     DrawViewSet,
     EntryViewSet,
@@ -19,11 +20,41 @@ def action(viewset, name):
 urlpatterns = [
     path("", TournamentViewSet.as_view({"get": "list"}), name="tournament-list"),
     path(
+        "awaiting-approval/",
+        TournamentViewSet.as_view({"get": "awaiting_approval"}),
+        name="tournament-awaiting-approval",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/",
+        ScheduleViewSet.as_view({"get": "retrieve", "put": "update"}),
+        name="tournament-schedule",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/recommend/",
+        action(ScheduleViewSet, "recommend"),
+        name="tournament-schedule-recommend",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/check/",
+        action(ScheduleViewSet, "check_plan"),
+        name="tournament-schedule-check",
+    ),
+    path(
         "<uuid:pk>/",
         TournamentViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
         name="tournament-detail",
     ),
     path("<uuid:pk>/publish/", action(TournamentViewSet, "publish"), name="tournament-publish"),
+    path(
+        "<uuid:pk>/approval/request/",
+        action(TournamentViewSet, "request_approval"),
+        name="tournament-request-approval",
+    ),
+    path(
+        "<uuid:pk>/approval/reject/",
+        action(TournamentViewSet, "reject_approval"),
+        name="tournament-reject-approval",
+    ),
     path("<uuid:pk>/start/", action(TournamentViewSet, "start"), name="tournament-start"),
     path("<uuid:pk>/complete/", action(TournamentViewSet, "complete"), name="tournament-complete"),
     path("<uuid:pk>/cancel/", action(TournamentViewSet, "cancel"), name="tournament-cancel"),
@@ -122,6 +153,7 @@ urlpatterns = [
             "staff-withdraw",
             "check-in",
             "undo-check-in",
+            "self-check-in",
             "withdraw",
         )
     ),

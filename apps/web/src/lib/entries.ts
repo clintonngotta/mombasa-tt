@@ -24,6 +24,7 @@ export const listEntries = (id: string, eventId: string, status: EntryStatus | "
   api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100${status ? `&status=${status}` : ""}`)
 export const createEntry = (id: string, eventId: string, body: EntryInput) => api<Entry>(base(id, eventId), { body })
 export const withdrawEntry = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/withdraw/`, { body: {} })
+export const selfCheckIn = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/self-check-in/`, { body: {} })
 export const changeEntry = (id: string, eventId: string, entryId: string, action: StaffEntryAction, reason?: string) =>
   api<Entry>(`${base(id, eventId)}${entryId}/${action}/`, { body: reason === undefined ? {} : { reason } })
 export const listMyEntries = () => api<Schemas["PaginatedMyEntryList"]>("/me/entries/")
@@ -34,7 +35,10 @@ export const ENTRY_STATUS_LABEL: Record<EntryStatus, string> = {
   waitlisted: "On the waiting list",
   rejected: "Not accepted",
   withdrawn: "Withdrawn",
+  pairing: "Jumbles pair",
 }
+
+export const POOL_LABEL = { men: "Men's pool", women: "Women's pool" } as const
 
 /** Still standing: pending, accepted or on the waiting list. */
 export const isLive = (entry: { status: EntryStatus }) => entry.status === "pending" || entry.status === "accepted" || entry.status === "waitlisted"

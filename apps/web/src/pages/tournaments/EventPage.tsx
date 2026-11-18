@@ -32,11 +32,16 @@ export function EventPage({ tab }: { tab: EventTab }) {
   const { id = "", eventId = "" } = useParams()
   const { results: memberships } = useMemberships()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
-  const draw = useQuery({ queryKey: drawKeys.event(eventId), queryFn: () => getDraw(id, eventId), enabled: tournament.isSuccess })
-  const published = draw.data?.published ?? null
-  const standings = useQuery({ queryKey: drawKeys.standings(eventId), queryFn: () => getStandings(id, eventId), enabled: !!published })
   const t = tournament.data
   const event = t?.events.find((candidate) => candidate.id === eventId)
+  const draw = useQuery({
+    queryKey: drawKeys.event(eventId),
+    queryFn: () => getDraw(id, eventId),
+    enabled: tournament.isSuccess,
+    refetchInterval: tab === "brackets" && event?.status === "in_progress" ? 5000 : false,
+  })
+  const published = draw.data?.published ?? null
+  const standings = useQuery({ queryKey: drawKeys.standings(eventId), queryFn: () => getStandings(id, eventId), enabled: !!published })
   const staff = !!t && canManageTournament(memberships, t)
   const missing = (tournament.error instanceof ApiError && tournament.error.status === 404) || (!!t && !event)
 

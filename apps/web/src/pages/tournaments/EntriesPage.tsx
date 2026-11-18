@@ -6,11 +6,12 @@ import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { SelectField } from "@/components/forms/SelectField"
+import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { PlayerPicker, type Picked } from "@/components/tournaments/PlayerPicker"
 import { EntryStatusChip, EventStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
-import { formatInstant } from "@/lib/dates"
+import { formatInstant, todayIn } from "@/lib/dates"
 import {
   changeEntry,
   createEntry,
@@ -21,7 +22,9 @@ import {
   listEntries,
   listMyEntries,
   MAX_TEAM_ROSTER,
+  POOL_LABEL,
   placesTaken,
+  selfCheckIn,
   withdrawEntry,
   type Entry,
   type EntryStatus,
@@ -125,6 +128,12 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
   const live = entries.find(isLive)
   const last = entries[0] // newest first
   const block = entryBlock(t, event, { staff })
+  const today = todayIn(t.timezone)
+  const checkInDay = t.starts_on <= today && today <= t.ends_on
+  const checkIn = useMutation({
+    mutationFn: (entryId: string) => selfCheckIn(t.id, event.id, entryId),
+    onSuccess: onChange,
+  })
   const withdraw = useMutation({
     mutationFn: (entryId: string) => withdrawEntry(t.id, event.id, entryId),
     onSuccess: () => {
@@ -146,6 +155,15 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
           </div>
           <Players entry={live} />
           <CheckedIn entry={live} zone={t.timezone} />
+          {live.status === "accepted" && !live.checked_in_at && live.my_check_in_at && (
+            <p className="text-sm text-success">You’re checked in. Waiting for the rest of your entry.</p>
+          )}
+          {live.status === "accepted" && !live.my_check_in_at && !live.checked_in_at && checkInDay && !isClosed(event) && !isClosed(t) && (
+            <Button type="button" className="self-start" disabled={checkIn.isPending} onClick={() => checkIn.mutate(live.id)}>
+              {checkIn.isPending ? "Checking in…" : "Check in now"}
+            </Button>
+          )}
+          {checkIn.isError && <FormAlert>{errorMessage(checkIn.error)}</FormAlert>}
           {live.status === "pending" && <p className="text-sm text-muted-foreground">The organizers accept entries one by one. You'll get an email when they decide.</p>}
           {live.status === "waitlisted" && <p className="text-sm text-muted-foreground">The event is full for now. The organizers will email you if a place opens up.</p>}
           {withdraw.isError && <FormAlert>{errorMessage(withdraw.error)}</FormAlert>}
@@ -187,7 +205,12 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
   )
 }
 
-const ROSTER_SIZE: Record<TournamentEvent["kind"], number> = { singles: 1, doubles: 2, team: MAX_TEAM_ROSTER }
+const ROSTER_SIZE: Record<TournamentEvent["kind"], number> = { singles: 1, doubles: 2, team: MAX_TEAM_ROSTER, jumbles: 1 }
+type Pool = keyof typeof POOL_LABEL
+const POOLS: { value: Pool; label: string; description: string }[] = [
+  { value: "men", label: POOL_LABEL.men, description: "Partnered with a woman each round" },
+  { value: "women", label: POOL_LABEL.women, description: "Partnered with a man each round" },
+]
 const DIRECTORY_HINT = "Only players listed in the player directory can be found. Anyone can list themselves from their profile."
 
 /** Enter the event: yourself (with a partner or a team), or anybody when the organizers do it. */
@@ -197,6 +220,7 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
   const [picked, setPicked] = useState<Picked[]>([])
   const [teamName, setTeamName] = useState("")
   const [captain, setCaptain] = useState("")
+  const [pool, setPool] = useState<Pool | "">("")
   const fixed = !staff && me ? [{ id: me.id, display_name: me.display_name }] : []
   const players = [...fixed, ...picked]
   const captainId = players.some((player) => player.id === captain) ? captain : (players[0]?.id ?? "")
@@ -205,16 +229,18 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
       createEntry(t.id, event.id, {
         player_ids: players.map((player) => player.id),
         ...(event.kind === "team" ? { team_name: teamName.trim(), captain_id: captainId || null } : {}),
+        ...(event.kind === "jumbles" && pool ? { pool } : {}),
       }),
     onSuccess: () => {
       setPicked([])
       setTeamName("")
+      setPool("")
       onDone()
     },
   })
   const fieldErrors = enter.error instanceof ApiError ? enter.error.fieldErrors() : {}
   const other = enter.isError && Object.keys(fieldErrors).length === 0
-  const needsPicker = staff || event.kind !== "singles"
+  const needsPicker = staff || (event.kind !== "singles" && event.kind !== "jumbles")
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -226,9 +252,12 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
       {event.kind === "team" && (
         <Field label="Team name" required maxLength={80} value={teamName} onChange={(e) => setTeamName(e.target.value)} error={fieldErrors.team_name} />
       )}
+      {event.kind === "jumbles" && (
+        <ChoiceGroup legend="Pool" options={POOLS} value={pool} onChange={setPool} error={fieldErrors.pool} />
+      )}
       {needsPicker ? (
         <PlayerPicker
-          label={event.kind === "singles" ? "Player" : event.kind === "doubles" ? (staff ? "The two players" : "Your partner") : "Players"}
+          label={event.kind === "singles" || event.kind === "jumbles" ? "Player" : event.kind === "doubles" ? (staff ? "The two players" : "Your partner") : "Players"}
           hint={DIRECTORY_HINT}
           picked={picked}
           fixed={fixed}
@@ -240,19 +269,25 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
         fieldErrors.player_ids && <FormAlert>{fieldErrors.player_ids}</FormAlert>
       )}
       {event.kind === "team" && players.length > 0 && (
-        <SelectField label="Captain" value={captainId} onChange={(e) => setCaptain(e.target.value)} error={fieldErrors.captain_id}>
-          {players.map((player) => (
-            <option key={player.id} value={player.id}>
-              {player.display_name}
-            </option>
-          ))}
-        </SelectField>
+        <SelectField
+          label="Captain"
+          value={captainId}
+          onChange={setCaptain}
+          error={fieldErrors.captain_id}
+          options={players.map((player) => ({ value: player.id, label: player.display_name }))}
+        />
       )}
       {other && <FormAlert>{errorMessage(enter.error)}</FormAlert>}
       <Button type="submit" size="lg" className="self-start" disabled={enter.isPending}>
         {enter.isPending ? "Entering…" : staff ? "Add entry" : `Enter ${event.name}`}
       </Button>
-      {mode === "own" && <p className="text-sm text-muted-foreground">Your entry waits for the organizers to accept it.</p>}
+      {mode === "own" && (
+        <p className="text-sm text-muted-foreground">
+          {event.admission === "open"
+            ? "Your entry is accepted automatically if there is a place. If the event is full, you join the waiting list."
+            : "The organizers review your request and decide whether to accept it."}
+        </p>
+      )}
       {mode === "own-as-staff" && (
         <p className="text-sm text-muted-foreground">You run this tournament, so your own entry takes a place straight away, or joins the waiting list if the event is full.</p>
       )}
@@ -273,6 +308,7 @@ function Accepted({ entries }: { entries: Entry[] }) {
           {entries.map((entry) => (
             <li key={entry.id} className="flex flex-col gap-1 rounded-lg border bg-card p-3">
               <p className="font-semibold break-words">{entryTitle(entry)}</p>
+              {entry.pool && <p className="text-sm text-muted-foreground">{POOL_LABEL[entry.pool]}</p>}
               <Players entry={entry} />
             </li>
           ))}

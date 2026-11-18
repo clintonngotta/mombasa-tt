@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { CalendarDays, MapPin } from "lucide-react"
 import { formatDayRange } from "@/lib/dates"
-import { countdown, KIND_LABEL, type Tournament } from "@/lib/tournaments"
+import { countdown, KIND_LABEL, SCOPE_LABEL, type Tournament } from "@/lib/tournaments"
 import { TournamentStatusChip } from "@/components/tournaments/StatusChip"
 
 /** A tournament in a list: dates, name, host and venue, its events as chips and a countdown. */
@@ -25,7 +25,7 @@ export function TournamentCard({ tournament: t }: { tournament: Tournament }) {
         <span className="font-display text-2xl leading-7 font-bold break-words">{t.name}</span>
         <span className="flex items-start gap-1 text-sm text-muted-foreground">
           <MapPin aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span className="break-words">{[t.venue?.name, t.venue?.town, `Hosted by ${t.organization.name}`].filter(Boolean).join(" · ")}</span>
+          <span className="break-words">{[SCOPE_LABEL[t.scope], t.venue?.name, t.venue?.town, `Hosted by ${t.organization.name}`].filter(Boolean).join(" · ")}</span>
         </span>
       </div>
       {(events.length > 0 || soon) && (

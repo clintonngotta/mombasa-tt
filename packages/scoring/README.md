@@ -5,6 +5,8 @@ out. It has no dependencies and touches no clock, storage or network, so the sco
 native client can reuse it later (REQ-001). The API validates accepted streams with an independent Python
 implementation, `services/api/scoring/engine.py`.
 
+The competition API applies [event admission rules](../../spec.md#req-008) before building the draw that supplies matches to scoring.
+
 - `src/index.ts`: `Scoring` (push events, undo), `apply`, `replay`, the `State` and `ScoreEvent` types.
 - `fixtures/f-sc*.json`: hand-worked fixtures F-SC1 to F-SC10, listed in test.md. Each step is a run of points or one
   event, with the fields the state must then have, or the code the event must be refused with.

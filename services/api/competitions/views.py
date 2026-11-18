@@ -14,7 +14,8 @@ from rest_framework.response import Response
 from accounts.models import User
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
-from organizations.access import effective_permissions, require_permission
+from core.permissions import is_platform_super_admin
+from organizations.access import effective_permissions, managed_organizations, require_permission
 from organizations.models import Organization
 from organizations.permissions import Permission
 
@@ -147,12 +148,18 @@ class TournamentViewSet(viewsets.GenericViewSet):
             OpenApiParameter("search", str, description="Tournament, host or town"),
             OpenApiParameter("organization", str, description="Host organization id"),
             OpenApiParameter("when", str, enum=["upcoming", "past"]),
+            OpenApiParameter("scope", str, enum=Tournament.Scope.values),
         ]
     )
     def list(self, request):
         """Published tournaments, drafts never. `when=upcoming` (soonest first) covers those still to
         finish; `when=past` (latest first) the completed, cancelled and ended ones."""
         found = tournaments().exclude(status=T.DRAFT)
+        scope = request.query_params.get("scope")
+        if scope:
+            if scope not in Tournament.Scope.values:
+                raise ValidationError({"scope": "Choose a tournament scope."})
+            found = found.filter(scope=scope)
         organization = request.query_params.get("organization")
         if organization:
             try:
@@ -164,6 +171,7 @@ class TournamentViewSet(viewsets.GenericViewSet):
             found = found.filter(
                 Q(name__icontains=term)
                 | Q(organization__name__icontains=term)
+                | Q(organization__region__icontains=term)
                 | Q(venue__town__icontains=term)
             )
         when = request.query_params.get("when")
@@ -173,6 +181,19 @@ class TournamentViewSet(viewsets.GenericViewSet):
             found = found.exclude(over)
         elif when == "past":
             found = found.filter(over).order_by("-starts_on", "name", "id")
+        page = self.paginate_queryset(found)
+        return self.get_paginated_response(TournamentSerializer(page, many=True).data)
+
+    @extend_schema(responses={200: TournamentSerializer(many=True)})
+    def awaiting_approval(self, request):
+        """Drafts whose host asked for approval and that the caller may approve: any of them for a
+        platform super admin, otherwise those in the caller's jurisdiction and tier."""
+        pending = tournaments().filter(status=T.DRAFT, approval_status=Tournament.Approval.PENDING)
+        if not is_platform_super_admin(request.user):
+            pending = pending.filter(organization__in=managed_organizations(request.user))
+        found = [
+            t for t in pending.order_by("starts_on", "name", "id") if lifecycle.can_approve(t, request.user)
+        ]
         page = self.paginate_queryset(found)
         return self.get_paginated_response(TournamentSerializer(page, many=True).data)
 
@@ -195,10 +216,19 @@ class TournamentViewSet(viewsets.GenericViewSet):
                 raise ApiException(
                     "structure_frozen", "The timezone can't change once the tournament has started.", 409
                 )
+            scope = serializer.validated_data.get("scope", tournament.scope)
+            if tournament.status != T.DRAFT and scope != tournament.scope:
+                raise ApiException(
+                    "structure_frozen", "The tournament scope can't change once it is published.", 409
+                )
+            if scope != tournament.scope:
+                lifecycle.ensure_may_change_scope(tournament, request.user)
             changed = any(
                 getattr(tournament, name) != value for name, value in serializer.validated_data.items()
             )
             serializer.save()
+            if changed:
+                lifecycle.reset_pending_approval(tournament)
             # Once people can see it, every change to what was published is on the record.
             if changed and tournament.status != T.DRAFT:
                 lifecycle.record(tournament, LifecycleEntry.Action.UPDATED, request.user)
@@ -225,6 +255,18 @@ class TournamentViewSet(viewsets.GenericViewSet):
     @extend_schema(request=None, responses={200: TournamentSerializer})
     def publish(self, request, pk):
         return self._transition(request, pk, lifecycle.publish)
+
+    @extend_schema(request=None, responses={200: TournamentSerializer})
+    def request_approval(self, request, pk):
+        return self._transition(request, pk, lifecycle.request_approval)
+
+    @extend_schema(request=ReasonSerializer, responses={200: TournamentSerializer})
+    def reject_approval(self, request, pk):
+        serializer = ReasonSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._transition(
+            request, pk, lifecycle.reject_approval, reason=serializer.validated_data["reason"]
+        )
 
     @extend_schema(request=None, responses={200: TournamentSerializer})
     def start(self, request, pk):
@@ -299,7 +341,10 @@ class EventViewSet(viewsets.GenericViewSet):
             if tournament.events.count() >= MAX_EVENTS:
                 raise ApiException("too_many_events", f"A tournament can have {MAX_EVENTS} events.", 409)
             last = tournament.events.aggregate(last=Max("position"))["last"]
+            serializer.validated_data.setdefault("entry_fee_minor", tournament.registration_fee_minor)
+            serializer.validated_data.setdefault("entry_fee_currency", tournament.registration_fee_currency)
             serializer.save(tournament=tournament, position=0 if last is None else last + 1)
+            lifecycle.reset_pending_approval(tournament)
         return reply(tournament, status.HTTP_201_CREATED)
 
     @extend_schema(request=EventSerializer, responses={200: TournamentSerializer})
@@ -347,6 +392,7 @@ class EventViewSet(viewsets.GenericViewSet):
                 )
             if changed:
                 serializer.save(revision=event.revision + 1)
+                lifecycle.reset_pending_approval(tournament)
         return reply(tournament)
 
     @extend_schema(responses={200: TournamentSerializer})
@@ -363,6 +409,7 @@ class EventViewSet(viewsets.GenericViewSet):
                 )
             lifecycle.record(tournament, LifecycleEntry.Action.EVENT_REMOVED, request.user, event=event)
             event.delete()
+            lifecycle.reset_pending_approval(tournament)
         return reply(tournament)
 
     def _transition(self, request, tournament_pk, pk, change, **extra):
@@ -390,14 +437,18 @@ class EventViewSet(viewsets.GenericViewSet):
 
 
 def entry_list():
-    return Entry.objects.select_related("event__tournament").prefetch_related("players__user")
+    # Jumbles pairings are made by the draw and shown in its matches, not as entries.
+    return (
+        Entry.objects.exclude(status=Entry.Status.PAIRING)
+        .select_related("event__tournament")
+        .prefetch_related("players__user")
+    )
 
 
 class EntryViewSet(viewsets.GenericViewSet):
-    """Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
-    event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
-    check in. Accepted entries are open to every signed-in player; the rest only to their own players
-    and to the host's competition staff."""
+    """Entries of one event (REQ-008). Open events admit players automatically within capacity.
+    Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+    players; staff and the entry's own players can also see its other statuses."""
 
     serializer_class = EntrySerializer
     permission_classes = [IsAuthenticated]
@@ -447,9 +498,8 @@ class EntryViewSet(viewsets.GenericViewSet):
 
     @extend_schema(request=EntryRequestSerializer, responses={201: EntrySerializer})
     def create(self, request, tournament_pk, event_pk):
-        """Enter the event. A player's own entry includes them and waits for staff, inside the
-        registration window. Staff enter anybody at any time before the event starts: the entry takes
-        a place if there is one and joins the waiting list if not."""
+        """Enter the event during its registration window. Open admission places or waitlists
+        the entry. Closed admission sends it to staff for approval. Staff may enter players directly."""
         serializer = EntryRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         asked = serializer.validated_data
@@ -473,15 +523,26 @@ class EntryViewSet(viewsets.GenericViewSet):
             captain = known.get(asked.get("captain_id") or request.user.id)
             team_name = asked.get("team_name", "")
             problem = entries.roster_problem(event, players, team_name, captain)
+            if event.kind == Event.Kind.JUMBLES and not asked.get("pool"):
+                problem = {**problem, "pool": "Choose the men's or the women's pool."}
             if problem:
                 raise ValidationError(problem)
             entry = entries.create(
-                event, request.user, players, team_name=team_name, captain=captain, by_staff=staff
+                event,
+                request.user,
+                players,
+                team_name=team_name,
+                captain=captain,
+                by_staff=staff,
+                pool=asked.get("pool", ""),
             )
         fresh = entry_list().get(pk=entry.pk)
-        send_entry_news(
-            fresh, "waitlisted" if entry.status == Entry.Status.WAITLISTED else "entered", request.user
-        )
+        news = "entered"
+        if entry.status == Entry.Status.WAITLISTED:
+            news = "waitlisted"
+        elif not staff and entry.status == Entry.Status.ACCEPTED:
+            news = "accepted"
+        send_entry_news(fresh, news, request.user)
         return self._reply(entry, status.HTTP_201_CREATED)
 
     def _staff_change(self, request, tournament_pk, event_pk, pk, change, *, before_start=True):
@@ -561,6 +622,16 @@ class EntryViewSet(viewsets.GenericViewSet):
         )
 
     @extend_schema(request=None, responses={200: EntrySerializer})
+    def self_check_in(self, request, tournament_pk, event_pk, pk):
+        with transaction.atomic():
+            tournament, event, _ = self._open(tournament_pk, event_pk, lock=True)
+            entry = get_object_or_404(entry_list(), pk=pk, event=event, players__user=request.user)
+            if tournament.status == T.DRAFT or tournament.is_closed or event.is_closed:
+                raise ApiException("entries_closed", "Check-in is closed for this event.", 409)
+            entries.self_check_in(entry, request.user, tournament)
+        return self._reply(entry)
+
+    @extend_schema(request=None, responses={200: EntrySerializer})
     def withdraw(self, request, tournament_pk, event_pk, pk):
         """By one of the entry's own players, before the event starts. For anybody else the entry
         doesn't exist here."""
@@ -611,6 +682,9 @@ class DrawViewSet(viewsets.GenericViewSet):
                 {
                     "published": drawing.describe(published) if published else None,
                     "preview": drawing.describe(preview) if preview else None,
+                    "recommended_seeds": drawing.rating_seeds(event)
+                    if staff and event.status == E.SCHEDULED
+                    else [],
                 },
                 context={"request": self.request},
             ).data
@@ -719,7 +793,11 @@ class DrawViewSet(viewsets.GenericViewSet):
             tournament = staff_tournament(request.user, tournament_pk)
             event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
             drawing.ensure_drawable(tournament, event)
-            seeds = [str(pk) for pk in asked.get("seeded_entry_ids", [])]
+            seeds = (
+                [str(pk) for pk in asked["seeded_entry_ids"]]
+                if "seeded_entry_ids" in asked
+                else drawing.rating_seeds(event)
+            )
             drawing.make_preview(event, request.user, seeds, asked.get("rng_seed"))
         return self._shown(event, staff=True)
 

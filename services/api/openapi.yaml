@@ -281,6 +281,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/geography/countries/:
+    get:
+      operationId: geography_countries_list
+      tags:
+      - geography
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountryOption'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/geography/countries/{code}/:
+    get:
+      operationId: geography_countries_retrieve
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        required: true
+      tags:
+      - geography
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryCatalogue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/avatar/:
     put:
       operationId: me_avatar_update
@@ -509,6 +557,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMyJoinRequestList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/managed-organizations/:
+    get:
+      operationId: me_managed_organizations_list
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagementOrganization'
           description: ''
         4XX:
           description: Error envelope
@@ -2156,6 +2226,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_partial_update
+      description: Search, view and register organizations (REQ-004).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this organization.
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationLocationRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/permissions/:
     get:
       operationId: organizations_permissions_list
@@ -2327,6 +2430,75 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Ranking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/rankings/clubs/:
+    get:
+      operationId: rankings_clubs_retrieve
+      description: Rank clubs by the sum of their active members' ratings for one
+        discipline.
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+        description: Default singles.
+      tags:
+      - rankings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubRanking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/rankings/geography/:
+    get:
+      operationId: rankings_geography_retrieve
+      description: Aggregate player ratings by the location each player provides in
+        their profile.
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+      - in: query
+        name: level
+        schema:
+          type: string
+          enum:
+          - city
+          - country
+          - region
+      tags:
+      - rankings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeographyRanking'
           description: ''
         4XX:
           description: Error envelope
@@ -2537,6 +2709,15 @@ paths:
         schema:
           type: integer
       - in: query
+        name: scope
+        schema:
+          type: string
+          enum:
+          - international
+          - local
+          - national
+          - regional
+      - in: query
         name: search
         schema:
           type: string
@@ -2647,6 +2828,72 @@ paths:
       responses:
         '204':
           description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/approval/reject/:
+    post:
+      operationId: tournaments_approval_reject_create
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/approval/request/:
+    post:
+      operationId: tournaments_approval_request_create
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
         4XX:
           description: Error envelope
           content:
@@ -3173,6 +3420,7 @@ paths:
           type: string
           enum:
           - accepted
+          - pairing
           - pending
           - rejected
           - waitlisted
@@ -3203,9 +3451,8 @@ paths:
     post:
       operationId: tournaments_events_entries_create
       description: |-
-        Enter the event. A player's own entry includes them and waits for staff, inside the
-        registration window. Staff enter anybody at any time before the event starts: the entry takes
-        a place if there is one and joins the waiting list if not.
+        Enter the event during its registration window. Open admission places or waitlists
+        the entry. Closed admission sends it to staff for approval. Staff may enter players directly.
       parameters:
       - in: path
         name: event_pk
@@ -3370,6 +3617,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/self-check-in/:
+    post:
+      operationId: tournaments_events_entries_self_check_in_create
+      description: |-
+        Entries of one event (REQ-008). Open events admit players automatically within capacity.
+        Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+        players; staff and the entry's own players can also see its other statuses.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/staff-withdraw/:
     post:
       operationId: tournaments_events_entries_staff_withdraw_create
@@ -3421,10 +3711,9 @@ paths:
     post:
       operationId: tournaments_events_entries_undo_check_in_create
       description: |-
-        Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
-        event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
-        check in. Accepted entries are open to every signed-in player; the rest only to their own players
-        and to the host's competition staff.
+        Entries of one event (REQ-008). Open events admit players automatically within capacity.
+        Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+        players; staff and the entry's own players can also see its other statuses.
       parameters:
       - in: path
         name: event_pk
@@ -3465,10 +3754,9 @@ paths:
     post:
       operationId: tournaments_events_entries_waitlist_create
       description: |-
-        Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
-        event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
-        check in. Accepted entries are open to every signed-in player; the rest only to their own players
-        and to the host's competition staff.
+        Entries of one event (REQ-008). Open events admit players automatically within capacity.
+        Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+        players; staff and the entry's own players can also see its other statuses.
       parameters:
       - in: path
         name: event_pk
@@ -4218,6 +4506,142 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/:
+    get:
+      operationId: tournaments_schedule_retrieve
+      description: |-
+        Every match of a published draw still to be played and not on a table, with the table and
+        start planned for it, and what is wrong with the plan as it stands.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: tournaments_schedule_update
+      description: |-
+        Keep these tables and starts. Refused with `schedule_conflicts` and the list of conflicts
+        when a table, a player or a match's order wouldn't work; warnings don't stop it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlotsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/check/:
+    post:
+      operationId: tournaments_schedule_check_create
+      description: What would be wrong with these changes to the plan, without keeping
+        them.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlotsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checked'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/recommend/:
+    post:
+      operationId: tournaments_schedule_recommend_create
+      description: |-
+        A start and table for every match, earliest first: nobody plays twice at once or without
+        their rest, and no match starts before the ones it waits for end. Nothing is saved: edit it
+        and keep it with PUT.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendRequestRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recommendation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/scoring/:
     get:
       operationId: tournaments_scoring_retrieve
@@ -4322,6 +4746,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/awaiting-approval/:
+    get:
+      operationId: tournaments_awaiting_approval_list
+      description: |-
+        Drafts whose host asked for approval and that the caller may approve: any of them for a
+        platform super admin, otherwise those in the caller's jurisdiction and tier.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTournamentList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   schemas:
     AcceptedEvent:
@@ -4353,6 +4813,8 @@ components:
     ActionEnum:
       enum:
       - published
+      - approval_requested
+      - approval_rejected
       - updated
       - started
       - completed
@@ -4364,6 +4826,8 @@ components:
       type: string
       description: |-
         * `published` - Published
+        * `approval_requested` - Approval Requested
+        * `approval_rejected` - Approval Rejected
         * `updated` - Updated
         * `started` - Started
         * `completed` - Completed
@@ -4372,6 +4836,26 @@ components:
         * `event_completed` - Event Completed
         * `event_cancelled` - Event Cancelled
         * `event_removed` - Event Removed
+    AdmissionEnum:
+      enum:
+      - open
+      - closed
+      type: string
+      description: |-
+        * `open` - Open
+        * `closed` - Closed
+    ApprovalStatusEnum:
+      enum:
+      - not_requested
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `not_requested` - Not requested
+        * `pending` - Pending
+        * `approved` - Approved
+        * `rejected` - Rejected
     AssignUmpireRequest:
       type: object
       description: '`user_id` null takes the match back from its umpire. `rubber_id`
@@ -4465,6 +4949,16 @@ components:
       - expires_at
       - id
       - url
+    AuthorityEnum:
+      enum:
+      - platform
+      - country
+      - regional
+      type: string
+      description: |-
+        * `platform` - platform
+        * `country` - country
+        * `regional` - regional
     AutoDispatchRequest:
       type: object
       properties:
@@ -4561,6 +5055,61 @@ components:
       - playing
       - since
       - suggested_match_id
+    Checked:
+      type: object
+      properties:
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - warnings
+    ClubRanking:
+      type: object
+      properties:
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        processing:
+          type: boolean
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubRankingRow'
+      required:
+      - discipline
+      - processing
+      - rows
+    ClubRankingRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Clubs with the same total share a rank.
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        town:
+          type: string
+        total_points:
+          type: number
+          format: double
+          description: Sum of current ratings of active rated members.
+        rated_members:
+          type: integer
+      required:
+      - name
+      - organization_id
+      - rank
+      - rated_members
+      - total_points
+      - town
     ConfirmRequest:
       type: object
       description: |-
@@ -4640,6 +5189,31 @@ components:
       required:
       - events
       - id
+    CountryCatalogue:
+      type: object
+      properties:
+        catalogue_only:
+          type: boolean
+          description: Use this catalogue as the source of location choices for this
+            country.
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Region'
+          readOnly: true
+      required:
+      - catalogue_only
+      - regions
+    CountryOption:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
     DeckPlayer:
       type: object
       properties:
@@ -4797,6 +5371,10 @@ components:
         title:
           type: string
           readOnly: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          readOnly: true
         players:
           type: array
           items:
@@ -4811,6 +5389,7 @@ components:
       - id
       - mine
       - players
+      - pool
       - title
     DrawGroup:
       type: object
@@ -4911,6 +5490,10 @@ components:
         team_name:
           type: string
           readOnly: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          readOnly: true
         captain_id:
           type: string
           format: uuid
@@ -4938,6 +5521,11 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        my_check_in_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
         mine:
           type: boolean
           description: Whether the caller plays in it, so may withdraw it.
@@ -4949,7 +5537,9 @@ components:
       - decided_at
       - id
       - mine
+      - my_check_in_at
       - players
+      - pool
       - reason
       - status
       - team_name
@@ -5010,6 +5600,14 @@ components:
           type: string
           format: uuid
           nullable: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          description: |-
+            Jumbles only: the men's or the women's pool.
+
+            * `men` - Men
+            * `women` - Women
     EntryStatusEnum:
       enum:
       - pending
@@ -5017,6 +5615,7 @@ components:
       - waitlisted
       - rejected
       - withdrawn
+      - pairing
       type: string
       description: |-
         * `pending` - Pending
@@ -5024,6 +5623,7 @@ components:
         * `waitlisted` - Waitlisted
         * `rejected` - Rejected
         * `withdrawn` - Withdrawn
+        * `pairing` - Pairing
     EntryTournament:
       type: object
       properties:
@@ -5089,6 +5689,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        admission:
+          $ref: '#/components/schemas/AdmissionEnum'
         entry_fee:
           $ref: '#/components/schemas/Money'
         seeding:
@@ -5154,6 +5756,7 @@ components:
           readOnly: true
       required:
       - accepted_count
+      - admission
       - best_of
       - cancel_reason
       - cancelled_at
@@ -5189,9 +5792,15 @@ components:
           allOf:
           - $ref: '#/components/schemas/Draw'
           nullable: true
+        recommended_seeds:
+          type: array
+          items:
+            type: string
+            format: uuid
       required:
       - preview
       - published
+      - recommended_seeds
     EventFormatEnum:
       enum:
       - round_robin
@@ -5207,11 +5816,13 @@ components:
       - singles
       - doubles
       - team
+      - jumbles
       type: string
       description: |-
         * `singles` - Singles
         * `doubles` - Doubles
         * `team` - Team
+        * `jumbles` - Jumbles
     EventRequest:
       type: object
       properties:
@@ -5242,6 +5853,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        admission:
+          $ref: '#/components/schemas/AdmissionEnum'
         entry_fee:
           $ref: '#/components/schemas/MoneyRequest'
         seeding:
@@ -5334,6 +5947,47 @@ components:
       required:
       - my_points
       - opponent_points
+    GeographyRanking:
+      type: object
+      properties:
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        level:
+          $ref: '#/components/schemas/LevelEnum'
+        processing:
+          type: boolean
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeographyRankingRow'
+      required:
+      - discipline
+      - level
+      - processing
+      - rows
+    GeographyRankingRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+        country:
+          type: string
+        region:
+          type: string
+        city:
+          type: string
+        total_points:
+          type: number
+          format: double
+        rated_players:
+          type: integer
+      required:
+      - city
+      - country
+      - rank
+      - rated_players
+      - region
+      - total_points
     Goals:
       type: object
       properties:
@@ -5541,6 +6195,16 @@ components:
       - lost
       - played
       - won
+    LevelEnum:
+      enum:
+      - country
+      - region
+      - city
+      type: string
+      description: |-
+        * `country` - country
+        * `region` - region
+        * `city` - city
     LifecycleEntry:
       type: object
       properties:
@@ -5641,6 +6305,21 @@ components:
       required:
       - email
       - password
+    ManagementOrganization:
+      type: object
+      properties:
+        organization:
+          $ref: '#/components/schemas/Organization'
+        authority:
+          $ref: '#/components/schemas/AuthorityEnum'
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionEnum'
+      required:
+      - authority
+      - organization
+      - permissions
     Match:
       type: object
       properties:
@@ -5667,6 +6346,9 @@ components:
           description: 'Null is a bye: `a` goes through without playing.'
         status:
           $ref: '#/components/schemas/MatchStatusEnum'
+        is_live:
+          type: boolean
+          description: A match or team rubber is currently being scored.
         winner_id:
           type: string
           format: uuid
@@ -5713,6 +6395,7 @@ components:
       - games
       - group
       - id
+      - is_live
       - outcome
       - position
       - round
@@ -5751,6 +6434,9 @@ components:
           description: 'Null is a bye: `a` goes through without playing.'
         status:
           $ref: '#/components/schemas/MatchStatusEnum'
+        is_live:
+          type: boolean
+          description: A match or team rubber is currently being scored.
         winner_id:
           type: string
           format: uuid
@@ -5845,6 +6531,7 @@ components:
       - group_name
       - held_for_correction
       - id
+      - is_live
       - on_table
       - outcome
       - position
@@ -6222,6 +6909,10 @@ components:
         team_name:
           type: string
           readOnly: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          readOnly: true
         captain_id:
           type: string
           format: uuid
@@ -6249,6 +6940,11 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        my_check_in_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
         mine:
           type: boolean
           description: Whether the caller plays in it, so may withdraw it.
@@ -6269,7 +6965,9 @@ components:
       - event
       - id
       - mine
+      - my_check_in_at
       - players
+      - pool
       - reason
       - status
       - team_name
@@ -6583,15 +7281,23 @@ components:
         town:
           type: string
           maxLength: 80
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
           type: string
           maxLength: 64
       required:
+      - country
       - id
       - kind
       - name
+      - region
       - timezone
       - town
     OrganizationRequest:
@@ -6605,6 +7311,12 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -6627,9 +7339,17 @@ components:
         town:
           type: string
           readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
       required:
+      - country
       - id
       - name
+      - region
       - town
     OverridesEnum:
       enum:
@@ -7036,6 +7756,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        admission:
+          $ref: '#/components/schemas/AdmissionEnum'
         entry_fee:
           $ref: '#/components/schemas/MoneyRequest'
         seeding:
@@ -7100,6 +7822,21 @@ components:
             - type: number
             - type: boolean
             nullable: true
+    PatchedOrganizationLocationRequest:
+      type: object
+      properties:
+        country:
+          type: string
+          minLength: 1
+          maxLength: 2
+        region:
+          type: string
+          minLength: 1
+          maxLength: 100
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
     PatchedPersonalMatchRequest:
       type: object
       properties:
@@ -7157,6 +7894,15 @@ components:
         bio:
           type: string
           maxLength: 280
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
         directory_opt_in:
           type: boolean
         published_details:
@@ -7213,6 +7959,10 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+        scope:
+          $ref: '#/components/schemas/TournamentScopeEnum'
+        registration_fee:
+          $ref: '#/components/schemas/RegistrationFeeRequest'
     PatchedVenueRequest:
       type: object
       description: A venue with its tables in playing order.
@@ -7493,6 +8243,28 @@ components:
         * `all` - all
         * `won` - won
         * `lost` - lost
+    PoolEnum:
+      enum:
+      - men
+      - women
+      type: string
+      description: |-
+        * `men` - Men
+        * `women` - Women
+    Problem:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        message:
+          type: string
+      required:
+      - code
+      - match_id
+      - message
     Profile:
       type: object
       description: The owner's own view of their profile. `display_name` is written
@@ -7527,6 +8299,15 @@ components:
         bio:
           type: string
           maxLength: 280
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
         directory_opt_in:
           type: boolean
         published_details:
@@ -7544,6 +8325,8 @@ components:
       required:
       - avatar
       - bio
+      - city
+      - country
       - directory_opt_in
       - display_name
       - experience
@@ -7553,6 +8336,7 @@ components:
       - nickname
       - onboarding_completed
       - published_details
+      - region
       - style
     ProgressEnum:
       enum:
@@ -7643,7 +8427,7 @@ components:
         discipline:
           $ref: '#/components/schemas/SinglesOrDoublesEnum'
         scope:
-          $ref: '#/components/schemas/ScopeEnum'
+          $ref: '#/components/schemas/RankingScopeEnum'
         organization_id:
           type: string
           format: uuid
@@ -7717,6 +8501,14 @@ components:
       - rating
       - user_id
       - won
+    RankingScopeEnum:
+      enum:
+      - platform
+      - club
+      type: string
+      description: |-
+        * `platform` - platform
+        * `club` - club
     RatingChange:
       type: object
       properties:
@@ -7879,6 +8671,68 @@ components:
           maxLength: 300
       required:
       - reason
+    RecommendRequestRequest:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+          description: Not before; defaults to now.
+        day_starts:
+          type: string
+          format: time
+          default: 09:00:00
+        day_ends:
+          type: string
+          format: time
+          default: '21:00:00'
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Defaults to every table in use.
+    Recommendation:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecommendedSlot'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - slots
+      - warnings
+    RecommendedSlot:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        beyond_last_day:
+          type: boolean
+          description: It doesn't fit in the tournament's days.
+      required:
+      - beyond_last_day
+      - match_id
+      - scheduled_at
+      - table_id
     RefusedEvent:
       type: object
       properties:
@@ -7891,6 +8745,48 @@ components:
       required:
       - code
       - sequence
+    Region:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        cities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - cities
+      - name
+    RegistrationFee:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 0
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+      required:
+      - amount_minor
+      - currency
+    RegistrationFeeRequest:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 0
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+      required:
+      - amount_minor
     Reservation:
       type: object
       description: 'A match on a table: the table and the people held until its result
@@ -8274,14 +9170,78 @@ components:
         * `scheduled` - Scheduled
         * `completed` - Completed
         * `not_played` - Not Played
-    ScopeEnum:
-      enum:
-      - platform
-      - club
-      type: string
-      description: |-
-        * `platform` - platform
-        * `club` - club
+    Schedule:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleTable'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleRow'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - rows
+      - tables
+      - warnings
+    ScheduleRow:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event:
+          type: string
+        label:
+          type: string
+          description: Event, group or round, and match.
+        title:
+          type: string
+          description: The two sides, or 'To come'.
+        minutes:
+          type: integer
+          description: The estimated length, from the event's best-of.
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - event
+      - event_id
+      - label
+      - match_id
+      - minutes
+      - scheduled_at
+      - table_id
+      - title
+    ScheduleTable:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+      required:
+      - id
+      - label
     ScoreConflict:
       type: object
       description: A device's unaccepted events beside what the server holds at the
@@ -8648,6 +9608,18 @@ components:
           type: string
           writeOnly: true
           minLength: 1
+        country:
+          type: string
+          minLength: 1
+          maxLength: 2
+        region:
+          type: string
+          minLength: 1
+          maxLength: 100
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
       required:
       - display_name
       - email
@@ -8672,6 +9644,33 @@ components:
         * `a2` - a2
         * `b1` - b1
         * `b2` - b2
+    SlotRequest:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - match_id
+      - scheduled_at
+      - table_id
+    SlotsRequest:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlotRequest'
+      required:
+      - slots
     SourceEnum:
       enum:
       - umpire
@@ -8984,6 +9983,14 @@ components:
         timezone:
           type: string
           maxLength: 64
+        scope:
+          $ref: '#/components/schemas/TournamentScopeEnum'
+        approval_status:
+          allOf:
+          - $ref: '#/components/schemas/ApprovalStatusEnum'
+          readOnly: true
+        registration_fee:
+          $ref: '#/components/schemas/RegistrationFee'
         status:
           allOf:
           - $ref: '#/components/schemas/TournamentStatusEnum'
@@ -9017,6 +10024,7 @@ components:
             $ref: '#/components/schemas/Event'
           readOnly: true
       required:
+      - approval_status
       - cancel_reason
       - cancelled_at
       - completed_at
@@ -9027,6 +10035,8 @@ components:
       - name
       - organization
       - published_at
+      - registration_fee
+      - scope
       - started_at
       - starts_on
       - status
@@ -9060,10 +10070,26 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+        scope:
+          $ref: '#/components/schemas/TournamentScopeEnum'
+        registration_fee:
+          $ref: '#/components/schemas/RegistrationFeeRequest'
       required:
       - ends_on
       - name
       - starts_on
+    TournamentScopeEnum:
+      enum:
+      - local
+      - regional
+      - national
+      - international
+      type: string
+      description: |-
+        * `local` - Local
+        * `regional` - Regional
+        * `national` - National
+        * `international` - International
     TournamentStatusEnum:
       enum:
       - draft

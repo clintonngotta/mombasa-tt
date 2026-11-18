@@ -134,6 +134,8 @@ The Compose implementation must arrange for collected static files to be served 
 
 After deploy: verify HTTPS, login/refresh/CSRF, a public tournament deep link, authenticated WebSocket, test notification, readiness, and a fixture tournament in staging. In production use non-destructive staff smoke checks and an explicitly designated test event if needed. Compare errors/queue age for at least 15 minutes. Record image digests, migration names, backup ID and mobile compatibility in release history.
 
+In staging, check that an eligible open-event entry gets a place automatically and a closed-event entry stays pending until the organizer approves it. Use the cases in [EVAL-008](test.md#eval-008).
+
 ## Namecheap shared-hosting frontend option
 
 1. Retain full Django/Channels/Celery/PostgreSQL/Redis deployment on VPS.

@@ -5,6 +5,7 @@ import { NotebookPen, Search, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FormAlert } from "@/components/forms/Field"
+import { SelectField } from "@/components/forms/SelectField"
 import { NavCard } from "@/components/layout/NavCard"
 import { EntryStatusChip } from "@/components/tournaments/StatusChip"
 import { TournamentCard } from "@/components/tournaments/TournamentCard"
@@ -12,7 +13,7 @@ import { errorMessage } from "@/lib/api"
 import { formatDayRange } from "@/lib/dates"
 import { entryKeys, entryTitle, isLive, listMyEntries } from "@/lib/entries"
 import { listMyScorecards, SCORING_STATUS_LABEL, scoringKeys } from "@/lib/scoring"
-import { isClosed, listTournaments, tournamentKeys, type When } from "@/lib/tournaments"
+import { SCOPE_OPTIONS, isClosed, listTournaments, tournamentKeys, type TournamentScope, type When } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 
 const WHEN: { value: When; label: string }[] = [
@@ -25,7 +26,8 @@ export function PlayPage() {
   const [when, setWhen] = useState<When>("upcoming")
   const [input, setInput] = useState("")
   const [term, setTerm] = useState("")
-  const tournaments = useQuery({ queryKey: tournamentKeys.list(when, term), queryFn: () => listTournaments(when, term) })
+  const [scope, setScope] = useState<TournamentScope | "">("")
+  const tournaments = useQuery({ queryKey: tournamentKeys.list(when, term, scope), queryFn: () => listTournaments(when, term, scope) })
   const items = tournaments.data?.results ?? []
 
   function onSearch(e: FormEvent) {
@@ -71,6 +73,12 @@ export function PlayPage() {
             <Search aria-hidden className="size-5" />
           </Button>
         </form>
+        <SelectField
+          label="Tournament scope"
+          value={scope}
+          onChange={(value) => setScope(value as TournamentScope | "")}
+          options={[{ value: "", label: "All scopes" }, ...SCOPE_OPTIONS]}
+        />
 
         <div aria-live="polite" className="flex flex-col gap-3">
           {tournaments.isPending && <p className="text-muted-foreground">Loading tournaments…</p>}

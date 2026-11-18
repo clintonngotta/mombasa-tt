@@ -6,6 +6,8 @@ accepted entries can never pass the event's capacity. The database also refuses 
 entries of one event (`one_live_entry_per_event`).
 """
 
+from zoneinfo import ZoneInfo
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -59,6 +61,8 @@ def roster_problem(event: Event, players: list, team_name: str, captain) -> dict
         return {"player_ids": "A singles entry is one player."}
     if event.kind == Event.Kind.DOUBLES and count != 2:
         return {"player_ids": "A doubles entry is two different players."}
+    if event.kind == Event.Kind.JUMBLES and count != 1:
+        return {"player_ids": "In Jumbles everybody enters alone; partners change every round."}
     if event.kind == Event.Kind.TEAM:
         if not team_name:
             return {"team_name": "Give the team a name."}
@@ -80,9 +84,10 @@ def _already_entered(taken, actor, by_staff: bool) -> ApiException:
     return _conflict("already_entered", "One of these players is already entered in this event.")
 
 
-def create(event: Event, actor, players: list, *, team_name: str, captain, by_staff: bool) -> Entry:
-    """A player's own entry waits for staff; one made by staff takes a place if there is one and joins
-    the waiting list if not."""
+def create(
+    event: Event, actor, players: list, *, team_name: str, captain, by_staff: bool, pool: str = ""
+) -> Entry:
+    """Open admission and staff entries take a place or join the waitlist. Closed self-entry is pending."""
     is_team = event.kind == Event.Kind.TEAM
     taken = EntryPlayer.objects.filter(event=event, live=True, user__in=players).select_related("user")
     if taken:
@@ -90,7 +95,7 @@ def create(event: Event, actor, players: list, *, team_name: str, captain, by_st
     if is_team and event.entries.filter(status__in=Entry.LIVE, team_name__iexact=team_name).exists():
         raise _conflict("team_name_taken", "Another team in this event has that name.")
     status = S.PENDING
-    if by_staff:
+    if by_staff or event.admission == Event.Admission.OPEN:
         status = S.ACCEPTED if has_room(event) else S.WAITLISTED
     try:
         with transaction.atomic():
@@ -99,8 +104,9 @@ def create(event: Event, actor, players: list, *, team_name: str, captain, by_st
                 status=status,
                 team_name=team_name if is_team else "",
                 captain=captain if is_team else None,
+                pool=pool if event.kind == Event.Kind.JUMBLES else "",
                 entered_by=actor,
-                decided_at=timezone.now() if by_staff else None,
+                decided_at=timezone.now() if status != S.PENDING else None,
                 decided_by=actor if by_staff else None,
             )
             EntryPlayer.objects.bulk_create(
@@ -174,9 +180,27 @@ def check_in(entry: Entry, actor) -> None:
         entry.checked_in_at = timezone.now()
         entry.checked_in_by = actor
         entry.save(update_fields=["checked_in_at", "checked_in_by"])
+        entry.players.filter(checked_in_at__isnull=True).update(checked_in_at=entry.checked_in_at)
+
+
+def self_check_in(entry: Entry, actor, tournament: Tournament) -> None:
+    if entry.status != S.ACCEPTED:
+        raise _conflict("not_accepted", "Only an accepted entry can be checked in.")
+    now = timezone.now()
+    day = now.astimezone(ZoneInfo(tournament.timezone)).date()
+    if not tournament.starts_on <= day <= tournament.ends_on:
+        raise _conflict("check_in_not_today", "Self check-in is available on the tournament days.")
+    if entry.checked_in_at is not None:
+        return
+    entry.players.filter(user=actor, checked_in_at__isnull=True).update(checked_in_at=now)
+    if not entry.players.filter(checked_in_at__isnull=True).exists():
+        entry.checked_in_at = now
+        entry.checked_in_by = actor
+        entry.save(update_fields=["checked_in_at", "checked_in_by"])
 
 
 def undo_check_in(entry: Entry) -> None:
     entry.checked_in_at = None
     entry.checked_in_by = None
     entry.save(update_fields=["checked_in_at", "checked_in_by"])
+    entry.players.filter(checked_in_at__isnull=False).update(checked_in_at=None)

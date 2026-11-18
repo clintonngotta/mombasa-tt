@@ -9,7 +9,7 @@ import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
 import { can, useActiveMembership, useMemberships } from "@/lib/clubs"
 import { DEFAULT_TIME_ZONE, timeZones } from "@/lib/dates"
-import { canManageTournament, createTournament, getTournament, isClosed, tournamentKeys, updateTournament, type Tournament } from "@/lib/tournaments"
+import { SCOPE_OPTIONS, canManageTournament, createTournament, getTournament, isClosed, tournamentKeys, updateTournament, type Tournament, type TournamentScope } from "@/lib/tournaments"
 import { listVenues, venueKeys } from "@/lib/venues"
 
 /** Create a draft tournament for the active organization, or edit one (REQ-007). */
@@ -52,7 +52,13 @@ function TournamentForm({ orgId, tournament: t, defaultZone }: { orgId: string; 
   const [endsOn, setEndsOn] = useState(t?.ends_on ?? "")
   const [venueId, setVenueId] = useState(t?.venue?.id ?? "")
   const [zone, setZone] = useState(t?.timezone ?? defaultZone)
+  const [scope, setScope] = useState<TournamentScope>(t?.scope ?? "local")
+  const [paid, setPaid] = useState((t?.registration_fee.amount_minor ?? 0) > 0)
+  const [fee, setFee] = useState(t?.registration_fee.amount_minor ? String(t.registration_fee.amount_minor / 100) : "")
+  const [currency, setCurrency] = useState(t?.registration_fee.currency ?? "KES")
+  const [feeError, setFeeError] = useState("")
   const started = t?.status === "in_progress"
+  const scopeFrozen = !!t && t.status !== "draft"
 
   // Venues in use, plus the one this tournament already has even if it was switched off since.
   const choices = (venues.data ?? []).filter((venue) => venue.active || venue.id === t?.venue?.id)
@@ -66,7 +72,9 @@ function TournamentForm({ orgId, tournament: t, defaultZone }: { orgId: string; 
         starts_on: (startsOn || undefined) as string,
         ends_on: (endsOn || startsOn || undefined) as string,
         venue_id: venueId || null,
+        registration_fee: { amount_minor: paid ? Math.round(Number(fee) * 100) : 0, currency },
         ...(started ? {} : { timezone: zone.trim() }),
+        ...(scopeFrozen ? {} : { scope }),
       }
       return t ? updateTournament(t.id, body) : createTournament(orgId, body)
     },
@@ -79,6 +87,12 @@ function TournamentForm({ orgId, tournament: t, defaultZone }: { orgId: string; 
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
+    const amount = Math.round(Number(fee) * 100)
+    if (paid && (!Number.isFinite(amount) || amount < 1)) {
+      setFeeError("Enter a registration fee greater than zero.")
+      return
+    }
+    setFeeError("")
     save.mutate()
   }
 
@@ -87,6 +101,27 @@ function TournamentForm({ orgId, tournament: t, defaultZone }: { orgId: string; 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
       <Field label="Name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
+      <SelectField
+        label="Tournament scope"
+        value={scope}
+        onChange={(value) => setScope(value as TournamentScope)}
+        options={SCOPE_OPTIONS}
+        disabled={scopeFrozen}
+        error={errors.scope}
+        hint={scopeFrozen ? "Fixed after publication." : "Choose the level at which this tournament is organized."}
+      />
+      <SelectField
+        label="Registration cost"
+        value={paid ? "paid" : "free"}
+        onChange={(value) => { setPaid(value === "paid"); setFeeError("") }}
+        options={[{ value: "free", label: "Free" }, { value: "paid", label: "Paid" }]}
+      />
+      {paid && <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Registration fee" type="number" inputMode="decimal" min="0.01" step="0.01" value={fee}
+          onChange={(event) => setFee(event.target.value)} error={feeError || errors["registration_fee.amount_minor"]} />
+        <Field label="Currency code" value={currency} maxLength={3} onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+          error={errors["registration_fee.currency"]} />
+      </div>}
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="First day" type="date" required value={startsOn} onChange={(e) => setStartsOn(e.target.value)} error={errors.starts_on} />
         <Field
@@ -102,7 +137,11 @@ function TournamentForm({ orgId, tournament: t, defaultZone }: { orgId: string; 
       <SelectField
         label="Venue"
         value={venueId}
-        onChange={(e) => setVenueId(e.target.value)}
+        onChange={setVenueId}
+        options={[
+          ...(!t || t.status === "draft" || !t.venue ? [{ value: "", label: "Not decided yet" }] : []),
+          ...choices.map((venue) => ({ value: venue.id, label: `${venue.name}, ${venue.town}` })),
+        ]}
         error={errors.venue_id}
         hint={
           venues.isSuccess && choices.length === 0 ? (
@@ -113,15 +152,7 @@ function TournamentForm({ orgId, tournament: t, defaultZone }: { orgId: string; 
             "Needed before publishing."
           )
         }
-      >
-        {/* Once published a tournament keeps a venue; it can move, not lose it. */}
-        {(!t || t.status === "draft" || !t.venue) && <option value="">Not decided yet</option>}
-        {choices.map((venue) => (
-          <option key={venue.id} value={venue.id}>
-            {venue.name}, {venue.town}
-          </option>
-        ))}
-      </SelectField>
+      />
       {venues.isError && <FormAlert>{errorMessage(venues.error, "We couldn't load your venues.")}</FormAlert>}
       <Field
         label="Timezone"

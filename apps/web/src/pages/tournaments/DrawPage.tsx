@@ -78,7 +78,7 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
     (draw.preview ?? draw.published)?.places
       .filter((place) => place.seed)
       .sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0))
-      .map((place) => place.entry.id) ?? []
+      .map((place) => place.entry.id) ?? draw.recommended_seeds
   )
   const open = t.status !== "draft" && !isClosed(t) && event.status === "scheduled"
   const seeded = event.seeding !== "none"
@@ -123,9 +123,12 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
             <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
               <h3 className="text-lg font-bold">Seeds</h3>
               <p className="text-sm text-muted-foreground">
-                Put the seeds in order, best first. {event.seeding === "rating" && "Ratings aren't calculated yet, so the order is yours to give. "}
+                Put the seeds in order, best first. {event.seeding === "rating" && "The suggested order uses current rating points. "}
                 Everyone else is drawn by lot.
               </p>
+              {event.seeding === "rating" && <Button variant="outline" className="self-start" onClick={() => setSeeds(draw.recommended_seeds)}>
+                Use rating order
+              </Button>}
               {chosen.length > 0 && (
                 <ol className="flex flex-col gap-2" aria-label="Seeds in order">
                   {chosen.map((id, index) => {
@@ -162,7 +165,7 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
             </div>
           )}
           {make.isError && <FormAlert>{errorMessage(make.error)}</FormAlert>}
-          <Button size="lg" variant={preview ? "outline" : "default"} className="self-start" disabled={make.isPending} onClick={() => make.mutate()}>
+          <Button size="lg" variant={preview ? "outline" : "default"} className="self-start" disabled={make.isPending || entries.isPending} onClick={() => make.mutate()}>
             {make.isPending ? "Drawing…" : preview ? "Draw again" : "Make the draw"}
           </Button>
 

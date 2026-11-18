@@ -52,8 +52,8 @@ def subject_of(result: OfficialResult) -> Subject | None:
             "b": [p.user_id for p in placed if p.side == RubberPlayer.Side.B],
         }
         return Subject(result.rubber.kind, result.rubber_id, sides)
-    if match.draw.event.kind == Event.Kind.TEAM:
-        return None
+    if match.draw.event.kind in (Event.Kind.TEAM, Event.Kind.JUMBLES):
+        return None  # a tie as a whole, and Jumbles, which no ledger covers
     sides = {
         "a": [place.user_id for place in match.entry_a.players.all()] if match.entry_a_id else [],
         "b": [place.user_id for place in match.entry_b.players.all()] if match.entry_b_id else [],

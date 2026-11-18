@@ -65,6 +65,7 @@ SIGNED_IN = "signed-in"  # any logged-in player; serves only directory-level dat
 OWNER = "owner"  # the caller's own data only
 MEMBER = "member"  # any active member of that organization
 STAFF = "staff"  # needs a permission in that organization
+APPROVER = "approver"  # a platform super admin or the scoped official for the competition
 
 ACCESS: dict[str, dict[str, str]] = {
     "auth-csrf": {"get": PUBLIC},
@@ -76,6 +77,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "auth-password-reset": {"post": PUBLIC},
     "auth-password-reset-confirm": {"post": PUBLIC},
     "schema": {"get": PUBLIC},
+    "geography-countries": {"get": PUBLIC},
+    "geography-country": {"get": PUBLIC},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
     "auth-me": {"get": OWNER},
     "attachment-link": {"get": SIGNED_IN},  # per-attachment policy, see test_attachments.py
@@ -92,10 +95,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-invitation-accept": {"post": OWNER},
     "me-invitation-decline": {"post": OWNER},
     "me-membership-list": {"get": OWNER},
+    "me-managed-organizations": {"get": OWNER},
     "me-membership-leave": {"post": OWNER},
     "me-membership-fields": {"get": OWNER, "patch": OWNER},  # member-visible fields only
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
-    "organization-detail": {"get": SIGNED_IN},
+    "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     "organization-permissions": {"get": SIGNED_IN},
     "organization-join-requests": {"get": STAFF, "post": SIGNED_IN},  # anyone may ask to join
     "organization-join-request-approve": {"post": STAFF},
@@ -122,8 +126,15 @@ ACCESS: dict[str, dict[str, str]] = {
     # drafts and every change are for the host's competition staff.
     "organization-tournaments": {"get": STAFF, "post": STAFF},
     "tournament-list": {"get": SIGNED_IN},
+    "tournament-schedule": {"get": STAFF, "put": STAFF},
+    "tournament-schedule-recommend": {"post": STAFF},
+    "tournament-schedule-check": {"post": STAFF},
+    # Lists only the drafts the caller may approve; see test_authority.
+    "tournament-awaiting-approval": {"get": SIGNED_IN},
     "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
     "tournament-publish": {"post": STAFF},
+    "tournament-request-approval": {"post": STAFF},
+    "tournament-reject-approval": {"post": APPROVER},
     "tournament-start": {"post": STAFF},
     "tournament-complete": {"post": STAFF},
     "tournament-cancel": {"post": STAFF},
@@ -141,6 +152,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-entry-reject": {"post": STAFF},
     "tournament-event-entry-staff-withdraw": {"post": STAFF},
     "tournament-event-entry-check-in": {"post": STAFF},
+    "tournament-event-entry-self-check-in": {"post": OWNER},
     "tournament-event-entry-undo-check-in": {"post": STAFF},
     "tournament-event-entry-withdraw": {"post": OWNER},
     "me-entries": {"get": OWNER},
@@ -184,6 +196,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "player-detail": {"get": SIGNED_IN},
     "player-ratings": {"get": SIGNED_IN},
     "rankings": {"get": SIGNED_IN},
+    "club-rankings": {"get": SIGNED_IN},
+    "geography-rankings": {"get": SIGNED_IN},
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
@@ -193,6 +207,9 @@ CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 BODIES = {
+    ("tournament-schedule", "put"): {"slots": []},
+    ("tournament-schedule-check", "post"): {"slots": []},
+    ("organization-detail", "patch"): {"country": "KE", "region": "Mombasa", "town": "Mombasa"},
     ("organization-invitations", "post"): {"email": "newcomer@example.com"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
@@ -383,6 +400,9 @@ class World:
         status = Tournament.Status
         self.draft = tournament("MARK-DRAFT-CUP", status.DRAFT)
         self.spare_draft = tournament("MARK-SPARE-DRAFT-CUP", status.DRAFT)
+        self.regional_draft = tournament("Regional approval", status.DRAFT)
+        self.regional_draft.scope = Tournament.Scope.REGIONAL
+        self.regional_draft.save(update_fields=["scope"])
         self.deletable = tournament("MARK-DELETABLE-CUP", status.DRAFT)  # the staff checks delete it
         self.published = tournament("Published Cup", status.PUBLISHED)
         self.to_cancel = tournament("Doomed Cup", status.PUBLISHED)
@@ -538,6 +558,8 @@ class World:
             "organization-venue-table": self.venue.id,
             "tournament-detail": self.deletable.id,
             "tournament-publish": self.spare_draft.id,
+            "tournament-request-approval": self.regional_draft.id,
+            "tournament-reject-approval": self.regional_draft.id,
             "tournament-start": self.published.id,
             "tournament-complete": self.finishing.id,
             "tournament-cancel": self.to_cancel.id,
@@ -551,6 +573,7 @@ class World:
             "tournament-event-entry-reject": self.entry_to_reject.id,
             "tournament-event-entry-staff-withdraw": self.entry_to_withdraw.id,
             "tournament-event-entry-check-in": self.faith_entry.id,
+            "tournament-event-entry-self-check-in": self.baraka_entry.id,
             "tournament-event-entry-undo-check-in": self.faith_entry.id,
             "tournament-event-entry-withdraw": self.baraka_entry.id,
             "tournament-event-match": self.preview_match_id,
@@ -573,6 +596,8 @@ class World:
             "player-ratings": self.baraka.id,
         }
         found = {}
+        if "code" in names:
+            found["code"] = "KE"
         if "organization_pk" in names:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
@@ -894,6 +919,8 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "id",
         "name",
         "town",
+        "country",
+        "region",
         "kind",
         "timezone",
     }
@@ -907,6 +934,9 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "starts_on",
         "ends_on",
         "timezone",
+        "scope",
+        "approval_status",
+        "registration_fee",
         "status",
         "published_at",
         "started_at",
@@ -915,7 +945,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "cancel_reason",
         "events",
     }
-    assert set(cup["organization"]) == {"id", "name", "town"}
+    assert set(cup["organization"]) == {"id", "name", "town", "country", "region"}
     assert set(cup["venue"]) == {"id", "name", "town", "address"}
 
     staff = logged_in(world.amina)

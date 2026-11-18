@@ -106,6 +106,8 @@ Hand-worked from the clauses in spec.md, not taken from the code under test. The
 
 **Registration — concurrent integration.** Setup: one remaining accepted slot, doubles/team entries, waitlist. Steps: issue 20 simultaneous acceptance requests, submit duplicate participant entries, withdraw, promote waitlist, check in. Pass: accepted count never exceeds capacity; duplicate participants rejected; promotion rechecks capacity; check-in and payment are independent. Evidence: database counts and race logs.
 
+During the registration window, verify that open admission accepts an eligible entry into the last place and waitlists the next entry. Verify that closed admission gives an eligible entry pending status until competition staff approve it. Verify that the registration window applies to both modes and that staff recheck capacity when promoting a waitlisted entry.
+
 ### EVAL-009
 
 **Formats/byes — unit and integration.** Setup: reviewed fixtures for 8/6-entry knockout, round robin and group qualification. Steps: generate/publish/reload, complete predecessors, inspect progression. Pass: knockout has expected bye count and no self-match, round robin schedules each pair once, qualifiers follow approved rules, bye/unplayed matches produce no Elo, published draw version is stable. Evidence: draw graphs and independent fixture assertions.

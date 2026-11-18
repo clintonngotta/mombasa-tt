@@ -1,5 +1,6 @@
 import { useId, useState } from "react"
 import { Segmented } from "@/components/forms/Segmented"
+import { SearchSelect } from "@/components/forms/SelectField"
 import { MatchCard } from "@/components/tournaments/MatchCard"
 import { dayOf, formatDay } from "@/lib/dates"
 import { isMine, matchLabel, type Draw, type DrawMatch } from "@/lib/draws"
@@ -56,15 +57,16 @@ export function ScheduleView({ draw, matchPath, timeZone }: { draw: Draw; matchP
           <label htmlFor={whoId} className="text-sm font-semibold">
             Player or team
           </label>
-          <select id={whoId} value={who} onChange={(e) => setWho(e.target.value)} className="h-12 max-w-full rounded-lg border bg-card px-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-            <option value={EVERYONE}>Everyone</option>
-            {playing && <option value={MINE}>My matches</option>}
-            {entries.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.title}
-              </option>
-            ))}
-          </select>
+          <SearchSelect
+            id={whoId}
+            value={who}
+            onChange={setWho}
+            options={[
+              { value: EVERYONE, label: "Everyone" },
+              ...(playing ? [{ value: MINE, label: "My matches" }] : []),
+              ...entries.map((entry) => ({ value: entry.id, label: entry.title })),
+            ]}
+          />
         </div>
       </div>
       <p className="text-sm text-muted-foreground">

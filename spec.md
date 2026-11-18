@@ -66,7 +66,9 @@ Custom member fields: text, number, date, boolean, single selection; required/op
 
 ### REQ-008
 
-**Registration — Phase 1.** Self-entry and staff-entry; default staff acceptance. Track pending/accepted/waitlisted/rejected/withdrawn plus check-in separately. Enforce capacity transactionally. Doubles identifies two distinct players; teams identify roster and captain. Prevent the same player from appearing in competing entries within the same event. Entry fee is declared in Phase 1; detailed receipts arrive in Phase 2. Acceptance never falsely implies paid status. Waitlist promotion requires staff action and notification; recheck capacity.
+**Registration — Phase 1.** Organizers choose open or closed admission for each event. During the registration window, open admission automatically accepts eligible self-entries while there is room and waitlists overflow. Closed admission sends self-entries to the host's competition staff, who approve, waitlist, or reject them. Closed is the default for existing events and new events with no mode selected. Staff may place entries directly from the entry desk. The admission mode can change until the event starts and applies to new entries. The registration window controls when players can submit entries.
+
+Track pending, accepted, waitlisted, rejected, and withdrawn entries. Track check-in separately. Enforce capacity transactionally when creating or approving entries. Doubles entries require two distinct players. Team entries require a roster and captain. Each player can have one standing entry per event. Phase 1 lets organizers declare an entry fee. Phase 2 adds detailed receipts. Acceptance grants a place and payment is tracked separately. Staff promote waitlisted entries after rechecking capacity and notify the players.
 
 ### REQ-009
 

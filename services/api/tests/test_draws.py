@@ -10,7 +10,7 @@ from itertools import combinations
 import pytest
 
 from competitions import drawing, draws
-from competitions.models import DrawVersion, Entry, Match
+from competitions.models import DrawVersion, Entry, Event, Match
 
 from .helpers import logged_in
 from .test_entries import act, enter, player
@@ -277,7 +277,11 @@ def test_staff_preview_and_publish_a_draw_and_everyone_sees_the_published_one(st
     singles = cup["events"][0]
     entries = fill(staff, cup, singles, 6)
     viewer = logged_in(player("Viewer"))
-    assert viewer.get(draw_url(cup, singles)).json() == {"published": None, "preview": None}
+    assert viewer.get(draw_url(cup, singles)).json() == {
+        "published": None,
+        "preview": None,
+        "recommended_seeds": [],
+    }
 
     seeds = [entries[4]["id"], entries[1]["id"]]
     made = staff.post(
@@ -314,7 +318,11 @@ def test_staff_preview_and_publish_a_draw_and_everyone_sees_the_published_one(st
     assert matches[6]["a"]["awaiting"] == "Winner of semi-final 1"
 
     # A preview is the organizers' own: nobody else sees it, and drawing again replaces it.
-    assert viewer.get(draw_url(cup, singles)).json() == {"published": None, "preview": None}
+    assert viewer.get(draw_url(cup, singles)).json() == {
+        "published": None,
+        "preview": None,
+        "recommended_seeds": [],
+    }
     again = staff.post(
         draw_url(cup, singles, "preview"), {"seeded_entry_ids": seeds, "rng_seed": 11}, format="json"
     ).json()
@@ -466,3 +474,39 @@ def test_a_draw_made_for_another_format_is_stale(staff, cup):
     shown = staff.get(draw_url(cup, singles)).json()
     assert shown["published"]["stale"] is True and shown["preview"]["stale"] is True
     assert staff.post(draw_url(cup, singles, "publish"), {}, format="json").json()["code"] == "draw_stale"
+
+
+def test_rating_seeds_are_recommended_and_the_organizers_may_change_them(staff, club):
+    """TASK-098: rated entries are seeded by singles rating, unrated ones are not, and seeds the
+    organizers send replace the recommendation."""
+    from ratings.models import Discipline, Rating
+
+    tournament = make_tournament(staff, club, make_venue(staff, club))
+    add_event(staff, tournament, name="Open", seeding="rating")
+    tournament = do(staff, tournament, "publish")
+    event = tournament["events"][0]
+    entries = fill(staff, tournament, event, 6)
+    points = {0: 1450.0, 2: 1610.0, 3: 1380.0, 5: 1520.0}
+    for index, rating in points.items():
+        user = Entry.objects.get(pk=entries[index]["id"]).players.get().user
+        Rating.objects.create(user=user, discipline=Discipline.SINGLES, rating=rating, played=3)
+    # Played nothing yet: a rating row at the start value is not a reason to seed.
+    newcomer = Entry.objects.get(pk=entries[1]["id"]).players.get().user
+    Rating.objects.create(user=newcomer, discipline=Discipline.SINGLES, played=0)
+
+    recommended = [entries[i]["id"] for i in (2, 5, 0, 3)]  # six entries: a bracket of 8 takes 4 seeds
+    assert staff.get(draw_url(tournament, event)).json()["recommended_seeds"] == recommended
+    viewer = logged_in(player("Onlooker"))
+    assert viewer.get(draw_url(tournament, event)).json()["recommended_seeds"] == []
+
+    drawn = staff.post(draw_url(tournament, event, "preview"), {"rng_seed": 3}, format="json").json()
+    seeded = sorted((p["seed"], p["entry"]["id"]) for p in drawn["preview"]["places"] if p["seed"])
+    assert [entry_id for _, entry_id in seeded] == recommended
+
+    mine = [entries[3]["id"], entries[1]["id"]]
+    drawn = staff.post(
+        draw_url(tournament, event, "preview"), {"seeded_entry_ids": mine, "rng_seed": 3}, format="json"
+    ).json()
+    seeded = sorted((p["seed"], p["entry"]["id"]) for p in drawn["preview"]["places"] if p["seed"])
+    assert [entry_id for _, entry_id in seeded] == mine
+    assert drawing.rating_seeds(Event.objects.get(pk=event["id"])) == recommended

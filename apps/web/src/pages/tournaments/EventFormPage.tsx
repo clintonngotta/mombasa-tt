@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
+import { SearchSelect, SelectField } from "@/components/forms/SelectField"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
@@ -19,6 +20,7 @@ import {
   updateEvent,
   type BestOf,
   type EventFormat,
+  type EventAdmission,
   type EventKind,
   type Seeding,
   type Tournament,
@@ -34,6 +36,7 @@ const KINDS: { value: EventKind; label: string; description: string }[] = [
   { value: "singles", label: "Singles", description: "One player per entry" },
   { value: "doubles", label: "Doubles", description: "Two players per entry" },
   { value: "team", label: "Teams", description: "A roster and a captain" },
+  { value: "jumbles", label: "Jumbles", description: "Mixed doubles, a new partner every round" },
 ]
 
 const FORMATS: { value: EventFormat; label: string; description: string }[] = [
@@ -93,16 +96,18 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
   const [bestOf, setBestOf] = useState<`${BestOf}`>(`${event?.best_of ?? 5}`)
   const [rest, setRest] = useState((event?.rest_minutes ?? 10).toString())
   const [seeding, setSeeding] = useState<Seeding>(event?.seeding ?? "rating")
-  const [fee, setFee] = useState(event && event.entry_fee.amount_minor > 0 ? (event.entry_fee.amount_minor / 100).toString() : "")
+  const defaultFee = event?.entry_fee ?? t.registration_fee
+  const [fee, setFee] = useState(defaultFee.amount_minor > 0 ? (defaultFee.amount_minor / 100).toString() : "")
   const [opens, setOpens] = useState(toZonedInput(event?.registration_opens_at ?? null, t.timezone))
   const [closes, setCloses] = useState(toZonedInput(event?.registration_closes_at ?? null, t.timezone))
+  const [admission, setAdmission] = useState<EventAdmission>(event?.admission ?? "closed")
   const [rubbers, setRubbers] = useState<RubberKind[]>(event?.tie_rubbers.length ? event.tie_rubbers : DEFAULT_TIE_RUBBERS)
   const [winsNeeded, setWinsNeeded] = useState(event?.tie_wins_needed ?? MAX_TIE_RUBBERS)
   const [confirmRemove, setConfirmRemove] = useState(false)
   // With both teams one short there must still be a rubber to play, or a tie could end without a winner.
   const mostWins = Math.floor((rubbers.length + 1) / 2)
   const wins = Math.min(Math.max(winsNeeded, 1), mostWins)
-  const currency = event?.entry_fee.currency ?? "KES"
+  const currency = defaultFee.currency
 
   const done = (fresh: Tournament) => {
     queryClient.setQueryData(tournamentKeys.detail(t.id), fresh)
@@ -122,6 +127,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
       }
       // A started event's structure is fixed, so it isn't sent at all.
       const structure = {
+        admission,
         kind: kind as EventKind,
         format: format as EventFormat,
         best_of: Number(bestOf) as BestOf,
@@ -149,12 +155,40 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
 
       {frozen ? (
         <p role="status" className="rounded-lg border bg-muted p-3 text-sm">
-          This event has started, so who enters, the format, best of, seeding, groups, qualifiers and the make-up of a tie are fixed. You can still change the details below.
+          This event has started, so admission, who enters, the format, best of, seeding, groups, qualifiers and the make-up of a tie are fixed. You can still change the details below.
         </p>
       ) : (
         <>
-          <ChoiceGroup legend="Who enters" columns={3} options={KINDS} value={kind} onChange={setKind} error={errors.kind} />
-          <ChoiceGroup legend="Format" columns={3} options={FORMATS} value={format} onChange={setFormat} error={errors.format} />
+          <SelectField
+            label="Admission"
+            value={admission}
+            onChange={(value) => setAdmission(value as EventAdmission)}
+            options={[
+              { value: "open", label: "Open · automatic acceptance" },
+              { value: "closed", label: "Closed · organizer approval" },
+            ]}
+            hint="Open events accept eligible entries while space is available. Closed events send entries to the organizer for approval."
+            error={errors.admission}
+          />
+          <ChoiceGroup
+            legend="Who enters"
+            columns={2}
+            options={KINDS}
+            value={kind}
+            onChange={(next) => {
+              setKind(next)
+              if (next === "jumbles") setFormat("round_robin")
+            }}
+            error={errors.kind}
+          />
+          {kind === "jumbles" ? (
+            <p className="rounded-lg border bg-surface-selected p-3 text-sm">
+              Players enter alone, in the men's or the women's pool, and the two pools must be the same size. It is a round robin: every round each man plays with a
+              different woman, and the final table ranks everybody by the points they scored over all their matches. Jumbles isn't seeded or rated.
+            </p>
+          ) : (
+            <ChoiceGroup legend="Format" columns={3} options={FORMATS} value={format} onChange={setFormat} error={errors.format} />
+          )}
           {format === "groups_knockout" && (
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Groups" type="number" inputMode="numeric" min={2} required value={groups} onChange={(e) => setGroups(e.target.value)} error={errors.group_count} />
@@ -178,15 +212,16 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
                 {rubbers.map((rubber, index) => (
                   <li key={index} className="flex items-center gap-2">
                     <span className="w-6 shrink-0 font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
-                    <select
+                    <SearchSelect
                       aria-label={`Rubber ${index + 1}`}
                       value={rubber}
-                      onChange={(e) => setRubbers(rubbers.map((kept, i) => (i === index ? (e.target.value as RubberKind) : kept)))}
-                      className="h-12 min-w-0 flex-1 rounded-lg border bg-card px-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
-                      <option value="singles">Singles</option>
-                      <option value="doubles">Doubles</option>
-                    </select>
+                      onChange={(value) => setRubbers(rubbers.map((kept, i) => (i === index ? (value as RubberKind) : kept)))}
+                      className="flex-1"
+                      options={[
+                        { value: "singles", label: "Singles" },
+                        { value: "doubles", label: "Doubles" },
+                      ]}
+                    />
                     <Button type="button" variant="ghost" size="icon" aria-label={`Remove rubber ${index + 1}`} disabled={rubbers.length === 1} onClick={() => setRubbers(rubbers.filter((_, i) => i !== index))}>
                       <X aria-hidden className="size-5" />
                     </Button>
@@ -211,7 +246,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
             </fieldset>
           )}
           <ChoiceGroup legend="Match length" columns={3} options={BEST_OF} value={bestOf} onChange={setBestOf} error={errors.best_of} />
-          <ChoiceGroup legend="Seeding" columns={3} options={SEEDINGS} value={seeding} onChange={setSeeding} error={errors.seeding} />
+          {kind !== "jumbles" && <ChoiceGroup legend="Seeding" columns={3} options={SEEDINGS} value={seeding} onChange={setSeeding} error={errors.seeding} />}
         </>
       )}
 

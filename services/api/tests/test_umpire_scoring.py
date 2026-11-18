@@ -167,6 +167,10 @@ def test_the_umpire_scores_a_match_and_confirming_makes_it_official(staff, final
     as_umpire = logged_in(umpire)
     deck = Deck(as_umpire, as_umpire.get(match_url(final)).json()["scoring"]["scorecard_id"])
 
+    viewer = logged_in(make_user("bracket-viewer@example.com"))
+    bracket_url = draw_url(final["cup"], final["event"])
+    assert viewer.get(bracket_url).json()["published"]["matches"][0]["is_live"] is False
+
     started = deck.send(START, point("a"), point("a"))
     assert (started["accepted"], started["refused"], started["revision"], started["status"]) == (
         3,
@@ -176,6 +180,7 @@ def test_the_umpire_scores_a_match_and_confirming_makes_it_official(staff, final
     )
     assert started["state"]["points"] == [2, 0] and started["state"]["server"] == "b1"
     assert as_umpire.get(match_url(final)).json()["scoring"]["status"] == "in_progress"
+    assert viewer.get(bracket_url).json()["published"]["matches"][0]["is_live"] is True
 
     # An early finish is not a result.
     assert deck.confirm(expect=409)["code"] == "match_not_finished"
@@ -185,6 +190,7 @@ def test_the_umpire_scores_a_match_and_confirming_makes_it_official(staff, final
     deck.send(*[point("b")] * 11)  # 0-11
     finished = deck.send(*[point("a")] * 11)
     assert (finished["status"], finished["state"]["winner"], finished["revision"]) == ("finished", "a", 34)
+    assert viewer.get(bracket_url).json()["published"]["matches"][0]["is_live"] is False
     # The match is over: nothing more is scored, and the stream stays where it was.
     over = deck.send(point("b"))
     assert (over["accepted"], over["refused"]) == (0, {"sequence": 35, "code": "not_in_progress"})
@@ -385,7 +391,10 @@ def test_a_tie_is_scored_rubber_by_rubber(staff, club, umpire):
     sheet = as_umpire.get(first.path).json()
     assert sheet["label"] == "Round 1 · Rubber 1" and sheet["config"] == {"best_of": 3, "doubles": False}
     assert sheet["a"]["title"].endswith(f"({match.entry_a.team_name})")
-    first.send(START, *[point("a")] * 22)
+    first.send(START)
+    assert as_umpire.get(match_url(tie)).json()["is_live"] is True
+    first.send(*[point("a")] * 22)
+    assert as_umpire.get(match_url(tie)).json()["is_live"] is False
     first.confirm()
     assert Rubber.objects.get(pk=rubbers[0].pk).status == "completed"
 

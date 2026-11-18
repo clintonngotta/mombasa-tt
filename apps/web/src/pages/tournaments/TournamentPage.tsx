@@ -1,17 +1,19 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, Clock, MapPin, Pencil, Plus, Users } from "lucide-react"
+import { CalendarDays, Clock, Globe, MapPin, Pencil, Plus, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
-import { useMemberships } from "@/lib/clubs"
+import { useMemberships, type Membership } from "@/lib/clubs"
 import { formatDayRange, formatInstant } from "@/lib/dates"
 import { entryBlock, placesTaken } from "@/lib/entries"
+import { countryName } from "@/lib/geography"
 import {
   ACTION_LABEL,
+  ADMISSION_LABEL,
   cancelEvent,
   cancelTournament,
   canManageTournament,
@@ -25,7 +27,9 @@ import {
   getTournamentHistory,
   moveEvent,
   moveTournament,
+  rejectTournamentApproval,
   SEEDING_LABEL,
+  SCOPE_LABEL,
   tournamentKeys,
   type EventAction,
   type Tournament,
@@ -53,7 +57,7 @@ export function TournamentPage() {
         <>
           <Overview tournament={t} />
           <Events tournament={t} staff={staff} />
-          {staff && <Manage tournament={t} />}
+          {staff && <Manage tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
         </>
       )}
     </div>
@@ -79,7 +83,15 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
         <Fact icon={<Users aria-hidden className="size-5" />} label="Host">
           {t.organization.name}, {t.organization.town}
         </Fact>
+        <Fact icon={<Globe aria-hidden className="size-5" />} label="Scope">
+          {[
+            SCOPE_LABEL[t.scope],
+            ...(t.scope === "regional" ? [t.organization.region] : []),
+            ...(t.scope === "regional" || t.scope === "national" ? [countryName(t.organization.country)] : []),
+          ].filter(Boolean).join(" · ")}
+        </Fact>
       </dl>
+      <p className="text-sm font-semibold">{formatFee(t.registration_fee)}</p>
       {t.status === "cancelled" && <FormAlert>Cancelled: {t.cancel_reason}</FormAlert>}
       {t.description && <p className="whitespace-pre-line">{t.description}</p>}
       <p className="text-sm text-muted-foreground">Dates and times are venue local ({t.timezone}).</p>
@@ -158,7 +170,7 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col">
           <h3 className="text-xl font-bold break-words">{event.name}</h3>
-          <p className="text-sm text-muted-foreground">{eventSummary(event)}</p>
+          <p className="text-sm text-muted-foreground">{eventSummary(event)} · {ADMISSION_LABEL[event.admission]}</p>
         </div>
         <EventStatusChip status={event.status} />
       </div>
@@ -287,11 +299,11 @@ const NEXT: Partial<Record<Tournament["status"], { action: TournamentAction; lab
   in_progress: { action: "complete", label: "Complete tournament", note: "Every event must be completed or cancelled first." },
 }
 
-function Manage({ tournament: t }: { tournament: Tournament }) {
+function Manage({ tournament: t, authority }: { tournament: Tournament; authority?: Membership["authority"] }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const onChange = useTournamentChange(t.id)
-  const [confirm, setConfirm] = useState<"cancel" | "delete" | null>(null)
+  const [confirm, setConfirm] = useState<"cancel" | "delete" | "reject" | null>(null)
   const history = useQuery({ queryKey: tournamentKeys.history(t.id), queryFn: () => getTournamentHistory(t.id) })
   const settled = (fresh: Tournament) => {
     setConfirm(null)
@@ -300,6 +312,7 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
   }
   const move = useMutation({ mutationFn: (action: TournamentAction) => moveTournament(t.id, action), onSuccess: settled })
   const cancel = useMutation({ mutationFn: (reason: string) => cancelTournament(t.id, reason), onSuccess: settled })
+  const reject = useMutation({ mutationFn: (reason: string) => rejectTournamentApproval(t.id, reason), onSuccess: settled })
   const remove = useMutation({
     mutationFn: () => deleteTournament(t.id),
     onSuccess: async () => {
@@ -310,6 +323,10 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
   })
   const next = NEXT[t.status]
   const open = !isClosed(t)
+  const needsApproval = t.status === "draft" && t.scope !== "local"
+  const canApprove = authority === "platform" || (authority === "country" && t.scope !== "international")
+    || (authority === "regional" && t.scope === "regional")
+  const pendingApproval = t.approval_status === "pending"
 
   return (
     <section aria-labelledby="manage-heading" className="flex flex-col gap-4 rounded-xl border border-brand-blue/30 bg-surface-selected p-4">
@@ -320,6 +337,11 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
         <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organization.name} see this.</p>
       </div>
 
+      {(t.status === "published" || t.status === "in_progress") && (
+        <Link to={`/tournaments/${t.id}/schedule-plan`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Schedule: plan times and tables
+        </Link>
+      )}
       {t.status === "in_progress" && (
         <Link to={`/tournaments/${t.id}/dispatch`} className={buttonVariants({ className: "self-start" })}>
           Tables: send the next matches out
@@ -353,6 +375,10 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
           onBack={() => setConfirm(null)}
         />
       )}
+      {confirm === "reject" && (
+        <ReasonForm label="Why is approval declined?" submit="Decline approval" pending={reject.isPending}
+          error={reject.error} onSubmit={(reason) => reject.mutate(reason)} onBack={() => setConfirm(null)} />
+      )}
       {confirm === "delete" && (
         <div className="flex flex-wrap items-center gap-2">
           <p className="flex-1">Delete this draft and its events? This can't be undone.</p>
@@ -366,12 +392,26 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
       )}
       {confirm === null && open && (
         <div className="flex flex-col gap-2">
-          {next && (
+          {next && !needsApproval && (
             <>
               <Button size="lg" className="self-start" disabled={move.isPending} onClick={() => move.mutate(next.action)}>
                 {move.isPending ? "Working…" : next.label}
               </Button>
               <p className="text-sm text-muted-foreground">{next.note}</p>
+            </>
+          )}
+          {needsApproval && (
+            <>
+              {pendingApproval && <p className="text-sm font-semibold">Waiting for official approval</p>}
+              {!pendingApproval && (
+                <Button className="self-start" disabled={move.isPending} onClick={() => move.mutate("approval/request")}>
+                  {t.approval_status === "rejected" ? "Request approval again" : "Request approval"}
+                </Button>
+              )}
+              {pendingApproval && canApprove && <div className="flex flex-wrap gap-2">
+                <Button disabled={move.isPending} onClick={() => move.mutate("publish")}>Approve and publish</Button>
+                <Button variant="outline" onClick={() => setConfirm("reject")}>Decline approval</Button>
+              </div>}
             </>
           )}
           <div className="flex flex-wrap gap-2">

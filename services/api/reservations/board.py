@@ -146,7 +146,9 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
             row.state = WAITING
             row.reasons = [_reason("no_free_table", "Every table is in use.")]
             continue
-        row.table = free.pop(0)
+        planned = next((table for table in free if table.id == row.match.planned_table_id), None)
+        row.table = planned or free[0]
+        free.remove(row.table)
         for key, _ in needed:
             going[key] = row
 

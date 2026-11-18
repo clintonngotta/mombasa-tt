@@ -8,10 +8,13 @@ at the same moment can never leave the organization without an admin.
 
 from collections.abc import Iterable
 
-from core.exceptions import ApiException
+from django.db.models import Q
 
-from .models import Membership, Organization, Role
-from .permissions import RoleKey
+from core.exceptions import ApiException
+from core.permissions import is_platform_super_admin
+
+from .models import Membership, OfficialAppointment, Organization, Role
+from .permissions import ALL_PERMISSIONS, RoleKey
 
 
 def membership_permissions(membership: Membership) -> frozenset[str]:
@@ -24,6 +27,8 @@ def membership_permissions(membership: Membership) -> frozenset[str]:
 
 
 def effective_permissions(user, organization: Organization) -> frozenset[str]:
+    if is_platform_super_admin(user) or official_for(user, organization):
+        return ALL_PERMISSIONS
     membership = (
         Membership.objects.active()
         .filter(organization=organization, user=user)
@@ -34,12 +39,36 @@ def effective_permissions(user, organization: Organization) -> frozenset[str]:
     return membership_permissions(membership) if membership else frozenset()
 
 
-def require_membership(user, organization: Organization) -> Membership:
+def require_membership(user, organization: Organization) -> Membership | None:
     """403 unless the user is an active member here. Returns the membership."""
+    if is_platform_super_admin(user) or official_for(user, organization):
+        return None
     membership = Membership.objects.active().filter(organization=organization, user=user).first()
     if membership is None:
         raise ApiException("permission_denied", "Only members of this organization can see that.", 403)
     return membership
+
+
+def official_for(user, organization: Organization, *, country_only=False) -> bool:
+    if not user.is_authenticated or not user.is_active or not organization.country:
+        return False
+    matches = OfficialAppointment.objects.filter(user=user, country_id=organization.country)
+    scope = Q(region__isnull=True)
+    if organization.region and not country_only:
+        scope |= Q(region__country_id=organization.country, region__name__iexact=organization.region)
+    return matches.filter(scope).exists()
+
+
+def managed_organizations(user):
+    if is_platform_super_admin(user):
+        return Organization.objects.all()
+    scope = Q(pk__in=[])
+    for appointed in OfficialAppointment.objects.filter(user=user).select_related("region"):
+        if appointed.region and appointed.region.country_id == appointed.country_id:
+            scope |= Q(country=appointed.country_id, region__iexact=appointed.region.name)
+        elif appointed.region_id is None:
+            scope |= Q(country=appointed.country_id)
+    return Organization.objects.filter(scope)
 
 
 def require_permission(user, organization: Organization, *any_of: str) -> frozenset[str]:
