@@ -11,7 +11,7 @@ Callers hold the tournament row lock, like every other change to a tournament.
 
 from core.exceptions import ApiException
 
-from . import drawing, signals, standings
+from . import drawing, official, signals, standings
 from .models import DrawVersion, Entry, Event, Lineup, Match, Rubber, RubberPlayer
 
 R = Rubber.Status
@@ -123,7 +123,15 @@ def reset_lineups(match: Match) -> None:
 tie_score = drawing.tie_score
 
 
-def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome.PLAYED, games=()) -> None:
+def record_rubber(
+    rubber: Rubber,
+    winner: Entry,
+    *,
+    outcome: str = Match.Outcome.PLAYED,
+    games=(),
+    actor=None,
+    source: str = official.Source.UMPIRE,
+) -> None:
     """A rubber is decided. Only the next rubber in order can be: one is played at a time. `games` are
     [a, b] points in playing order, a being the tie's side a. Who may decide a rubber arrives with
     scoring; this is what follows from the result."""
@@ -140,6 +148,7 @@ def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome
         )
     if winner.id not in (match.entry_a_id, match.entry_b_id):
         raise _conflict("not_in_match", "The winner is one of the two teams of the tie.")
+    official.ensure_not_held(match)
     games = [list(game) for game in games]
     drawing.check_games(match.draw.event.best_of, games, outcome, a_won=winner.id == match.entry_a_id)
     rubber.winner = winner
@@ -147,11 +156,12 @@ def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome
     rubber.outcome = outcome
     rubber.games = games
     rubber.save(update_fields=["winner", "status", "outcome", "games"])
+    official.accept(match, rubber, winner, outcome, games, actor=actor, source=source)
     decided = max(tie_score(match)) >= match.draw.event.tie_wins_needed
     signals.rubber_decided.send(sender=Rubber, rubber=rubber, tie_decided=decided)
     if decided:
         # Decided: the tie goes on through the draw like any match, and what is left is not played.
-        drawing.record_result(match, winner)
+        drawing.record_result(match, winner, actor=actor, source=source)
 
 
 def result_of(match: Match) -> standings.Result:

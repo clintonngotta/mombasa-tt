@@ -1297,6 +1297,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/corrections/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Later matches put in question by corrected results: those waiting for a decision first,
+         *     then those decided.
+         */
+        get: operations["tournaments_corrections_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/corrections/{id}/resolve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Decide one: `keep` the later match as it was played, or `replace` the entry, which strikes
+         *     out what was played there so it can be played again. The event carries on when none is left.
+         */
+        post: operations["tournaments_corrections_resolve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/dispatch/": {
         parameters: {
             query?: never;
@@ -1700,6 +1740,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/result/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Competition staff record a result themselves: a walkover, a retirement, or a match scored
+         *     on paper. It is official at once: the winner moves on and the table and players are freed.
+         *     A match that already has a result is changed with `correct`.
+         */
+        post: operations["tournaments_events_matches_result_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/result/correct/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Replace the official result of a decided match or rubber, with a reason. The earlier result
+         *     is kept. If the winner changes and the match they went on to has not started, the right entry
+         *     takes that place; if it has started, the event is paused and the organizers decide
+         *     (`corrections`).
+         */
+        post: operations["tournaments_events_matches_result_correct_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/umpire/": {
         parameters: {
             query?: never;
@@ -1965,9 +2048,10 @@ export interface components {
          *     * `unassigned` - Unassigned
          *     * `device` - Device
          *     * `take_over` - Take Over
+         *     * `reset` - Reset
          * @enum {string}
          */
-        AssignmentStepKindEnum: "assigned" | "unassigned" | "device" | "take_over";
+        AssignmentStepKindEnum: "assigned" | "unassigned" | "device" | "take_over" | "reset";
         /**
          * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
          *
@@ -2274,6 +2358,8 @@ export interface components {
             readonly status: components["schemas"]["EventStatusEnum"];
             readonly revision: number;
             /** Format: date-time */
+            readonly paused_at: string | null;
+            /** Format: date-time */
             readonly started_at: string | null;
             /** Format: date-time */
             readonly completed_at: string | null;
@@ -2556,6 +2642,14 @@ export interface components {
             on_table: components["schemas"]["OnTable"] | null;
             /** @description The caller may send it to a table or call it back. */
             can_dispatch: boolean;
+            /** @description The official result that stands. */
+            result: components["schemas"]["OfficialResult"] | null;
+            /** @description Every version, of the match and of its rubbers. Competition staff only. */
+            result_history: components["schemas"]["OfficialResult"][];
+            /** @description The caller may enter or correct its result. */
+            can_record_result: boolean;
+            /** @description A corrected earlier result put its opponent in question; nothing is played until settled. */
+            held_for_correction: boolean;
         };
         MatchLabels: {
             labels: string[];
@@ -2784,6 +2878,31 @@ export interface components {
         };
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description One version of the official result of a match, or of one rubber of a tie. */
+        OfficialResult: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+            /** @description The rubber's position; null for the match. */
+            rubber: number | null;
+            /** Format: uuid */
+            winner_id: string;
+            winner: string;
+            outcome: components["schemas"]["MatchOutcomeEnum"];
+            games: number[][];
+            source: components["schemas"]["SourceEnum"];
+            /** @description Why it was corrected. */
+            reason: string;
+            recorded_by: string;
+            /** Format: date-time */
+            accepted_at: string;
+            /** @description The version that stands. */
+            current: boolean;
+            /** @description Removed without a replacement: played again. */
+            struck_out: boolean;
+            /** @description What follows from it is still being worked out. */
+            processing: boolean;
+        };
         /** @description The match is on a table: the table and its players are held until the result is official. */
         OnTable: {
             table: string;
@@ -3229,6 +3348,14 @@ export interface components {
             readonly onboarding_completed: boolean;
         };
         /**
+         * @description * `decided` - decided
+         *     * `on_table` - on_table
+         *     * `being_scored` - being_scored
+         *     * `not_started` - not_started
+         * @enum {string}
+         */
+        ProgressEnum: "decided" | "on_table" | "being_scored" | "not_started";
+        /**
          * @description * `hand` - Hand
          *     * `grip` - Grip
          *     * `style` - Style
@@ -3306,9 +3433,82 @@ export interface components {
             overrides: string[];
             override_reason: string;
         };
+        /** @description A later match that had started with an entry a corrected result says should not be there. */
+        Resolution: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            a: string;
+            b: string;
+            side: components["schemas"]["SideEnum"];
+            /** @description Who is in the match now. */
+            old_entry: string;
+            /** @description Who should be; empty when an earlier match is played again first. */
+            new_entry: string;
+            progress: components["schemas"]["ProgressEnum"];
+            /** @description The reason given for the correction. */
+            reason: string;
+            corrected_by: string;
+            /** Format: date-time */
+            created_at: string;
+            choice: components["schemas"]["ResolutionChoiceEnum"] | components["schemas"]["BlankEnum"];
+            note: string;
+            resolved_by: string;
+            /** Format: date-time */
+            resolved_at: string | null;
+        };
+        /**
+         * @description * `keep` - Keep
+         *     * `replace` - Replace
+         *     * `withdrawn` - Withdrawn
+         * @enum {string}
+         */
+        ResolutionChoiceEnum: "keep" | "replace" | "withdrawn";
+        /**
+         * @description * `keep` - keep
+         *     * `replace` - replace
+         * @enum {string}
+         */
+        ResolveChoiceEnum: "keep" | "replace";
         /** @description What was done about it, for the record. */
         ResolveConflictRequest: {
             note: string;
+        };
+        ResolveRequest: {
+            choice: components["schemas"]["ResolveChoiceEnum"];
+            note: string;
+        };
+        /**
+         * @description A result recorded by the organizers. `games` are [a, b] points in playing order: none for a
+         *     walkover, the games played so far for a retirement. For a tie, name the rubber.
+         */
+        ResultCorrectionRequest: {
+            /** Format: uuid */
+            winner_entry_id: string;
+            /** @default played */
+            outcome: components["schemas"]["MatchOutcomeEnum"];
+            games?: number[][];
+            /** Format: uuid */
+            rubber_id?: string | null;
+            reason: string;
+        };
+        /**
+         * @description A result recorded by the organizers. `games` are [a, b] points in playing order: none for a
+         *     walkover, the games played so far for a retirement. For a tie, name the rubber.
+         */
+        ResultEntryRequest: {
+            /** Format: uuid */
+            winner_entry_id: string;
+            /** @default played */
+            outcome: components["schemas"]["MatchOutcomeEnum"];
+            games?: number[][];
+            /** Format: uuid */
+            rubber_id?: string | null;
         };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         Role: {
@@ -3503,6 +3703,12 @@ export interface components {
             a: string;
             b: string;
         };
+        /**
+         * @description * `a` - a
+         *     * `b` - b
+         * @enum {string}
+         */
+        SideEnum: "a" | "b";
         SignUpRequest: {
             display_name: string;
             /** Format: email */
@@ -3523,6 +3729,13 @@ export interface components {
          * @enum {string}
          */
         SlotEnum: "a1" | "a2" | "b1" | "b2";
+        /**
+         * @description * `umpire` - Umpire
+         *     * `staff` - Staff
+         *     * `correction` - Correction
+         * @enum {string}
+         */
+        SourceEnum: "umpire" | "staff" | "correction";
         StandingRow: {
             rank: number;
             entry: components["schemas"]["DrawEntry"];
@@ -6421,6 +6634,71 @@ export interface operations {
             };
         };
     };
+    tournaments_corrections_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Resolution"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_corrections_resolve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Resolution"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_dispatch_retrieve: {
         parameters: {
             query?: never;
@@ -7100,6 +7378,78 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RecallRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_result_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResultEntryRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_result_correct_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResultCorrectionRequest"];
             };
         };
         responses: {

@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "matchlog",
     "profiles",
     "organizations",
+    "outbox",
     "reservations",
     "scoring",
 ]

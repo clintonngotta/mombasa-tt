@@ -2735,6 +2735,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/corrections/:
+    get:
+      operationId: tournaments_corrections_list
+      description: |-
+        Later matches put in question by corrected results: those waiting for a decision first,
+        then those decided.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resolution'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/corrections/{id}/resolve/:
+    post:
+      operationId: tournaments_corrections_resolve_create
+      description: |-
+        Decide one: `keep` the later match as it was played, or `replace` the entry, which strikes
+        out what was played there so it can be played again. The event carries on when none is left.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resolution'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/dispatch/:
     get:
       operationId: tournaments_dispatch_retrieve
@@ -3617,6 +3693,105 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/result/:
+    post:
+      operationId: tournaments_events_matches_result_create
+      description: |-
+        Competition staff record a result themselves: a walkover, a retirement, or a match scored
+        on paper. It is official at once: the winner moves on and the table and players are freed.
+        A match that already has a result is changed with `correct`.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResultEntryRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/result/correct/:
+    post:
+      operationId: tournaments_events_matches_result_correct_create
+      description: |-
+        Replace the official result of a decided match or rubber, with a reason. The earlier result
+        is kept. If the winner changes and the match they went on to has not started, the right entry
+        takes that place; if it has started, the event is paused and the organizers decide
+        (`corrections`).
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResultCorrectionRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/umpire/:
     post:
       operationId: tournaments_events_matches_umpire_create
@@ -4157,12 +4332,14 @@ components:
       - unassigned
       - device
       - take_over
+      - reset
       type: string
       description: |-
         * `assigned` - Assigned
         * `unassigned` - Unassigned
         * `device` - Device
         * `take_over` - Take Over
+        * `reset` - Reset
     AttachmentLink:
       type: object
       description: |-
@@ -4868,6 +5045,11 @@ components:
         revision:
           type: integer
           readOnly: true
+        paused_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         started_at:
           type: string
           format: date-time
@@ -4899,6 +5081,7 @@ components:
       - id
       - kind
       - name
+      - paused_at
       - qualifiers_per_group
       - registration_closes_at
       - registration_opens_at
@@ -5540,19 +5723,41 @@ components:
         can_dispatch:
           type: boolean
           description: The caller may send it to a table or call it back.
+        result:
+          allOf:
+          - $ref: '#/components/schemas/OfficialResult'
+          nullable: true
+          description: The official result that stands.
+        result_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfficialResult'
+          description: Every version, of the match and of its rubbers. Competition
+            staff only.
+        can_record_result:
+          type: boolean
+          description: The caller may enter or correct its result.
+        held_for_correction:
+          type: boolean
+          description: A corrected earlier result put its opponent in question; nothing
+            is played until settled.
       required:
       - a
       - b
       - can_dispatch
+      - can_record_result
       - dispatched_at
       - draw_version
       - games
       - group
       - group_name
+      - held_for_correction
       - id
       - on_table
       - outcome
       - position
+      - result
+      - result_history
       - round
       - round_name
       - scheduled_at
@@ -6132,6 +6337,69 @@ components:
     NullEnum:
       enum:
       - null
+    OfficialResult:
+      type: object
+      description: One version of the official result of a match, or of one rubber
+        of a tie.
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        rubber:
+          type: integer
+          nullable: true
+          description: The rubber's position; null for the match.
+        winner_id:
+          type: string
+          format: uuid
+        winner:
+          type: string
+        outcome:
+          $ref: '#/components/schemas/MatchOutcomeEnum'
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+        reason:
+          type: string
+          description: Why it was corrected.
+        recorded_by:
+          type: string
+        accepted_at:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: The version that stands.
+        struck_out:
+          type: boolean
+          description: 'Removed without a replacement: played again.'
+        processing:
+          type: boolean
+          description: What follows from it is still being worked out.
+      required:
+      - accepted_at
+      - current
+      - games
+      - id
+      - outcome
+      - processing
+      - reason
+      - recorded_by
+      - rubber
+      - source
+      - struck_out
+      - version
+      - winner
+      - winner_id
     OnTable:
       type: object
       description: 'The match is on a table: the table and its players are held until
@@ -7137,6 +7405,18 @@ components:
       - onboarding_completed
       - published_details
       - style
+    ProgressEnum:
+      enum:
+      - decided
+      - on_table
+      - being_scored
+      - not_started
+      type: string
+      description: |-
+        * `decided` - decided
+        * `on_table` - on_table
+        * `being_scored` - being_scored
+        * `not_started` - not_started
     PublishedDetailsEnum:
       enum:
       - hand
@@ -7312,6 +7592,96 @@ components:
       - since
       - table
       - table_id
+    Resolution:
+      type: object
+      description: A later match that had started with an entry a corrected result
+        says should not be there.
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        a:
+          type: string
+        b:
+          type: string
+        side:
+          $ref: '#/components/schemas/SideEnum'
+        old_entry:
+          type: string
+          description: Who is in the match now.
+        new_entry:
+          type: string
+          description: Who should be; empty when an earlier match is played again
+            first.
+        progress:
+          $ref: '#/components/schemas/ProgressEnum'
+        reason:
+          type: string
+          description: The reason given for the correction.
+        corrected_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        choice:
+          oneOf:
+          - $ref: '#/components/schemas/ResolutionChoiceEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        note:
+          type: string
+        resolved_by:
+          type: string
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - a
+      - b
+      - choice
+      - corrected_by
+      - created_at
+      - event_id
+      - event_name
+      - id
+      - label
+      - match_id
+      - new_entry
+      - note
+      - old_entry
+      - progress
+      - reason
+      - resolved_at
+      - resolved_by
+      - side
+    ResolutionChoiceEnum:
+      enum:
+      - keep
+      - replace
+      - withdrawn
+      type: string
+      description: |-
+        * `keep` - Keep
+        * `replace` - Replace
+        * `withdrawn` - Withdrawn
+    ResolveChoiceEnum:
+      enum:
+      - keep
+      - replace
+      type: string
+      description: |-
+        * `keep` - keep
+        * `replace` - replace
     ResolveConflictRequest:
       type: object
       description: What was done about it, for the record.
@@ -7322,6 +7692,83 @@ components:
           maxLength: 300
       required:
       - note
+    ResolveRequest:
+      type: object
+      properties:
+        choice:
+          $ref: '#/components/schemas/ResolveChoiceEnum'
+        note:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - choice
+      - note
+    ResultCorrectionRequest:
+      type: object
+      description: |-
+        A result recorded by the organizers. `games` are [a, b] points in playing order: none for a
+        walkover, the games played so far for a retirement. For a tie, name the rubber.
+      properties:
+        winner_entry_id:
+          type: string
+          format: uuid
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/MatchOutcomeEnum'
+          default: played
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+              maximum: 99
+              minimum: 0
+            maxItems: 2
+            minItems: 2
+          maxItems: 9
+        rubber_id:
+          type: string
+          format: uuid
+          nullable: true
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
+      - winner_entry_id
+    ResultEntryRequest:
+      type: object
+      description: |-
+        A result recorded by the organizers. `games` are [a, b] points in playing order: none for a
+        walkover, the games played so far for a retirement. For a tie, name the rubber.
+      properties:
+        winner_entry_id:
+          type: string
+          format: uuid
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/MatchOutcomeEnum'
+          default: played
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+              maximum: 99
+              minimum: 0
+            maxItems: 2
+            minItems: 2
+          maxItems: 9
+        rubber_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - winner_entry_id
     Role:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
@@ -7815,6 +8262,14 @@ components:
       - label
       - match_id
       - scorecard_id
+    SideEnum:
+      enum:
+      - a
+      - b
+      type: string
+      description: |-
+        * `a` - a
+        * `b` - b
     SignUpRequest:
       type: object
       properties:
@@ -7854,6 +8309,16 @@ components:
         * `a2` - a2
         * `b1` - b1
         * `b2` - b2
+    SourceEnum:
+      enum:
+      - umpire
+      - staff
+      - correction
+      type: string
+      description: |-
+        * `umpire` - Umpire
+        * `staff` - Staff
+        * `correction` - Correction
     StandingRow:
       type: object
       properties:

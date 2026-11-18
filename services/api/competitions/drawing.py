@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from core.exceptions import ApiException
 
-from . import draws, signals, standings
+from . import draws, official, signals, standings
 from .models import DrawPlace, DrawVersion, Entry, Event, Match, Rubber, Tournament
 from .rules import RULES_VERSION
 
@@ -147,7 +147,15 @@ def mark_ready(draw: DrawVersion) -> None:
     ).update(ready_since=timezone.now())
 
 
-def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.PLAYED, games=()) -> None:
+def record_result(
+    match: Match,
+    winner: Entry,
+    *,
+    outcome: str = Match.Outcome.PLAYED,
+    games=(),
+    actor=None,
+    source: str = official.Source.UMPIRE,
+) -> None:
     """The match is decided: the winner moves into the match it feeds, and a finished group sends its
     qualifiers into the knockout. `games` are [a, b] points in playing order. Who may decide a match,
     score validation and corrections arrive with official results; this is the progression."""
@@ -159,6 +167,7 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
         raise _conflict("match_not_ready", "Both sides of this match aren't known yet.")
     if winner.id not in (match.entry_a_id, match.entry_b_id):
         raise _conflict("not_in_match", "The winner is one of the two sides of the match.")
+    official.ensure_not_held(match)
     event = match.draw.event
     if event.is_team:
         # A tie has no games of its own. It is played to its end through its rubbers; or it is awarded:
@@ -186,6 +195,8 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
     match.outcome = outcome
     match.games = [list(game) for game in games]
     match.save(update_fields=["winner", "status", "outcome", "games"])
+    # The official record and the work that follows from it, written with the result itself.
+    official.accept(match, None, winner, outcome, match.games, actor=actor, source=source)
     _send_on(match)
     if match.stage == Match.Stage.GROUP:
         place_qualifiers(match.draw, match.group)
@@ -210,8 +221,16 @@ def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
 
 
 def _send_on(match: Match) -> None:
-    Match.objects.filter(feeder_a=match).update(entry_a=match.winner_id)
-    Match.objects.filter(feeder_b=match).update(entry_b=match.winner_id)
+    from . import corrections  # corrections builds on this module
+
+    for side in ("a", "b"):
+        for later in Match.objects.filter(**{f"feeder_{side}": match}).select_related("draw__event"):
+            # A match played again after a correction never overwrites a later match that is in
+            # question or that the organizers decided to keep as played.
+            if corrections.winner_known(later, side, match.winner):
+                continue
+            setattr(later, f"entry_{side}", match.winner)
+            later.save(update_fields=[f"entry_{side}"])
 
 
 def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], bool]:

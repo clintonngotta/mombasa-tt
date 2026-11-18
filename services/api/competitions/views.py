@@ -18,7 +18,7 @@ from organizations.access import effective_permissions, require_permission
 from organizations.models import Organization
 from organizations.permissions import Permission
 
-from . import drawing, entries, lifecycle, ties
+from . import drawing, entries, lifecycle, official, ties
 from .emails import send_entry_news
 from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
@@ -105,6 +105,16 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
         shown["tie"] = None
         shown["scoring"] = scoring.summary(match, None, request.user, staff)
     shown["can_dispatch"] = staff and reservations.is_dispatchable(match)
+    versions = official.history(match)
+    standing = next((v for v in versions if v["current"] and v["rubber"] is None), None)
+    if standing and not staff:
+        # Who recorded a result and why it was corrected is the organizers' record, not the public's.
+        standing = {**standing, "reason": "", "recorded_by": ""}
+    shown["result"] = standing
+    shown["result_history"] = versions if staff else []
+    closed = draw.event.is_closed or draw.event.tournament.is_closed
+    shown["can_record_result"] = staff and not closed and draw.status == DrawVersion.Status.PUBLISHED
+    shown["held_for_correction"] = match.resolutions.filter(resolved_at__isnull=True).exists()
     held = (
         match.reservations.filter(status=Reservation.Status.ACTIVE)
         .select_related("table")

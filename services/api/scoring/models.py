@@ -125,6 +125,7 @@ class ScoreAssignment(models.Model):
         UNASSIGNED = "unassigned"  # staff took it back
         DEVICE = "device"  # the umpire's device took an unheld sheet
         TAKE_OVER = "take_over"  # the umpire moved it to another device
+        RESET = "reset"  # the sheet was emptied: its match is played again after a correction
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scorecard = models.ForeignKey(Scorecard, on_delete=models.CASCADE, related_name="assignments")

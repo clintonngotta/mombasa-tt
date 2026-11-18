@@ -325,6 +325,16 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
           Tables: send the next matches out
         </Link>
       )}
+      {t.events.some((event) => event.paused_at) && (
+        <Link to={`/tournaments/${t.id}/corrections`} className={buttonVariants({ variant: "destructive", className: "self-start" })}>
+          An event is paused: decide about a corrected result
+        </Link>
+      )}
+      {t.status === "in_progress" && !t.events.some((event) => event.paused_at) && (
+        <Link to={`/tournaments/${t.id}/corrections`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Corrections
+        </Link>
+      )}
       {t.status === "in_progress" && (
         <Link to={`/tournaments/${t.id}/scoring`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
           Scoring: matches on the tables and device reports

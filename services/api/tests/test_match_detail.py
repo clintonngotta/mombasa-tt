@@ -66,6 +66,7 @@ def test_a_match_of_the_published_draw_is_shown_with_its_place_in_the_event(staf
         "id", "stage", "group", "round", "round_name", "position", "a", "b", "status", "winner_id",
         "outcome", "games", "tie_score", "table", "scheduled_at", "group_name", "winner_plays_in",
         "draw_version", "tie", "scoring", "dispatched_at", "on_table", "can_dispatch",
+            "result", "result_history", "can_record_result", "held_for_correction",
     }  # fmt: skip
     assert (body["round_name"], body["winner_plays_in"], body["group_name"]) == ("Semi-final", "Final", "")
     assert (body["table"], body["scheduled_at"], body["draw_version"]) == (

@@ -12,13 +12,13 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from competitions import drawing, ties
+from competitions import drawing, official, ties
 from competitions.models import DrawVersion, Event, Match, Rubber, RubberPlayer, Tournament
 from core.exceptions import ApiException
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
-from .engine import Scoring, ScoringError
+from .engine import Scoring, ScoringError, initial_state
 from .models import ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
 
 # Who may be given a match to score: people the club trusts with scoring, and those who run competitions.
@@ -225,6 +225,7 @@ def _ensure_in_play(scorecard: Scorecard, assignment_id, device_id=None) -> None
     # A sheet a device has taken is scored from that device only.
     if scorecard.device_id is not None and scorecard.device_id != device_id:
         raise _conflict("other_device", "This match is being scored on another device.")
+    official.ensure_not_held(scorecard.tie_or_match)
     event = event_of(scorecard)
     if event.tournament.status != Tournament.Status.IN_PROGRESS or event.status != Event.Status.IN_PROGRESS:
         raise _conflict(
@@ -302,7 +303,11 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
 def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id=None) -> None:
     """The umpire confirms the result, from the device that holds the current assignment. Refused
     unless the events accepted so far, replayed here, are a finished match: an early finish is not a
-    result. Call with the tournament row and the sheet locked."""
+    result. Confirming again what is already confirmed (a retry whose first answer was lost) changes
+    nothing and succeeds. Call with the tournament row and the sheet locked."""
+    same_sheet = str(assignment_id) == str(scorecard.assignment_id) and revision == scorecard.revision
+    if scorecard.confirmed_at and same_sheet:
+        return
     _ensure_in_play(scorecard, assignment_id, device_id)
     if revision != scorecard.revision:
         raise _conflict("stale_revision", "Not every point has reached the server yet. Wait for it to save.")
@@ -312,13 +317,57 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
     match = scorecard.tie_or_match
     winner = match.entry_a if state["winner"] == "a" else match.entry_b
     if scorecard.rubber_id:
-        ties.record_rubber(scorecard.rubber, winner, games=state["games"])
+        ties.record_rubber(scorecard.rubber, winner, games=state["games"], actor=actor)
     else:
-        drawing.record_result(match, winner, games=state["games"])
+        drawing.record_result(match, winner, games=state["games"], actor=actor)
     scorecard.state = state
     scorecard.confirmed_at = timezone.now()
     scorecard.confirmed_by = actor
     scorecard.save(update_fields=["state", "confirmed_at", "confirmed_by"])
+
+
+def _who(user_id) -> str | None:
+    return str(user_id) if user_id else None
+
+
+def strike_out(match: Match, actor=None) -> list[dict]:
+    """Empty the match's score sheet because the match is to be played again with another entry
+    (REQ-015). What was scored is returned, to be kept with the decision; the sheet itself starts
+    over under a new assignment id, so a device still holding the old one is cut off."""
+    kept = []
+    for scorecard in Scorecard.objects.select_for_update().filter(match=match):
+        if scorecard.revision == 0 and scorecard.confirmed_at is None:
+            continue
+        kept.append(
+            {
+                "scorecard_id": str(scorecard.id),
+                "revision": scorecard.revision,
+                "state": scorecard.state,
+                "confirmed_at": scorecard.confirmed_at.isoformat() if scorecard.confirmed_at else None,
+                "confirmed_by": _who(scorecard.confirmed_by_id),
+                "umpire": _who(scorecard.umpire_id),
+                "events": [
+                    {
+                        "id": str(event.id),
+                        "sequence": event.sequence,
+                        "event": event.payload,
+                        "actor": _who(event.actor_id),
+                        "device_time": event.device_time.isoformat() if event.device_time else None,
+                        "received_at": event.received_at.isoformat(),
+                    }
+                    for event in scorecard.events.all()
+                ],
+            }
+        )
+        _log(scorecard, ScoreAssignment.Kind.RESET, actor)  # who held it and how far it had got
+        scorecard.events.all().delete()
+        scorecard.revision = 0
+        scorecard.state = initial_state()
+        scorecard.confirmed_at = scorecard.confirmed_by = None
+        scorecard.assignment_id = uuid.uuid4()
+        scorecard.device_id, scorecard.device_label, scorecard.device_since = None, "", None
+        scorecard.save()
+    return kept
 
 
 def sheet_context(scorecard: Scorecard) -> dict:

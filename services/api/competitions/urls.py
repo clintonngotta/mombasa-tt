@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .result_views import ResultViewSet
 from .views import (
     DrawViewSet,
     EntryViewSet,
@@ -67,6 +68,26 @@ urlpatterns = [
         "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/",
         DrawViewSet.as_view({"get": "match"}),
         name="tournament-event-match",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/result/",
+        ResultViewSet.as_view({"post": "enter"}),
+        name="tournament-event-match-result",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/result/correct/",
+        ResultViewSet.as_view({"post": "correct"}),
+        name="tournament-event-match-result-correct",
+    ),
+    path(
+        "<uuid:tournament_pk>/corrections/",
+        ResultViewSet.as_view({"get": "resolutions"}),
+        name="tournament-corrections",
+    ),
+    path(
+        "<uuid:tournament_pk>/corrections/<uuid:pk>/resolve/",
+        ResultViewSet.as_view({"post": "resolve"}),
+        name="tournament-correction-resolve",
     ),
     path(
         "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/lineup/",
