@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .result_views import ResultViewSet
+from .schedule_views import ScheduleViewSet
 from .views import (
     DrawViewSet,
     EntryViewSet,
@@ -22,6 +23,21 @@ urlpatterns = [
         "awaiting-approval/",
         TournamentViewSet.as_view({"get": "awaiting_approval"}),
         name="tournament-awaiting-approval",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/",
+        ScheduleViewSet.as_view({"get": "retrieve", "put": "update"}),
+        name="tournament-schedule",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/recommend/",
+        action(ScheduleViewSet, "recommend"),
+        name="tournament-schedule-recommend",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/check/",
+        action(ScheduleViewSet, "check_plan"),
+        name="tournament-schedule-check",
     ),
     path(
         "<uuid:pk>/",

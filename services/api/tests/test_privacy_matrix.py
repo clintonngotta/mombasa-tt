@@ -126,9 +126,11 @@ ACCESS: dict[str, dict[str, str]] = {
     # drafts and every change are for the host's competition staff.
     "organization-tournaments": {"get": STAFF, "post": STAFF},
     "tournament-list": {"get": SIGNED_IN},
-    "tournament-awaiting-approval": {
-        "get": SIGNED_IN
-    },  # only drafts the caller may approve; see test_authority
+    "tournament-schedule": {"get": STAFF, "put": STAFF},
+    "tournament-schedule-recommend": {"post": STAFF},
+    "tournament-schedule-check": {"post": STAFF},
+    # Lists only the drafts the caller may approve; see test_authority.
+    "tournament-awaiting-approval": {"get": SIGNED_IN},
     "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
     "tournament-publish": {"post": STAFF},
     "tournament-request-approval": {"post": STAFF},
@@ -205,6 +207,8 @@ CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 BODIES = {
+    ("tournament-schedule", "put"): {"slots": []},
+    ("tournament-schedule-check", "post"): {"slots": []},
     ("organization-detail", "patch"): {"country": "KE", "region": "Mombasa", "town": "Mombasa"},
     ("organization-invitations", "post"): {"email": "newcomer@example.com"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},

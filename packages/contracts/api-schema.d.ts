@@ -2121,6 +2121,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Every match of a published draw still to be played and not on a table, with the table and
+         *     start planned for it, and what is wrong with the plan as it stands.
+         */
+        get: operations["tournaments_schedule_retrieve"];
+        /**
+         * @description Keep these tables and starts. Refused with `schedule_conflicts` and the list of conflicts
+         *     when a table, a player or a match's order wouldn't work; warnings don't stop it.
+         */
+        put: operations["tournaments_schedule_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/check/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description What would be wrong with these changes to the plan, without keeping them. */
+        post: operations["tournaments_schedule_check_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/recommend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description A start and table for every match, earliest first: nobody plays twice at once or without
+         *     their rest, and no match starts before the ones it waits for end. Nothing is saved: edit it
+         *     and keep it with PUT.
+         */
+        post: operations["tournaments_schedule_recommend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/scoring/": {
         parameters: {
             query?: never;
@@ -2347,6 +2409,10 @@ export interface components {
             suggested_match_id: string | null;
             /** @description Why a free table has no match. */
             idle_reason: string;
+        };
+        Checked: {
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
         };
         ClubRanking: {
             discipline: components["schemas"]["SinglesOrDoublesEnum"];
@@ -3675,6 +3741,12 @@ export interface components {
          * @enum {string}
          */
         PlayerRatingsResultEnum: "all" | "won" | "lost";
+        Problem: {
+            /** Format: uuid */
+            match_id: string;
+            code: string;
+            message: string;
+        };
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         Profile: {
             display_name: string;
@@ -3856,6 +3928,40 @@ export interface components {
         RecallRequest: {
             reason: string;
         };
+        RecommendRequestRequest: {
+            /**
+             * Format: date-time
+             * @description Not before; defaults to now.
+             */
+            starts_at?: string;
+            /**
+             * Format: time
+             * @default 09:00:00
+             */
+            day_starts: string;
+            /**
+             * Format: time
+             * @default 21:00:00
+             */
+            day_ends: string;
+            /** @description Defaults to every table in use. */
+            table_ids?: string[];
+        };
+        Recommendation: {
+            slots: components["schemas"]["RecommendedSlot"][];
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
+        };
+        RecommendedSlot: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            table_id: string | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+            /** @description It doesn't fit in the tournament's days. */
+            beyond_last_day: boolean;
+        };
         RefusedEvent: {
             sequence: number;
             /** @description A scoring engine code, `sequence_gap`, `sequence_conflict` or `revision_conflict`. */
@@ -4035,6 +4141,34 @@ export interface components {
          * @enum {string}
          */
         RubberStatusEnum: "scheduled" | "completed" | "not_played";
+        Schedule: {
+            tables: components["schemas"]["ScheduleTable"][];
+            rows: components["schemas"]["ScheduleRow"][];
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
+        };
+        ScheduleRow: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event: string;
+            /** @description Event, group or round, and match. */
+            label: string;
+            /** @description The two sides, or 'To come'. */
+            title: string;
+            /** @description The estimated length, from the event's best-of. */
+            minutes: number;
+            /** Format: uuid */
+            table_id: string | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+        };
+        ScheduleTable: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+        };
         /** @description A device's unaccepted events beside what the server holds at the same places. */
         ScoreConflict: {
             /** Format: uuid */
@@ -4197,6 +4331,17 @@ export interface components {
          * @enum {string}
          */
         SlotEnum: "a1" | "a2" | "b1" | "b2";
+        SlotRequest: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            table_id: string | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+        };
+        SlotsRequest: {
+            slots: components["schemas"]["SlotRequest"][];
+        };
         /**
          * @description * `umpire` - Umpire
          *     * `staff` - Staff
@@ -8579,6 +8724,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Reservation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Schedule"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Schedule"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_check_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Checked"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_recommend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RecommendRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recommendation"];
                 };
             };
             /** @description Error envelope */

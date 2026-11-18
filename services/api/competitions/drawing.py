@@ -396,7 +396,7 @@ def _matches_of(draw: DrawVersion) -> list[Match]:
     """Load matches, tables, rubbers and the scoring activity needed for the draw."""
     active_sheets = Scorecard.objects.filter(state__status=EnginePhase.IN_PROGRESS, confirmed_at__isnull=True)
     return list(
-        draw.matches.select_related("table")
+        draw.matches.select_related("table", "planned_table")
         .prefetch_related("rubbers")
         .annotate(
             scoring_live=Exists(active_sheets.filter(match_id=OuterRef("pk")))
@@ -444,12 +444,18 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict, event_in_
             "outcome": match.outcome,
             "games": match.games,
             "tie_score": list(tie_score(match)) if match.rubbers.all() else None,
-            "table": match.table.label if match.table else "",
+            "table": _table_label(match),
             "dispatched_at": match.dispatched_at,
             "scheduled_at": match.scheduled_at,
         }
 
     return shown
+
+
+def _table_label(match: Match) -> str:
+    """Where it is, or else where the schedule plans it."""
+    table = match.table or match.planned_table
+    return table.label if table else ""
 
 
 def tie_score(match: Match) -> tuple[int, int]:

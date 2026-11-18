@@ -407,6 +407,11 @@ class Match(models.Model):
     # is an estimate, never a promise (REQ-014).
     table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     scheduled_at = models.DateTimeField(null=True, blank=True)
+    # The table the day schedule plans it for (TASK-099). `table` is where it is actually sent, which a
+    # recall clears; the plan stays, and the dispatch board offers this table first when it is free.
+    planned_table = models.ForeignKey(
+        Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     # When it was sent to its table; empty while it isn't on one (REQ-014).
     dispatched_at = models.DateTimeField(null=True, blank=True)
     # When both its sides became known: how long it has waited orders the ready queue (REQ-014).

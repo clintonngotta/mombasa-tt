@@ -4505,6 +4505,142 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/:
+    get:
+      operationId: tournaments_schedule_retrieve
+      description: |-
+        Every match of a published draw still to be played and not on a table, with the table and
+        start planned for it, and what is wrong with the plan as it stands.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: tournaments_schedule_update
+      description: |-
+        Keep these tables and starts. Refused with `schedule_conflicts` and the list of conflicts
+        when a table, a player or a match's order wouldn't work; warnings don't stop it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlotsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/check/:
+    post:
+      operationId: tournaments_schedule_check_create
+      description: What would be wrong with these changes to the plan, without keeping
+        them.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlotsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checked'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/recommend/:
+    post:
+      operationId: tournaments_schedule_recommend_create
+      description: |-
+        A start and table for every match, earliest first: nobody plays twice at once or without
+        their rest, and no match starts before the ones it waits for end. Nothing is saved: edit it
+        and keep it with PUT.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendRequestRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recommendation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/scoring/:
     get:
       operationId: tournaments_scoring_retrieve
@@ -4918,6 +5054,20 @@ components:
       - playing
       - since
       - suggested_match_id
+    Checked:
+      type: object
+      properties:
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - warnings
     ClubRanking:
       type: object
       properties:
@@ -8065,6 +8215,20 @@ components:
         * `all` - all
         * `won` - won
         * `lost` - lost
+    Problem:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        message:
+          type: string
+      required:
+      - code
+      - match_id
+      - message
     Profile:
       type: object
       description: The owner's own view of their profile. `display_name` is written
@@ -8471,6 +8635,68 @@ components:
           maxLength: 300
       required:
       - reason
+    RecommendRequestRequest:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+          description: Not before; defaults to now.
+        day_starts:
+          type: string
+          format: time
+          default: 09:00:00
+        day_ends:
+          type: string
+          format: time
+          default: '21:00:00'
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Defaults to every table in use.
+    Recommendation:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecommendedSlot'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - slots
+      - warnings
+    RecommendedSlot:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        beyond_last_day:
+          type: boolean
+          description: It doesn't fit in the tournament's days.
+      required:
+      - beyond_last_day
+      - match_id
+      - scheduled_at
+      - table_id
     RefusedEvent:
       type: object
       properties:
@@ -8908,6 +9134,78 @@ components:
         * `scheduled` - Scheduled
         * `completed` - Completed
         * `not_played` - Not Played
+    Schedule:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleTable'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleRow'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - rows
+      - tables
+      - warnings
+    ScheduleRow:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event:
+          type: string
+        label:
+          type: string
+          description: Event, group or round, and match.
+        title:
+          type: string
+          description: The two sides, or 'To come'.
+        minutes:
+          type: integer
+          description: The estimated length, from the event's best-of.
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - event
+      - event_id
+      - label
+      - match_id
+      - minutes
+      - scheduled_at
+      - table_id
+      - title
+    ScheduleTable:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+      required:
+      - id
+      - label
     ScoreConflict:
       type: object
       description: A device's unaccepted events beside what the server holds at the
@@ -9310,6 +9608,33 @@ components:
         * `a2` - a2
         * `b1` - b1
         * `b2` - b2
+    SlotRequest:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - match_id
+      - scheduled_at
+      - table_id
+    SlotsRequest:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlotRequest'
+      required:
+      - slots
     SourceEnum:
       enum:
       - umpire
