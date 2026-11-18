@@ -27,6 +27,8 @@ from .models import Hold, Reservation
 
 CHECK_IN, REST = "check_in", "rest"
 OVERRIDABLE = (CHECK_IN, REST)
+# Which check a refusal belongs to, when it is one staff may set aside.
+SETS_ASIDE = {"not_checked_in": CHECK_IN, "resting": REST}
 
 
 class Blocked(ApiException):
@@ -35,12 +37,14 @@ class Blocked(ApiException):
     def __init__(self, code: str, message: str):
         super().__init__(code, message, 409)
         self.blocker = code
+        self.message = message
+        self.until = None  # for a rest: when it is over
 
 
 _GATE = int.from_bytes(hashlib.sha256(b"coast-tt:reservations").digest()[:8], "big", signed=True)
 
 
-def _lock() -> None:
+def lock() -> None:
     """Wait for the one lock over all tables and people; it is let go when the transaction ends."""
     with connection.cursor() as cursor:
         cursor.execute("SELECT pg_advisory_xact_lock(%s)", [_GATE])
@@ -121,14 +125,16 @@ def rest_until(user, event: Event):
     return last + timedelta(minutes=event.rest_minutes) if last else None
 
 
-def dispatch(match: Match, table: Table, actor, *, overrides=(), reason: str = "") -> Reservation:
+def dispatch(
+    match: Match, table: Table, actor, *, overrides=(), reason: str = "", automatic: bool = False
+) -> Reservation:
     """Send the match to the table: hold the table and the players, or say what stands in the way.
     Call inside a transaction, with the tournament row locked."""
     overrides = [name for name in OVERRIDABLE if name in overrides]
     if overrides and not reason:
         raise ApiException("reason_required", "Say why the check is set aside.", 400)
     ensure_dispatchable(match)
-    _lock()
+    lock()
 
     # Everything below is looked at after the lock: nothing a screen showed earlier is trusted.
     match = Match.objects.select_related("draw__event__tournament", "entry_a", "entry_b").get(pk=match.pk)
@@ -149,39 +155,19 @@ def dispatch(match: Match, table: Table, actor, *, overrides=(), reason: str = "
         raise Blocked(
             "table_busy", f"{table.label} is taken by a match of {held.reservation.match.draw.event.name}."
         )
-    busy = (
-        Hold.objects.filter(user__in=people, active=True).select_related("user", "reservation__table").first()
-    )
-    if busy:
-        raise Blocked("player_busy", f"{_name(busy.user)} is playing on {busy.reservation.table.label}.")
-    umpiring = _umpiring_now(people)
-    if umpiring:
-        raise Blocked("player_umpiring", f"{_name(umpiring[0])} is umpiring a match on {umpiring[1]}.")
-    umpire = _umpire_of(match, rubber)
-    if umpire is not None and Hold.objects.filter(user=umpire, active=True).exists():
-        raise Blocked("umpire_busy", f"The umpire, {_name(umpire)}, is playing a match right now.")
-    if CHECK_IN not in overrides:
-        absent = [e for e in (match.entry_a, match.entry_b) if e.checked_in_at is None]
-        if absent:
-            names = " and ".join(_entry_title(entry) for entry in absent)
-            verb = "hasn't" if len(absent) == 1 else "haven't"
-            raise Blocked("not_checked_in", f"{names} {verb} checked in.")
-    if REST not in overrides:
-        now = timezone.now()
-        for user in people:
-            until = rest_until(user, event)
-            if until and until > now:
-                minutes = max(1, round((until - now).total_seconds() / 60))
-                raise Blocked(
-                    "resting",
-                    f"{_name(user)} finished a match less than {event.rest_minutes} minutes ago: "
-                    f"{minutes} more to rest.",
-                )
+    for blocked in standing_in_the_way(match, people, rubber):
+        if SETS_ASIDE.get(blocked.blocker) not in overrides:
+            raise blocked
 
     try:
         with transaction.atomic():
             reservation = Reservation.objects.create(
-                match=match, table=table, created_by=actor, overrides=overrides, override_reason=reason
+                match=match,
+                table=table,
+                created_by=actor,
+                automatic=automatic,
+                overrides=overrides,
+                override_reason=reason,
             )
             Hold.objects.create(reservation=reservation, table=table)
             Hold.objects.bulk_create(
@@ -193,6 +179,44 @@ def dispatch(match: Match, table: Table, actor, *, overrides=(), reason: str = "
     match.dispatched_at = reservation.created_at
     match.save(update_fields=["table", "dispatched_at"])
     return reservation
+
+
+def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> list[Blocked]:
+    """Everything about the people of a match that stops it going to any table right now, in the order
+    dispatch refuses them. The ready queue shows the same list, so what it says is what would happen."""
+    event = match.draw.event
+    found = []
+    busy = Hold.objects.filter(user__in=people, active=True).select_related("user", "reservation__table")
+    for hold in busy:
+        found.append(
+            Blocked("player_busy", f"{_name(hold.user)} is playing on {hold.reservation.table.label}.")
+        )
+    umpiring = _umpiring_now(people)
+    if umpiring:
+        found.append(
+            Blocked("player_umpiring", f"{_name(umpiring[0])} is umpiring a match on {umpiring[1]}.")
+        )
+    umpire = _umpire_of(match, rubber)
+    if umpire is not None and Hold.objects.filter(user=umpire, active=True).exists():
+        found.append(Blocked("umpire_busy", f"The umpire, {_name(umpire)}, is playing a match right now."))
+    absent = [e for e in (match.entry_a, match.entry_b) if e.checked_in_at is None]
+    if absent:
+        names = " and ".join(_entry_title(entry) for entry in absent)
+        verb = "hasn't" if len(absent) == 1 else "haven't"
+        found.append(Blocked("not_checked_in", f"{names} {verb} checked in."))
+    now = timezone.now()
+    for user in people:
+        until = rest_until(user, event)
+        if until and until > now:
+            minutes = max(1, round((until - now).total_seconds() / 60))
+            blocked = Blocked(
+                "resting",
+                f"{_name(user)} finished a match less than {event.rest_minutes} minutes ago: "
+                f"{minutes} more to rest.",
+            )
+            blocked.until = until
+            found.append(blocked)
+    return found
 
 
 def _entry_title(entry: Entry) -> str:
@@ -235,7 +259,7 @@ def _umpiring_now(people: list):
 
 def ensure_umpire_free(match: Match, umpire) -> None:
     """Somebody playing right now isn't made the umpire of a match that is already on a table."""
-    _lock()
+    lock()
     on_table = match.reservations.filter(status=Reservation.Status.ACTIVE).exists()
     if on_table and Hold.objects.filter(user=umpire, active=True).exists():
         raise Blocked("umpire_busy", f"{_name(umpire)} is playing a match right now.")
@@ -262,7 +286,7 @@ def recall(match: Match, actor, reason: str) -> None:
     reservation = match.reservations.filter(status=Reservation.Status.ACTIVE).first()
     if reservation is None:
         raise Blocked("not_on_table", "This match isn't on a table.")
-    _lock()
+    lock()
     release(reservation, actor, Reservation.Ending.RECALLED, reason)
     _off_the_table(match)
 
@@ -274,9 +298,13 @@ def _off_the_table(match: Match) -> None:
 
 
 def on_match_decided(sender, match: Match, **kwargs) -> None:
+    from . import board  # the board is built on this module
+
     for reservation in match.reservations.filter(status=Reservation.Status.ACTIVE):
-        _lock()
+        lock()
         release(reservation, None, Reservation.Ending.DECIDED)
+    # A result frees a table and may make the next match ready: automatic dispatch looks at once.
+    board.run_auto(match.draw.event.tournament)
 
 
 def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
@@ -284,7 +312,7 @@ def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
     held stays blocked for the other tournaments at the venue."""
     left = Reservation.objects.filter(match__draw__event=event, status=Reservation.Status.ACTIVE)
     for reservation in left.select_related("match"):
-        _lock()
+        lock()
         release(reservation, actor, Reservation.Ending.CLOSED)
         _off_the_table(reservation.match)
 
@@ -296,7 +324,7 @@ def on_rubber_decided(sender, rubber: Rubber, tie_decided: bool = False, **kwarg
     reservation = rubber.match.reservations.filter(status=Reservation.Status.ACTIVE).first()
     if reservation is None:
         return
-    _lock()
+    lock()
     done = reservation.holds.filter(rubber=rubber, active=True)
     freed = list(done.values_list("user_id", flat=True))
     done.update(active=False, released_at=timezone.now())

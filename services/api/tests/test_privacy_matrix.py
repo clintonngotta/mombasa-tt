@@ -162,6 +162,9 @@ ACCESS: dict[str, dict[str, str]] = {
     # Tables and what is on them, sending a match to a table and calling it back: competition staff.
     "tournament-tables": {"get": STAFF},
     "tournament-reservations": {"get": STAFF},
+    "tournament-dispatch": {"get": STAFF},
+    "tournament-dispatch-auto": {"post": STAFF},
+    "tournament-dispatch-run": {"post": STAFF},
     "tournament-event-match-dispatch": {"post": STAFF},
     "tournament-event-match-recall": {"post": STAFF},
     "tournament-scoring": {"get": STAFF},
@@ -222,6 +225,7 @@ BODIES = {
         ],
     },
     ("tournament-event-match-dispatch", "post"): {"table_id": SPARE_TABLE},
+    ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
     ("tournament-scoring-conflict-resolve", "post"): {"note": "Checked with both players"},
     ("scorecard-confirm", "post"): {"assignment_id": "00000000-0000-4000-8000-000000000000", "revision": 0},
@@ -533,7 +537,8 @@ class World:
             found["pk"] = pk[name]
         if "table_pk" in names:
             found["table_pk"] = self.table.id
-        if name.startswith("tournament-scoring") or name in ("tournament-tables", "tournament-reservations"):
+        whole = ("tournament-tables", "tournament-reservations")
+        if name.startswith(("tournament-scoring", "tournament-dispatch")) or name in whole:
             found["tournament_pk"] = self.scored_cup.id
             return found
         if name in ("tournament-event-match-dispatch", "tournament-event-match-recall"):

@@ -2735,6 +2735,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/dispatch/:
+    get:
+      operationId: tournaments_dispatch_retrieve
+      description: |-
+        The dispatch board: every table, the ready queue in its fixed order (planned start, then
+        longest wait, then id), what keeps each held-up match from a table, and which match is
+        suggested for which free table.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/dispatch/auto/:
+    post:
+      operationId: tournaments_dispatch_auto_create
+      description: |-
+        Switch automatic dispatch on or off. On, ready matches go to free tables in queue order
+        without anybody pressing Send; no check is ever set aside for them.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoDispatchRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/dispatch/run/:
+    post:
+      operationId: tournaments_dispatch_run_create
+      description: |-
+        Let automatic dispatch look now: it sends what it can and leaves the rest. Does nothing
+        while automatic dispatch is off. The open board calls this, so a rest that has just ended is
+        noticed without waiting for the next result.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/:
     post:
       operationId: tournaments_events_create
@@ -4106,6 +4204,13 @@ components:
       - expires_at
       - id
       - url
+    AutoDispatchRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+      - enabled
     AvatarUploadRequest:
       type: object
       properties:
@@ -4128,6 +4233,73 @@ components:
     BlankEnum:
       enum:
       - ''
+    Board:
+      type: object
+      description: |-
+        The dispatch board: the tables, the queue in its fixed order and what is suggested. A suggestion
+        is only that: sending it checks everything again.
+      properties:
+        auto_dispatch:
+          type: boolean
+        in_play:
+          type: boolean
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardTable'
+        queue:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueuedMatch'
+        to_come:
+          type: integer
+          description: Matches still waiting for an earlier result.
+      required:
+      - auto_dispatch
+      - in_play
+      - queue
+      - tables
+      - to_come
+    BoardTable:
+      type: object
+      description: One of the tournament's tables and whether a match holds it right
+        now.
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        free:
+          type: boolean
+        held_by:
+          type: string
+          description: Tournament and event of the match on it.
+        since:
+          type: string
+          format: date-time
+          nullable: true
+        playing:
+          allOf:
+          - $ref: '#/components/schemas/Reservation'
+          nullable: true
+          description: This tournament's match on the table.
+        suggested_match_id:
+          type: string
+          format: uuid
+          nullable: true
+        idle_reason:
+          type: string
+          description: Why a free table has no match.
+      required:
+      - free
+      - held_by
+      - id
+      - idle_reason
+      - label
+      - playing
+      - since
+      - suggested_match_id
     ConfirmRequest:
       type: object
       description: |-
@@ -6979,6 +7151,81 @@ components:
         * `style` - Style
         * `experience` - Experience
         * `bio` - Bio
+    QueuedMatch:
+      type: object
+      description: |-
+        A match in the ready queue. `ready` has a free table suggested; `waiting` could be played but
+        waits for a table, for a match ahead of it that shares a player, or for staff; `blocked` can't.
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        label:
+          type: string
+        a:
+          type: string
+        b:
+          type: string
+        planned_at:
+          type: string
+          format: date-time
+          nullable: true
+        ready_since:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/StateEnum'
+        position:
+          type: integer
+          nullable: true
+          description: Rank among matches playable now.
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reason'
+        suggested_table_id:
+          type: string
+          format: uuid
+          nullable: true
+        suggested_table:
+          type: string
+      required:
+      - a
+      - b
+      - event_id
+      - event_name
+      - label
+      - match_id
+      - planned_at
+      - position
+      - ready_since
+      - reasons
+      - state
+      - suggested_table
+      - suggested_table_id
+    Reason:
+      type: object
+      description: One thing that keeps a match from a table, in the words a refusal
+        would use.
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        until:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'For a rest: when it is over.'
+      required:
+      - code
+      - message
+      - until
     ReasonRequest:
       type: object
       properties:
@@ -7672,6 +7919,16 @@ components:
       - groups
       - placements
       - rules_version
+    StateEnum:
+      enum:
+      - ready
+      - waiting
+      - blocked
+      type: string
+      description: |-
+        * `ready` - ready
+        * `waiting` - waiting
+        * `blocked` - blocked
     StreamEvent:
       type: object
       properties:

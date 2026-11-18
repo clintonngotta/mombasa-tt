@@ -30,6 +30,8 @@ class Reservation(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # Sent by automatic dispatch, not by a person choosing the table.
+    automatic = models.BooleanField(default=False)
     # Checks staff chose to set aside when sending the match, and why. Exclusivity is never one of them.
     overrides = models.JSONField(default=list, blank=True)
     override_reason = models.CharField(max_length=300, blank=True)

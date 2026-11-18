@@ -28,6 +28,7 @@ export function TableControl({ match, ids, timeZone }: { match: MatchDetail; ids
   const settle = (fresh: MatchDetail) => {
     queryClient.setQueryData(drawKeys.match(ids.matchId), fresh)
     void queryClient.invalidateQueries({ queryKey: reservationKeys.tables(ids.tournamentId) })
+    void queryClient.invalidateQueries({ queryKey: reservationKeys.board(ids.tournamentId) })
     void queryClient.invalidateQueries({ queryKey: drawKeys.event(ids.eventId) })
     void queryClient.invalidateQueries({ queryKey: scoringKeys.overview(ids.tournamentId) })
     setRecalling(false)

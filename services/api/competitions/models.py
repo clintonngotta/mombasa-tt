@@ -51,6 +51,8 @@ class Tournament(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
+    # The organizers let ready matches go to free tables by themselves, in queue order (REQ-014).
+    auto_dispatch = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -377,6 +379,8 @@ class Match(models.Model):
     scheduled_at = models.DateTimeField(null=True, blank=True)
     # When it was sent to its table; empty while it isn't on one (REQ-014).
     dispatched_at = models.DateTimeField(null=True, blank=True)
+    # When both its sides became known: how long it has waited orders the ready queue (REQ-014).
+    ready_since = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["stage", "group", "round", "position"]

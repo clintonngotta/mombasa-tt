@@ -321,6 +321,11 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
       </div>
 
       {t.status === "in_progress" && (
+        <Link to={`/tournaments/${t.id}/dispatch`} className={buttonVariants({ className: "self-start" })}>
+          Tables: send the next matches out
+        </Link>
+      )}
+      {t.status === "in_progress" && (
         <Link to={`/tournaments/${t.id}/scoring`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
           Scoring: matches on the tables and device reports
         </Link>
