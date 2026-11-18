@@ -10,8 +10,9 @@ from django.db import connection
 from django.utils import timezone
 
 from competitions import drawing, ties
-from competitions.models import Entry, Match, Rubber
+from competitions.models import Entry, Event, Match, Rubber
 from facilities.models import Table
+from reservations import service as reservations
 from reservations.models import Hold, Reservation
 
 from .helpers import logged_in, make_user
@@ -278,6 +279,92 @@ def test_a_tie_holds_its_table_throughout_and_its_players_rubber_by_rubber(staff
     # Two wins of three: the tie is decided and nothing is held any more.
     assert Match.objects.get(pk=match.pk).status == "completed"
     assert not Hold.objects.filter(active=True).exists()
+    # Rest follows play: the third rubber wasn't needed, so its players were never held and owe no rest.
+    teams = Event.objects.get(pk=event["id"])
+    assert not Hold.objects.filter(user=person("Tudor 2")).exists()
+    assert reservations.rest_until(person("Tudor 2"), teams) is None
+    assert reservations.rest_until(person("Tudor 1"), teams) is not None
+
+
+def test_a_tie_on_a_table_keeps_its_lineups(staff, club, hall):
+    from .test_ties import hand_in, picks, team
+
+    one, _ = tables(hall)
+    tournament = make_tournament(staff, club, hall)
+    tournament = add_event(
+        staff, tournament, name="Teams", kind="team", format="round_robin", tie_rubbers=["singles"] * 3
+    )
+    tournament = do(staff, tournament, "publish")
+    event = tournament["events"][0]
+    tudor, tudor_players = team(staff, tournament, event, "Tudor")
+    nyali, nyali_players = team(staff, tournament, event, "Nyali")
+    for entry in (tudor, nyali):
+        staff.post(url(tournament, event=event) + f"entries/{entry['id']}/check-in/", {}, format="json")
+    staff.post(draw_url(tournament, event, "preview"), {"rng_seed": 1}, format="json")
+    staff.post(draw_url(tournament, event, "publish"), {}, format="json")
+    do(staff, tournament, "start")
+    do(staff, tournament, "start", event=event)
+    match = Match.objects.get(draw__event_id=event["id"])
+    tie = {"cup": tournament, "event": event, "match": match, "tudor": tudor, "nyali": nyali}
+    order = ((0,), (1,), (2,))
+    hand_in(staff, tie, "tudor", picks(tudor_players, order))
+    hand_in(staff, tie, "nyali", picks(nyali_players, order))
+    send(staff, tie, one)
+    reset = url(tournament, event=event) + f"matches/{match.id}/lineup/reset/"
+    refused = staff.post(reset, {}, format="json")
+    assert (refused.status_code, refused.json()["code"]) == (409, "tie_on_table")
+    assert Hold.objects.filter(active=True).count() == 3  # the table and the first rubber's two players
+    recall(staff, tie)
+    assert staff.post(reset, {}, format="json").status_code == 200
+
+
+def test_closing_an_event_frees_what_its_matches_held(staff, club, hall):
+    one, two = tables(hall)
+    first = started(staff, club, hall, [["Amina"], ["Brian"]])
+    second = started(staff, club, hall, [["Chege"], ["Daudi"]], tournament="Veterans Cup")
+    third = started(staff, club, hall, [["Amina"], ["Chege"]], tournament="Evening Cup")
+    send(staff, first, one)
+    send(staff, second, two)
+    do(staff, first["cup"], "cancel", event=first["event"], reason="Power cut")
+    do(staff, second["cup"], "cancel", reason="Power cut")
+    assert not Hold.objects.filter(active=True).exists()
+    assert set(Reservation.objects.values_list("ending", flat=True)) == {"closed"}
+    assert Match.objects.get(pk=first["match"].pk).dispatched_at is None
+    # Nobody played, so nobody rests: the table and both players go straight to another tournament.
+    send(staff, third, one)
+    do(staff, third["cup"], "complete", event=third["event"])
+    assert not Hold.objects.filter(active=True).exists()
+
+
+def test_a_walkover_is_not_play_so_nobody_rests_after_it(staff, club, hall):
+    one, _ = tables(hall)
+    first = started(staff, club, hall, [["Amina"], ["Brian"]])
+    second = started(staff, club, hall, [["Amina"], ["Chege"]], tournament="Veterans Cup")
+    send(staff, first, one)
+    match = first["match"]
+    drawing.record_result(match, match.entry_a, outcome="walkover")
+    send(staff, second, one)
+
+
+def test_somebody_playing_is_not_made_umpire_of_a_match_on_a_table(staff, club, hall):
+    from django.db import transaction
+
+    from scoring import service as scoring
+
+    one, two = tables(hall)
+    first = started(staff, club, hall, [["Amina"], ["Brian"]])
+    second = started(staff, club, hall, [["Chege"], ["Daudi"]], tournament="Veterans Cup")
+    chege = person("Chege")
+    add_member(club, chege, "assistant_captain")
+    send(staff, first, one)
+    send(staff, second, two)
+    with pytest.raises(reservations.Blocked) as refused, transaction.atomic():
+        scoring.assign(first["match"], None, chege, chege)
+    assert refused.value.blocker == "umpire_busy"
+    # Once their own match is off its table they can take it.
+    recall(staff, second)
+    with transaction.atomic():
+        scoring.assign(first["match"], None, chege, chege)
 
 
 def _race(requests) -> list[tuple[int, str]]:

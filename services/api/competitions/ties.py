@@ -113,6 +113,9 @@ def reset_lineups(match: Match) -> None:
     # A device's report about a rubber is kept with the rubber's sheet: it must outlive a reset too.
     if being_scored or match.rubbers.filter(scorecard__conflicts__isnull=False).exists():
         raise _conflict("tie_under_way", "A rubber of this tie is being scored, so its lineups stand.")
+    if match.dispatched_at is not None:
+        # Its players are held rubber by rubber; new lineups would leave the tie out there without them.
+        raise _conflict("tie_on_table", "This tie is on a table. Call it back before its lineups change.")
     match.rubbers.all().delete()
     match.lineups.all().delete()
 
@@ -144,9 +147,9 @@ def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome
     rubber.outcome = outcome
     rubber.games = games
     rubber.save(update_fields=["winner", "status", "outcome", "games"])
-    signals.rubber_decided.send(sender=Rubber, rubber=rubber)
-
-    if max(tie_score(match)) >= match.draw.event.tie_wins_needed:
+    decided = max(tie_score(match)) >= match.draw.event.tie_wins_needed
+    signals.rubber_decided.send(sender=Rubber, rubber=rubber, tie_decided=decided)
+    if decided:
         # Decided: the tie goes on through the draw like any match, and what is left is not played.
         drawing.record_result(match, winner)
 

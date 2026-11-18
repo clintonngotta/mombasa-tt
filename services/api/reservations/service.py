@@ -1,10 +1,13 @@
 """Sending a match to a table and holding what it needs (REQ-014).
 
-Everything here runs in the caller's transaction. `dispatch` first takes a lock on every table and
-person involved, always in the same order, so two requests that share any of them are decided one after
-the other and never deadlock. It then looks again at everything (the match, the table, each player),
-whatever a screen showed a moment ago, and only then writes the holds. The partial unique indexes on
-`Hold` are the last line: even code that forgot the locks could not hold a table or a person twice.
+Everything here runs in the caller's transaction. Whatever writes or relies on holds first takes one
+lock, the same for every table and person, so two requests are decided one after the other and can
+never deadlock, however many tables and people each touches and in whatever order it comes to them (a
+result frees some players and may hold others, in other tournaments, in the same transaction). A lock
+per table and person would allow more at once, but a club sends out a few matches a minute. `dispatch`
+then looks again at everything (the match, the table, each player), whatever a screen showed a moment
+ago, and only then writes the holds. The partial unique indexes on `Hold` are the last line: even code
+that forgot the lock could not hold a table or a person twice.
 
 Staff may set aside the check-in and rest checks with a reason. Nothing sets aside exclusivity.
 """
@@ -34,12 +37,13 @@ class Blocked(ApiException):
         self.blocker = code
 
 
-def _lock(keys: list[str]) -> None:
-    """Take a transaction lock per resource, in sorted order (the stable order REQ-014 asks for)."""
+_GATE = int.from_bytes(hashlib.sha256(b"coast-tt:reservations").digest()[:8], "big", signed=True)
+
+
+def _lock() -> None:
+    """Wait for the one lock over all tables and people; it is let go when the transaction ends."""
     with connection.cursor() as cursor:
-        for key in sorted(set(keys)):
-            number = int.from_bytes(hashlib.sha256(key.encode()).digest()[:8], "big", signed=True)
-            cursor.execute("SELECT pg_advisory_xact_lock(%s)", [number])
+        cursor.execute("SELECT pg_advisory_xact_lock(%s)", [_GATE])
 
 
 def players_of_match(match: Match) -> list:
@@ -91,10 +95,23 @@ def ensure_dispatchable(match: Match) -> None:
         )
 
 
+def is_dispatchable(match: Match) -> bool:
+    try:
+        ensure_dispatchable(match)
+    except Blocked:
+        return False
+    return True
+
+
 def rest_until(user, event: Event):
-    """When the player's rest after their last decided match is over, by this event's rest period."""
-    # A decided match, or a decided rubber of a tie that is still going on.
-    played = Q(reservation__ending=Reservation.Ending.DECIDED) | Q(rubber__status=Rubber.Status.COMPLETED)
+    """When the player's rest after the last match they played is over, by this event's rest period.
+    A walkover, a rubber that wasn't needed or a match called back is not play."""
+    at_the_table = [Match.Outcome.PLAYED, Match.Outcome.RETIRED]
+    played = Q(
+        rubber__isnull=True,
+        reservation__ending=Reservation.Ending.DECIDED,
+        reservation__match__outcome__in=at_the_table,
+    ) | Q(rubber__status=Rubber.Status.COMPLETED, rubber__outcome__in=at_the_table)
     last = (
         Hold.objects.filter(played, user=user, active=False)
         .order_by("-released_at")
@@ -111,12 +128,12 @@ def dispatch(match: Match, table: Table, actor, *, overrides=(), reason: str = "
     if overrides and not reason:
         raise ApiException("reason_required", "Say why the check is set aside.", 400)
     ensure_dispatchable(match)
-    people, rubber = people_to_hold(match)
-    _lock([f"table:{table.id}", *(f"person:{user.id}" for user in people)])
+    _lock()
 
-    # Everything below is looked at after the locks: nothing a screen showed earlier is trusted.
+    # Everything below is looked at after the lock: nothing a screen showed earlier is trusted.
     match = Match.objects.select_related("draw__event__tournament", "entry_a", "entry_b").get(pk=match.pk)
     ensure_dispatchable(match)
+    people, rubber = people_to_hold(match)
     event = match.draw.event
     if match.reservations.filter(status=Reservation.Status.ACTIVE).exists():
         raise Blocked("already_on_table", "This match is already on a table.")
@@ -170,7 +187,7 @@ def dispatch(match: Match, table: Table, actor, *, overrides=(), reason: str = "
             Hold.objects.bulk_create(
                 Hold(reservation=reservation, user=user, rubber=rubber) for user in people
             )
-    except IntegrityError as error:  # something held them without the locks: the indexes still refuse
+    except IntegrityError as error:  # something held them without the lock: the indexes still refuse
         raise Blocked("resource_busy", "The table or one of the players was taken a moment ago.") from error
     match.table = table
     match.dispatched_at = reservation.created_at
@@ -192,21 +209,36 @@ def _umpire_of(match: Match, rubber: Rubber | None):
 
 
 def _umpiring_now(people: list):
-    """One of these people is the umpire of a match that is on a table: (person, table label)."""
+    """One of these people is the umpire of a match that is on a table, or of the rubber now being
+    played in a tie that is: (person, table label)."""
     from scoring.models import Scorecard
 
-    cards = Scorecard.objects.filter(umpire__in=people, confirmed_at__isnull=True).select_related(
-        "umpire", "match", "rubber__match"
-    )
-    for card in cards:
-        on_table = (
-            Reservation.objects.filter(match=card.tie_or_match, status=Reservation.Status.ACTIVE)
-            .select_related("table")
-            .first()
+    cards = list(
+        Scorecard.objects.filter(umpire__in=people, confirmed_at__isnull=True).select_related(
+            "umpire", "match", "rubber__match"
         )
-        if on_table and (card.rubber_id is None or card.rubber.status == Rubber.Status.SCHEDULED):
-            return card.umpire, on_table.table.label
+    )
+    on_tables = {
+        held.match_id: held
+        for held in Reservation.objects.filter(
+            match__in=[card.tie_or_match for card in cards], status=Reservation.Status.ACTIVE
+        ).select_related("table", "match")
+    }
+    for card in cards:
+        held = on_tables.get(card.tie_or_match.id)
+        if held is None:
+            continue
+        if card.rubber_id is None or current_rubber(held.match) == card.rubber:
+            return card.umpire, held.table.label
     return None
+
+
+def ensure_umpire_free(match: Match, umpire) -> None:
+    """Somebody playing right now isn't made the umpire of a match that is already on a table."""
+    _lock()
+    on_table = match.reservations.filter(status=Reservation.Status.ACTIVE).exists()
+    if on_table and Hold.objects.filter(user=umpire, active=True).exists():
+        raise Blocked("umpire_busy", f"{_name(umpire)} is playing a match right now.")
 
 
 def release(reservation: Reservation, actor, ending: str, reason: str = "") -> None:
@@ -230,8 +262,12 @@ def recall(match: Match, actor, reason: str) -> None:
     reservation = match.reservations.filter(status=Reservation.Status.ACTIVE).first()
     if reservation is None:
         raise Blocked("not_on_table", "This match isn't on a table.")
-    _lock([f"table:{reservation.table_id}"])
+    _lock()
     release(reservation, actor, Reservation.Ending.RECALLED, reason)
+    _off_the_table(match)
+
+
+def _off_the_table(match: Match) -> None:
     match.table = None
     match.dispatched_at = None
     match.save(update_fields=["table", "dispatched_at"])
@@ -239,26 +275,39 @@ def recall(match: Match, actor, reason: str) -> None:
 
 def on_match_decided(sender, match: Match, **kwargs) -> None:
     for reservation in match.reservations.filter(status=Reservation.Status.ACTIVE):
+        _lock()
         release(reservation, None, Reservation.Ending.DECIDED)
 
 
-def on_rubber_decided(sender, rubber: Rubber, **kwargs) -> None:
+def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
+    """The event was completed or cancelled: whatever it still had on a table comes off, so nothing it
+    held stays blocked for the other tournaments at the venue."""
+    left = Reservation.objects.filter(match__draw__event=event, status=Reservation.Status.ACTIVE)
+    for reservation in left.select_related("match"):
+        _lock()
+        release(reservation, actor, Reservation.Ending.CLOSED)
+        _off_the_table(reservation.match)
+
+
+def on_rubber_decided(sender, rubber: Rubber, tie_decided: bool = False, **kwargs) -> None:
     """The rubber's players are free (their rest starts now); the next rubber's players are held, if
     the tie goes on and they are free. If one of them is busy elsewhere the hold is simply not there
-    yet: `missing_people` says so, and it is tried again when the tie is next looked at."""
+    yet: `missing_people` says so, and they are held the moment whatever holds them lets go."""
     reservation = rubber.match.reservations.filter(status=Reservation.Status.ACTIVE).first()
     if reservation is None:
         return
+    _lock()
     done = reservation.holds.filter(rubber=rubber, active=True)
     freed = list(done.values_list("user_id", flat=True))
     done.update(active=False, released_at=timezone.now())
-    hold_next_rubber(reservation)
+    if not tie_decided:  # what is left of a decided tie isn't played: nobody is held for it
+        hold_next_rubber(reservation)
     _hold_those_waiting_for(freed)
 
 
 def hold_next_rubber(reservation: Reservation) -> list:
     """Hold the players of the tie's current rubber if they aren't held yet. Returns those who could
-    not be held because they are in use elsewhere."""
+    not be held because they are in use elsewhere. Call with the lock taken."""
     match = reservation.match
     if match.status != Match.Status.SCHEDULED or reservation.status != Reservation.Status.ACTIVE:
         return []
@@ -266,7 +315,6 @@ def hold_next_rubber(reservation: Reservation) -> list:
     if rubber is None:
         return []
     people = [placed.user for placed in rubber.players.select_related("user")]
-    _lock([f"person:{user.id}" for user in people])
     mine = set(reservation.holds.filter(active=True, rubber=rubber).values_list("user_id", flat=True))
     missing = []
     for user in people:

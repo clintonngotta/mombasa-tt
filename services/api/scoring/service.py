@@ -137,6 +137,9 @@ def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
         playing = [user.id for users in players_of(scorecard).values() for user in users]
         if umpire.id in playing:
             raise _conflict("umpire_plays", "A player can't umpire their own match.")
+        from reservations import service as reservations  # it builds on scoring's sheets in turn
+
+        reservations.ensure_umpire_free(match, umpire)
     scorecard.umpire = umpire
     scorecard.assignment_id = uuid.uuid4()
     scorecard.assigned_by = actor

@@ -14,6 +14,7 @@ from rest_framework.renderers import JSONRenderer
 
 from core.exceptions import ApiException
 
+from . import signals
 from .models import Event, LifecycleEntry, Tournament
 from .serializers import EventSerializer, TournamentSerializer
 
@@ -96,6 +97,7 @@ def cancel(tournament: Tournament, actor, reason: str) -> None:
     _require(tournament, T.PUBLISHED, T.IN_PROGRESS, doing="cancelled")
     for event in tournament.events.exclude(status__in=[E.COMPLETED, E.CANCELLED]):
         _move(event, E.CANCELLED, "cancelled_at", cancel_reason=reason)
+        signals.event_closed.send(sender=Event, event=event, actor=actor)
     _move(tournament, T.CANCELLED, "cancelled_at", cancel_reason=reason)
     record(tournament, A.CANCELLED, actor, reason=reason)
 
@@ -112,6 +114,7 @@ def start_event(tournament: Tournament, event: Event, actor) -> None:
 def complete_event(tournament: Tournament, event: Event, actor) -> None:
     _require(event, E.IN_PROGRESS, doing="completed")
     _move(event, E.COMPLETED, "completed_at")
+    signals.event_closed.send(sender=Event, event=event, actor=actor)
     record(tournament, A.EVENT_COMPLETED, actor, event=event)
 
 
@@ -120,4 +123,5 @@ def cancel_event(tournament: Tournament, event: Event, actor, reason: str) -> No
     if tournament.status == T.DRAFT:
         raise ApiException("not_published", "Nobody has seen this event yet. Delete it instead.", 409)
     _move(event, E.CANCELLED, "cancelled_at", cancel_reason=reason)
+    signals.event_closed.send(sender=Event, event=event, actor=actor)
     record(tournament, A.EVENT_CANCELLED, actor, event=event, reason=reason)

@@ -87,6 +87,7 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     """One match of `draw` as MatchDetailSerializer shows it to the caller: its tie if it is one, and
     where its scoring stands."""
     from reservations import service as reservations  # both build on competitions
+    from reservations.models import Reservation
     from scoring import service as scoring
 
     shown = drawing.describe_match(draw, pk) if draw else None
@@ -103,8 +104,12 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     else:
         shown["tie"] = None
         shown["scoring"] = scoring.summary(match, None, request.user, staff)
-    shown["can_dispatch"] = staff and match.status == Match.Status.SCHEDULED
-    held = match.reservations.filter(status="active").select_related("table").prefetch_related("holds__user")
+    shown["can_dispatch"] = staff and reservations.is_dispatchable(match)
+    held = (
+        match.reservations.filter(status=Reservation.Status.ACTIVE)
+        .select_related("table")
+        .prefetch_related("holds__user")
+    )
     shown["on_table"] = (
         {
             "table": held[0].table.label,

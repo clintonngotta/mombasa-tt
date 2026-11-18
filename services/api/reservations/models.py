@@ -20,10 +20,11 @@ class Reservation(models.Model):
     class Ending(models.TextChoices):
         DECIDED = "decided"  # the match got its official result
         RECALLED = "recalled"  # staff took it off the table
+        CLOSED = "closed"  # its event was completed or cancelled with the match still out
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="reservations")
-    table = models.ForeignKey(Table, on_delete=models.PROTECT, related_name="reservations")
+    table = models.ForeignKey(Table, on_delete=models.CASCADE, related_name="reservations")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
@@ -57,7 +58,7 @@ class Hold(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name="holds")
-    table = models.ForeignKey(Table, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    table = models.ForeignKey(Table, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
     )
