@@ -1054,6 +1054,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/players/{id}/ratings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One player's ratings in both disciplines and the rating changes of one of them, newest first.
+         *     Ratings come from competition results, which signed-in players can already read in the draws; a
+         *     player who has none and no page in the directory is not found.
+         */
+        get: operations["players_ratings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rankings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The ranking of one discipline: over the whole platform, or among one club's members. */
+        get: operations["rankings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scorecards/{id}/": {
         parameters: {
             query?: never;
@@ -2422,6 +2460,12 @@ export interface components {
          * @enum {string}
          */
         ExperienceEnum: "new" | "casual" | "club" | "competitive";
+        /**
+         * @description * `W` - W
+         *     * `L` - L
+         * @enum {string}
+         */
+        FormEnum: "W" | "L";
         Game: {
             my_points: number;
             opponent_points: number;
@@ -3332,6 +3376,38 @@ export interface components {
             readonly experience: (components["schemas"]["ExperienceEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly bio: string | null;
         };
+        PlayerRatings: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            processing: boolean;
+            summaries: components["schemas"]["RatingSummary"][];
+            /**
+             * @description The one `history` is of.
+             *
+             *     * `singles` - Singles
+             *     * `doubles` - Doubles
+             */
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            /**
+             * @description The filter applied.
+             *
+             *     * `all` - all
+             *     * `won` - won
+             *     * `lost` - lost
+             */
+            result: components["schemas"]["PlayerRatingsResultEnum"];
+            /** @description Rating changes that match the filters. */
+            count: number;
+            history: components["schemas"]["RatingChange"][];
+        };
+        /**
+         * @description * `all` - all
+         *     * `won` - won
+         *     * `lost` - lost
+         * @enum {string}
+         */
+        PlayerRatingsResultEnum: "all" | "won" | "lost";
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         Profile: {
             display_name: string;
@@ -3388,6 +3464,103 @@ export interface components {
             /** Format: uuid */
             suggested_table_id: string | null;
             suggested_table: string;
+        };
+        Ranking: {
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            scope: components["schemas"]["ScopeEnum"];
+            /** Format: uuid */
+            organization_id: string | null;
+            organization_name: string;
+            /** @description A result has not reached the ratings yet: the table is provisional. */
+            processing: boolean;
+            /** @description Rated players in this scope. */
+            count: number;
+            rows: components["schemas"]["RankingRow"][];
+        };
+        RankingRow: {
+            /** @description Players with the same rating share a rank. */
+            rank: number;
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            clubs: string[];
+            /** @description The player has a page in the directory. */
+            listed: boolean;
+            is_me: boolean;
+            /**
+             * Format: double
+             * @description Full precision; round only to show it.
+             */
+            rating: number;
+            played: number;
+            won: number;
+            /** @description Latest rated matches, newest first. */
+            form: components["schemas"]["FormEnum"][];
+            /** Format: double */
+            last_delta: number | null;
+        };
+        RatingChange: {
+            /** Format: uuid */
+            id: string;
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            /**
+             * Format: date-time
+             * @description When the result first became official.
+             */
+            at: string;
+            won: boolean;
+            /** Format: double */
+            before: number;
+            /** Format: double */
+            after: number;
+            /** Format: double */
+            delta: number;
+            /**
+             * Format: double
+             * @description The expected score, 0 to 1.
+             */
+            expected: number;
+            /**
+             * Format: double
+             * @description The rating compared: the player's, or the pair's average.
+             */
+            own: number;
+            /**
+             * Format: double
+             * @description The opponent's rating, or the other pair's average.
+             */
+            opponent: number;
+            partner: string;
+            opponents: string[];
+            /** @description Points of each game, this player's side first. */
+            games: number[][];
+            /** Format: uuid */
+            tournament_id: string;
+            tournament_name: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            /** @description The rubber's number in a team tie. */
+            rubber: number | null;
+            /** @description The result it comes from replaced an earlier one. */
+            corrected: boolean;
+        };
+        RatingSummary: {
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            /**
+             * Format: double
+             * @description Null until a rated match is played.
+             */
+            rating: number | null;
+            played: number;
+            won: number;
+            /** @description On the platform, in this discipline. */
+            rank: number | null;
+            /** @description How many players the rank is among. */
+            ranked: number;
+            form: components["schemas"]["FormEnum"][];
         };
         /** @description One thing that keeps a match from a table, in the words a refusal would use. */
         Reason: {
@@ -3570,6 +3743,12 @@ export interface components {
          * @enum {string}
          */
         RubberStatusEnum: "scheduled" | "completed" | "not_played";
+        /**
+         * @description * `platform` - platform
+         *     * `club` - club
+         * @enum {string}
+         */
+        ScopeEnum: "platform" | "club";
         /** @description A device's unaccepted events beside what the server holds at the same places. */
         ScoreConflict: {
             /** Format: uuid */
@@ -6165,6 +6344,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Player"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    players_ratings_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Default singles. */
+                discipline?: "doubles" | "singles";
+                /** @description Default all. */
+                result?: "all" | "lost" | "won";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerRatings"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rankings_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Default singles. */
+                discipline?: "doubles" | "singles";
+                /** @description A club you belong to: rank its members only. */
+                organization?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ranking"];
                 };
             };
             /** @description Error envelope */

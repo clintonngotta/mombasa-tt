@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { NotebookPen, UserPen, Users } from "lucide-react"
+import { NotebookPen, TrendingUp, UserPen, Users } from "lucide-react"
 import { NavCard } from "@/components/layout/NavCard"
 import { Avatar } from "@/components/profile/Avatar"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -52,6 +52,7 @@ export function ProfilePage() {
       <nav aria-label="Profile" className="flex flex-col gap-3">
         <NavCard to="/profile/edit" icon={UserPen} title="Edit profile" description="Name, playing details, goals and what other players see" />
         <NavCard to="/players" icon={Users} title="Player directory" description="Find players who chose to be listed" />
+        {userId && <NavCard to={`/ratings/${userId}`} icon={TrendingUp} title="My ratings" description="Singles and doubles ratings and the matches behind them" />}
         <NavCard to="/matches" icon={NotebookPen} title="My match log" description="Private record of your matches, sets and notes" />
       </nav>
 
