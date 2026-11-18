@@ -3,14 +3,14 @@ import { useQuery } from "@tanstack/react-query"
 import { ArrowDownRight, ArrowUpRight } from "lucide-react"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
-import { DEFAULT_TIME_ZONE, formatInstant } from "@/lib/dates"
+import { formatInstant } from "@/lib/dates"
 import { gamesText } from "@/lib/results"
 import { getPlayerRatings, ratingKeys, shown, signed, type Discipline, type RatingChange, type ResultFilter } from "@/lib/ratings"
 import { cn } from "@/lib/utils"
 
 /** A player's rating changes in one discipline, newest first: each rated match with the rating before and after it (REQ-016). */
 export function RatingHistory({ userId, discipline, result = "all", limit }: { userId: string; discipline: Discipline; result?: ResultFilter; limit?: number }) {
-  const ratings = useQuery({ queryKey: ratingKeys.player(userId, discipline, result), queryFn: () => getPlayerRatings(userId, discipline, result) })
+  const ratings = useQuery({ queryKey: ratingKeys.player(userId, discipline, result), queryFn: () => getPlayerRatings(userId, discipline, result), refetchInterval: (query) => (query.state.data?.processing ? 5000 : false) })
   if (ratings.isPending) return <p className="text-muted-foreground">Loading rating history…</p>
   if (ratings.isError) return <FormAlert>{errorMessage(ratings.error, "We couldn't load the rating history.")}</FormAlert>
   const history = limit ? ratings.data.history.slice(0, limit) : ratings.data.history
@@ -36,13 +36,11 @@ function Change({ change }: { change: RatingChange }) {
   const against = change.opponents.join(" / ") || "opponent"
   return (
     <li className="flex flex-col gap-1 rounded-lg border bg-card p-3">
-      <p className="text-sm text-muted-foreground">
-        {formatInstant(change.at, DEFAULT_TIME_ZONE)} ·{" "}
-        <Link to={`/tournaments/${change.tournament_id}/events/${change.event_id}/matches/${change.match_id}`} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
-          {change.tournament_name}, {change.event_name}
-          {change.rubber && `, rubber ${change.rubber}`}
-        </Link>
-      </p>
+      <p className="text-sm text-muted-foreground">{formatInstant(change.at, change.timezone)}</p>
+      <Link to={`/tournaments/${change.tournament_id}/events/${change.event_id}/matches/${change.match_id}`} className="-my-1 flex min-h-12 items-center text-sm font-semibold break-words text-brand-blue underline-offset-4 hover:underline">
+        {change.tournament_name}, {change.event_name}
+        {change.rubber && `, rubber ${change.rubber}`}
+      </Link>
       <p className="font-semibold break-words">
         {change.won ? "Beat" : "Lost to"} {against}
         {change.partner && <span className="font-normal"> with {change.partner}</span>}

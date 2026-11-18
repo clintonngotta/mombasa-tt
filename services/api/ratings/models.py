@@ -5,7 +5,7 @@ from django.db import models
 
 from competitions.models import Match, OfficialResult, Rubber
 
-START = 1000.0
+from .elo import START
 
 
 class Discipline(models.TextChoices):

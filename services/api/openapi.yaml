@@ -7785,6 +7785,9 @@ components:
         corrected:
           type: boolean
           description: The result it comes from replaced an earlier one.
+        timezone:
+          type: string
+          description: The tournament's time zone, to show `at` in.
       required:
       - after
       - at
@@ -7803,6 +7806,7 @@ components:
       - own
       - partner
       - rubber
+      - timezone
       - tournament_id
       - tournament_name
       - won

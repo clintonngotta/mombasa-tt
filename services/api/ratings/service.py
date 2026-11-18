@@ -18,6 +18,7 @@ from django.db import connection
 from django.db.models import Q
 
 from competitions.models import Event, Match, OfficialResult, RubberPlayer
+from outbox.models import Job
 
 from . import elo
 from .models import Discipline, Rating, RatingEvent
@@ -114,6 +115,8 @@ def rebuild(discipline: str, since=None) -> int:
             user_id: standing.get(user_id, elo.START) for side in "ab" for user_id in subject.sides[side]
         }
         own = {side: elo.average([before[user_id] for user_id in subject.sides[side]]) for side in "ab"}
+        if result.winner_id not in (result.match.entry_a_id, result.match.entry_b_id):
+            continue  # the entries of the match changed under an old result: nothing safe to say
         a_won = result.winner_id == result.match.entry_a_id
         delta_a, delta_b, expected_a, expected_b = elo.deltas(
             [before[user_id] for user_id in subject.sides["a"]],
@@ -185,7 +188,13 @@ def project(result: OfficialResult) -> None:
 
 def pending(discipline: str | None = None) -> bool:
     """Some result that stands has not reached the ledgers yet: what is shown is provisional."""
-    waiting = OfficialResult.objects.filter(current=True, voided_at__isnull=True, projected_at__isnull=True)
+    # Work the worker still has to do: a job that failed for good is not "processing" any more.
+    if not Job.objects.filter(kind="result.project", status=Job.Status.PENDING).exists():
+        return False
+    # A result that stands, or one struck out for a replay, whose ledger has not been written yet.
+    waiting = OfficialResult.objects.filter(
+        Q(current=True) | Q(voided_at__isnull=False), projected_at__isnull=True
+    )
     if discipline:
         waiting = waiting.filter(_of_discipline(discipline))
     return waiting.exists()

@@ -23,6 +23,9 @@ E_HIGHER = 0.6400649998028851  # 1 / (1 + 1/1.7782794100389228)
 E_LOWER = 0.35993500019711494  # 1 / (1 + 1.7782794100389228)
 WIN_AS_HIGHER = 11.517920006307678  # 32 x (1 - 0.6400649998028851)
 WIN_AS_LOWER = 20.48207999369232  # 32 x (1 - 0.35993500019711494)
+# 984 v 1016: the difference is 32, 10^(32/400) = 10^0.08 = 1.202264434617413.
+E_32_LOWER = 0.4540780772195163  # 1 / (1 + 1.202264434617413)
+WIN_32_LOWER = 17.469501528975478  # 32 x (1 - 0.4540780772195163)
 
 
 def close(found: float, wanted: float) -> bool:
@@ -65,7 +68,7 @@ def test_unequal_ratings_follow_the_hand_worked_fixture():
     favourite, outsider, _, _ = elo.deltas([1100.0], [1000.0], a_won=False)
     assert close(outsider, WIN_AS_LOWER) and close(favourite, -WIN_AS_LOWER)
     # What one side gains the other loses: the two expected scores add up to 1.
-    assert close(E_HIGHER + E_LOWER, 1.0)
+    assert close(elo.expected(984.0, 1016.0), E_32_LOWER)
 
 
 def test_doubles_compares_the_pair_averages_and_gives_each_partner_the_sides_delta():
@@ -168,12 +171,13 @@ def test_a_corrected_earlier_result_replays_what_came_after_in_the_same_order(st
     order = [subject for subject, *_ in ledger()]
     assert order == [first.id, first.id, second.id, second.id, final.id, final.id]
     champion = names(final.entry_a)[0]
-    assert close(rating_of(champion), 1016.0 + 32 * (1 - elo.expected(1016.0, 1016.0)))
+    assert rating_of(champion) == 1032.0  # 1016 v 1016 is even again: another 16
 
     # The second semi-final is corrected: only the games change, so the final keeps its players.
+    unchanged = ledger()
     correct(staff, game, second, second.entry_a, games=[[11, 5], [11, 7], [12, 10]])
     work()
-    assert ledger() == ledger_before_games_only(order, champion)
+    assert ledger() == unchanged and service.pending("singles") is False
 
     # The first semi-final's winner is corrected after the final was played; the final is kept.
     correct(staff, game, first, first.entry_b, games=LOST)
@@ -190,7 +194,12 @@ def test_a_corrected_earlier_result_replays_what_came_after_in_the_same_order(st
     assert by_player[(first.id, person(loser_now).id)] == 984.0
     # The final was played by the entry that is now the semi-final's loser: it starts from 984 there.
     finalist = person(loser_now).id
-    assert next(before for s, u, _w, before, *_ in replayed if (s, u) == (final.id, finalist)) == 984.0
+    in_final = next(row for row in replayed if (row[0], row[1]) == (final.id, finalist))
+    assert in_final[3] == 984.0
+    # 984 v 1016 through the service, against the hand-worked numbers for a difference of 32.
+    finalist_won = in_final[2]
+    assert close(in_final[6], E_32_LOWER)
+    assert close(in_final[5], WIN_32_LOWER if finalist_won else WIN_32_LOWER - 32.0)
 
     # A clean rebuild from nothing gives the same ledger, to 1e-9.
     with transaction.atomic():
@@ -201,14 +210,6 @@ def test_a_corrected_earlier_result_replays_what_came_after_in_the_same_order(st
         assert left[:3] == right[:3]
         assert all(close(a, b) for a, b in zip(left[3:], right[3:], strict=True))
     assert Rating.objects.filter(discipline="singles").count() == 4
-
-
-def ledger_before_games_only(order, champion) -> list[tuple]:
-    """A correction that changes no winner writes the same ledger again."""
-    found = ledger()
-    assert [subject for subject, *_ in found] == order
-    assert close(rating_of(champion), 1016.0 + 16.0)
-    return found
 
 
 def test_a_result_struck_out_to_be_replayed_leaves_the_ledger(staff, club, hall):  # noqa: F811
@@ -227,6 +228,19 @@ def test_a_result_struck_out_to_be_replayed_leaves_the_ledger(staff, club, hall)
     work()
     assert not RatingEvent.objects.filter(match=final).exists()
     assert RatingEvent.objects.count() == 4
+    assert set(Rating.objects.values_list("played", flat=True)) == {1}
+    assert service.pending() is False
+
+
+def test_a_result_corrected_to_a_walkover_takes_its_ratings_away(staff, club, hall):  # noqa: F811
+    game = knockout(staff, club, hall)
+    semi = game["semis"][0]
+    enter(staff, game, semi, semi.entry_a, games=GAMES)
+    work()
+    assert Rating.objects.count() == 2
+    correct(staff, game, semi, semi.entry_a, outcome="walkover", games=[], reason="Never played")
+    work()
+    assert not RatingEvent.objects.exists() and not Rating.objects.exists()
 
 
 # --- what players see --------------------------------------------------------------------------
@@ -260,6 +274,7 @@ def test_the_ranking_names_its_discipline_and_scope_and_shows_form(staff, club, 
     assert top["is_me"] is False and top["listed"] is False
     assert viewer.get("/api/v1/rankings/?discipline=doubles").json()["rows"] == []
     assert viewer.get("/api/v1/rankings/?discipline=mixed").status_code == 400
+    assert viewer.get("/api/v1/rankings/?organization=nonsense").status_code == 400
     # A club's ranking is for its members.
     refused = viewer.get(f"/api/v1/rankings/?organization={club.id}")
     assert refused.status_code == 403
@@ -287,6 +302,7 @@ def test_a_players_history_shows_before_and_after_and_can_be_filtered(staff, clu
     )
     assert (singles["rank"], singles["ranked"]) == (2, 4)
     assert (doubles["rating"], doubles["played"], doubles["rank"]) == (None, 0, None)
+    assert shown["history"][0]["corrected"] is False and shown["history"][0]["timezone"]
     assert shown["count"] == 2 and [change["won"] for change in shown["history"]] == [False, True]
     lost = shown["history"][0]
     assert (lost["before"], lost["after"], lost["delta"]) == (1016.0, 1000.0, -16.0)

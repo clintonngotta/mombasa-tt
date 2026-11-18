@@ -3546,6 +3546,8 @@ export interface components {
             rubber: number | null;
             /** @description The result it comes from replaced an earlier one. */
             corrected: boolean;
+            /** @description The tournament's time zone, to show `at` in. */
+            timezone: string;
         };
         RatingSummary: {
             discipline: components["schemas"]["SinglesOrDoublesEnum"];

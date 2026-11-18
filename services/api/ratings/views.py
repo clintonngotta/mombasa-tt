@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -43,15 +45,12 @@ def _form(discipline: str, user_ids) -> dict:
     return found
 
 
-def _ranks(discipline: str) -> dict:
-    """Everybody's platform rank: players with the same rating share one."""
-    ranks, rank, last = {}, 0, None
-    rated = Rating.objects.filter(discipline=discipline, played__gt=0, user__is_active=True)
-    for place, (user_id, rating) in enumerate(rated.order_by("-rating").values_list("user_id", "rating"), 1):
-        if rating != last:
-            rank, last = place, rating
-        ranks[user_id] = rank
-    return ranks
+def _rank(rating: Rating | None) -> tuple[int | None, int]:
+    """A player's platform rank and how many it is among: players with the same rating share one."""
+    if rating is None:
+        return None, 0
+    rated = Rating.objects.filter(discipline=rating.discipline, played__gt=0, user__is_active=True)
+    return rated.filter(rating__gt=rating.rating).count() + 1, rated.count()
 
 
 class RankingView(APIView):
@@ -71,7 +70,11 @@ class RankingView(APIView):
         rated = Rating.objects.filter(discipline=discipline, played__gt=0, user__is_active=True)
         organization = None
         if request.query_params.get("organization"):
-            organization = get_object_or_404(Organization, pk=request.query_params["organization"])
+            try:
+                asked = uuid.UUID(request.query_params["organization"])
+            except ValueError:
+                raise ApiException("unknown_organization", "That isn't a club.", 400) from None
+            organization = get_object_or_404(Organization, pk=asked)
             members = Membership.objects.active().filter(organization=organization)
             if not members.filter(user=request.user).exists():
                 raise ApiException("permission_denied", "Only the club's members see its ranking.", 403)
@@ -81,7 +84,8 @@ class RankingView(APIView):
         user_ids = [rating.user_id for rating in top]
         form, listed = _form(discipline, user_ids), _listed(user_ids)
         clubs: dict = {}
-        active = Membership.objects.active().filter(user_id__in=user_ids).select_related("organization")
+        # Clubs are shown as the directory shows them: only for players who chose to be listed.
+        active = Membership.objects.active().filter(user_id__in=listed).select_related("organization")
         for membership in active.order_by("organization__name"):
             clubs.setdefault(membership.user_id, []).append(membership.organization.name)
         rows, rank, last = [], 0, None
@@ -142,15 +146,15 @@ class PlayerRatingsView(APIView):
         summaries = []
         for one in Discipline.values:
             rating = Rating.objects.filter(user=player, discipline=one, played__gt=0).first()
-            ranks = _ranks(one)
+            rank, ranked = _rank(rating)
             summaries.append(
                 {
                     "discipline": one,
                     "rating": rating.rating if rating else None,
                     "played": rating.played if rating else 0,
                     "won": rating.won if rating else 0,
-                    "rank": ranks.get(player.id),
-                    "ranked": len(ranks),
+                    "rank": rank,
+                    "ranked": ranked,
                     "form": [letter for letter, _ in _form(one, [player.id])[player.id]],
                 }
             )
@@ -203,7 +207,8 @@ def _history(events) -> list[dict]:
                 "event_name": event.match.draw.event.name,
                 "match_id": event.match_id,
                 "rubber": event.rubber.position if event.rubber_id else None,
-                "corrected": event.result.version > 1,
+                "corrected": event.result.source == event.result.Source.CORRECTION,
+                "timezone": tournament.timezone,
             }
         )
     return history

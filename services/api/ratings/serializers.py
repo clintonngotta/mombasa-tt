@@ -65,6 +65,7 @@ class RatingChangeSerializer(serializers.Serializer):
     match_id = serializers.UUIDField()
     rubber = serializers.IntegerField(allow_null=True, help_text="The rubber's number in a team tie.")
     corrected = serializers.BooleanField(help_text="The result it comes from replaced an earlier one.")
+    timezone = serializers.CharField(help_text="The tournament's time zone, to show `at` in.")
 
 
 class PlayerRatingsSerializer(serializers.Serializer):

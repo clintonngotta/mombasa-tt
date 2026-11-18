@@ -1,5 +1,5 @@
 import { useParams, useSearchParams } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { Segmented } from "@/components/forms/Segmented"
@@ -25,6 +25,7 @@ export function PlayerRatingsPage() {
   const ratings = useQuery({
     queryKey: ratingKeys.player(id, discipline, result),
     queryFn: () => getPlayerRatings(id, discipline, result),
+    placeholderData: keepPreviousData, // the name and summaries stay while a filter loads
     refetchInterval: (query) => (query.state.data?.processing ? 5000 : false),
   })
   const set = (key: string, value: string) => {
@@ -79,7 +80,9 @@ export function PlayerRatingsPage() {
 function Summary({ summary, selected }: { summary: RatingSummary; selected: boolean }) {
   return (
     <div className={cn("flex flex-col gap-1 rounded-xl border bg-card p-4", selected && "border-brand-blue")}>
-      <p className="text-sm font-semibold text-muted-foreground">{DISCIPLINE_LABEL[summary.discipline]} · whole platform</p>
+      <p className="text-sm font-semibold text-muted-foreground">
+        {DISCIPLINE_LABEL[summary.discipline]} · whole platform{selected && " · history shown below"}
+      </p>
       {summary.rating === null ? (
         <p className="text-muted-foreground">No rating yet. It starts at 1000 with the first played tournament match.</p>
       ) : (

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronDown } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, ChevronDown } from "lucide-react"
 import { FormAlert } from "@/components/forms/Field"
 import { Segmented } from "@/components/forms/Segmented"
 import { SelectField } from "@/components/forms/SelectField"
@@ -112,7 +112,12 @@ function Row({ row, discipline }: { row: RankingRow; discipline: Discipline }) {
         </span>
         <span className="flex shrink-0 flex-col items-end">
           <span className="text-xl font-bold tabular-nums">{shown(row.rating)}</span>
-          {row.last_delta !== null && <span className={cn("text-sm font-semibold tabular-nums", row.last_delta < 0 ? "text-destructive" : "text-success")}>{signed(row.last_delta)} last</span>}
+          {row.last_delta !== null && (
+            <span className={cn("flex items-center gap-0.5 text-sm font-semibold tabular-nums", row.last_delta < 0 ? "text-destructive" : "text-success")}>
+              {row.last_delta < 0 ? <ArrowDownRight aria-hidden className="size-4" /> : <ArrowUpRight aria-hidden className="size-4" />}
+              {signed(row.last_delta)} last
+            </span>
+          )}
         </span>
         <ChevronDown aria-hidden className={cn("size-5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>

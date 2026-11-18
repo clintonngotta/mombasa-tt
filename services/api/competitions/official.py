@@ -74,7 +74,8 @@ def _project(result: OfficialResult) -> None:
 
 @outbox.handler("result.project")
 def project(payload: dict) -> None:
-    result = OfficialResult.objects.select_for_update().filter(pk=payload["result_id"]).first()
+    # NO KEY: rows written by a projection may point at this result while another worker holds it.
+    result = OfficialResult.objects.select_for_update(no_key=True).filter(pk=payload["result_id"]).first()
     if result is None:  # its draw was deleted since
         return
     for projection in PROJECTIONS:
