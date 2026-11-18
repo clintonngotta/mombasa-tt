@@ -115,6 +115,8 @@ def test_one_device_scores_a_sheet_and_another_has_to_take_it_over(staff, final,
     tablet.take(take_over=True)
     assert tablet.assignment_id != phone.assignment_id and tablet.sequence == 2
     assert phone.send(point("a"), expect=409)["code"] == "stale_assignment"
+    phone.sequence = 2
+    assert phone.confirm(expect=409)["code"] == "stale_assignment"
     assert tablet.send(point("b"))["state"]["points"] == [1, 1]
     # The phone, reloaded, holds the new assignment id but is still not the device: it stays cut off.
     assert phone.open()["device"]["here"] is False
@@ -152,9 +154,30 @@ def test_what_a_cut_off_device_held_is_reported_and_stays_for_the_organizers(sta
     # The phone can no longer reach the sheet, but it can still say what it held. Twice is once.
     assert as_umpire.get(phone.path, **phone.headers).status_code == 404
     report_id = str(uuid.uuid4())
+    phone.report(unsent[:1], report_id=report_id)
+    phone.report(unsent[:1], report_id=report_id)
+    assert [len(kept.events) for kept in ScoreConflict.objects.all()] == [1]
+    # The same report again with more in it (the first reply was lost and the device has since been
+    # cut off once more): what is new is added, nothing is dropped behind the id already known.
     phone.report(unsent, report_id=report_id)
-    phone.report(unsent, report_id=report_id)
-    assert ScoreConflict.objects.count() == 1
+    assert [len(kept.events) for kept in ScoreConflict.objects.all()] == [2]
+    # Nobody else can add to it, and what is reported has to be a score event.
+    assert (
+        as_other.post(
+            phone.path + "conflicts/",
+            {"id": report_id, "events": [laptop.envelope(point("b"))]},
+            format="json",
+        ).json()["code"]
+        == "conflict_exists"
+    )
+    laptop.sequence -= 1
+    junk = {"id": str(uuid.uuid4()), "sequence": 1, "event": {"type": "point", "side": "<b>" * 20}}
+    assert (
+        as_umpire.post(
+            phone.path + "conflicts/", {"id": str(uuid.uuid4()), "events": [junk]}, format="json"
+        ).status_code
+        == 400
+    )
     # Nothing about the score changed.
     assert laptop.open()["state"]["points"] == [1, 1]
     # Somebody who never held the sheet can't report, and learns nothing about it.
@@ -220,3 +243,43 @@ def test_a_finished_sheet_waits_visibly_for_its_confirmation(staff, final, umpir
     )
     phone.confirm()
     assert overview(staff, final)["sheets"] == []
+
+
+def test_the_first_device_to_score_an_unheld_sheet_holds_it(staff, final, umpire):  # noqa: F811
+    assign(staff, final, umpire)
+    as_umpire = logged_in(umpire)
+    card = sheet_id(as_umpire, final)
+    phone, tablet = Device(as_umpire, card, "Phone"), Device(as_umpire, card, "Tablet")
+    phone.open()
+    tablet.open()
+    # Neither asked for the sheet; the phone's first events take it.
+    phone.send(START)
+    assert tablet.send(point("a"), expect=409)["code"] == "other_device"
+    assert phone.open()["device"]["here"] is True
+    assert ScoreEvent.objects.count() == 1
+
+
+def test_a_report_about_a_replaced_draw_is_still_shown(staff, club, umpire):  # noqa: F811
+    from competitions.models import Match
+
+    from .test_draws import draw_url, fill
+    from .test_tournaments import add_event, do, make_tournament
+    from .test_venues import make_venue
+
+    tournament = make_tournament(staff, club, make_venue(staff, club))
+    tournament = add_event(staff, tournament, name="Singles", format="knockout")
+    tournament = do(staff, tournament, "publish")
+    event = tournament["events"][0]
+    fill(staff, tournament, event, 2)
+    staff.post(draw_url(tournament, event, "preview"), {}, format="json")
+    staff.post(draw_url(tournament, event, "publish"), {}, format="json")
+    game = {"cup": tournament, "event": event, "match": Match.objects.get(draw__event_id=event["id"])}
+    assign(staff, game, umpire)
+    as_umpire = logged_in(umpire)
+    phone = Device(as_umpire, sheet_id(as_umpire, game), "Phone")
+    phone.open()
+    phone.report([phone.envelope(point("a"))])
+    staff.post(draw_url(tournament, event, "preview"), {}, format="json")
+    assert staff.post(draw_url(tournament, event, "publish"), {}, format="json").status_code == 200
+    shown = overview(staff, game)
+    assert len(shown["conflicts"]) == 1 and shown["sheets"] == []

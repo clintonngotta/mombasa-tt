@@ -3991,6 +3991,7 @@ components:
           format: uuid
         sequence:
           type: integer
+          maximum: 100000
           minimum: 1
           description: Its place in the stream on the device.
         event: {}

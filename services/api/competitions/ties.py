@@ -109,7 +109,9 @@ def reset_lineups(match: Match) -> None:
     if match.rubbers.exclude(status=R.SCHEDULED).exists() or match.status != Match.Status.SCHEDULED:
         raise _conflict("tie_under_way", "A rubber of this tie is already decided, so its lineups stand.")
     # A rubber being scored would lose its sheet with the rubber (scoring.Scorecard, by its related name).
-    if match.rubbers.filter(scorecard__revision__gt=0).exists():
+    being_scored = match.rubbers.filter(scorecard__revision__gt=0).exists()
+    # A device's report about a rubber is kept with the rubber's sheet: it must outlive a reset too.
+    if being_scored or match.rubbers.filter(scorecard__conflicts__isnull=False).exists():
         raise _conflict("tie_under_way", "A rubber of this tie is being scored, so its lineups stand.")
     match.rubbers.all().delete()
     match.lineups.all().delete()

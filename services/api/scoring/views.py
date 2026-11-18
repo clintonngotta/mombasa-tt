@@ -193,7 +193,8 @@ class ScorecardViewSet(viewsets.GenericViewSet):
             service.take_device(
                 scorecard, request.user, asked["device_id"], asked["label"], asked["take_over"]
             )
-        return self._reply(scorecard)
+        fresh = scorecards().prefetch_related("events").get(pk=scorecard.pk)
+        return Response(ScorecardSerializer(fresh, context={"device_id": asked["device_id"]}).data)
 
     @extend_schema(request=ConflictReportSerializer, responses={201: ConflictReceiptSerializer})
     def conflicts(self, request, pk):

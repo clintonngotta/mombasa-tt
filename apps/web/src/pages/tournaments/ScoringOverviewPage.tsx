@@ -61,7 +61,8 @@ export function ScoringOverviewPage() {
         <h1 className="text-[32px] leading-9 font-bold">Scoring</h1>
         <p className="text-muted-foreground">Matches on the tables, results waiting for their umpire, and anything a device scored that didn't reach the official score.</p>
       </header>
-      {overview.isPending && <p className="text-muted-foreground">Loading…</p>}
+      {(overview.isPending || (tournament.isPending && !overview.isError)) && <p className="text-muted-foreground">Loading…</p>}
+      {tournament.isError && !refused && <FormAlert>{errorMessage(tournament.error, "We couldn't load this tournament.")}</FormAlert>}
       {refused && <AccessLost />}
       {overview.isError && !refused && <FormAlert>{errorMessage(overview.error, "We couldn't load the scoring page.")}</FormAlert>}
       {overview.data && t && (
@@ -207,8 +208,8 @@ function Conflict({ tournamentId, conflict, timeZone }: { tournamentId: string; 
             </tr>
           </thead>
           <tbody>
-            {conflict.events.map((sent) => (
-              <tr key={sent.sequence} className="border-t">
+            {conflict.events.map((sent, index) => (
+              <tr key={index} className="border-t">
                 <td className="px-3 py-2 tabular-nums">{sent.sequence}</td>
                 <td className="px-3 py-2">{eventWords(sent.event, a, b)}</td>
                 <td className="px-3 py-2">{official.has(sent.sequence) ? eventWords(official.get(sent.sequence), a, b) : "Nothing at this place"}</td>

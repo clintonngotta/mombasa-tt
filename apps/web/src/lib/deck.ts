@@ -119,6 +119,7 @@ const transport: Transport<Scorecard> = {
 export function problemText(problem: string): string {
   if (!problem) return ""
   if (problem === "read_only") return "This match is open for scoring in another tab or window. Score it there, or close that one."
+  if (problem === "not_reported") return "These actions haven't reached the organizers yet. They can be removed once the report has been sent."
   if (problem === "elsewhere") return "This match is being scored on another device. Take it over here to score from this one."
   if (problem === "offline_take_over") return "Taking the match over needs a connection to Coast TT."
   if (problem === "storage") return "This device couldn't save that action, so it was NOT scored. Free some storage or leave private browsing, then try again."

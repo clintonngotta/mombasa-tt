@@ -6,6 +6,22 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def record_who_holds_each_sheet(apps, schema_editor):
+    """Sheets assigned before the history existed get its first line, so their umpires can still report
+    what a device holds."""
+    Scorecard = apps.get_model("scoring", "Scorecard")
+    ScoreAssignment = apps.get_model("scoring", "ScoreAssignment")
+    for card in Scorecard.objects.filter(umpire__isnull=False, assignments__isnull=True):
+        ScoreAssignment.objects.create(
+            scorecard=card,
+            kind="assigned",
+            umpire_id=card.umpire_id,
+            actor_id=card.assigned_by_id,
+            assignment_id=card.assignment_id,
+            revision=card.revision,
+        )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -67,4 +83,5 @@ class Migration(migrations.Migration):
                 'ordering': ['created_at', 'id'],
             },
         ),
+        migrations.RunPython(record_who_holds_each_sheet, migrations.RunPython.noop),
     ]

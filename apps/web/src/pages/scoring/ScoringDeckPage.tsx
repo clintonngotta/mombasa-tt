@@ -96,10 +96,14 @@ function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
             <p>
               {deck.conflicts} {deck.conflicts === 1 ? "action" : "actions"} scored on this device {deck.conflicts === 1 ? "was" : "were"} not accepted by the server (the match was reassigned, scored from somewhere else first, or the server refused
               the action). {deck.conflicts === 1 ? "It is" : "They are"} still kept here and {deck.conflicts === 1 ? "is" : "are"} not part of the score.{" "}
-              {deck.conflictsReported ? "The organizers have been sent a report and can see it on their scoring page." : "A report goes to the organizers as soon as there is a connection."} Tell them if
-              the score shown is wrong.
+              {deck.conflictsReported
+                ? "The organizers have been sent a report and can see it on their scoring page."
+                : deck.conflictsUnreportable
+                  ? "A report couldn't be sent from this account, so show this screen to the organizers before removing anything."
+                  : "A report goes to the organizers as soon as there is a connection."}{" "}
+              Tell them if the score shown is wrong.
             </p>
-            <button type="button" className={cn(deckButton, "self-start border-brand-gold text-brand-gold")} disabled={!deck.conflictsReported} onClick={() => void deck.dismissConflicts()}>
+            <button type="button" className={cn(deckButton, "self-start border-brand-gold text-brand-gold")} disabled={!deck.conflictsReported && !deck.conflictsUnreportable} onClick={() => void deck.dismissConflicts()}>
               Remove from this device
             </button>
           </div>

@@ -243,9 +243,24 @@ class TakeDeviceSerializer(serializers.Serializer):
 
 class ConflictEventSerializer(serializers.Serializer):
     id = serializers.UUIDField()
-    sequence = serializers.IntegerField(min_value=1, help_text="Its place in the stream on the device.")
+    sequence = serializers.IntegerField(
+        min_value=1, max_value=100_000, help_text="Its place in the stream on the device."
+    )
     event = serializers.JSONField()
     device_time = serializers.DateTimeField(required=False, allow_null=True)
+
+    def validate_event(self, event):
+        """A score event as the engine knows it: a small object with a known type and short values.
+        This is shown to staff, so nothing else is kept."""
+        fields = {"type", "side", "player", "server", "receiver", "a_end"}
+        if (
+            not isinstance(event, dict)
+            or event.get("type") not in service.EVENT_TYPES
+            or not set(event) <= fields
+            or any(not isinstance(value, str) or len(value) > 20 for value in event.values())
+        ):
+            raise serializers.ValidationError("Not a score event.")
+        return event
 
 
 class ConflictReportSerializer(serializers.Serializer):

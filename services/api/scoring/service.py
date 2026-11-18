@@ -25,6 +25,9 @@ from .models import ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, Scori
 UMPIRE_PERMISSIONS = {Permission.SCORING_ASSIGNED, Permission.COMPETITIONS_MANAGE, Permission.RESULTS_MANAGE}
 MAX_BATCH = 200
 MAX_CONFLICT_EVENTS = 500
+# One person can't fill the organizers' page: this many reported events per sheet, then no more.
+MAX_REPORTED_PER_SHEET = 2000
+EVENT_TYPES = {"start", "point", "choose_server", "timeout", "undo"}
 
 
 def _conflict(code: str, message: str) -> ApiException:
@@ -244,8 +247,10 @@ def replayed(scorecard: Scorecard) -> Scoring:
 def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], device_id=None) -> dict:
     """Accept score events in order. An event already accepted (same id and sequence) is skipped, so a
     retry is harmless. The first event that is out of sequence or that the rules refuse stops the
-    batch: what came before it is kept, and the reply says what was refused and why. Call with the
-    sheet locked."""
+    batch: what came before it is kept, and the reply says what was refused and why. A sheet no device
+    holds yet is taken by the device that sends its first events. Call with the sheet locked."""
+    if scorecard.device_id is None and device_id is not None and not scorecard.confirmed_at:
+        take_device(scorecard, actor, device_id, "", take_over=False)
     _ensure_in_play(scorecard, assignment_id, device_id)
     scoring = replayed(scorecard)
     known = dict(scorecard.events.values_list("id", "sequence"))
@@ -336,14 +341,20 @@ def sheet_context(scorecard: Scorecard) -> dict:
 def overview(tournament: Tournament) -> dict:
     """The tournament's open sheets and conflict reports, as ScoringOverviewSerializer shows them."""
     published = DrawVersion.Status.PUBLISHED
+    # Sheets of every draw: a report about a match of a draw since replaced must still be seen.
     cards = (
         Scorecard.objects.filter(
-            Q(match__draw__event__tournament=tournament, match__draw__status=published)
-            | Q(rubber__match__draw__event__tournament=tournament, rubber__match__draw__status=published)
+            Q(match__draw__event__tournament=tournament)
+            | Q(rubber__match__draw__event__tournament=tournament)
         )
+        # Only what the page shows: sheets under way or waiting, and sheets somebody reported about.
+        .filter(Q(confirmed_at__isnull=True, revision__gt=0) | Q(conflicts__isnull=False))
+        .distinct()
         .select_related(
             "umpire",
             "match__draw__event",
+            "rubber__match__draw",
+            "match__draw",
             "match__entry_a",
             "match__entry_b",
             "rubber__match__draw__event",
@@ -359,7 +370,7 @@ def overview(tournament: Tournament) -> dict:
     sheets, conflicts = [], []
     for card in cards:
         context = None
-        if not card.confirmed_at and card.revision > 0:
+        if not card.confirmed_at and card.revision > 0 and card.tie_or_match.draw.status == published:
             context = sheet_context(card)
             events = list(card.events.all())
             sheets.append(
@@ -429,10 +440,32 @@ def may_report(scorecard: Scorecard, user) -> bool:
 def report_conflict(scorecard: Scorecard, user, report: dict) -> ScoreConflict:
     """Keep what a device wrote and the server didn't take. Nothing about the score changes. Sending
     the same report again (same id) returns the one already kept."""
-    known = ScoreConflict.objects.filter(pk=report["id"]).first()
+    events = [
+        {
+            "id": str(sent["id"]),
+            "sequence": sent["sequence"],
+            "event": sent["event"],
+            "device_time": sent["device_time"].isoformat() if sent.get("device_time") else None,
+        }
+        for sent in report["events"]
+    ]
+    known = ScoreConflict.objects.select_for_update().filter(pk=report["id"]).first()
+    if known is not None and (known.scorecard_id != scorecard.id or known.reported_by_id != user.id):
+        raise _conflict("conflict_exists", "That report belongs to somebody else.")
+    already = {sent["id"] for sent in known.events} if known else set()
+    fresh = [sent for sent in events if sent["id"] not in already]
+    held = sum(len(kept.events) for kept in scorecard.conflicts.filter(reported_by=user))
+    if held + len(fresh) > MAX_REPORTED_PER_SHEET:
+        raise _conflict(
+            "too_many_reports", "Too much has been reported for this match. Talk to the organizers."
+        )
     if known is not None:
-        if known.scorecard_id != scorecard.id:
-            raise _conflict("conflict_exists", "That report belongs to another match.")
+        # The same report again, perhaps with more in it than the first time got through: what is new
+        # is added, so nothing a device holds can go missing behind an id the server already knows.
+        if fresh:
+            known.events = [*known.events, *fresh]
+            known.resolved_at, known.resolved_by, known.resolution = None, None, ""
+            known.save(update_fields=["events", "resolved_at", "resolved_by", "resolution"])
         return known
     return ScoreConflict.objects.create(
         id=report["id"],
@@ -441,15 +474,7 @@ def report_conflict(scorecard: Scorecard, user, report: dict) -> ScoreConflict:
         assignment_id=report.get("assignment_id"),
         device_id=report.get("device_id"),
         device_label=report.get("device_label", "")[:80],
-        events=[
-            {
-                "id": str(sent["id"]),
-                "sequence": sent["sequence"],
-                "event": sent["event"],
-                "device_time": sent["device_time"].isoformat() if sent.get("device_time") else None,
-            }
-            for sent in report["events"]
-        ],
+        events=events,
         revision=scorecard.revision,
     )
 

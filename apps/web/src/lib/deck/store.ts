@@ -69,6 +69,8 @@ export interface DeckView<C extends Sheet> {
   conflicts: number
   /** The organizers have been sent every one of them. */
   conflictsReported: boolean
+  /** The server will not take a report of them from this account, now or later. */
+  conflictsUnreportable: boolean
   /** Another device is scoring this sheet: its label ("" if it gave none). Null when this one may. */
   elsewhere: string | null
   /** Why the last action wasn't taken, a refusal code of the rules or a sentence. */
@@ -82,6 +84,8 @@ export interface DeckView<C extends Sheet> {
 }
 
 export const MAX_BATCH = 200
+/** Conflict events sent to the organizers in one request. */
+const REPORT_PART = 400
 export const HEARTBEAT_MS = 3_000
 
 type Session<C extends Sheet> = {
@@ -100,6 +104,7 @@ const empty = <C extends Sheet>(): DeckView<C> => ({
   readOnly: false,
   conflicts: 0,
   conflictsReported: false,
+  conflictsUnreportable: false,
   elsewhere: null,
   problem: "",
   storageFailed: false,
@@ -340,20 +345,30 @@ export class DeckStore<C extends Sheet> {
       const kept = ((await this.journal?.conflicts<ScoreEvent>(scorecardId, userId)) ?? []).filter((event) => !event.reported)
       if (kept.length === 0) return
       kept.sort((a, b) => (a.wasSequence ?? 0) - (b.wasSequence ?? 0))
-      await transport.report(scorecardId, {
-        id: kept[0].id, // the first event's id names the report: the same events again are the same report
-        assignment_id: kept[0].assignmentId || null,
-        events: kept.map((event) => ({ id: event.id, sequence: event.wasSequence ?? 1, event: event.event, device_time: event.device_time || null })),
-      })
-      await this.journal?.markReported(scorecardId, userId, kept.map((event) => event.id))
+      // The first event's id names the report. Sending under an id the server knows adds what it
+      // doesn't have yet, so a long list goes in parts and a retry can never hide a later event.
+      for (let from = 0; from < kept.length; from += REPORT_PART) {
+        const part = kept.slice(from, from + REPORT_PART)
+        await transport.report(scorecardId, {
+          id: kept[0].id,
+          assignment_id: part[0].assignmentId || null,
+          events: part.map((event) => ({ id: event.id, sequence: event.wasSequence ?? 1, event: event.event, device_time: event.device_time || null })),
+        })
+        await this.journal?.markReported(scorecardId, userId, part.map((event) => event.id))
+      }
       this.show(await this.conflictState())
-    } catch {
-      // Offline, or not allowed: they stay on the device, marked as not yet sent, and it is tried again.
+    } catch (error) {
+      // Offline: they stay on the device, marked as not yet sent, and it is tried again. Refused for
+      // good (the sheet is gone, or this account never held it): the umpire is told to pass them on
+      // in person and may then remove them.
+      if (!(error instanceof JournalError) && transport.classify(error).kind !== "offline") this.show({ conflictsUnreportable: true })
     }
   }
 
   /** The umpire has seen the conflicts and lets them go. */
   dismissConflicts = async () => {
+    // Not before the organizers have them, unless the server will never take them.
+    if (!this.view.conflictsReported && !this.view.conflictsUnreportable) return this.show({ problem: "not_reported" })
     try {
       await this.journal?.clearConflicts(this.options.scorecardId, this.options.userId)
       this.show({ conflicts: 0, conflictsReported: false })
