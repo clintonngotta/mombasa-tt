@@ -277,7 +277,11 @@ def test_staff_preview_and_publish_a_draw_and_everyone_sees_the_published_one(st
     singles = cup["events"][0]
     entries = fill(staff, cup, singles, 6)
     viewer = logged_in(player("Viewer"))
-    assert viewer.get(draw_url(cup, singles)).json() == {"published": None, "preview": None}
+    assert viewer.get(draw_url(cup, singles)).json() == {
+        "published": None,
+        "preview": None,
+        "recommended_seeds": [],
+    }
 
     seeds = [entries[4]["id"], entries[1]["id"]]
     made = staff.post(
@@ -314,7 +318,11 @@ def test_staff_preview_and_publish_a_draw_and_everyone_sees_the_published_one(st
     assert matches[6]["a"]["awaiting"] == "Winner of semi-final 1"
 
     # A preview is the organizers' own: nobody else sees it, and drawing again replaces it.
-    assert viewer.get(draw_url(cup, singles)).json() == {"published": None, "preview": None}
+    assert viewer.get(draw_url(cup, singles)).json() == {
+        "published": None,
+        "preview": None,
+        "recommended_seeds": [],
+    }
     again = staff.post(
         draw_url(cup, singles, "preview"), {"seeded_entry_ids": seeds, "rng_seed": 11}, format="json"
     ).json()

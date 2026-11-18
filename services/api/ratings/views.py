@@ -94,7 +94,11 @@ class RankingView(APIView):
                 raise ApiException("unknown_organization", "That isn't a club.", 400) from None
             organization = get_object_or_404(Organization, pk=asked)
             members = Membership.objects.active().filter(organization=organization)
-            if not (is_platform_super_admin(request.user) or official_for(request.user, organization) or members.filter(user=request.user).exists()):
+            if not (
+                is_platform_super_admin(request.user)
+                or official_for(request.user, organization)
+                or members.filter(user=request.user).exists()
+            ):
                 raise ApiException("permission_denied", "Only the club's members see its ranking.", 403)
             rated = rated.filter(user_id__in=members.values("user_id"))
         count = rated.count()

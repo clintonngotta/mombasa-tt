@@ -79,12 +79,17 @@ def can_approve(tournament: Tournament, actor) -> bool:
         return True
     if tournament.scope == Tournament.Scope.INTERNATIONAL:
         return False
-    return official_for(actor, tournament.organization, country_only=tournament.scope == Tournament.Scope.NATIONAL)
+    return official_for(
+        actor, tournament.organization, country_only=tournament.scope == Tournament.Scope.NATIONAL
+    )
 
 
 def request_approval(tournament: Tournament, actor) -> None:
     _ready_to_publish(tournament)
-    if tournament.scope == Tournament.Scope.LOCAL or tournament.approval_status == Tournament.Approval.PENDING:
+    if (
+        tournament.scope == Tournament.Scope.LOCAL
+        or tournament.approval_status == Tournament.Approval.PENDING
+    ):
         raise ApiException("invalid_transition", "This tournament cannot request approval now.", 409)
     tournament.approval_status = Tournament.Approval.PENDING
     tournament.save(update_fields=["approval_status"])
@@ -114,7 +119,9 @@ def publish(tournament: Tournament, actor) -> None:
         _move(tournament, T.PUBLISHED, "published_at")
     else:
         if not can_approve(tournament, actor):
-            raise ApiException("permission_denied", "This tournament needs approval from the responsible official.", 403)
+            raise ApiException(
+                "permission_denied", "This tournament needs approval from the responsible official.", 403
+            )
         if tournament.approval_status != Tournament.Approval.PENDING and not is_platform_super_admin(actor):
             raise ApiException("approval_not_requested", "Request approval before publishing.", 409)
         _move(tournament, T.PUBLISHED, "published_at", approval_status=Tournament.Approval.APPROVED)

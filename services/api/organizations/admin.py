@@ -11,6 +11,7 @@ class OfficialAppointmentAdmin(PlatformOnlyAdmin):
     list_filter = ("country", "region")
     search_fields = ("user__display_name", "user__email")
 
+
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["name", "town", "kind", "created_at"]

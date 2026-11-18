@@ -653,7 +653,9 @@ class DrawViewSet(viewsets.GenericViewSet):
                 {
                     "published": drawing.describe(published) if published else None,
                     "preview": drawing.describe(preview) if preview else None,
-                    "recommended_seeds": drawing.rating_seeds(event) if staff and event.status == E.SCHEDULED else [],
+                    "recommended_seeds": drawing.rating_seeds(event)
+                    if staff and event.status == E.SCHEDULED
+                    else [],
                 },
                 context={"request": self.request},
             ).data
@@ -762,7 +764,11 @@ class DrawViewSet(viewsets.GenericViewSet):
             tournament = staff_tournament(request.user, tournament_pk)
             event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
             drawing.ensure_drawable(tournament, event)
-            seeds = [str(pk) for pk in asked["seeded_entry_ids"]] if "seeded_entry_ids" in asked else drawing.rating_seeds(event)
+            seeds = (
+                [str(pk) for pk in asked["seeded_entry_ids"]]
+                if "seeded_entry_ids" in asked
+                else drawing.rating_seeds(event)
+            )
             drawing.make_preview(event, request.user, seeds, asked.get("rng_seed"))
         return self._shown(event, staff=True)
 

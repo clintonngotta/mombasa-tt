@@ -43,7 +43,9 @@ class EntryFeeSerializer(serializers.Serializer):
 
 
 class RegistrationFeeSerializer(serializers.Serializer):
-    amount_minor = serializers.IntegerField(source="registration_fee_minor", min_value=0, max_value=MAX_AMOUNT_MINOR)
+    amount_minor = serializers.IntegerField(
+        source="registration_fee_minor", min_value=0, max_value=MAX_AMOUNT_MINOR
+    )
     currency = serializers.RegexField(r"^[A-Z]{3}$", source="registration_fee_currency", default="KES")
 
 
@@ -340,7 +342,9 @@ class EntrySerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         for place in entry.players.all():
             if place.user_id == user.id:
-                return self.fields["checked_in_at"].to_representation(place.checked_in_at or entry.checked_in_at)
+                return self.fields["checked_in_at"].to_representation(
+                    place.checked_in_at or entry.checked_in_at
+                )
         return None
 
 

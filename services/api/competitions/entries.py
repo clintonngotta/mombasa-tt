@@ -6,9 +6,10 @@ accepted entries can never pass the event's capacity. The database also refuses 
 entries of one event (`one_live_entry_per_event`).
 """
 
+from zoneinfo import ZoneInfo
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from zoneinfo import ZoneInfo
 
 from core.exceptions import ApiException
 

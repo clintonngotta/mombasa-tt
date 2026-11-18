@@ -99,14 +99,14 @@ class OfficialAppointment(models.Model):
             )
         ]
 
+    def __str__(self):
+        return f"{self.user.display_name} · {self.region or self.country}"
+
     def clean(self):
         from django.core.exceptions import ValidationError
 
         if self.region_id and self.region.country_id != self.country_id:
             raise ValidationError({"region": "Choose a region of the appointed country."})
-
-    def __str__(self):
-        return f"{self.user.display_name} · {self.region or self.country}"
 
 
 def seed_roles(organization: Organization) -> dict[str, Role]:

@@ -60,7 +60,9 @@ class Tournament(models.Model):
     ends_on = models.DateField()
     timezone = models.CharField(max_length=64)
     scope = models.CharField(max_length=13, choices=Scope.choices, default=Scope.LOCAL)
-    approval_status = models.CharField(max_length=13, choices=Approval.choices, default=Approval.NOT_REQUESTED)
+    approval_status = models.CharField(
+        max_length=13, choices=Approval.choices, default=Approval.NOT_REQUESTED
+    )
     registration_fee_minor = models.PositiveIntegerField(default=0)
     registration_fee_currency = models.CharField(max_length=3, default="KES")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)

@@ -34,7 +34,9 @@ class Command(BaseCommand):
             for city in county["cities"]:
                 city_key = sha256(f"{key}/{city}".encode()).hexdigest()
                 if not City.objects.filter(seed_key=city_key).exists():
-                    record, _ = City.objects.get_or_create(region=region, name__iexact=city, defaults={"name": city})
+                    record, _ = City.objects.get_or_create(
+                        region=region, name__iexact=city, defaults={"name": city}
+                    )
                     record.seed_key = city_key
                     record.save(update_fields=["seed_key"])
         self.stdout.write(f"Seeded {len(countries)} countries and {len(counties)} Kenyan counties.")

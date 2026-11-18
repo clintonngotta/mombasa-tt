@@ -281,6 +281,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/geography/countries/:
+    get:
+      operationId: geography_countries_list
+      tags:
+      - geography
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountryOption'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/geography/countries/{code}/:
+    get:
+      operationId: geography_countries_retrieve
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        required: true
+      tags:
+      - geography
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryCatalogue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/avatar/:
     put:
       operationId: me_avatar_update
@@ -509,6 +557,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMyJoinRequestList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/managed-organizations/:
+    get:
+      operationId: me_managed_organizations_list
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagementOrganization'
           description: ''
         4XX:
           description: Error envelope
@@ -2764,6 +2834,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/approval/reject/:
+    post:
+      operationId: tournaments_approval_reject_create
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{id}/approval/request/:
+    post:
+      operationId: tournaments_approval_request_create
+      description: |-
+        Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+        changes need competitions.manage in the host organization.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{id}/cancel/:
     post:
       operationId: tournaments_cancel_create
@@ -3465,6 +3601,49 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/OptionalReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/self-check-in/:
+    post:
+      operationId: tournaments_events_entries_self_check_in_create
+      description: |-
+        Entries of one event (REQ-008). Open events admit players automatically within capacity.
+        Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+        players; staff and the entry's own players can also see its other statuses.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
       security:
       - sessionAuth: []
       responses:
@@ -4461,6 +4640,8 @@ components:
     ActionEnum:
       enum:
       - published
+      - approval_requested
+      - approval_rejected
       - updated
       - started
       - completed
@@ -4472,6 +4653,8 @@ components:
       type: string
       description: |-
         * `published` - Published
+        * `approval_requested` - Approval Requested
+        * `approval_rejected` - Approval Rejected
         * `updated` - Updated
         * `started` - Started
         * `completed` - Completed
@@ -4488,6 +4671,18 @@ components:
       description: |-
         * `open` - Open
         * `closed` - Closed
+    ApprovalStatusEnum:
+      enum:
+      - not_requested
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `not_requested` - Not requested
+        * `pending` - Pending
+        * `approved` - Approved
+        * `rejected` - Rejected
     AssignUmpireRequest:
       type: object
       description: '`user_id` null takes the match back from its umpire. `rubber_id`
@@ -4581,6 +4776,16 @@ components:
       - expires_at
       - id
       - url
+    AuthorityEnum:
+      enum:
+      - platform
+      - country
+      - regional
+      type: string
+      description: |-
+        * `platform` - platform
+        * `country` - country
+        * `regional` - regional
     AutoDispatchRequest:
       type: object
       properties:
@@ -4797,6 +5002,31 @@ components:
       required:
       - events
       - id
+    CountryCatalogue:
+      type: object
+      properties:
+        catalogue_only:
+          type: boolean
+          description: Use this catalogue as the source of location choices for this
+            country.
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Region'
+          readOnly: true
+      required:
+      - catalogue_only
+      - regions
+    CountryOption:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
     DeckPlayer:
       type: object
       properties:
@@ -5095,6 +5325,11 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        my_check_in_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
         mine:
           type: boolean
           description: Whether the caller plays in it, so may withdraw it.
@@ -5106,6 +5341,7 @@ components:
       - decided_at
       - id
       - mine
+      - my_check_in_at
       - players
       - reason
       - status
@@ -5349,9 +5585,15 @@ components:
           allOf:
           - $ref: '#/components/schemas/Draw'
           nullable: true
+        recommended_seeds:
+          type: array
+          items:
+            type: string
+            format: uuid
       required:
       - preview
       - published
+      - recommended_seeds
     EventFormatEnum:
       enum:
       - round_robin
@@ -5854,6 +6096,21 @@ components:
       required:
       - email
       - password
+    ManagementOrganization:
+      type: object
+      properties:
+        organization:
+          $ref: '#/components/schemas/Organization'
+        authority:
+          $ref: '#/components/schemas/AuthorityEnum'
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionEnum'
+      required:
+      - authority
+      - organization
+      - permissions
     Match:
       type: object
       properties:
@@ -6470,6 +6727,11 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        my_check_in_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
         mine:
           type: boolean
           description: Whether the caller plays in it, so may withdraw it.
@@ -6490,6 +6752,7 @@ components:
       - event
       - id
       - mine
+      - my_check_in_at
       - players
       - reason
       - status
@@ -7484,6 +7747,8 @@ components:
           maxLength: 64
         scope:
           $ref: '#/components/schemas/TournamentScopeEnum'
+        registration_fee:
+          $ref: '#/components/schemas/RegistrationFeeRequest'
     PatchedVenueRequest:
       type: object
       description: A venue with its tables in playing order.
@@ -8182,6 +8447,48 @@ components:
       required:
       - code
       - sequence
+    Region:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        cities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - cities
+      - name
+    RegistrationFee:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 0
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+      required:
+      - amount_minor
+      - currency
+    RegistrationFeeRequest:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 0
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+      required:
+      - amount_minor
     Reservation:
       type: object
       description: 'A match on a table: the table and the people held until its result
@@ -9281,6 +9588,12 @@ components:
           maxLength: 64
         scope:
           $ref: '#/components/schemas/TournamentScopeEnum'
+        approval_status:
+          allOf:
+          - $ref: '#/components/schemas/ApprovalStatusEnum'
+          readOnly: true
+        registration_fee:
+          $ref: '#/components/schemas/RegistrationFee'
         status:
           allOf:
           - $ref: '#/components/schemas/TournamentStatusEnum'
@@ -9314,6 +9627,7 @@ components:
             $ref: '#/components/schemas/Event'
           readOnly: true
       required:
+      - approval_status
       - cancel_reason
       - cancelled_at
       - completed_at
@@ -9324,6 +9638,7 @@ components:
       - name
       - organization
       - published_at
+      - registration_fee
       - scope
       - started_at
       - starts_on
@@ -9360,6 +9675,8 @@ components:
           maxLength: 64
         scope:
           $ref: '#/components/schemas/TournamentScopeEnum'
+        registration_fee:
+          $ref: '#/components/schemas/RegistrationFeeRequest'
       required:
       - ends_on
       - name

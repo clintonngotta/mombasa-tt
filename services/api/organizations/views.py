@@ -5,11 +5,11 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, mixins, status, viewsets
-from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
@@ -131,7 +131,9 @@ class OrganizationViewSet(
             data.get("region", organization.region).lower() != organization.region.lower()
         )
         if organization.country and moving and not is_platform_super_admin(request.user):
-            raise ApiException("permission_denied", "Ask a platform super admin to change the club's jurisdiction.", 403)
+            raise ApiException(
+                "permission_denied", "Ask a platform super admin to change the club's jurisdiction.", 403
+            )
         serializer.save()
         return Response(OrganizationSerializer(organization).data)
 
@@ -344,7 +346,11 @@ class MyManagedOrganizationsView(APIView):
         rows = [
             {
                 "organization": organization,
-                "authority": "platform" if platform else "country" if official_for(request.user, organization, country_only=True) else "regional",
+                "authority": "platform"
+                if platform
+                else "country"
+                if official_for(request.user, organization, country_only=True)
+                else "regional",
                 "permissions": sorted(ALL_PERMISSIONS),
             }
             for organization in managed_organizations(request.user)

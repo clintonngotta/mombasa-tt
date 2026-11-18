@@ -48,8 +48,9 @@ def rating_seeds(event: Event) -> list[str]:
     discipline = Discipline.DOUBLES if event.kind == Event.Kind.DOUBLES else Discipline.SINGLES
     user_ids = {place.user_id for entry in entries for place in entry.players.all()}
     ratings = dict(
-        Rating.objects.filter(discipline=discipline, user_id__in=user_ids, played__gt=0)
-        .values_list("user_id", "rating")
+        Rating.objects.filter(discipline=discipline, user_id__in=user_ids, played__gt=0).values_list(
+            "user_id", "rating"
+        )
     )
     ranked = []
     for entry in entries:
@@ -57,7 +58,11 @@ def rating_seeds(event: Event) -> list[str]:
         if any(user_id in ratings for user_id in players):
             rating = sum(ratings.get(user_id, START) for user_id in players) / len(players)
             ranked.append((-rating, entry.created_at, str(entry.id)))
-    limit = min(draws.MAX_SEEDS, draws.bracket_size(len(entries)) // 2) if event.format == Event.Format.KNOCKOUT else draws.MAX_SEEDS
+    limit = (
+        min(draws.MAX_SEEDS, draws.bracket_size(len(entries)) // 2)
+        if event.format == Event.Format.KNOCKOUT
+        else draws.MAX_SEEDS
+    )
     return [entry_id for _, _, entry_id in sorted(ranked)[:limit]]
 
 

@@ -153,7 +153,10 @@ def test_self_check_in_requires_the_event_day_and_checks_in_each_doubles_player(
     Tournament.objects.filter(pk=cup["id"]).update(starts_on=tournament_day, ends_on=tournament_day)
     partial = act(logged_in(ama), cup, doubles, pair, "self-check-in")
     assert partial["my_check_in_at"] and not partial["checked_in_at"]
-    assert act(logged_in(ama), cup, doubles, pair, "self-check-in")["my_check_in_at"] == partial["my_check_in_at"]
+    assert (
+        act(logged_in(ama), cup, doubles, pair, "self-check-in")["my_check_in_at"]
+        == partial["my_check_in_at"]
+    )
     full = act(logged_in(kofi), cup, doubles, pair, "self-check-in")
     assert full["my_check_in_at"] and full["checked_in_at"]
     assert act(staff, cup, doubles, pair, "undo-check-in")["checked_in_at"] is None

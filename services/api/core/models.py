@@ -26,13 +26,11 @@ class Country(models.Model):
 class Region(models.Model):
     country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name="regions")
     name = models.CharField(max_length=100)
-    seed_key = models.CharField(max_length=64, unique=True, null=True, editable=False)
+    seed_key = models.CharField(max_length=64, unique=True, null=True, editable=False)  # noqa: DJ001 (many unseeded rows)
 
     class Meta:
         ordering = ["name", "id"]
-        constraints = [
-            models.UniqueConstraint(Lower("name"), "country", name="unique_region_in_country")
-        ]
+        constraints = [models.UniqueConstraint(Lower("name"), "country", name="unique_region_in_country")]
 
     def __str__(self):
         return f"{self.name}, {self.country.name}"
@@ -41,7 +39,7 @@ class Region(models.Model):
 class City(models.Model):
     region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="cities")
     name = models.CharField(max_length=100)
-    seed_key = models.CharField(max_length=64, unique=True, null=True, editable=False)
+    seed_key = models.CharField(max_length=64, unique=True, null=True, editable=False)  # noqa: DJ001 (many unseeded rows)
 
     class Meta:
         ordering = ["name", "id"]

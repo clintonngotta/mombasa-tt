@@ -27,7 +27,12 @@ class CountryField(serializers.CharField):
     def to_internal_value(self, data):
         value = super().to_internal_value(data).upper()
         if value and value not in COUNTRY_CODES:
-            if len(value) != 2 or not value.isascii() or not value.isalpha() or not Country.objects.filter(pk=value).exists():
+            if (
+                len(value) != 2
+                or not value.isascii()
+                or not value.isalpha()
+                or not Country.objects.filter(pk=value).exists()
+            ):
                 raise serializers.ValidationError("Choose a country.")
         return value
 
