@@ -1,10 +1,11 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, ArrowLeftRight, CircleCheck, CloudOff, LoaderCircle, Undo2 } from "lucide-react"
+import { ArrowLeft, ArrowLeftRight, CircleCheck, CloudOff, LoaderCircle, Undo2, WifiOff } from "lucide-react"
 import { gamesNeeded, partnerOf, sideOf, type End, type Player, type Side, type State } from "@scoring"
 import { errorMessage } from "@/lib/api"
-import { useDeck, type LogLine, type Sync } from "@/lib/deck"
+import { describeLog, problemText, useDeck, type LogLine, type Sync } from "@/lib/deck"
+import { useMe } from "@/lib/session"
 import { drawKeys } from "@/lib/draws"
 import { configOf, confirmScorecard, namesOf, scoringKeys, winnersGames, winnersScore, type Names, type Scorecard } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
@@ -21,12 +22,14 @@ const primaryButton =
  */
 export function ScoringDeckRoute() {
   const { id = "" } = useParams()
-  // A deck belongs to one sheet: another id is another deck.
-  return <ScoringDeckPage key={id} id={id} />
+  const me = useMe()
+  if (!me.data) return null // RequireAuth has loaded the account before this route renders
+  // A deck belongs to one sheet and one account: another of either is another deck.
+  return <ScoringDeckPage key={`${me.data.id}:${id}`} id={id} userId={me.data.id} />
 }
 
-function ScoringDeckPage({ id }: { id: string }) {
-  const deck = useDeck(id)
+function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
+  const deck = useDeck(id, userId)
   const { card, state } = deck
   const back = card ? `/tournaments/${card.tournament_id}/events/${card.event_id}/matches/${card.match_id}` : "/play"
 
@@ -62,9 +65,34 @@ function ScoringDeckPage({ id }: { id: string }) {
             </button>
           </Message>
         )}
+        {deck.readOnly && !deck.lost && (
+          <Message title="Open in another tab">This match is being scored in another tab or window on this device. This one only shows the score; it takes over by itself if the other is closed.</Message>
+        )}
+        {deck.offline && !deck.lost && (
+          <p role="status" className="flex items-start gap-2 rounded-lg border border-white/30 bg-white/5 p-3">
+            <WifiOff aria-hidden className="mt-0.5 size-5 shrink-0" />
+            <span>No connection to Coast TT. You can go on scoring: every action is kept on this device and sent when the connection is back. The result can be confirmed once everything has been sent.</span>
+          </p>
+        )}
+        {deck.storageFailed && (
+          <p role="alert" className="rounded-lg border border-brand-gold bg-brand-gold/10 p-3 font-semibold text-brand-gold">
+            This device can't save score actions right now (storage is full, blocked or in private browsing). Nothing is shown as scored unless it was saved.
+          </p>
+        )}
+        {deck.conflicts > 0 && (
+          <div role="alert" className="flex flex-col gap-2 rounded-lg border border-brand-gold/60 bg-brand-gold/10 p-3 text-brand-gold">
+            <p>
+              {deck.conflicts} {deck.conflicts === 1 ? "action" : "actions"} scored on this device {deck.conflicts === 1 ? "was" : "were"} not accepted, because the match was reassigned or scored from somewhere else
+              first. {deck.conflicts === 1 ? "It is" : "They are"} still kept here and {deck.conflicts === 1 ? "is" : "are"} not part of the score. Tell the organizers if the score shown is wrong.
+            </p>
+            <button type="button" className={cn(deckButton, "self-start border-brand-gold text-brand-gold")} onClick={() => void deck.dismissConflicts()}>
+              I have told them. Remove from this device
+            </button>
+          </div>
+        )}
         {deck.problem && (
           <p role="alert" className="rounded-lg border border-brand-gold/60 bg-brand-gold/10 p-3 text-brand-gold">
-            {deck.problem}
+            {problemText(deck.problem)}
           </p>
         )}
         {card && state && !deck.lost && !deck.failure && (
@@ -76,7 +104,7 @@ function ScoringDeckPage({ id }: { id: string }) {
             ) : (
               <Play card={card} state={state} deck={deck} />
             )}
-            <EventLog lines={deck.log} />
+            <EventLog lines={describeLog(card, deck.stream, namesOf(card))} />
           </>
         )}
       </main>

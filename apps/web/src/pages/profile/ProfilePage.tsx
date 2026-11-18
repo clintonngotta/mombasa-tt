@@ -3,10 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { NotebookPen, UserPen, Users } from "lucide-react"
 import { NavCard } from "@/components/layout/NavCard"
 import { Avatar } from "@/components/profile/Avatar"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
+import { useState } from "react"
+import { Link } from "react-router-dom"
 import { logOut } from "@/lib/auth"
+import { purgeScoreJournal, unsentScoreActions } from "@/lib/deck"
 import { clearActiveOrganization } from "@/lib/clubs"
 import { getProfile, profileKeys } from "@/lib/profile"
 import { useMe } from "@/lib/session"
@@ -16,9 +19,20 @@ export function ProfilePage() {
   const profile = useQuery({ queryKey: profileKeys.me, queryFn: getProfile })
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // Score actions still on this device belong to this account: logging out must not lose them quietly.
+  const [unsent, setUnsent] = useState(0)
+  const userId = me.data?.id
   const signOut = useMutation({
-    mutationFn: logOut,
-    onSuccess: () => {
+    mutationFn: async ({ discard }: { discard: boolean }) => {
+      const waiting = userId && !discard ? await unsentScoreActions(userId) : 0
+      if (waiting > 0) return waiting
+      await logOut()
+      if (userId) await purgeScoreJournal(userId)
+      return 0
+    },
+    onSuccess: (waiting) => {
+      setUnsent(waiting)
+      if (waiting > 0) return
       queryClient.clear()
       clearActiveOrganization()
       navigate("/login", { replace: true })
@@ -42,7 +56,23 @@ export function ProfilePage() {
       </nav>
 
       {signOut.isError && <FormAlert>{errorMessage(signOut.error)}</FormAlert>}
-      <Button variant="outline" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
+      {unsent > 0 && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/5 p-4">
+          <p className="font-semibold">
+            {unsent} score {unsent === 1 ? "action" : "actions"} on this device {unsent === 1 ? "hasn't" : "haven't"} reached Coast TT yet.
+          </p>
+          <p>Open the match from Play while you are connected and wait for "Saved", then log out. Logging out now removes them from this device for good.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/play" className={buttonVariants()}>
+              Go to my matches
+            </Link>
+            <Button variant="destructive" disabled={signOut.isPending} onClick={() => signOut.mutate({ discard: true })}>
+              Log out and discard them
+            </Button>
+          </div>
+        </div>
+      )}
+      <Button variant="outline" disabled={signOut.isPending} onClick={() => signOut.mutate({ discard: false })}>
         {signOut.isPending ? "Logging out…" : "Log out"}
       </Button>
     </div>

@@ -2881,7 +2881,7 @@ export interface components {
         };
         RefusedEvent: {
             sequence: number;
-            /** @description A scoring engine code, `sequence_gap` or `sequence_conflict`. */
+            /** @description A scoring engine code, `sequence_gap`, `sequence_conflict` or `revision_conflict`. */
             code: string;
         };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
@@ -3033,6 +3033,8 @@ export interface components {
             event: unknown;
             /** Format: date-time */
             device_time?: string | null;
+            /** @description The server revision the device had seen when it sent this. If the server holds less than that, its stream is not the one the device built on, and the event is refused. */
+            expected_revision?: number;
         };
         SignUpRequest: {
             display_name: string;

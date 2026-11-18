@@ -6445,7 +6445,8 @@ components:
           type: integer
         code:
           type: string
-          description: A scoring engine code, `sequence_gap` or `sequence_conflict`.
+          description: A scoring engine code, `sequence_gap`, `sequence_conflict`
+            or `revision_conflict`.
       required:
       - code
       - sequence
@@ -6828,6 +6829,12 @@ components:
           type: string
           format: date-time
           nullable: true
+        expected_revision:
+          type: integer
+          minimum: 0
+          description: The server revision the device had seen when it sent this.
+            If the server holds less than that, its stream is not the one the device
+            built on, and the event is refused.
       required:
       - event
       - id

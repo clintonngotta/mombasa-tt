@@ -86,6 +86,10 @@ jobs:
           pnpm test:scoring
           pnpm gen:parity
           git diff --exit-code -- ../../packages/scoring/fixtures || { echo "::error::packages/scoring/fixtures/parity.json is stale; run pnpm gen:parity"; exit 1; }
+      - name: Score journal and deck session (types, offline and restart tests)
+        run: |
+          pnpm typecheck:deck
+          pnpm test:deck
       - name: Typecheck and build
         run: pnpm build
       - name: Dependency audit

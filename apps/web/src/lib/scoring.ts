@@ -10,7 +10,7 @@ export type Umpire = Schemas["Umpire"]
 export type SubmitResult = Schemas["SubmitResult"]
 
 /** A score event on its way to the server: its own id (a retry is recognised) and its place in the stream. */
-export type Envelope = { id: string; sequence: number; event: ScoreEvent; device_time: string }
+export type Envelope = { id: string; sequence: number; event: ScoreEvent; device_time: string; expected_revision?: number }
 
 export const scoringKeys = {
   mine: ["scoring", "mine"] as const,
@@ -57,6 +57,7 @@ export const REFUSAL: Record<string, string> = {
   nothing_to_undo: "There is nothing to undo.",
   sequence_gap: "Some points didn't reach the server in order.",
   sequence_conflict: "The server already holds a different action at that place.",
+  revision_conflict: "The server holds less of this match than this device had seen.",
 }
 
 /** "2–1": the winner's games first. */
