@@ -21,6 +21,8 @@ import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { ProfileEditPage } from "@/pages/profile/ProfileEditPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
+import { PlayerRatingsPage } from "@/pages/ratings/PlayerRatingsPage"
+import { RankingsPage } from "@/pages/ratings/RankingsPage"
 import { ClubPage } from "@/pages/club/ClubPage"
 import { FindClubPage } from "@/pages/club/FindClubPage"
 import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
@@ -115,6 +117,8 @@ function App() {
               <Route path="/club/fields/:id" element={<MemberFieldEditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/rankings" element={<RankingsPage />} />
+              <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/players/:id" element={<PlayerPage />} />
               <Route path="/matches" element={<MatchLogPage />} />

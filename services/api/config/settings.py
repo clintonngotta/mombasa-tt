@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "profiles",
     "organizations",
     "outbox",
+    "ratings",
     "reservations",
     "scoring",
 ]

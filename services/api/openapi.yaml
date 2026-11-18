@@ -2250,6 +2250,90 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/players/{id}/ratings/:
+    get:
+      operationId: players_ratings_retrieve
+      description: |-
+        One player's ratings in both disciplines and the rating changes of one of them, newest first.
+        Ratings come from competition results, which signed-in players can already read in the draws; a
+        player who has none and no page in the directory is not found.
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+        description: Default singles.
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: result
+        schema:
+          type: string
+          enum:
+          - all
+          - lost
+          - won
+        description: Default all.
+      tags:
+      - players
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerRatings'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/rankings/:
+    get:
+      operationId: rankings_retrieve
+      description: 'The ranking of one discipline: over the whole platform, or among
+        one club''s members.'
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+        description: Default singles.
+      - in: query
+        name: organization
+        schema:
+          type: string
+        description: 'A club you belong to: rank its members only.'
+      tags:
+      - rankings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ranking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/scorecards/{id}/:
     get:
       operationId: scorecards_retrieve
@@ -5214,6 +5298,14 @@ components:
         * `casual` - Casual
         * `club` - Club
         * `competitive` - Competitive
+    FormEnum:
+      enum:
+      - W
+      - L
+      type: string
+      description: |-
+        * `W` - W
+        * `L` - L
     Game:
       type: object
       properties:
@@ -7344,6 +7436,63 @@ components:
       - id
       - nickname
       - style
+    PlayerRatings:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        processing:
+          type: boolean
+        summaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/RatingSummary'
+        discipline:
+          allOf:
+          - $ref: '#/components/schemas/SinglesOrDoublesEnum'
+          description: |-
+            The one `history` is of.
+
+            * `singles` - Singles
+            * `doubles` - Doubles
+        result:
+          allOf:
+          - $ref: '#/components/schemas/PlayerRatingsResultEnum'
+          description: |-
+            The filter applied.
+
+            * `all` - all
+            * `won` - won
+            * `lost` - lost
+        count:
+          type: integer
+          description: Rating changes that match the filters.
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/RatingChange'
+      required:
+      - count
+      - discipline
+      - display_name
+      - history
+      - processing
+      - result
+      - summaries
+      - user_id
+    PlayerRatingsResultEnum:
+      enum:
+      - all
+      - won
+      - lost
+      type: string
+      description: |-
+        * `all` - all
+        * `won` - won
+        * `lost` - lost
     Profile:
       type: object
       description: The owner's own view of their profile. `display_name` is written
@@ -7488,6 +7637,212 @@ components:
       - state
       - suggested_table
       - suggested_table_id
+    Ranking:
+      type: object
+      properties:
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        scope:
+          $ref: '#/components/schemas/ScopeEnum'
+        organization_id:
+          type: string
+          format: uuid
+          nullable: true
+        organization_name:
+          type: string
+        processing:
+          type: boolean
+          description: 'A result has not reached the ratings yet: the table is provisional.'
+        count:
+          type: integer
+          description: Rated players in this scope.
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/RankingRow'
+      required:
+      - count
+      - discipline
+      - organization_id
+      - organization_name
+      - processing
+      - rows
+      - scope
+    RankingRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Players with the same rating share a rank.
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        clubs:
+          type: array
+          items:
+            type: string
+        listed:
+          type: boolean
+          description: The player has a page in the directory.
+        is_me:
+          type: boolean
+        rating:
+          type: number
+          format: double
+          description: Full precision; round only to show it.
+        played:
+          type: integer
+        won:
+          type: integer
+        form:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormEnum'
+          description: Latest rated matches, newest first.
+        last_delta:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - clubs
+      - display_name
+      - form
+      - is_me
+      - last_delta
+      - listed
+      - played
+      - rank
+      - rating
+      - user_id
+      - won
+    RatingChange:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        at:
+          type: string
+          format: date-time
+          description: When the result first became official.
+        won:
+          type: boolean
+        before:
+          type: number
+          format: double
+        after:
+          type: number
+          format: double
+        delta:
+          type: number
+          format: double
+        expected:
+          type: number
+          format: double
+          description: The expected score, 0 to 1.
+        own:
+          type: number
+          format: double
+          description: 'The rating compared: the player''s, or the pair''s average.'
+        opponent:
+          type: number
+          format: double
+          description: The opponent's rating, or the other pair's average.
+        partner:
+          type: string
+        opponents:
+          type: array
+          items:
+            type: string
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+          description: Points of each game, this player's side first.
+        tournament_id:
+          type: string
+          format: uuid
+        tournament_name:
+          type: string
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        match_id:
+          type: string
+          format: uuid
+        rubber:
+          type: integer
+          nullable: true
+          description: The rubber's number in a team tie.
+        corrected:
+          type: boolean
+          description: The result it comes from replaced an earlier one.
+        timezone:
+          type: string
+          description: The tournament's time zone, to show `at` in.
+      required:
+      - after
+      - at
+      - before
+      - corrected
+      - delta
+      - discipline
+      - event_id
+      - event_name
+      - expected
+      - games
+      - id
+      - match_id
+      - opponent
+      - opponents
+      - own
+      - partner
+      - rubber
+      - timezone
+      - tournament_id
+      - tournament_name
+      - won
+    RatingSummary:
+      type: object
+      properties:
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        rating:
+          type: number
+          format: double
+          nullable: true
+          description: Null until a rated match is played.
+        played:
+          type: integer
+        won:
+          type: integer
+        rank:
+          type: integer
+          nullable: true
+          description: On the platform, in this discipline.
+        ranked:
+          type: integer
+          description: How many players the rank is among.
+        form:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormEnum'
+      required:
+      - discipline
+      - form
+      - played
+      - rank
+      - ranked
+      - rating
+      - won
     Reason:
       type: object
       description: One thing that keeps a match from a table, in the words a refusal
@@ -7919,6 +8274,14 @@ components:
         * `scheduled` - Scheduled
         * `completed` - Completed
         * `not_played` - Not Played
+    ScopeEnum:
+      enum:
+      - platform
+      - club
+      type: string
+      description: |-
+        * `platform` - platform
+        * `club` - club
     ScoreConflict:
       type: object
       description: A device's unaccepted events beside what the server holds at the

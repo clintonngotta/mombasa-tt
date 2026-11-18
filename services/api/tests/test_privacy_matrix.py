@@ -182,6 +182,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
+    "player-ratings": {"get": SIGNED_IN},
+    "rankings": {"get": SIGNED_IN},
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
@@ -568,6 +570,7 @@ class World:
             "tournament-scoring-conflict-resolve": self.conflict.id,
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
+            "player-ratings": self.baraka.id,
         }
         found = {}
         if "organization_pk" in names:

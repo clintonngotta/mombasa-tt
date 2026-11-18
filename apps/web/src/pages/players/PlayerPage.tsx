@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Building2 } from "lucide-react"
+import { Building2, TrendingUp } from "lucide-react"
+import { NavCard } from "@/components/layout/NavCard"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { Avatar } from "@/components/profile/Avatar"
@@ -62,6 +63,8 @@ export function PlayerPage() {
           </ul>
         )}
       </section>
+
+      <NavCard to={`/ratings/${id}`} icon={TrendingUp} title="Ratings" description="Singles and doubles ratings and the matches behind them" />
 
       {details.length > 0 && (
         <section aria-labelledby="about-heading" className="flex flex-col gap-2">
