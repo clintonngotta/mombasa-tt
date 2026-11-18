@@ -1094,6 +1094,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scorecards/{id}/conflicts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tell the organizers what this device wrote that the server didn't accept. Open to whoever
+         *     holds the sheet or held it before. It changes nothing about the score.
+         */
+        post: operations["scorecards_conflicts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/device/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description This device takes the sheet, so that one device scores a match at a time. A sheet held by
+         *     another device is refused (`other_device`) unless `take_over` is set; taking over issues a new
+         *     assignment id, which cuts the other device off.
+         */
+        post: operations["scorecards_device_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scorecards/{id}/events/": {
         parameters: {
             query?: never;
@@ -1697,6 +1738,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/scoring/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Scoring in one tournament as its competition staff see it (REQ-013): which matches are being
+         *     scored or wait for their umpire's confirmation, who held each sheet on which device, and what
+         *     devices wrote that the server did not accept.
+         */
+        get: operations["tournaments_scoring_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/scoring/conflicts/{id}/resolve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record what was done about a device's unaccepted events. The report stays on record. */
+        post: operations["tournaments_scoring_conflicts_resolve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1731,6 +1810,23 @@ export interface components {
             /** Format: uuid */
             rubber_id?: string | null;
         };
+        AssignmentStep: {
+            kind: components["schemas"]["AssignmentStepKindEnum"];
+            umpire: string;
+            actor: string;
+            device_label: string;
+            revision: number;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /**
+         * @description * `assigned` - Assigned
+         *     * `unassigned` - Unassigned
+         *     * `device` - Device
+         *     * `take_over` - Take Over
+         * @enum {string}
+         */
+        AssignmentStepKindEnum: "assigned" | "unassigned" | "device" | "take_over";
         /**
          * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
          *
@@ -1782,6 +1878,36 @@ export interface components {
             assignment_id: string;
             revision: number;
         };
+        ConflictEventRequest: {
+            /** Format: uuid */
+            id: string;
+            /** @description Its place in the stream on the device. */
+            sequence: number;
+            event: unknown;
+            /** Format: date-time */
+            device_time?: string | null;
+        };
+        ConflictReceipt: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description What a device wrote and the server didn't take, sent for the organizers to see. The id is the
+         *     device's own, so sending it twice keeps one report.
+         */
+        ConflictReportRequest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignment_id?: string | null;
+            /** Format: uuid */
+            device_id?: string | null;
+            /** @default  */
+            device_label: string;
+            events: components["schemas"]["ConflictEventRequest"][];
+        };
         DeckPlayer: {
             slot: components["schemas"]["SlotEnum"];
             /** Format: uuid */
@@ -1791,6 +1917,16 @@ export interface components {
         DeckSide: {
             title: string;
             players: components["schemas"]["DeckPlayer"][];
+        };
+        /** @description Which device is scoring the sheet. `here` compares with the caller's X-Device-Id header. */
+        Device: {
+            /** @description A device has taken the sheet. */
+            held: boolean;
+            /** @description It is the caller's device. */
+            here: boolean;
+            label: string;
+            /** Format: date-time */
+            since: string | null;
         };
         /**
          * @description Directory card of a listed player: name, picture and organizations only. No email, bio, location
@@ -2448,9 +2584,23 @@ export interface components {
             readonly table: string;
             /** Format: date-time */
             readonly confirmed_at: string | null;
+            readonly device: components["schemas"]["Device"];
         };
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description A match being scored, or finished and not yet confirmed by its umpire. */
+        OpenSheet: {
+            sheet: components["schemas"]["SheetContext"];
+            status: components["schemas"]["ScoringStatusEnum"];
+            umpire: string;
+            device_label: string;
+            revision: number;
+            /** Format: date-time */
+            last_event_at: string | null;
+            games: number[][];
+            points: number[];
+            history: components["schemas"]["AssignmentStep"][];
+        };
         OptionalReasonRequest: {
             reason?: string;
         };
@@ -2884,6 +3034,10 @@ export interface components {
             /** @description A scoring engine code, `sequence_gap`, `sequence_conflict` or `revision_conflict`. */
             code: string;
         };
+        /** @description What was done about it, for the record. */
+        ResolveConflictRequest: {
+            note: string;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         Role: {
             /** Format: uuid */
@@ -2944,6 +3098,23 @@ export interface components {
          * @enum {string}
          */
         RubberStatusEnum: "scheduled" | "completed" | "not_played";
+        /** @description A device's unaccepted events beside what the server holds at the same places. */
+        ScoreConflict: {
+            /** Format: uuid */
+            id: string;
+            sheet: components["schemas"]["SheetContext"];
+            reported_by: string;
+            device_label: string;
+            /** Format: date-time */
+            created_at: string;
+            events: components["schemas"]["StreamEvent"][];
+            /** @description The official stream at the same sequence numbers. */
+            accepted: components["schemas"]["StreamEvent"][];
+            /** Format: date-time */
+            resolved_at: string | null;
+            resolved_by: string;
+            resolution: string;
+        };
         /** @description Everything the deck needs to score one match, for the umpire assigned to it. */
         Scorecard: {
             /** Format: uuid */
@@ -2968,11 +3139,20 @@ export interface components {
             readonly table: string;
             /** Format: date-time */
             readonly confirmed_at: string | null;
+            readonly device: components["schemas"]["Device"];
             readonly events: components["schemas"]["AcceptedEvent"][];
         };
         ScoringConfig: {
             best_of: number;
             doubles: boolean;
+        };
+        /**
+         * @description What the organizers need to see about scoring in one tournament: sheets still open, and what
+         *     devices reported that the server didn't accept.
+         */
+        ScoringOverview: {
+            sheets: components["schemas"]["OpenSheet"][];
+            conflicts: components["schemas"]["ScoreConflict"][];
         };
         /** @description The canonical state of the scoring engine (packages/scoring). */
         ScoringState: {
@@ -3036,6 +3216,19 @@ export interface components {
             /** @description The server revision the device had seen when it sent this. If the server holds less than that, its stream is not the one the device built on, and the event is refused. */
             expected_revision?: number;
         };
+        /** @description Which match a sheet is for, as the organizers' scoring page shows it. */
+        SheetContext: {
+            /** Format: uuid */
+            scorecard_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            a: string;
+            b: string;
+        };
         SignUpRequest: {
             display_name: string;
             /** Format: email */
@@ -3079,6 +3272,10 @@ export interface components {
             groups: components["schemas"]["GroupStanding"][];
             placements: components["schemas"]["Placement"][];
         };
+        StreamEvent: {
+            sequence: number;
+            event: unknown;
+        };
         SubmitEventsRequest: {
             /** Format: uuid */
             assignment_id: string;
@@ -3105,6 +3302,15 @@ export interface components {
         TableRequest: {
             label: string;
             active?: boolean;
+        };
+        /** @description This device takes the sheet. `take_over` is needed when another device holds it. */
+        TakeDeviceRequest: {
+            /** Format: uuid */
+            device_id: string;
+            /** @default  */
+            label: string;
+            /** @default false */
+            take_over: boolean;
         };
         /** @description A team tie (REQ-011): its format, each team's lineup and, once both are in, its rubbers. */
         Tie: {
@@ -5531,6 +5737,74 @@ export interface operations {
             };
         };
     };
+    scorecards_conflicts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConflictReportRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictReceipt"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_device_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TakeDeviceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scorecard"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     scorecards_events_create: {
         parameters: {
             query?: never;
@@ -6638,6 +6912,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_scoring_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoringOverview"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_scoring_conflicts_resolve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveConflictRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoringOverview"];
                 };
             };
             /** @description Error envelope */

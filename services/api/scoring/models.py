@@ -48,6 +48,11 @@ class Scorecard(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
     assigned_at = models.DateTimeField(null=True, blank=True)
+    # The one device scoring it (REQ-013). Empty until a device takes the sheet; another device has to
+    # take it over, which issues a new assignment id and cuts the first one off.
+    device_id = models.UUIDField(null=True, blank=True)
+    device_label = models.CharField(max_length=80, blank=True)
+    device_since = models.DateTimeField(null=True, blank=True)
     # The number of events accepted, which is also the sequence number of the last one.
     revision = models.PositiveIntegerField(default=0)
     state = models.JSONField(default=initial_state)
@@ -108,3 +113,67 @@ class ScoreEvent(models.Model):
 
     def __str__(self):
         return f"Event {self.sequence} of {self.scorecard_id}"
+
+
+class ScoreAssignment(models.Model):
+    """The history of who held a sheet and on which device: every assignment by staff, every device
+    that took it, every take-over. Nothing here is edited; it is what the organizers read when two
+    people say they scored the same match."""
+
+    class Kind(models.TextChoices):
+        ASSIGNED = "assigned"  # staff gave the sheet to an umpire
+        UNASSIGNED = "unassigned"  # staff took it back
+        DEVICE = "device"  # the umpire's device took an unheld sheet
+        TAKE_OVER = "take_over"  # the umpire moved it to another device
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    scorecard = models.ForeignKey(Scorecard, on_delete=models.CASCADE, related_name="assignments")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    umpire = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    assignment_id = models.UUIDField()
+    device_id = models.UUIDField(null=True, blank=True)
+    device_label = models.CharField(max_length=80, blank=True)
+    revision = models.PositiveIntegerField(default=0)  # how far the sheet had got at that moment
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"{self.kind} {self.scorecard_id}"
+
+
+class ScoreConflict(models.Model):
+    """Score events a device wrote that the server did not accept, because the sheet had been
+    reassigned or scored from elsewhere first (REQ-013). They change nothing: the accepted stream
+    stands. They are kept so the organizers can see what the device held and decide what to do.
+    The id is the device's, so a report sent twice is one report."""
+
+    id = models.UUIDField(primary_key=True, editable=False)
+    scorecard = models.ForeignKey(Scorecard, on_delete=models.CASCADE, related_name="conflicts")
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    assignment_id = models.UUIDField(null=True, blank=True)  # what the events were written under
+    device_id = models.UUIDField(null=True, blank=True)
+    device_label = models.CharField(max_length=80, blank=True)
+    # [{"id", "sequence", "event", "device_time"}] in the device's order.
+    events = models.JSONField(default=list)
+    revision = models.PositiveIntegerField(default=0)  # the sheet's revision when it was reported
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    resolution = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"Conflict {self.id} on {self.scorecard_id}"

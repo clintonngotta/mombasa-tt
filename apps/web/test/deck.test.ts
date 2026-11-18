@@ -7,7 +7,7 @@ import { test } from "node:test"
 import { IDBFactory, IDBKeyRange as FakeKeyRange } from "fake-indexeddb"
 import { Scoring, ScoringError, type ScoreEvent } from "../../../packages/scoring/src/index.ts"
 import { Journal, JournalError, OWNER_STALE_MS } from "../src/lib/deck/journal.ts"
-import { DeckStore, MAX_BATCH, type Envelope, type Reply, type Sheet, type Transport } from "../src/lib/deck/store.ts"
+import { DeckStore, MAX_BATCH, type ConflictReport, type Envelope, type Reply, type Sheet, type Transport } from "../src/lib/deck/store.ts"
 
 // The journal uses the global IDBKeyRange, as a browser provides it.
 ;(globalThis as { IDBKeyRange?: unknown }).IDBKeyRange = FakeKeyRange
@@ -19,6 +19,7 @@ const point = (side: "a" | "b"): ScoreEvent => ({ type: "point", side })
 class Offline extends Error {}
 class Gone extends Error {}
 class Stale extends Error {}
+class OtherDevice extends Error {}
 
 /** The API as far as the deck is concerned. */
 class Server {
@@ -33,15 +34,38 @@ class Server {
   noTimeouts = false
   events: { id: string; sequence: number; event: ScoreEvent }[] = []
   requests = 0
+  /** The device that has taken the sheet, if any. */
+  holder: string | null = null
+  reports: ConflictReport[] = []
 
-  sheet(): Sheet {
-    return { id: "sheet", assignment_id: this.assignment, revision: this.events.length, config: CONFIG, events: [...this.events] }
+  sheet(device = "device-1"): Sheet {
+    return {
+      id: "sheet",
+      assignment_id: this.assignment,
+      revision: this.events.length,
+      config: CONFIG,
+      events: [...this.events],
+      device: { held: this.holder !== null, here: this.holder === device, label: this.holder ?? "" },
+    }
   }
 
-  transport(): Transport<Sheet> {
+  transport(device = "device-1"): Transport<Sheet> {
     return {
+      take: async (_id, takeOver) => {
+        if (!this.online) throw new Offline()
+        if (this.holder !== null && this.holder !== device) {
+          if (!takeOver) throw new OtherDevice()
+          this.assignment = `${this.assignment}+`
+        }
+        this.holder = device
+        return this.sheet(device)
+      },
+      report: async (_id, report) => {
+        if (!this.online) throw new Offline()
+        if (!this.reports.some((kept) => kept.id === report.id)) this.reports.push(report)
+      },
       load: async () => {
-        const sheet = this.online && this.mine ? this.sheet() : null // what the server held when asked
+        const sheet = this.online && this.mine ? this.sheet(device) : null // what the server held when asked
         if (this.gate) await this.gate
         if (sheet && this.online && this.mine) return sheet
         if (!this.online) throw new Offline()
@@ -53,6 +77,7 @@ class Server {
         this.requests += 1
         if (!this.mine) throw new Gone()
         if (card.assignment_id !== this.assignment) throw new Stale()
+        if (this.holder !== null && this.holder !== device) throw new OtherDevice()
         assert.ok(events.length <= MAX_BATCH)
         const reply = this.accept(events)
         if (this.loseReply) {
@@ -61,7 +86,7 @@ class Server {
         }
         return reply
       },
-      classify: (error) => ({ kind: error instanceof Gone ? "gone" : error instanceof Stale ? "stale" : "offline" }),
+      classify: (error) => ({ kind: error instanceof Gone ? "gone" : error instanceof Stale ? "stale" : error instanceof OtherDevice ? "refused" : "offline" }),
     }
   }
 
@@ -98,11 +123,11 @@ class Server {
 }
 
 let ids = 0
-function tab(device: IDBFactory, server: Server, name: string, options: { userId?: string; now?: () => number; journal?: () => Promise<Journal> } = {}) {
+function tab(device: IDBFactory, server: Server, name: string, options: { userId?: string; now?: () => number; journal?: () => Promise<Journal>; deviceId?: string } = {}) {
   return new DeckStore<Sheet>({
     scorecardId: "sheet",
     userId: options.userId ?? "umpire",
-    transport: server.transport(),
+    transport: server.transport(options.deviceId),
     openJournal: options.journal ?? (() => Journal.open(device)),
     newId: () => `event-${++ids}`,
     tabId: name,
@@ -271,6 +296,7 @@ test("after a reassignment, what this device couldn't send is kept as a conflict
 
   // Meanwhile the organizers reassign the match and somebody else scores a point.
   server.assignment = "assignment-2"
+  server.holder = null
   server.events.push({ id: "theirs", sequence: 2, event: point("b") })
   server.online = true
   await deck.flush()
@@ -489,4 +515,81 @@ test("two accounts on one device never touch each other's records, and logging o
   assert.equal(await journal.unsent("umpire"), 0)
   assert.equal((await journal.read("sheet", "umpire")).sheet, null)
   assert.equal((await journal.read("sheet", "somebody-else")).sheet === null, false, "the other account's copy is untouched")
+})
+
+test("one device scores: a second device watches until the umpire takes over, and the first is cut off", async () => {
+  const server = new Server()
+  const phoneStorage = new IDBFactory()
+  const phone = tab(phoneStorage, server, "phone-tab", { deviceId: "Phone" })
+  await phone.open() // opening an unheld sheet takes it
+  assert.equal(server.holder, "Phone")
+  await phone.act(START)
+  await phone.flush()
+
+  const tablet = tab(new IDBFactory(), server, "tablet-tab", { deviceId: "Tablet" })
+  await tablet.open()
+  assert.equal(tablet.snapshot().elsewhere, "Phone")
+  assert.equal(tablet.snapshot().state?.status, "in_progress", "it shows the score")
+  await tablet.act(point("b"))
+  assert.equal(tablet.snapshot().problem, "elsewhere")
+  assert.equal(server.events.length, 1)
+
+  // The phone scores two more points without a connection; meanwhile the umpire takes over on the tablet.
+  server.online = false
+  await phone.act(point("a"))
+  await phone.act(point("a"))
+  server.online = true
+  await tablet.takeOver()
+  assert.equal(tablet.snapshot().elsewhere, null)
+  await tablet.act(point("b"))
+  await tablet.flush()
+  assert.deepEqual(server.state().points, [0, 1])
+
+  // The phone comes back: its two points are not added, not lost and not kept to itself.
+  await phone.flush()
+  await phone.load()
+  const cut = phone.snapshot()
+  assert.equal(cut.elsewhere, "Tablet")
+  assert.equal(cut.pending, 0)
+  assert.equal(cut.conflicts, 2)
+  assert.deepEqual(cut.state?.points, [0, 1])
+  assert.deepEqual(server.state().points, [0, 1], "the accepted stream stands")
+  assert.equal(cut.conflictsReported, true)
+  assert.equal(server.reports.length, 1)
+  assert.deepEqual(server.reports[0].events.map((sent) => [sent.sequence, sent.event]), [
+    [2, point("a")],
+    [3, point("a")],
+  ])
+  // Rereading sends nothing a second time.
+  await phone.load()
+  assert.equal(server.reports.length, 1)
+})
+
+test("a conflict report waits for a connection", async () => {
+  const device = new IDBFactory()
+  const server = new Server()
+  const deck = tab(device, server, "tab-1")
+  await deck.open()
+  await deck.act(START)
+  await deck.flush()
+  server.online = false
+  await deck.act(point("a"))
+  server.assignment = "assignment-2"
+  server.holder = null
+  server.events.push({ id: "theirs", sequence: 2, event: point("b") })
+  server.online = true
+  // The events are refused, and the report request itself fails this time.
+  const noReports: Transport<Sheet> = { ...server.transport(), report: () => Promise.reject(new Offline()) }
+  const offlineReports = new DeckStore<Sheet>({ scorecardId: "sheet", userId: "umpire", transport: noReports, openJournal: () => Journal.open(device), newId: () => `late-${++ids}`, tabId: "tab-1" })
+  await offlineReports.open()
+  await offlineReports.flush()
+  assert.equal(offlineReports.snapshot().conflicts, 1)
+  assert.equal(offlineReports.snapshot().conflictsReported, false)
+  await offlineReports.close()
+  // Later, with the report route reachable, the next reread sends it.
+  const later = tab(device, server, "tab-1")
+  await later.open()
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.equal(server.reports.length, 1)
+  assert.equal(later.snapshot().conflictsReported, true)
 })

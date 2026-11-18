@@ -13,6 +13,7 @@ One named world, then every route of the API is exercised against it:
 """
 
 import importlib
+import uuid
 
 import pytest
 from django.apps import apps
@@ -46,7 +47,7 @@ from organizations.models import (
 )
 from organizations.permissions import RoleKey
 from profiles.models import PlayerProfile
-from scoring.models import Scorecard, ScoreEvent
+from scoring.models import Scorecard, ScoreConflict, ScoreEvent
 
 from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
@@ -153,6 +154,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "scorecard-detail": {"get": OWNER},
     "scorecard-events": {"post": OWNER},
     "scorecard-confirm": {"post": OWNER},
+    "scorecard-device": {"post": OWNER},
+    # A conflict report is taken from whoever holds the sheet or held it before (test_scoring_conflicts.py).
+    "scorecard-conflicts": {"post": OWNER},
+    "tournament-scoring": {"get": STAFF},
+    "tournament-scoring-conflict-resolve": {"post": STAFF},
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
@@ -195,6 +201,18 @@ BODIES = {
             }
         ],
     },
+    ("scorecard-device", "post"): {"device_id": "00000000-0000-4000-8000-0000000000d1"},
+    ("scorecard-conflicts", "post"): {
+        "id": "00000000-0000-4000-8000-0000000000c1",
+        "events": [
+            {
+                "id": "00000000-0000-4000-8000-0000000000e1",
+                "sequence": 1,
+                "event": {"type": "point", "side": "a"},
+            }
+        ],
+    },
+    ("tournament-scoring-conflict-resolve", "post"): {"note": "Checked with both players"},
     ("scorecard-confirm", "post"): {"assignment_id": "00000000-0000-4000-8000-000000000000", "revision": 0},
 }
 
@@ -396,6 +414,12 @@ class World:
         )
         Membership.objects.create(organization=self.coast, user=self.scorer).roles.add(scoring_only)
         self.scorecard = Scorecard.objects.create(match=self.scored_match, umpire=self.scorer)
+        self.conflict = ScoreConflict.objects.create(
+            id=uuid.uuid4(),
+            scorecard=self.scorecard,
+            reported_by=self.scorer,
+            events=[{"id": str(uuid.uuid4()), "sequence": 1, "event": {"type": "point", "side": "a"}}],
+        )
 
         for which, value in (
             (self.member_field, "MARK-FAITH-VALUE-MEMBER"),
@@ -463,6 +487,9 @@ class World:
             "scorecard-detail": self.scorecard.id,
             "scorecard-events": self.scorecard.id,
             "scorecard-confirm": self.scorecard.id,
+            "scorecard-device": self.scorecard.id,
+            "scorecard-conflicts": self.scorecard.id,
+            "tournament-scoring-conflict-resolve": self.conflict.id,
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
         }
@@ -473,6 +500,9 @@ class World:
             found["pk"] = pk[name]
         if "table_pk" in names:
             found["table_pk"] = self.table.id
+        if name.startswith("tournament-scoring"):
+            found["tournament_pk"] = self.scored_cup.id
+            return found
         if name in ("tournament-event-umpires", "tournament-event-match-umpire"):
             found["event_pk"] = self.scored_cup.event.id
             found["tournament_pk"] = self.scored_cup.id
@@ -515,6 +545,8 @@ class World:
             "entry_players": sorted(EntryPlayer.objects.values_list("entry_id", "user__email", "live")),
             "scorecards": sorted(Scorecard.objects.values_list("umpire__email", "revision", "confirmed_at")),
             "score_events": ScoreEvent.objects.count(),
+            "score_conflicts": sorted(ScoreConflict.objects.values_list("id", "resolved_at")),
+            "score_devices": sorted(Scorecard.objects.values_list("device_id", "assignment_id")),
             "lineups": Lineup.objects.count(),
             "rubbers": Rubber.objects.count(),
             "draws": sorted(DrawVersion.objects.values_list("event__name", "version", "status", "rng_seed")),

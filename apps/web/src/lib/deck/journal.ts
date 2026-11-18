@@ -31,6 +31,8 @@ export interface JournalEvent<E = unknown> {
   conflict?: boolean
   /** A conflict's place in the stream when it was written (its key is moved out of the stream). */
   wasSequence?: number
+  /** A conflict the organizers have been sent. */
+  reported?: boolean
 }
 
 /** The sheet as last downloaded, so the deck can open without the server. */
@@ -265,6 +267,16 @@ export class Journal {
   /** Conflicts of a sheet: actions scored on this device that the server didn't accept. */
   conflicts<E>(scorecardId: string, userId: string): Promise<JournalEvent<E>[]> {
     return this.run(["events"], "readonly", async (tx) => (await done(tx.objectStore("events").getAll(Journal.conflictRange(userId, scorecardId)))) as JournalEvent<E>[])
+  }
+
+  /** The organizers have these conflicts now. */
+  markReported(scorecardId: string, userId: string, ids: string[]): Promise<void> {
+    return this.run(["events"], "readwrite", async (tx) => {
+      const events = tx.objectStore("events")
+      for (const kept of (await done(events.getAll(Journal.conflictRange(userId, scorecardId)))) as JournalEvent[]) {
+        if (ids.includes(kept.id) && !kept.reported) await done(events.put({ ...kept, reported: true }))
+      }
+    })
   }
 
   /** The umpire has dealt with the conflicts of a sheet: remove them from the device. */

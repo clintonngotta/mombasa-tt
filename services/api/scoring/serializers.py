@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from . import service
-from .models import EnginePhase, Scorecard, ScoreEvent, ScoringStatus
+from .models import EnginePhase, ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
 
 
 class ScoringSummarySerializer(serializers.Serializer):
@@ -72,8 +72,19 @@ class AcceptedEventSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class DeviceSerializer(serializers.Serializer):
+    """Which device is scoring the sheet. `here` compares with the caller's X-Device-Id header."""
+
+    held = serializers.BooleanField(help_text="A device has taken the sheet.")
+    here = serializers.BooleanField(help_text="It is the caller's device.")
+    label = serializers.CharField(allow_blank=True)
+    since = serializers.DateTimeField(allow_null=True)
+
+
 class ScorecardSerializer(serializers.ModelSerializer):
     """Everything the deck needs to score one match, for the umpire assigned to it."""
+
+    device = serializers.SerializerMethodField()
 
     status = serializers.ChoiceField(choices=ScoringStatus.choices, source="shown_status")
     config = serializers.SerializerMethodField()
@@ -108,9 +119,18 @@ class ScorecardSerializer(serializers.ModelSerializer):
             "label",
             "table",
             "confirmed_at",
+            "device",
             "events",
         ]
         read_only_fields = fields
+
+    def get_device(self, scorecard) -> DeviceSerializer:
+        return {
+            "held": scorecard.device_id is not None,
+            "here": scorecard.device_id is not None and scorecard.device_id == self.context.get("device_id"),
+            "label": scorecard.device_label,
+            "since": scorecard.device_since,
+        }
 
     @staticmethod
     def _side(scorecard, side: str) -> dict:
@@ -211,3 +231,124 @@ class ConfirmSerializer(serializers.Serializer):
 
     assignment_id = serializers.UUIDField()
     revision = serializers.IntegerField(min_value=0)
+
+
+class TakeDeviceSerializer(serializers.Serializer):
+    """This device takes the sheet. `take_over` is needed when another device holds it."""
+
+    device_id = serializers.UUIDField()
+    label = serializers.CharField(max_length=80, allow_blank=True, required=False, default="")
+    take_over = serializers.BooleanField(required=False, default=False)
+
+
+class ConflictEventSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    sequence = serializers.IntegerField(
+        min_value=1, max_value=100_000, help_text="Its place in the stream on the device."
+    )
+    event = serializers.JSONField()
+    device_time = serializers.DateTimeField(required=False, allow_null=True)
+
+    def validate_event(self, event):
+        """A score event as the engine knows it: a small object with a known type and short values.
+        This is shown to staff, so nothing else is kept."""
+        fields = {"type", "side", "player", "server", "receiver", "a_end"}
+        if (
+            not isinstance(event, dict)
+            or event.get("type") not in service.EVENT_TYPES
+            or not set(event) <= fields
+            or any(not isinstance(value, str) or len(value) > 20 for value in event.values())
+        ):
+            raise serializers.ValidationError("Not a score event.")
+        return event
+
+
+class ConflictReportSerializer(serializers.Serializer):
+    """What a device wrote and the server didn't take, sent for the organizers to see. The id is the
+    device's own, so sending it twice keeps one report."""
+
+    id = serializers.UUIDField()
+    assignment_id = serializers.UUIDField(required=False, allow_null=True)
+    device_id = serializers.UUIDField(required=False, allow_null=True)
+    device_label = serializers.CharField(max_length=80, allow_blank=True, required=False, default="")
+    events = serializers.ListField(
+        child=ConflictEventSerializer(), min_length=1, max_length=service.MAX_CONFLICT_EVENTS
+    )
+
+
+class ConflictReceiptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScoreConflict
+        fields = ["id", "created_at"]
+        read_only_fields = fields
+
+
+class StreamEventSerializer(serializers.Serializer):
+    sequence = serializers.IntegerField()
+    event = serializers.JSONField()
+
+
+class SheetContextSerializer(serializers.Serializer):
+    """Which match a sheet is for, as the organizers' scoring page shows it."""
+
+    scorecard_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    match_id = serializers.UUIDField()
+    label = serializers.CharField()
+    a = serializers.CharField()
+    b = serializers.CharField()
+
+
+class ScoreConflictSerializer(serializers.Serializer):
+    """A device's unaccepted events beside what the server holds at the same places."""
+
+    id = serializers.UUIDField()
+    sheet = SheetContextSerializer()
+    reported_by = serializers.CharField(allow_blank=True)
+    device_label = serializers.CharField(allow_blank=True)
+    created_at = serializers.DateTimeField()
+    events = StreamEventSerializer(many=True)
+    accepted = StreamEventSerializer(many=True, help_text="The official stream at the same sequence numbers.")
+    resolved_at = serializers.DateTimeField(allow_null=True)
+    resolved_by = serializers.CharField(allow_blank=True)
+    resolution = serializers.CharField(allow_blank=True)
+
+
+class AssignmentStepSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=ScoreAssignment.Kind.choices)
+    umpire = serializers.CharField(allow_blank=True)
+    actor = serializers.CharField(allow_blank=True)
+    device_label = serializers.CharField(allow_blank=True)
+    revision = serializers.IntegerField()
+    created_at = serializers.DateTimeField()
+
+
+class OpenSheetSerializer(serializers.Serializer):
+    """A match being scored, or finished and not yet confirmed by its umpire."""
+
+    sheet = SheetContextSerializer()
+    status = serializers.ChoiceField(choices=ScoringStatus.choices)
+    umpire = serializers.CharField(allow_blank=True)
+    device_label = serializers.CharField(allow_blank=True)
+    revision = serializers.IntegerField()
+    last_event_at = serializers.DateTimeField(allow_null=True)
+    games = serializers.ListField(
+        child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2)
+    )
+    points = serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2)
+    history = AssignmentStepSerializer(many=True)
+
+
+class ScoringOverviewSerializer(serializers.Serializer):
+    """What the organizers need to see about scoring in one tournament: sheets still open, and what
+    devices reported that the server didn't accept."""
+
+    sheets = OpenSheetSerializer(many=True)
+    conflicts = ScoreConflictSerializer(many=True)
+
+
+class ResolveConflictSerializer(serializers.Serializer):
+    """What was done about it, for the record."""
+
+    note = serializers.CharField(max_length=300, trim_whitespace=True)
