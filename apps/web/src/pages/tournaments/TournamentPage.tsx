@@ -337,6 +337,11 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
         <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organization.name} see this.</p>
       </div>
 
+      {(t.status === "published" || t.status === "in_progress") && (
+        <Link to={`/tournaments/${t.id}/schedule-plan`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Schedule: plan times and tables
+        </Link>
+      )}
       {t.status === "in_progress" && (
         <Link to={`/tournaments/${t.id}/dispatch`} className={buttonVariants({ className: "self-start" })}>
           Tables: send the next matches out
