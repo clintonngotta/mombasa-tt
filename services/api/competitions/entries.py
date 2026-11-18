@@ -61,6 +61,8 @@ def roster_problem(event: Event, players: list, team_name: str, captain) -> dict
         return {"player_ids": "A singles entry is one player."}
     if event.kind == Event.Kind.DOUBLES and count != 2:
         return {"player_ids": "A doubles entry is two different players."}
+    if event.kind == Event.Kind.JUMBLES and count != 1:
+        return {"player_ids": "In Jumbles everybody enters alone; partners change every round."}
     if event.kind == Event.Kind.TEAM:
         if not team_name:
             return {"team_name": "Give the team a name."}
@@ -82,7 +84,9 @@ def _already_entered(taken, actor, by_staff: bool) -> ApiException:
     return _conflict("already_entered", "One of these players is already entered in this event.")
 
 
-def create(event: Event, actor, players: list, *, team_name: str, captain, by_staff: bool) -> Entry:
+def create(
+    event: Event, actor, players: list, *, team_name: str, captain, by_staff: bool, pool: str = ""
+) -> Entry:
     """Open admission and staff entries take a place or join the waitlist. Closed self-entry is pending."""
     is_team = event.kind == Event.Kind.TEAM
     taken = EntryPlayer.objects.filter(event=event, live=True, user__in=players).select_related("user")
@@ -100,6 +104,7 @@ def create(event: Event, actor, players: list, *, team_name: str, captain, by_st
                 status=status,
                 team_name=team_name if is_team else "",
                 captain=captain if is_team else None,
+                pool=pool if event.kind == Event.Kind.JUMBLES else "",
                 entered_by=actor,
                 decided_at=timezone.now() if status != S.PENDING else None,
                 decided_by=actor if by_staff else None,

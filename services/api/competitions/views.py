@@ -437,7 +437,12 @@ class EventViewSet(viewsets.GenericViewSet):
 
 
 def entry_list():
-    return Entry.objects.select_related("event__tournament").prefetch_related("players__user")
+    # Jumbles pairings are made by the draw and shown in its matches, not as entries.
+    return (
+        Entry.objects.exclude(status=Entry.Status.PAIRING)
+        .select_related("event__tournament")
+        .prefetch_related("players__user")
+    )
 
 
 class EntryViewSet(viewsets.GenericViewSet):
@@ -518,10 +523,18 @@ class EntryViewSet(viewsets.GenericViewSet):
             captain = known.get(asked.get("captain_id") or request.user.id)
             team_name = asked.get("team_name", "")
             problem = entries.roster_problem(event, players, team_name, captain)
+            if event.kind == Event.Kind.JUMBLES and not asked.get("pool"):
+                problem = {**problem, "pool": "Choose the men's or the women's pool."}
             if problem:
                 raise ValidationError(problem)
             entry = entries.create(
-                event, request.user, players, team_name=team_name, captain=captain, by_staff=staff
+                event,
+                request.user,
+                players,
+                team_name=team_name,
+                captain=captain,
+                by_staff=staff,
+                pool=asked.get("pool", ""),
             )
         fresh = entry_list().get(pk=entry.pk)
         news = "entered"

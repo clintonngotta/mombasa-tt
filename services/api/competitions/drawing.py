@@ -84,6 +84,13 @@ def make_preview(event: Event, actor, seeds: list[str], rng_seed: int | None = N
         raise _conflict("unseeded_event", "This event is unseeded. Change its seeding to seed entries.")
     if rng_seed is None:
         rng_seed = secrets.randbelow(2**31)
+    if event.kind == Event.Kind.JUMBLES:
+        from . import jumbles
+
+        for old in event.draws.filter(status=D.PREVIEW):
+            jumbles.drop(old)
+        last = event.draws.order_by("-version").values_list("version", flat=True).first() or 0
+        return jumbles.make_draw(event, actor, rng_seed, last + 1, RULES_VERSION)
     try:
         plan = draws.build(
             event.format,
@@ -269,6 +276,10 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
     nobody can separate stay level; afterwards what is left is drawn by lot. The lot's number comes
     from the draw and every score in the group, so it is the same each time the table is looked at but
     nobody can know it, or choose it, before the matches are played."""
+    if draw.event.kind == Event.Kind.JUMBLES:
+        from . import jumbles
+
+        return jumbles.table(draw)
     members = [
         str(pk)
         for pk in draw.places.filter(group=group)
@@ -336,6 +347,10 @@ def place_qualifiers(draw: DrawVersion, group: int) -> None:
 def placements(draw: DrawVersion) -> list[dict]:
     """What the knockout has decided so far: the winner and runner-up once the final is played, and who
     went out in each round that is finished. Nothing is ranked that hasn't been decided."""
+    if draw.event.kind == Event.Kind.JUMBLES:
+        from . import jumbles
+
+        return jumbles.placements(draw)
     by_round: dict[int, list[Match]] = {}
     for match in draw.matches.filter(stage=Match.Stage.KNOCKOUT):
         by_round.setdefault(match.round, []).append(match)
@@ -372,7 +387,7 @@ def ordinal(rank: int) -> str:
 def describe(draw: DrawVersion) -> dict:
     """The draw as DrawSerializer shows it."""
     places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
-    entries = {place.entry_id: place.entry for place in places}
+    entries = _entries_of(draw, places)
     seeds = {place.entry_id: place.seed for place in places}
     matches = _matches_of(draw)
     shown = _match_describer(matches, entries, seeds, draw.event.status == Event.Status.IN_PROGRESS)
@@ -390,6 +405,13 @@ def describe(draw: DrawVersion) -> dict:
         "places": places,
         "matches": [shown(match) for match in matches],
     }
+
+
+def _entries_of(draw: DrawVersion, places) -> dict:
+    """The entries the draw's matches are between: its places, and in Jumbles the pairs it made."""
+    entries = {place.entry_id: place.entry for place in places}
+    entries.update({pairing.id: pairing for pairing in draw.pairings.prefetch_related("players__user")})
+    return entries
 
 
 def _matches_of(draw: DrawVersion) -> list[Match]:
@@ -473,7 +495,7 @@ def describe_match(draw: DrawVersion, match_id) -> dict | None:
         return None
     shown = _match_describer(
         matches,
-        {place.entry_id: place.entry for place in places},
+        _entries_of(draw, places),
         {place.entry_id: place.seed for place in places},
         draw.event.status == Event.Status.IN_PROGRESS,
     )

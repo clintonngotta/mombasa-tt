@@ -156,6 +156,11 @@ class EventSerializer(serializers.ModelSerializer):
             attrs["group_count"] = None
             attrs["qualifiers_per_group"] = None
 
+        if current("kind") == Event.Kind.JUMBLES:
+            if current("format") != Event.Format.ROUND_ROBIN:
+                raise serializers.ValidationError({"format": "Jumbles is played as a round robin."})
+            attrs["seeding"] = Event.Seeding.NONE  # partners and opponents rotate, so nobody is seeded
+
         if current("kind") == Event.Kind.TEAM:
             # A team event always has a tie format; left out, it is the usual four singles and a doubles.
             rubbers = current("tie_rubbers") or list(DEFAULT_TIE_RUBBERS)
@@ -321,6 +326,7 @@ class EntrySerializer(serializers.ModelSerializer):
             "status",
             "players",
             "team_name",
+            "pool",
             "captain_id",
             "reason",
             "created_at",
@@ -381,6 +387,9 @@ class EntryRequestSerializer(serializers.Serializer):
     )
     team_name = serializers.CharField(max_length=80, trim_whitespace=True, allow_blank=True, required=False)
     captain_id = serializers.UUIDField(allow_null=True, required=False)
+    pool = serializers.ChoiceField(
+        choices=Entry.Pool.choices, required=False, help_text="Jumbles only: the men's or the women's pool."
+    )
 
     def validate_player_ids(self, ids):
         if len(set(ids)) != len(ids):
@@ -401,7 +410,7 @@ class DrawEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Entry
-        fields = ["id", "title", "players", "mine"]
+        fields = ["id", "title", "pool", "players", "mine"]
         read_only_fields = fields
 
     def get_mine(self, entry) -> bool:

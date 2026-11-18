@@ -20,6 +20,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from competitions import jumbles
 from competitions.models import DrawVersion, Entry, Event, Match, Rubber, Tournament
 from core.exceptions import ApiException
 from facilities.models import Table
@@ -223,7 +224,7 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
     umpire = _umpire_of(match, rubber)
     if umpire is not None and Hold.objects.filter(user=umpire, active=True).exists():
         found.append(Blocked("umpire_busy", f"The umpire, {_name(umpire)}, is playing a match right now."))
-    absent = [e for e in (match.entry_a, match.entry_b) if e.checked_in_at is None]
+    absent = [e for e in (match.entry_a, match.entry_b) if not jumbles.checked_in(e)]
     if absent:
         names = " and ".join(_entry_title(entry) for entry in absent)
         verb = "hasn't" if len(absent) == 1 else "haven't"

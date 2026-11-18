@@ -104,6 +104,7 @@ def test_a_player_enters_and_staff_accept(staff, cup, singles):
         "status",
         "players",
         "team_name",
+        "pool",
         "captain_id",
         "reason",
         "created_at",

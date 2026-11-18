@@ -2546,6 +2546,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly title: string;
+            readonly pool: components["schemas"]["PoolEnum"];
             readonly players: components["schemas"]["EntryPlayer"][];
             /** @description Whether the caller plays in it, so screens can point out their own matches. */
             readonly mine: boolean;
@@ -2594,6 +2595,7 @@ export interface components {
             readonly status: components["schemas"]["EntryStatusEnum"];
             readonly players: components["schemas"]["EntryPlayer"][];
             readonly team_name: string;
+            readonly pool: components["schemas"]["PoolEnum"];
             /** Format: uuid */
             readonly captain_id: string | null;
             readonly reason: string;
@@ -2629,6 +2631,13 @@ export interface components {
             team_name?: string;
             /** Format: uuid */
             captain_id?: string | null;
+            /**
+             * @description Jumbles only: the men's or the women's pool.
+             *
+             *     * `men` - Men
+             *     * `women` - Women
+             */
+            pool?: components["schemas"]["PoolEnum"];
         };
         /**
          * @description * `pending` - Pending
@@ -2636,9 +2645,10 @@ export interface components {
          *     * `waitlisted` - Waitlisted
          *     * `rejected` - Rejected
          *     * `withdrawn` - Withdrawn
+         *     * `pairing` - Pairing
          * @enum {string}
          */
-        EntryStatusEnum: "pending" | "accepted" | "waitlisted" | "rejected" | "withdrawn";
+        EntryStatusEnum: "pending" | "accepted" | "waitlisted" | "rejected" | "withdrawn" | "pairing";
         EntryTournament: {
             /** Format: uuid */
             readonly id: string;
@@ -2703,9 +2713,10 @@ export interface components {
          * @description * `singles` - Singles
          *     * `doubles` - Doubles
          *     * `team` - Team
+         *     * `jumbles` - Jumbles
          * @enum {string}
          */
-        EventKindEnum: "singles" | "doubles" | "team";
+        EventKindEnum: "singles" | "doubles" | "team" | "jumbles";
         EventRequest: {
             name: string;
             kind: components["schemas"]["EventKindEnum"];
@@ -3168,6 +3179,7 @@ export interface components {
             readonly status: components["schemas"]["EntryStatusEnum"];
             readonly players: components["schemas"]["EntryPlayer"][];
             readonly team_name: string;
+            readonly pool: components["schemas"]["PoolEnum"];
             /** Format: uuid */
             readonly captain_id: string | null;
             readonly reason: string;
@@ -3741,6 +3753,12 @@ export interface components {
          * @enum {string}
          */
         PlayerRatingsResultEnum: "all" | "won" | "lost";
+        /**
+         * @description * `men` - Men
+         *     * `women` - Women
+         * @enum {string}
+         */
+        PoolEnum: "men" | "women";
         Problem: {
             /** Format: uuid */
             match_id: string;
@@ -7873,7 +7891,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                status?: "accepted" | "pending" | "rejected" | "waitlisted" | "withdrawn";
+                status?: "accepted" | "pairing" | "pending" | "rejected" | "waitlisted" | "withdrawn";
             };
             header?: never;
             path: {

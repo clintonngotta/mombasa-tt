@@ -107,6 +107,9 @@ class Event(models.Model):
         SINGLES = "singles"
         DOUBLES = "doubles"
         TEAM = "team"
+        # Mixed doubles round robin: players enter alone, in the men's or women's pool, and play every
+        # round with a different partner from the other pool (TASK-100).
+        JUMBLES = "jumbles"
 
     class Admission(models.TextChoices):
         OPEN = "open", "Open"
@@ -240,6 +243,12 @@ class Entry(models.Model):
         WAITLISTED = "waitlisted"  # staff will offer a place if one opens
         REJECTED = "rejected"
         WITHDRAWN = "withdrawn"
+        # A Jumbles round's pair, made by the draw: a man and a woman who play one match together.
+        PAIRING = "pairing"
+
+    class Pool(models.TextChoices):
+        MEN = "men", "Men"
+        WOMEN = "women", "Women"
 
     # Statuses in which the entry still stands, so its players can't be in another entry of the event.
     LIVE = (Status.PENDING, Status.ACCEPTED, Status.WAITLISTED)
@@ -248,6 +257,11 @@ class Entry(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="entries")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     team_name = models.CharField(max_length=80, blank=True)  # team events only
+    pool = models.CharField(max_length=5, choices=Pool.choices, blank=True)  # Jumbles entries only
+    # A pairing belongs to the draw that made it, and goes when that draw is replaced.
+    pairing_draw = models.ForeignKey(
+        "DrawVersion", on_delete=models.CASCADE, null=True, blank=True, related_name="pairings"
+    )
     captain = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )

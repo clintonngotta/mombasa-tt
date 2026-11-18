@@ -3420,6 +3420,7 @@ paths:
           type: string
           enum:
           - accepted
+          - pairing
           - pending
           - rejected
           - waitlisted
@@ -5370,6 +5371,10 @@ components:
         title:
           type: string
           readOnly: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          readOnly: true
         players:
           type: array
           items:
@@ -5384,6 +5389,7 @@ components:
       - id
       - mine
       - players
+      - pool
       - title
     DrawGroup:
       type: object
@@ -5484,6 +5490,10 @@ components:
         team_name:
           type: string
           readOnly: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          readOnly: true
         captain_id:
           type: string
           format: uuid
@@ -5529,6 +5539,7 @@ components:
       - mine
       - my_check_in_at
       - players
+      - pool
       - reason
       - status
       - team_name
@@ -5589,6 +5600,14 @@ components:
           type: string
           format: uuid
           nullable: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          description: |-
+            Jumbles only: the men's or the women's pool.
+
+            * `men` - Men
+            * `women` - Women
     EntryStatusEnum:
       enum:
       - pending
@@ -5596,6 +5615,7 @@ components:
       - waitlisted
       - rejected
       - withdrawn
+      - pairing
       type: string
       description: |-
         * `pending` - Pending
@@ -5603,6 +5623,7 @@ components:
         * `waitlisted` - Waitlisted
         * `rejected` - Rejected
         * `withdrawn` - Withdrawn
+        * `pairing` - Pairing
     EntryTournament:
       type: object
       properties:
@@ -5795,11 +5816,13 @@ components:
       - singles
       - doubles
       - team
+      - jumbles
       type: string
       description: |-
         * `singles` - Singles
         * `doubles` - Doubles
         * `team` - Team
+        * `jumbles` - Jumbles
     EventRequest:
       type: object
       properties:
@@ -6886,6 +6909,10 @@ components:
         team_name:
           type: string
           readOnly: true
+        pool:
+          allOf:
+          - $ref: '#/components/schemas/PoolEnum'
+          readOnly: true
         captain_id:
           type: string
           format: uuid
@@ -6940,6 +6967,7 @@ components:
       - mine
       - my_check_in_at
       - players
+      - pool
       - reason
       - status
       - team_name
@@ -8215,6 +8243,14 @@ components:
         * `all` - all
         * `won` - won
         * `lost` - lost
+    PoolEnum:
+      enum:
+      - men
+      - women
+      type: string
+      description: |-
+        * `men` - Men
+        * `women` - Women
     Problem:
       type: object
       properties:
