@@ -82,8 +82,8 @@ function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
         {deck.conflicts > 0 && (
           <div role="alert" className="flex flex-col gap-2 rounded-lg border border-brand-gold/60 bg-brand-gold/10 p-3 text-brand-gold">
             <p>
-              {deck.conflicts} {deck.conflicts === 1 ? "action" : "actions"} scored on this device {deck.conflicts === 1 ? "was" : "were"} not accepted, because the match was reassigned or scored from somewhere else
-              first. {deck.conflicts === 1 ? "It is" : "They are"} still kept here and {deck.conflicts === 1 ? "is" : "are"} not part of the score. Tell the organizers if the score shown is wrong.
+              {deck.conflicts} {deck.conflicts === 1 ? "action" : "actions"} scored on this device {deck.conflicts === 1 ? "was" : "were"} not accepted by the server (the match was reassigned, scored from somewhere else first, or the server refused
+              the action). {deck.conflicts === 1 ? "It is" : "They are"} still kept here and {deck.conflicts === 1 ? "is" : "are"} not part of the score. Tell the organizers if the score shown is wrong.
             </p>
             <button type="button" className={cn(deckButton, "self-start border-brand-gold text-brand-gold")} onClick={() => void deck.dismissConflicts()}>
               I have told them. Remove from this device

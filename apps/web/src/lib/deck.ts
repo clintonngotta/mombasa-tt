@@ -58,7 +58,12 @@ const TAB_KEY = "coast-tt-tab"
  * tab and takes its sheet back at once. A duplicated tab starts with a copy of it; the original, still
  * open, says so and the copy takes a new one.
  */
-function tabIdentity(): Promise<string> {
+let identity: Promise<string> | null = null
+
+/** Settled once per page load; the channel stays open to answer a duplicate of this tab. */
+const tabIdentity = () => (identity ??= findTabIdentity())
+
+function findTabIdentity(): Promise<string> {
   let id = ""
   try {
     id = sessionStorage.getItem(TAB_KEY) ?? ""
@@ -96,8 +101,8 @@ function tabIdentity(): Promise<string> {
 
 const transport: Transport<Scorecard> = {
   load: getScorecard,
-  // Each event says which server revision the device had seen when it was sent (REQ-013).
-  send: (card, events) => sendEvents(card.id, card.assignment_id, events.map((sent) => ({ ...sent, expected_revision: card.revision }))),
+  // Each event carries the server revision the device had seen when it was written (REQ-013).
+  send: (card, events) => sendEvents(card.id, card.assignment_id, events),
   classify(error) {
     if (error instanceof ApiError) {
       if (error.status === 404) return { kind: "gone" }
@@ -113,7 +118,7 @@ export function problemText(problem: string): string {
   if (!problem) return ""
   if (problem === "read_only") return "This match is open for scoring in another tab or window. Score it there, or close that one."
   if (problem === "storage") return "This device couldn't save that action, so it was NOT scored. Free some storage or leave private browsing, then try again."
-  if (problem.startsWith("refused:")) return `The server didn't take the last action. ${REFUSAL[problem.slice(8)] ?? ""} The score shown is what is saved; anything after it was not kept.`
+  if (problem.startsWith("refused:")) return `The server didn't take an action. ${REFUSAL[problem.slice(8)] ?? ""} The score shown is what the server holds; what it didn't take is listed above.`
   return REFUSAL[problem] ?? problem
 }
 

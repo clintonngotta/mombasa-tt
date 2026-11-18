@@ -16,7 +16,7 @@ export interface Sheet {
   confirmed_at?: string | null
 }
 
-export type Envelope = { id: string; sequence: number; event: ScoreEvent; device_time: string }
+export type Envelope = { id: string; sequence: number; event: ScoreEvent; device_time: string; expected_revision: number }
 
 export interface Reply {
   revision: number
@@ -87,7 +87,7 @@ const empty = <C extends Sheet>(): DeckView<C> => ({
   lost: false,
 })
 
-const envelope = (kept: JournalEvent<ScoreEvent>): Envelope => ({ id: kept.id, sequence: kept.sequence, event: kept.event, device_time: kept.device_time })
+const envelope = (kept: JournalEvent<ScoreEvent>): Envelope => ({ id: kept.id, sequence: kept.sequence, event: kept.event, device_time: kept.device_time, expected_revision: kept.expectedRevision })
 
 export interface DeckOptions<C extends Sheet> {
   scorecardId: string
@@ -105,7 +105,7 @@ export class DeckStore<C extends Sheet> {
   private session: Session<C> | null = null
   private journal: Journal | null = null
   private view: DeckView<C> = empty()
-  private sending = false
+  private flushing: Promise<void> | null = null
   private readonly listeners = new Set<() => void>()
   /** Actions are taken one after another, each waiting for the journal before the next is looked at. */
   private chain: Promise<void> = Promise.resolve()
@@ -173,11 +173,14 @@ export class DeckStore<C extends Sheet> {
   }
 
   close = async () => {
+    const journal = this.journal
+    this.journal = null
     try {
-      await this.journal?.release(this.options.scorecardId, this.tabId)
+      await journal?.release(this.options.scorecardId, this.tabId)
     } catch {
       // The claim goes stale by itself.
     }
+    journal?.close()
   }
 
   private build(card: C, extra: JournalEvent<ScoreEvent>[]): Session<C> {
@@ -206,8 +209,25 @@ export class DeckStore<C extends Sheet> {
    * Take the sheet as the server holds it and put this device's unsent actions back on top of it. If
    * the server can't be reached, open from the device's own copy. Run on opening, on reconnecting and
    * on coming back to the tab, before anything new is written.
+   *
+   * Asking the server takes time and the umpire may tap meanwhile. So the answer is merged with the
+   * journal in the same queue as the umpire's actions: an action is either fully taken before the
+   * merge reads the journal, or waits until the merge is done. No tap falls between the two.
    */
   load = async () => {
+    const { scorecardId, transport } = this.options
+    let card: C | null = null
+    let failure: unknown = null
+    try {
+      card = await transport.load(scorecardId)
+    } catch (error) {
+      failure = error
+    }
+    this.chain = this.chain.then(() => this.merge(card, failure)).catch((error: unknown) => this.show({ failure: error }))
+    await this.chain
+  }
+
+  private async merge(card: C | null, failure: unknown) {
     const { scorecardId, userId, transport } = this.options
     const journal = this.journal
     let kept: { sheet: { card: C; revision: number; acked: number } | null; events: JournalEvent<ScoreEvent>[] } = { sheet: null, events: [] }
@@ -217,11 +237,8 @@ export class DeckStore<C extends Sheet> {
       this.show({ storageFailed: true })
     }
 
-    let card: C
-    try {
-      card = await transport.load(scorecardId)
-    } catch (error) {
-      const { kind } = transport.classify(error)
+    if (!card) {
+      const { kind } = transport.classify(failure)
       if (kind === "offline" && kept.sheet) {
         // The server can't be reached: carry on from what this device holds.
         const local = kept.events.filter((event) => event.sequence > kept.sheet!.card.revision)
@@ -231,7 +248,7 @@ export class DeckStore<C extends Sheet> {
         return
       }
       if (this.session) this.session.queue = []
-      this.show(kind === "gone" ? { lost: true } : { failure: error })
+      this.show(kind === "gone" ? { lost: true, conflicts: await this.countConflicts() } : { failure })
       return
     }
 
@@ -246,11 +263,12 @@ export class DeckStore<C extends Sheet> {
     const usable = diverged || card.confirmed_at ? [] : ahead.filter((event) => event.assignmentId === card.assignment_id)
     const session = this.build(card, usable)
     try {
-      if (journal) {
+      // Only the tab that owns the sheet tidies the journal; a tab that is watching just shows it.
+      if (journal && !this.view.readOnly) {
         if (diverged || ahead.length > session.queue.length) {
           // Scored here but no longer sendable (reassigned, or the stream moved on elsewhere): kept, visible, never sent.
           const from = diverged ? diverged.sequence : session.queue.length ? session.queue[session.queue.length - 1].sequence + 1 : card.revision + 1
-          await journal.setAside(scorecardId, from, true)
+          await journal.setAside(scorecardId, userId, from)
         }
         await journal.saveSheet({ scorecardId, userId, card, revision: card.revision })
       }
@@ -273,7 +291,7 @@ export class DeckStore<C extends Sheet> {
   /** The umpire has seen the conflicts and lets them go. */
   dismissConflicts = async () => {
     try {
-      await this.journal?.clearConflicts(this.options.scorecardId)
+      await this.journal?.clearConflicts(this.options.scorecardId, this.options.userId)
       this.show({ conflicts: 0 })
     } catch {
       this.show({ storageFailed: true })
@@ -285,7 +303,8 @@ export class DeckStore<C extends Sheet> {
    * the deck says so and the score stays where it was. Resolves when the action has been dealt with.
    */
   act = (event: ScoreEvent): Promise<void> => {
-    this.chain = this.chain.then(() => this.take(event))
+    // A failure inside one action must not stop the ones after it from being looked at.
+    this.chain = this.chain.then(() => this.take(event)).catch(() => this.show({ problem: "storage", storageFailed: true }))
     return this.chain
   }
 
@@ -312,7 +331,6 @@ export class DeckStore<C extends Sheet> {
       // Not saved, so not scored: the umpire is told before anything changes on screen.
       return this.show({ storageFailed: true, problem: "storage" })
     }
-    if (this.session !== session) return // the sheet was reloaded while writing; the event is in the journal and comes back with it
     session.scoring = next
     session.stream = [...session.stream, { sequence: written.sequence, event }]
     session.queue = [...session.queue, envelope(written)]
@@ -322,13 +340,21 @@ export class DeckStore<C extends Sheet> {
 
   /**
    * Send what is queued, in order, one request at a time, until the queue is empty. Called after
-   * every action, on reconnecting, on coming back to the tab and by the umpire's Retry.
+   * every action, on reconnecting, on coming back to the tab, on a timer and by the umpire's Retry.
+   * While a round is under way, callers get that round: there is never more than one.
    */
-  flush = async () => {
-    if (this.sending) return
-    this.sending = true
-    const { transport, scorecardId } = this.options
+  flush = (): Promise<void> => {
+    this.flushing ??= this.send().finally(() => {
+      this.flushing = null
+    })
+    return this.flushing
+  }
+
+  private async send() {
+    const { transport, scorecardId, userId } = this.options
     try {
+      // A tab that slept may have lost the sheet to another: ask before sending anything.
+      if (this.journal && !(await this.journal.claim(scorecardId, this.tabId, this.options.now?.()))) return this.show({ readOnly: true })
       for (;;) {
         const session = this.session
         if (!session || session.queue.length === 0 || this.view.lost || this.view.readOnly) break
@@ -337,12 +363,18 @@ export class DeckStore<C extends Sheet> {
         if (this.session !== session) continue // reloaded meanwhile: go on from what it holds now
         session.queue = session.queue.filter((sent) => sent.sequence > reply.revision)
         session.card = { ...session.card, revision: reply.revision }
-        await this.journal?.markAcked(scorecardId, reply.revision).catch(() => undefined)
+        await this.journal?.markAcked(scorecardId, userId, reply.revision).catch(() => undefined)
         if (reply.refused) {
-          // The rules refused it, so it and what followed can't stand; another writer's event in its
-          // place is a conflict, which is kept for review instead of being thrown away.
-          const conflict = ["sequence_conflict", "sequence_gap", "revision_conflict"].includes(reply.refused.code)
-          await this.journal?.setAside(scorecardId, reply.refused.sequence, conflict).catch(() => undefined)
+          // Whatever the reason (another writer's event in its place, or the server's rules), it and
+          // what followed can't join the stream. They are set aside, visible, never sent again.
+          try {
+            await this.journal?.setAside(scorecardId, userId, reply.refused.sequence)
+          } catch {
+            // If they can't be set aside they would be sent again and again: stop until the device can write.
+            session.queue = []
+            this.show({ storageFailed: true, failure: new Error("storage") })
+            break
+          }
           await this.load()
           if (!this.view.failure && !this.view.lost) this.show({ problem: `refused:${reply.refused.code}` })
           break
@@ -355,16 +387,15 @@ export class DeckStore<C extends Sheet> {
       if (kind === "offline") this.show({ sync: "waiting" }) // nothing is lost: it is all in the journal
       else if (kind === "gone") {
         // Not ours any more. What this device scored and couldn't send stays on it, marked.
-        await this.journal?.setAside(scorecardId, (this.session?.card.revision ?? 0) + 1, true).catch(() => undefined)
+        await this.journal?.setAside(scorecardId, userId, (this.session?.card.revision ?? 0) + 1).catch(() => undefined)
         if (this.session) this.session.queue = []
         this.show({ lost: true, conflicts: await this.countConflicts() })
       } else {
-        // Reassigned or otherwise refused as a whole: reload decides what can still be sent.
+        // Reassigned or otherwise refused as a whole: a reread decides what can still be sent. What is
+        // still queued afterwards waits for the next round (a retry, the timer), not a tight loop.
         await this.load()
-        if (!this.view.failure && !this.view.lost) this.show({ problem: message ?? `refused:${kind}` })
+        if (!this.view.failure && !this.view.lost) this.show({ sync: this.session?.queue.length ? "waiting" : "saved", problem: message ?? `refused:${kind}` })
       }
-    } finally {
-      this.sending = false
     }
   }
 }

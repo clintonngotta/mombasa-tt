@@ -59,7 +59,7 @@ export function ProfilePage() {
       {unsent > 0 && (
         <div role="alert" className="flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/5 p-4">
           <p className="font-semibold">
-            {unsent} score {unsent === 1 ? "action" : "actions"} on this device {unsent === 1 ? "hasn't" : "haven't"} reached Coast TT yet.
+            {unsent} score {unsent === 1 ? "action" : "actions"} on this device {unsent === 1 ? "isn't" : "aren't"} on Coast TT: not sent yet, or not accepted and still to be shown to the organizers.
           </p>
           <p>Open the match from Play while you are connected and wait for "Saved", then log out. Logging out now removes them from this device for good.</p>
           <div className="flex flex-wrap gap-2">
