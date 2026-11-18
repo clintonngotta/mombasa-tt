@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from core.exceptions import ApiException
 
-from . import draws, standings
+from . import draws, signals, standings
 from .models import DrawPlace, DrawVersion, Entry, Event, Match, Rubber, Tournament
 from .rules import RULES_VERSION
 
@@ -178,6 +178,8 @@ def record_result(match: Match, winner: Entry, *, outcome: str = Match.Outcome.P
     _send_on(match)
     if match.stage == Match.Stage.GROUP:
         place_qualifiers(match.draw, match.group)
+    # Whatever the match held (its table, its players) is released in this same transaction.
+    signals.match_decided.send(sender=Match, match=match)
 
 
 def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
@@ -370,6 +372,7 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict):
             "games": match.games,
             "tie_score": list(tie_score(match)) if match.rubbers.all() else None,
             "table": match.table.label if match.table else "",
+            "dispatched_at": match.dispatched_at,
             "scheduled_at": match.scheduled_at,
         }
 

@@ -86,7 +86,8 @@ def ensure_open(tournament: Tournament) -> None:
 def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     """One match of `draw` as MatchDetailSerializer shows it to the caller: its tie if it is one, and
     where its scoring stands."""
-    from scoring import service as scoring  # scoring builds on competitions
+    from reservations import service as reservations  # both build on competitions
+    from scoring import service as scoring
 
     shown = drawing.describe_match(draw, pk) if draw else None
     if shown is None:
@@ -102,6 +103,19 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     else:
         shown["tie"] = None
         shown["scoring"] = scoring.summary(match, None, request.user, staff)
+    shown["can_dispatch"] = staff and match.status == Match.Status.SCHEDULED
+    held = match.reservations.filter(status="active").select_related("table").prefetch_related("holds__user")
+    shown["on_table"] = (
+        {
+            "table": held[0].table.label,
+            "since": held[0].created_at,
+            "people": sorted(h.user.display_name for h in held[0].holds.all() if h.user_id and h.active),
+            # A tie holds its players rubber by rubber: say who couldn't be held for the current one.
+            "waiting_for": [u.display_name for u in reservations.missing_people(held[0])] if staff else [],
+        }
+        if held
+        else None
+    )
     return Response(MatchDetailSerializer(shown, context={"request": request}).data)
 
 

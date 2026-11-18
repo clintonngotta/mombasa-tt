@@ -4,6 +4,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
 import { TieView } from "@/components/tournaments/TieView"
+import { TableControl } from "@/components/tournaments/TableControl"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
@@ -100,6 +101,15 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
           <Name side={b} won={won(b)} align="right" />
         </div>
       </header>
+
+      {!decided && (m.on_table || m.can_dispatch) && (
+        <section aria-labelledby="table-heading" className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          <h2 id="table-heading" className="text-xl font-bold">
+            Table
+          </h2>
+          <TableControl match={m} ids={{ tournamentId, eventId: event.id, matchId: m.id }} timeZone={timeZone} />
+        </section>
+      )}
 
       {m.scoring && (m.scoring.status !== "unassigned" || !decided) && (
         <section aria-labelledby="scoring-heading" className="flex flex-col gap-2 rounded-xl border bg-card p-4">

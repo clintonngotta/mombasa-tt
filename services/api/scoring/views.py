@@ -68,7 +68,14 @@ class ScoringOverviewViewSet(viewsets.GenericViewSet):
     def retrieve(self, request, tournament_pk):
         tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
         require_staff(request.user, tournament)
-        return Response(ScoringOverviewSerializer(service.overview(tournament)).data)
+        return Response(ScoringOverviewSerializer(self._overview(tournament)).data)
+
+    @staticmethod
+    def _overview(tournament: Tournament) -> dict:
+        from reservations import service as reservations  # reservations builds on scoring's models
+
+        held = [reservations.describe(reservation) for reservation in reservations.active_for(tournament)]
+        return {**service.overview(tournament), "reservations": held}
 
     @extend_schema(request=ResolveConflictSerializer, responses={200: ScoringOverviewSerializer})
     def resolve(self, request, tournament_pk, pk):
@@ -85,7 +92,7 @@ class ScoringOverviewViewSet(viewsets.GenericViewSet):
                 pk=pk,
             )
             service.resolve_conflict(conflict, request.user, serializer.validated_data["note"])
-        return Response(ScoringOverviewSerializer(service.overview(tournament)).data)
+        return Response(ScoringOverviewSerializer(self._overview(tournament)).data)
 
 
 class UmpireViewSet(viewsets.GenericViewSet):

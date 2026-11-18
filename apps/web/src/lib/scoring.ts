@@ -64,6 +64,7 @@ export const reportConflict = (id: string, report: { id: string; assignment_id: 
 export type ScoringOverview = Schemas["ScoringOverview"]
 export type OpenSheet = Schemas["OpenSheet"]
 export type ScoreConflict = Schemas["ScoreConflict"]
+export type HeldMatch = Schemas["Reservation"]
 
 /** Scoring in one tournament for its competition staff: open sheets and what devices reported. */
 export const getScoringOverview = (tournamentId: string) => api<ScoringOverview>(`/tournaments/${tournamentId}/scoring/`)

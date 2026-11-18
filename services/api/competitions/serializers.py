@@ -421,6 +421,9 @@ class MatchSerializer(serializers.Serializer):
     scheduled_at = serializers.DateTimeField(
         allow_null=True, help_text="When it is expected to start: an estimate. Null until it is scheduled."
     )
+    dispatched_at = serializers.DateTimeField(
+        allow_null=True, help_text="When it was sent to its table. Null while it isn't on one."
+    )
 
 
 class LineupSideSerializer(serializers.Serializer):
@@ -483,6 +486,18 @@ class LineupRequestSerializer(serializers.Serializer):
     )
 
 
+class OnTableSerializer(serializers.Serializer):
+    """The match is on a table: the table and its players are held until the result is official."""
+
+    table = serializers.CharField()
+    since = serializers.DateTimeField()
+    people = serializers.ListField(child=serializers.CharField())
+    waiting_for = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Players of the tie's current rubber who are in use elsewhere (staff only).",
+    )
+
+
 class MatchDetailSerializer(MatchSerializer):
     """One match of the published draw on its own page. Reading it gives nobody a way to score it."""
 
@@ -493,6 +508,8 @@ class MatchDetailSerializer(MatchSerializer):
     draw_version = serializers.IntegerField()
     tie = TieSerializer(allow_null=True, help_text="Team events only.")
     scoring = ScoringSummarySerializer(allow_null=True, help_text="Null for a tie: its rubbers are scored.")
+    on_table = OnTableSerializer(allow_null=True)
+    can_dispatch = serializers.BooleanField(help_text="The caller may send it to a table or call it back.")
 
 
 class DrawGroupSerializer(serializers.Serializer):

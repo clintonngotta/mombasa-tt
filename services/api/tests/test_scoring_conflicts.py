@@ -5,6 +5,8 @@ import uuid
 
 import pytest
 
+from facilities.models import Table
+from reservations.models import Hold
 from scoring.models import ScoreAssignment, ScoreConflict, ScoreEvent
 
 from .helpers import logged_in, make_user
@@ -232,17 +234,32 @@ def test_a_finished_sheet_waits_visibly_for_its_confirmation(staff, final, umpir
     as_umpire = logged_in(umpire)
     phone = Device(as_umpire, sheet_id(as_umpire, final), "Phone")
     phone.open()
-    assert overview(staff, final) == {"sheets": [], "conflicts": []}  # nothing scored yet
+    assert overview(staff, final) == {"sheets": [], "conflicts": [], "reservations": []}  # nothing yet
+    # The match goes to a table: from now on the table and both players are held.
+    table = Table.objects.create(venue=final["match"].draw.event.tournament.venue, label="Table 1")
+    sent = staff.post(
+        match_url(final, "dispatch/"),
+        {"table_id": str(table.id), "overrides": ["check_in"], "reason": "Both at the table"},
+        format="json",
+    )
+    assert sent.status_code == 200, sent.json()
     phone.take()
     phone.send(START, *[point("a")] * 22)
-    (waiting,) = overview(staff, final)["sheets"]
+    shown = overview(staff, final)
+    (waiting,) = shown["sheets"]
     assert (waiting["status"], waiting["games"], waiting["last_event_at"] is not None) == (
         "finished",
         [[11, 0], [11, 0]],
         True,
     )
+    # Finished but not confirmed: the reservation is still there, and still shown (REQ-013).
+    (held,) = shown["reservations"]
+    assert (held["table"], len(held["people"]), held["overrides"]) == ("Table 1", 2, ["check_in"])
+    assert Hold.objects.filter(active=True).count() == 3
     phone.confirm()
-    assert overview(staff, final)["sheets"] == []
+    after = overview(staff, final)
+    assert after["sheets"] == [] and after["reservations"] == []
+    assert not Hold.objects.filter(active=True).exists()
 
 
 def test_the_first_device_to_score_an_unheld_sheet_holds_it(staff, final, umpire):  # noqa: F811

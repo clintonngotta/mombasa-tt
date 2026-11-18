@@ -23,6 +23,7 @@ api_v1 = [
     path("organizations/<uuid:organization_pk>/", include(organization_tournaments)),
     path("tournaments/", include("competitions.urls")),
     path("tournaments/", include(umpires)),
+    path("tournaments/", include("reservations.urls")),
     path("players/", PlayerDirectoryView.as_view(), name="player-directory"),
     path("players/<uuid:pk>/", PlayerDetailView.as_view(), name="player-detail"),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),

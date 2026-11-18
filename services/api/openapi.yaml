@@ -3331,6 +3331,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/dispatch/:
+    post:
+      operationId: tournaments_events_matches_dispatch_create
+      description: |-
+        Send the match to a table. The table and the players are held from now until the result is
+        official or staff call the match back. Refused with the constraint that stands in the way
+        (`table_busy`, `player_busy`, `not_checked_in`, `resting`, ...); everything is checked again
+        here whatever was shown before.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/:
     post:
       operationId: tournaments_events_matches_lineup_create
@@ -3406,6 +3456,54 @@ paths:
         required: true
       tags:
       - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recall/:
+    post:
+      operationId: tournaments_events_matches_recall_create
+      description: |-
+        Take the match off its table, with a reason. The table and players are free again; a score
+        sheet already started stays as it is.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecallRequest'
+        required: true
       security:
       - sessionAuth: []
       responses:
@@ -3733,6 +3831,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/reservations/:
+    get:
+      operationId: tournaments_reservations_list
+      description: Matches of this tournament that are on a table, with who is held.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/scoring/:
     get:
       operationId: tournaments_scoring_retrieve
@@ -3798,6 +3926,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScoringOverview'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/tables/:
+    get:
+      operationId: tournaments_tables_list
+      description: |-
+        The tournament's tables in use and which are free. A table at a shared venue may be held by
+        another tournament's match.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TableState'
           description: ''
         4XX:
           description: Error envelope
@@ -4124,6 +4284,24 @@ components:
       - display_name
       - id
       - nickname
+    DispatchRequest:
+      type: object
+      description: |-
+        Send the match to a table. `overrides` sets aside the check-in or rest check, with a reason;
+        nothing sets aside that a table and a player are in one place at a time.
+      properties:
+        table_id:
+          type: string
+          format: uuid
+        overrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/OverridesEnum'
+        reason:
+          type: string
+          maxLength: 300
+      required:
+      - table_id
     Draw:
       type: object
       description: 'One version of an event''s draw: who sits where, and every match
@@ -5076,9 +5254,15 @@ components:
           nullable: true
           description: 'When it is expected to start: an estimate. Null until it is
             scheduled.'
+        dispatched_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When it was sent to its table. Null while it isn't on one.
       required:
       - a
       - b
+      - dispatched_at
       - games
       - group
       - id
@@ -5154,6 +5338,11 @@ components:
           nullable: true
           description: 'When it is expected to start: an estimate. Null until it is
             scheduled.'
+        dispatched_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When it was sent to its table. Null while it isn't on one.
         group_name:
           type: string
           description: Empty for a knockout match.
@@ -5172,14 +5361,24 @@ components:
           - $ref: '#/components/schemas/ScoringSummary'
           nullable: true
           description: 'Null for a tie: its rubbers are scored.'
+        on_table:
+          allOf:
+          - $ref: '#/components/schemas/OnTable'
+          nullable: true
+        can_dispatch:
+          type: boolean
+          description: The caller may send it to a table or call it back.
       required:
       - a
       - b
+      - can_dispatch
+      - dispatched_at
       - draw_version
       - games
       - group
       - group_name
       - id
+      - on_table
       - outcome
       - position
       - round
@@ -5761,6 +5960,31 @@ components:
     NullEnum:
       enum:
       - null
+    OnTable:
+      type: object
+      description: 'The match is on a table: the table and its players are held until
+        the result is official.'
+      properties:
+        table:
+          type: string
+        since:
+          type: string
+          format: date-time
+        people:
+          type: array
+          items:
+            type: string
+        waiting_for:
+          type: array
+          items:
+            type: string
+          description: Players of the tie's current rubber who are in use elsewhere
+            (staff only).
+      required:
+      - people
+      - since
+      - table
+      - waiting_for
     OpenSheet:
       type: object
       description: A match being scored, or finished and not yet confirmed by its
@@ -5875,6 +6099,14 @@ components:
       - id
       - name
       - town
+    OverridesEnum:
+      enum:
+      - check_in
+      - rest
+      type: string
+      description: |-
+        * `check_in` - check_in
+        * `rest` - rest
     PaginatedDirectoryPlayerList:
       type: object
       required:
@@ -6756,6 +6988,15 @@ components:
           maxLength: 300
       required:
       - reason
+    RecallRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     RefusedEvent:
       type: object
       properties:
@@ -6768,6 +7009,58 @@ components:
       required:
       - code
       - sequence
+    Reservation:
+      type: object
+      description: 'A match on a table: the table and the people held until its result
+        is official.'
+      properties:
+        id:
+          type: string
+          format: uuid
+        table_id:
+          type: string
+          format: uuid
+        table:
+          type: string
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        match_id:
+          type: string
+          format: uuid
+        a:
+          type: string
+        b:
+          type: string
+        since:
+          type: string
+          format: date-time
+        people:
+          type: array
+          items:
+            type: string
+          description: Players held with the table.
+        overrides:
+          type: array
+          items:
+            type: string
+        override_reason:
+          type: string
+      required:
+      - a
+      - b
+      - event_id
+      - event_name
+      - id
+      - match_id
+      - override_reason
+      - overrides
+      - people
+      - since
+      - table
+      - table_id
     ResolveConflictRequest:
       type: object
       description: What was done about it, for the record.
@@ -7086,8 +7379,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ScoreConflict'
+        reservations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reservation'
+          description: 'Matches on a table: the table and players held until the result
+            is official.'
       required:
       - conflicts
+      - reservations
       - sheets
     ScoringState:
       type: object
@@ -7451,6 +7751,31 @@ components:
           type: boolean
       required:
       - label
+    TableState:
+      type: object
+      description: One of the tournament's tables and whether a match holds it right
+        now.
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        free:
+          type: boolean
+        held_by:
+          type: string
+          description: Tournament and event of the match on it.
+        since:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - free
+      - held_by
+      - id
+      - label
+      - since
     TakeDeviceRequest:
       type: object
       description: This device takes the sheet. `take_over` is needed when another

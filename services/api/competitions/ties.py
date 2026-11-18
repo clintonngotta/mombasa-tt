@@ -11,7 +11,7 @@ Callers hold the tournament row lock, like every other change to a tournament.
 
 from core.exceptions import ApiException
 
-from . import drawing, standings
+from . import drawing, signals, standings
 from .models import DrawVersion, Entry, Event, Lineup, Match, Rubber, RubberPlayer
 
 R = Rubber.Status
@@ -144,6 +144,7 @@ def record_rubber(rubber: Rubber, winner: Entry, *, outcome: str = Match.Outcome
     rubber.outcome = outcome
     rubber.games = games
     rubber.save(update_fields=["winner", "status", "outcome", "games"])
+    signals.rubber_decided.send(sender=Rubber, rubber=rubber)
 
     if max(tie_score(match)) >= match.draw.event.tie_wins_needed:
         # Decided: the tie goes on through the draw like any match, and what is left is not played.
