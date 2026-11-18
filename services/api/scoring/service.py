@@ -200,11 +200,16 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict]) -> di
     scoring = replayed(scorecard)
     known = dict(scorecard.events.values_list("id", "sequence"))
     accepted, refused = 0, None
+    seen = scorecard.revision  # what the server held when the batch arrived
     for sent in events:
         if known.get(sent["id"]) == sent["sequence"]:
             continue  # a retry of something already accepted
         if sent["id"] in known or sent["sequence"] <= scorecard.revision:
             refused = {"sequence": sent["sequence"], "code": "sequence_conflict"}
+            break
+        if sent.get("expected_revision", 0) > seen:
+            # The device built on events this server doesn't hold: never accept on top of a hole.
+            refused = {"sequence": sent["sequence"], "code": "revision_conflict"}
             break
         if sent["sequence"] != scorecard.revision + 1:
             refused = {"sequence": sent["sequence"], "code": "sequence_gap"}

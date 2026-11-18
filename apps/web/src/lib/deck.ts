@@ -1,35 +1,22 @@
-// The scoring deck's session (REQ-012): the score the umpire sees comes from the shared reducer at once,
-// every action is sent to the server in order, and what the server holds is the authority. The server
-// replays each event itself; if it refuses one, the deck goes back to what the server has.
+// The scoring deck for React (REQ-012, REQ-013): the session and the journal live in lib/deck/, which
+// knows nothing of the app; this file gives them the API, the browser's events and words for the umpire.
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { Scoring, ScoringError, type ScoreEvent, type State } from "@scoring"
+import { Scoring, type ScoreEvent, type State } from "@scoring"
 import { ApiError } from "@/lib/api"
-import { configOf, getScorecard, MAX_BATCH, namesOf, REFUSAL, sendEvents, type Envelope, type Names, type Scorecard } from "@/lib/scoring"
+import { Journal } from "@/lib/deck/journal"
+import { DeckStore, HEARTBEAT_MS, type DeckView, type Transport } from "@/lib/deck/store"
+import { configOf, getScorecard, REFUSAL, sendEvents, type Names, type Scorecard } from "@/lib/scoring"
 
-export type Sync = "saved" | "sending" | "waiting"
+export type { Sync } from "@/lib/deck/store"
 
 export type LogLine = { sequence: number; text: string }
 
-type Session = {
-  card: Scorecard
-  scoring: Scoring
-  /** Every event that stands in the stream, accepted or still on its way, in order. */
-  stream: { sequence: number; event: ScoreEvent }[]
-  /** Events the server hasn't acknowledged yet. */
-  queue: Envelope[]
-}
-
-function build(card: Scorecard): Session {
-  let scoring = new Scoring(configOf(card))
-  const stream = card.events.map((sent) => ({ sequence: sent.sequence, event: sent.event as ScoreEvent }))
-  for (const { event } of stream) scoring = scoring.push(event)
-  return { card, scoring, stream, queue: [] }
-}
+type Stream = DeckView<Scorecard>["stream"]
 
 const newId = () => (typeof crypto.randomUUID === "function" ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16)))
 
 /** What happened, in words, from the events alone: no shot is ever described (REQ-018). */
-export function describeLog(card: Scorecard, stream: Session["stream"], names: Names): LogLine[] {
+export function describeLog(card: Scorecard, stream: Stream, names: Names): LogLine[] {
   let scoring = new Scoring(configOf(card))
   const lines: LogLine[] = []
   for (const { sequence, event } of stream) {
@@ -64,138 +51,148 @@ function describe(event: ScoreEvent, before: State, after: State, names: Names):
   }
 }
 
-export type DeckView = {
-  card?: Scorecard
-  state?: State
-  /** How many actions an undo can still take back. */
-  undoable: number
-  log: LogLine[]
-  /** Actions the server hasn't acknowledged yet. */
-  pending: number
-  sync: Sync
-  /** Why the last action wasn't taken, in the umpire's words. */
-  problem: string
-  /** Why the sheet couldn't be loaded. */
-  failure: unknown
-  /** The sheet is no longer this umpire's: reassigned, or it never was. */
-  lost: boolean
-}
-
-const EMPTY: DeckView = { undoable: 0, log: [], pending: 0, sync: "saved", problem: "", failure: null, lost: false }
+const TAB_KEY = "coast-tt-tab"
 
 /**
- * One sheet being scored, outside React so that actions, the send queue and replies from the server
- * are handled in order whatever is on screen. `act` applies an action at once and queues it.
+ * This tab's id for owning a sheet. It is kept for the life of the tab, so a reload is still the same
+ * tab and takes its sheet back at once. A duplicated tab starts with a copy of it; the original, still
+ * open, says so and the copy takes a new one.
  */
-export class DeckStore {
-  private session: Session | null = null
-  private sending = false
-  private view: DeckView = EMPTY
-  private readonly listeners = new Set<() => void>()
-  private readonly scorecardId: string
+let identity: Promise<string> | null = null
 
-  constructor(scorecardId: string) {
-    this.scorecardId = scorecardId
+/** Settled once per page load; the channel stays open to answer a duplicate of this tab. */
+const tabIdentity = () => (identity ??= findTabIdentity())
+
+function findTabIdentity(): Promise<string> {
+  let id = ""
+  try {
+    id = sessionStorage.getItem(TAB_KEY) ?? ""
+  } catch {
+    // No session storage: every page load is a new tab, which only costs a short wait after a reload.
   }
-
-  subscribe = (listener: () => void) => {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
-  }
-
-  snapshot = () => this.view
-
-  private show(change: Partial<DeckView> = {}) {
-    const session = this.session
-    this.view = {
-      ...this.view,
-      ...change,
-      card: session?.card,
-      state: session?.scoring.state,
-      undoable: session?.scoring.undoable ?? 0,
-      log: session ? describeLog(session.card, session.stream, namesOf(session.card)) : [],
-      pending: session?.queue.length ?? 0,
-    }
-    for (const listener of this.listeners) listener()
-  }
-
-  /** Take the sheet as the server holds it. Anything queued and not yet accepted is given up. */
-  load = async () => {
+  const keep = (value: string) => {
     try {
-      this.session = build(await getScorecard(this.scorecardId))
-      this.show({ failure: null, sync: "saved" })
-    } catch (error) {
-      // Without the server's copy there is nothing sure to show: the deck stops until it loads.
-      if (this.session) this.session.queue = []
-      this.show(error instanceof ApiError && error.status === 404 ? { lost: true } : { failure: error })
+      sessionStorage.setItem(TAB_KEY, value)
+    } catch {
+      // as above
     }
+    return value
   }
-
-  act = (event: ScoreEvent) => {
-    const session = this.session
-    if (!session || this.view.lost || this.view.failure) return
-    try {
-      const next = session.scoring.push(event)
-      if (next === session.scoring) return // changed nothing, so there is nothing to send
-      const sequence = (session.stream.at(-1)?.sequence ?? 0) + 1
-      session.scoring = next
-      session.stream = [...session.stream, { sequence, event }]
-      session.queue = [...session.queue, { id: newId(), sequence, event, device_time: new Date().toISOString() }]
-      this.show({ problem: "" })
-    } catch (error) {
-      if (!(error instanceof ScoringError)) throw error
-      this.show({ problem: REFUSAL[error.code] ?? "That isn't allowed right now." })
-      return
-    }
-    void this.flush()
-  }
-
-  /**
-   * Send what is queued, in order, one request at a time, until the queue is empty. Actions taken
-   * while a request is on its way join the queue and go with the next one. If the server refuses
-   * something, the deck goes back to what the server holds: actions not yet accepted, including any
-   * tapped in the meantime, are given up and the umpire is told.
-   */
-  flush = async () => {
-    if (this.sending) return
-    this.sending = true
-    try {
-      for (;;) {
-        const session = this.session
-        if (!session || session.queue.length === 0 || this.view.lost) break
-        this.show({ sync: "sending" })
-        // After a long break the queue can be longer than one request takes: it goes in parts.
-        const reply = await sendEvents(session.card.id, session.card.assignment_id, session.queue.slice(0, MAX_BATCH))
-        if (this.session !== session) continue // the sheet was reloaded meanwhile: start from what it holds now
-        if (reply.refused) {
-          await this.resync(`The server didn't take the last action. ${REFUSAL[reply.refused.code] ?? ""}`)
-          break
-        }
-        session.queue = session.queue.filter((sent) => sent.sequence > reply.revision)
-        session.card = { ...session.card, revision: reply.revision }
+  if (typeof BroadcastChannel === "undefined") return Promise.resolve(keep(id || newId()))
+  return new Promise((resolve) => {
+    const channel = new BroadcastChannel(TAB_KEY)
+    const settle = (value: string) => {
+      channel.onmessage = (message) => {
+        // From now on answer anybody who turns up with our id.
+        if (message.data?.hello === value) channel.postMessage({ taken: value })
       }
-      if (!this.view.failure && !this.view.lost) this.show({ sync: "saved" })
-    } catch (error) {
-      if (error instanceof ApiError && (error.status === 404 || error.code === "stale_assignment")) this.show({ lost: true })
-      else if (error instanceof ApiError && error.status < 500) await this.resync(error.serverMessage ?? "The server didn't take the last action.")
-      else this.show({ sync: "waiting" }) // offline or a server hiccup: the actions stay queued for a retry
-    } finally {
-      this.sending = false
+      resolve(keep(value))
     }
-  }
+    if (!id) return settle(newId())
+    const wait = setTimeout(() => settle(id), 200)
+    channel.onmessage = (message) => {
+      if (message.data?.taken !== id) return
+      clearTimeout(wait)
+      settle(newId())
+    }
+    channel.postMessage({ hello: id })
+  })
+}
 
-  private async resync(why: string) {
-    await this.load()
-    if (!this.view.failure && !this.view.lost) this.show({ problem: `${why} The score shown is what is saved; anything after it was not kept.` })
+const transport: Transport<Scorecard> = {
+  load: getScorecard,
+  // Each event carries the server revision the device had seen when it was written (REQ-013).
+  send: (card, events) => sendEvents(card.id, card.assignment_id, events),
+  classify(error) {
+    if (error instanceof ApiError) {
+      if (error.status === 404) return { kind: "gone" }
+      if (error.code === "stale_assignment") return { kind: "stale", message: error.serverMessage }
+      if (error.status >= 400 && error.status < 500 && error.status !== 429) return { kind: "refused", message: error.serverMessage }
+    }
+    return { kind: "offline" } // no answer, a proxy page or a server error: the actions wait
+  },
+}
+
+/** What stopped the last action, in the umpire's words. */
+export function problemText(problem: string): string {
+  if (!problem) return ""
+  if (problem === "read_only") return "This match is open for scoring in another tab or window. Score it there, or close that one."
+  if (problem === "storage") return "This device couldn't save that action, so it was NOT scored. Free some storage or leave private browsing, then try again."
+  if (problem.startsWith("refused:")) return `The server didn't take an action. ${REFUSAL[problem.slice(8)] ?? ""} The score shown is what the server holds; what it didn't take is listed above.`
+  return REFUSAL[problem] ?? problem
+}
+
+/**
+ * The deck for one sheet of one account: what to show, and `act`, `retry`, `reload` and
+ * `dismissConflicts` to change it. The session is reread from the server and the device whenever the
+ * connection comes back or the tab is looked at again, before anything new is written.
+ */
+export function useDeck(scorecardId: string, userId: string) {
+  const [store] = useState(
+    () =>
+      new DeckStore<Scorecard>({
+        scorecardId,
+        userId,
+        transport,
+        openJournal: () => Journal.open(),
+        newId,
+        tabId: tabIdentity(),
+      })
+  )
+  const view = useSyncExternalStore(store.subscribe, store.snapshot)
+
+  useEffect(() => {
+    void store.open()
+    // Ask the browser not to clear this site's storage under pressure; it may say no.
+    void navigator.storage?.persist?.().catch(() => false)
+    const beat = setInterval(() => void store.heartbeat(), HEARTBEAT_MS)
+    const retry = setInterval(() => void store.flush(), 15_000)
+    const reread = () => {
+      if (document.visibilityState === "visible") void store.load()
+    }
+    const leave = () => void store.close()
+    window.addEventListener("online", reread)
+    window.addEventListener("focus", reread)
+    document.addEventListener("visibilitychange", reread)
+    window.addEventListener("pagehide", leave)
+    return () => {
+      clearInterval(beat)
+      clearInterval(retry)
+      window.removeEventListener("online", reread)
+      window.removeEventListener("focus", reread)
+      document.removeEventListener("visibilitychange", reread)
+      window.removeEventListener("pagehide", leave)
+      void store.close()
+    }
+  }, [store])
+
+  return { ...view, act: (event: ScoreEvent) => void store.act(event), retry: store.flush, reload: store.load, dismissConflicts: store.dismissConflicts }
+}
+
+/** How many of the account's score actions are on this device and not yet on the server. */
+export async function unsentScoreActions(userId: string): Promise<number> {
+  try {
+    const journal = await Journal.open()
+    try {
+      return await journal.unsent(userId)
+    } finally {
+      journal.close()
+    }
+  } catch {
+    return 0
   }
 }
 
-/** The deck for one sheet: what to show, and `act`, `retry` and `reload` to change it. */
-export function useDeck(scorecardId: string) {
-  const [store] = useState(() => new DeckStore(scorecardId))
-  const view = useSyncExternalStore(store.subscribe, store.snapshot)
-  useEffect(() => {
-    void store.load()
-  }, [store])
-  return { ...view, act: store.act, retry: store.flush, reload: store.load }
+/** Remove the account's scoring records from this device. */
+export async function purgeScoreJournal(userId: string): Promise<void> {
+  try {
+    const journal = await Journal.open()
+    try {
+      await journal.purge(userId)
+    } finally {
+      journal.close()
+    }
+  } catch {
+    // Nothing kept, or no storage to clear.
+  }
 }

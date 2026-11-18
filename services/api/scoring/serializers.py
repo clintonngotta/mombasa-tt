@@ -174,6 +174,12 @@ class SentEventSerializer(serializers.Serializer):
     sequence = serializers.IntegerField(min_value=1)
     event = serializers.JSONField()
     device_time = serializers.DateTimeField(required=False, allow_null=True)
+    expected_revision = serializers.IntegerField(
+        min_value=0,
+        required=False,
+        help_text="The server revision the device had seen when it sent this. If the server holds less "
+        "than that, its stream is not the one the device built on, and the event is refused.",
+    )
 
 
 class SubmitEventsSerializer(serializers.Serializer):
@@ -183,7 +189,9 @@ class SubmitEventsSerializer(serializers.Serializer):
 
 class RefusedEventSerializer(serializers.Serializer):
     sequence = serializers.IntegerField()
-    code = serializers.CharField(help_text="A scoring engine code, `sequence_gap` or `sequence_conflict`.")
+    code = serializers.CharField(
+        help_text="A scoring engine code, `sequence_gap`, `sequence_conflict` or `revision_conflict`."
+    )
 
 
 class SubmitResultSerializer(serializers.Serializer):

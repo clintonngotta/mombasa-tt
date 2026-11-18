@@ -239,6 +239,18 @@ def test_events_are_replayed_in_order_and_retries_are_harmless(staff, final, ump
         return reply.json()["refused"]
 
     assert refused(uuid.uuid4(), 5) == {"sequence": 5, "code": "sequence_gap"}
+    # A device that says it has seen a later revision than the server holds built on something else.
+    ahead = {"id": str(uuid.uuid4()), "sequence": 4, "event": point("a"), "expected_revision": 9}
+    reply = as_umpire.post(
+        deck.path + "events/", {"assignment_id": deck.assignment_id, "events": [ahead]}, format="json"
+    ).json()
+    assert (reply["accepted"], reply["refused"]) == (0, {"sequence": 4, "code": "revision_conflict"})
+    # Having seen less than the server holds is normal after a lost reply: the retry is still taken.
+    behind = [{**sent, "expected_revision": 0} for sent in [*first, third]]
+    reply = as_umpire.post(
+        deck.path + "events/", {"assignment_id": deck.assignment_id, "events": behind}, format="json"
+    ).json()
+    assert (reply["accepted"], reply["refused"], reply["revision"]) == (0, None, 3)
     assert refused(uuid.uuid4(), 2) == {"sequence": 2, "code": "sequence_conflict"}  # another event's place
     assert refused(first[0]["id"], 4) == {"sequence": 4, "code": "sequence_conflict"}  # an id used before
     assert refused(uuid.uuid4(), 4, {"type": "start", "server": "a1", "a_end": "left"}) == {
