@@ -52,6 +52,20 @@ services:
       start_period: 60s
       start_interval: 2s
 
+  # Does the work written to the outbox with each official result (REQ-015). Celery replaces the
+  # polling loop in TASK-007; the jobs and their handlers stay the same.
+  worker:
+    build: ./services/api
+    command: python manage.py work_outbox
+    environment:
+      DJANGO_DEBUG: "true"
+      DATABASE_URL: postgres://mombasa:mombasa-dev-only@db:5432/mombasa_tt
+    volumes:
+      - ./services/api:/app
+    depends_on:
+      api:
+        condition: service_healthy
+
   web:
     build:
       context: .

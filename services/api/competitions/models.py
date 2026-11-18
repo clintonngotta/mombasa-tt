@@ -146,6 +146,9 @@ class Event(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancel_reason = models.CharField(max_length=300, blank=True)
+    # Set while a corrected result waits for the organizers' decision about a later match that had
+    # already started (REQ-015): no match of the event is sent to a table until every one is settled.
+    paused_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["position", "created_at"]
@@ -471,3 +474,88 @@ class RubberPlayer(models.Model):
 
     def __str__(self):
         return f"{self.user_id} in {self.rubber_id}"
+
+
+class OfficialResult(models.Model):
+    """One version of the official result of a match, or of one rubber of a tie (REQ-015). The first
+    is written when the server accepts the result; a correction writes the next and keeps the one it
+    replaces. Nothing here is ever edited or deleted: `current` says which version stands."""
+
+    class Source(models.TextChoices):
+        UMPIRE = "umpire"  # confirmed on the scoring deck
+        STAFF = "staff"  # entered by the organizers (a walkover, a retirement, a paper score sheet)
+        CORRECTION = "correction"  # replaces an earlier version, with a reason
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="results")
+    rubber = models.ForeignKey(
+        Rubber, on_delete=models.CASCADE, null=True, blank=True, related_name="results"
+    )
+    version = models.PositiveSmallIntegerField(default=1)
+    winner = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name="+")
+    outcome = models.CharField(max_length=10, choices=Match.Outcome.choices)
+    games = models.JSONField(default=list, blank=True)
+    source = models.CharField(max_length=12, choices=Source.choices)
+    reason = models.CharField(max_length=300, blank=True)  # corrections only
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    accepted_at = models.DateTimeField(auto_now_add=True)
+    # When the match (or rubber) first got an official result: corrections keep it, so whatever is
+    # rebuilt from results keeps their original order (REQ-016).
+    first_accepted_at = models.DateTimeField()
+    current = models.BooleanField(default=True)
+    # Set when the result was struck out without a replacement: the match is to be played again.
+    voided_at = models.DateTimeField(null=True, blank=True)
+    # When what follows from it (ratings, notifications) was done; empty while that is processing.
+    projected_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["first_accepted_at", "version", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["match"],
+                condition=models.Q(current=True, rubber__isnull=True),
+                name="one_current_result_per_match",
+            ),
+            models.UniqueConstraint(
+                fields=["rubber"], condition=models.Q(current=True), name="one_current_result_per_rubber"
+            ),
+        ]
+
+    def __str__(self):
+        return f"Result v{self.version} of {self.rubber_id or self.match_id}"
+
+
+class Resolution(models.Model):
+    """A corrected result changed who should play in a later match that had already started (REQ-015).
+    The opponent is never replaced silently: the event is paused and this waits for the organizers to
+    decide between keeping the later match as played and putting the right entry in to play it again."""
+
+    class Choice(models.TextChoices):
+        KEEP = "keep"  # the later match stands as it was played
+        REPLACE = "replace"  # the right entry goes in; what was played there is struck out
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="resolutions")
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="resolutions")
+    side = models.CharField(max_length=1)  # "a" or "b": the place in `match` that is in question
+    old_entry = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    # Who should be there now; empty when the match that decides it has to be played again first.
+    new_entry = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
+    cause = models.ForeignKey(OfficialResult, on_delete=models.PROTECT, related_name="resolutions")
+    created_at = models.DateTimeField(auto_now_add=True)
+    choice = models.CharField(max_length=10, choices=Choice.choices, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    # What was struck out by `replace`: the score sheet's events and the result, kept for the record.
+    struck_out = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"Resolution for side {self.side} of {self.match_id}"

@@ -92,6 +92,12 @@ def ensure_dispatchable(match: Match) -> None:
         raise Blocked("not_in_play", "Start the tournament and the event before sending matches to tables.")
     if match.status != Match.Status.SCHEDULED:
         raise Blocked("match_decided", "This match is already decided.")
+    if event.paused_at is not None:
+        raise Blocked(
+            "event_paused",
+            "This event is paused: a corrected result changed who plays a match that had started. "
+            "Settle it under Corrections first.",
+        )
     if match.entry_a_id is None or match.entry_b_id is None:
         raise Blocked(
             "waiting_for_players", "An earlier match hasn't finished, so both sides aren't known yet."

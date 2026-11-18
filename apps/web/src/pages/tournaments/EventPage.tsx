@@ -54,6 +54,9 @@ export function EventPage({ tab }: { tab: EventTab }) {
               <EventStatusChip status={event.status} />
             </div>
             <p className="text-muted-foreground">{eventSummary(event)}</p>
+            {event.paused_at && (
+              <FormAlert>This event is paused while the organizers decide about a corrected result. Matches already on a table carry on; no new match is sent out until it is settled.</FormAlert>
+            )}
             <div className="flex flex-wrap gap-2">
               <Link to={`/tournaments/${id}/events/${eventId}/entries`} className={buttonVariants({ variant: "outline" })}>
                 Entries

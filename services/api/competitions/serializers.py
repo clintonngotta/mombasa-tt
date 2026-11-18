@@ -21,6 +21,8 @@ from .models import (
     Event,
     LifecycleEntry,
     Match,
+    OfficialResult,
+    Resolution,
     Rubber,
     Tournament,
 )
@@ -87,6 +89,7 @@ class EventSerializer(serializers.ModelSerializer):
             "accepted_count",
             "status",
             "revision",
+            "paused_at",
             "started_at",
             "completed_at",
             "cancelled_at",
@@ -96,6 +99,7 @@ class EventSerializer(serializers.ModelSerializer):
             "id",
             "status",
             "revision",
+            "paused_at",
             "started_at",
             "completed_at",
             "cancelled_at",
@@ -498,6 +502,78 @@ class OnTableSerializer(serializers.Serializer):
     )
 
 
+class OfficialResultSerializer(serializers.Serializer):
+    """One version of the official result of a match, or of one rubber of a tie."""
+
+    id = serializers.UUIDField()
+    version = serializers.IntegerField()
+    rubber = serializers.IntegerField(allow_null=True, help_text="The rubber's position; null for the match.")
+    winner_id = serializers.UUIDField()
+    winner = serializers.CharField()
+    outcome = serializers.ChoiceField(choices=Match.Outcome.choices)
+    games = serializers.ListField(
+        child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2)
+    )
+    source = serializers.ChoiceField(choices=OfficialResult.Source.choices)
+    reason = serializers.CharField(allow_blank=True, help_text="Why it was corrected.")
+    recorded_by = serializers.CharField(allow_blank=True)
+    accepted_at = serializers.DateTimeField()
+    current = serializers.BooleanField(help_text="The version that stands.")
+    struck_out = serializers.BooleanField(help_text="Removed without a replacement: played again.")
+    processing = serializers.BooleanField(help_text="What follows from it is still being worked out.")
+
+
+class ResultEntrySerializer(serializers.Serializer):
+    """A result recorded by the organizers. `games` are [a, b] points in playing order: none for a
+    walkover, the games played so far for a retirement. For a tie, name the rubber."""
+
+    winner_entry_id = serializers.UUIDField()
+    outcome = serializers.ChoiceField(choices=Match.Outcome.choices, default=Match.Outcome.PLAYED)
+    games = serializers.ListField(
+        child=serializers.ListField(
+            child=serializers.IntegerField(min_value=0, max_value=99), min_length=2, max_length=2
+        ),
+        required=False,
+        default=list,
+        max_length=9,
+    )
+    rubber_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+
+
+class ResultCorrectionSerializer(ResultEntrySerializer):
+    reason = serializers.CharField(max_length=300, trim_whitespace=True)
+
+
+class ResolutionSerializer(serializers.Serializer):
+    """A later match that had started with an entry a corrected result says should not be there."""
+
+    id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    match_id = serializers.UUIDField()
+    label = serializers.CharField()
+    a = serializers.CharField(allow_blank=True)
+    b = serializers.CharField(allow_blank=True)
+    side = serializers.ChoiceField(choices=["a", "b"])
+    old_entry = serializers.CharField(allow_blank=True, help_text="Who is in the match now.")
+    new_entry = serializers.CharField(
+        allow_blank=True, help_text="Who should be; empty when an earlier match is played again first."
+    )
+    progress = serializers.ChoiceField(choices=["decided", "on_table", "being_scored"])
+    reason = serializers.CharField(help_text="The reason given for the correction.")
+    corrected_by = serializers.CharField(allow_blank=True)
+    created_at = serializers.DateTimeField()
+    choice = serializers.ChoiceField(choices=Resolution.Choice.choices, allow_blank=True)
+    note = serializers.CharField(allow_blank=True)
+    resolved_by = serializers.CharField(allow_blank=True)
+    resolved_at = serializers.DateTimeField(allow_null=True)
+
+
+class ResolveSerializer(serializers.Serializer):
+    choice = serializers.ChoiceField(choices=Resolution.Choice.choices)
+    note = serializers.CharField(max_length=300, trim_whitespace=True)
+
+
 class MatchDetailSerializer(MatchSerializer):
     """One match of the published draw on its own page. Reading it gives nobody a way to score it."""
 
@@ -510,6 +586,14 @@ class MatchDetailSerializer(MatchSerializer):
     scoring = ScoringSummarySerializer(allow_null=True, help_text="Null for a tie: its rubbers are scored.")
     on_table = OnTableSerializer(allow_null=True)
     can_dispatch = serializers.BooleanField(help_text="The caller may send it to a table or call it back.")
+    result = OfficialResultSerializer(allow_null=True, help_text="The official result that stands.")
+    result_history = OfficialResultSerializer(
+        many=True, help_text="Every version, of the match and of its rubbers. Competition staff only."
+    )
+    can_record_result = serializers.BooleanField(help_text="The caller may enter or correct its result.")
+    held_for_correction = serializers.BooleanField(
+        help_text="A corrected earlier result put its opponent in question; nothing is played until settled."
+    )
 
 
 class DrawGroupSerializer(serializers.Serializer):

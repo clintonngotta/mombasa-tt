@@ -4,6 +4,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
 import { TieView } from "@/components/tournaments/TieView"
+import { ResultControl } from "@/components/tournaments/ResultControl"
 import { TableControl } from "@/components/tournaments/TableControl"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { ApiError, errorMessage } from "@/lib/api"
@@ -122,6 +123,15 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
 
       {m.tie && <TieView match={m} second={b} ids={{ tournamentId, eventId: event.id, matchId: m.id }} />}
 
+      {(m.result || m.can_record_result || m.held_for_correction) && (
+        <section aria-labelledby="result-heading" className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          <h2 id="result-heading" className="text-xl font-bold">
+            Official result
+          </h2>
+          <ResultControl match={m} ids={{ tournamentId, eventId: event.id, matchId: m.id }} timeZone={timeZone} />
+        </section>
+      )}
+
       {m.games.length > 0 && (
         <section aria-labelledby="games-heading" className="flex flex-col gap-2">
           <h2 id="games-heading" className="text-2xl font-bold">
@@ -170,7 +180,7 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
             </div>
           ))}
         </dl>
-        <p className="text-sm text-muted-foreground">Scores are entered by the umpire assigned to the match and become official once the umpire confirms the finished match.</p>
+        <p className="text-sm text-muted-foreground">Scores are entered by the umpire assigned to the match and become official once the umpire confirms the finished match. The organizers can record a walkover or a retirement, and correct a result with a reason.</p>
       </section>
     </>
   )

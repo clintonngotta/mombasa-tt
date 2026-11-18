@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 
-from competitions.models import Match, Rubber
+from competitions.models import Match, OfficialResult, Rubber
 from organizations.models import Role
 from scoring.models import Scorecard, ScoreEvent
 
@@ -207,7 +207,9 @@ def test_the_umpire_scores_a_match_and_confirming_makes_it_official(staff, final
         "can_assign": False,
     }
     # A confirmed result is closed to the deck: corrections are the organizers' (REQ-015).
-    assert deck.confirm(expect=409)["code"] == "already_confirmed"
+    # Confirming again (the first answer was lost on the way) changes nothing and succeeds.
+    assert deck.confirm()["status"] == "confirmed"
+    assert OfficialResult.objects.filter(match=match).count() == 1
     assert deck.send(point("b"), expect=409)["code"] == "already_confirmed"
     assert as_umpire.get("/api/v1/me/scorecards/").json()["results"] == []
 

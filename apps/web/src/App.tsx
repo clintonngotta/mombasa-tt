@@ -43,6 +43,7 @@ import { EventPage } from "@/pages/tournaments/EventPage"
 import { MatchPage } from "@/pages/tournaments/MatchPage"
 import { ScoringOverviewPage } from "@/pages/tournaments/ScoringOverviewPage"
 import { DispatchBoardPage } from "@/pages/tournaments/DispatchBoardPage"
+import { CorrectionsPage } from "@/pages/tournaments/CorrectionsPage"
 import { ScoringDeckRoute } from "@/pages/scoring/ScoringDeckPage"
 
 const queryClient = new QueryClient({
@@ -86,6 +87,7 @@ function App() {
               <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
               <Route path="/tournaments/:id/scoring" element={<ScoringOverviewPage />} />
               <Route path="/tournaments/:id/dispatch" element={<DispatchBoardPage />} />
+              <Route path="/tournaments/:id/corrections" element={<CorrectionsPage />} />
               <Route path="/tournaments/:id/events/new" element={<EventFormPage />} />
               <Route path="/tournaments/:id/events/:eventId" element={<EventFormPage />} />
               <Route path="/tournaments/:id/events/:eventId/entries" element={<EntriesPage />} />
