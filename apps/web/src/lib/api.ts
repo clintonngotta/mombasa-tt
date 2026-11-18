@@ -52,9 +52,9 @@ export function apiOriginUrl(path: string) {
 
 // Session cookies are HttpOnly (REQ-003); unsafe methods carry Django's CSRF header.
 // A FormData body is sent as a file upload; anything else as JSON.
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   const method = init.method ?? (init.body === undefined ? "GET" : "POST")
-  const headers: Record<string, string> = { Accept: "application/json" }
+  const headers: Record<string, string> = { Accept: "application/json", ...init.headers }
   const upload = init.body instanceof FormData
   if (init.body !== undefined && !upload) headers["Content-Type"] = "application/json"
   if (method !== "GET") {

@@ -16,13 +16,58 @@ export const scoringKeys = {
   mine: ["scoring", "mine"] as const,
   card: (id: string) => ["scoring", "card", id] as const,
   umpires: (eventId: string) => ["scoring", "umpires", eventId] as const,
+  overview: (tournamentId: string) => ["scoring", "overview", tournamentId] as const,
 }
 
+const DEVICE_KEY = "coast-tt-device"
+let pageDevice = ""
+
+/**
+ * This device's id for scoring (REQ-013: one device scores a match). Kept in the browser's storage, so
+ * it is the same in every tab and after a restart; without storage it lasts for the page.
+ */
+export function deviceId(): string {
+  try {
+    const kept = localStorage.getItem(DEVICE_KEY)
+    if (kept) return kept
+    const made = crypto.randomUUID()
+    localStorage.setItem(DEVICE_KEY, made)
+    return made
+  } catch {
+    return (pageDevice ||= crypto.randomUUID())
+  }
+}
+
+/** A few words the umpire and the organizers will recognise the device by. Not an identifier. */
+export function deviceLabel(agent = navigator.userAgent): string {
+  const kind = /iPad|Tablet/.test(agent) ? "tablet" : /Mobi|iPhone|Android/.test(agent) ? "phone" : "computer"
+  const system = /Android/.test(agent) ? "Android" : /iPhone|iPad|iPod/.test(agent) ? "Apple" : /Windows/.test(agent) ? "Windows" : /Mac OS X/.test(agent) ? "Mac" : /Linux/.test(agent) ? "Linux" : ""
+  const browser = /Edg\//.test(agent) ? "Edge" : /Firefox\//.test(agent) ? "Firefox" : /Chrome\//.test(agent) ? "Chrome" : /Safari\//.test(agent) ? "Safari" : ""
+  return [system, kind, browser && `(${browser})`].filter(Boolean).join(" ")
+}
+
+const fromDevice = () => ({ "X-Device-Id": deviceId() })
+
 export const listMyScorecards = () => api<Schemas["PaginatedMyScorecardList"]>("/me/scorecards/")
-export const getScorecard = (id: string) => api<Scorecard>(`/scorecards/${id}/`)
-export const sendEvents = (id: string, assignmentId: string, events: Envelope[]) => api<SubmitResult>(`/scorecards/${id}/events/`, { body: { assignment_id: assignmentId, events } })
+export const getScorecard = (id: string) => api<Scorecard>(`/scorecards/${id}/`, { headers: fromDevice() })
+export const sendEvents = (id: string, assignmentId: string, events: Envelope[]) =>
+  api<SubmitResult>(`/scorecards/${id}/events/`, { body: { assignment_id: assignmentId, events }, headers: fromDevice() })
 export const confirmScorecard = (card: Pick<Scorecard, "id" | "assignment_id" | "revision">) =>
-  api<Scorecard>(`/scorecards/${card.id}/confirm/`, { body: { assignment_id: card.assignment_id, revision: card.revision } })
+  api<Scorecard>(`/scorecards/${card.id}/confirm/`, { body: { assignment_id: card.assignment_id, revision: card.revision }, headers: fromDevice() })
+/** This device takes the sheet; `takeOver` when another device holds it, which cuts that one off. */
+export const takeDevice = (id: string, takeOver: boolean) =>
+  api<Scorecard>(`/scorecards/${id}/device/`, { body: { device_id: deviceId(), label: deviceLabel(), take_over: takeOver }, headers: fromDevice() })
+/** Tell the organizers what this device wrote that the server didn't accept. */
+export const reportConflict = (id: string, report: { id: string; assignment_id: string | null; events: { id: string; sequence: number; event: ScoreEvent; device_time: string | null }[] }) =>
+  api<Schemas["ConflictReceipt"]>(`/scorecards/${id}/conflicts/`, { body: { ...report, device_id: deviceId(), device_label: deviceLabel() } })
+
+export type ScoringOverview = Schemas["ScoringOverview"]
+export type OpenSheet = Schemas["OpenSheet"]
+export type ScoreConflict = Schemas["ScoreConflict"]
+
+/** Scoring in one tournament for its competition staff: open sheets and what devices reported. */
+export const getScoringOverview = (tournamentId: string) => api<ScoringOverview>(`/tournaments/${tournamentId}/scoring/`)
+export const resolveConflict = (tournamentId: string, conflictId: string, note: string) => api<ScoringOverview>(`/tournaments/${tournamentId}/scoring/conflicts/${conflictId}/resolve/`, { body: { note } })
 
 /** The most events the server takes in one request. */
 export const MAX_BATCH = 200
@@ -58,6 +103,7 @@ export const REFUSAL: Record<string, string> = {
   sequence_gap: "Some points didn't reach the server in order.",
   sequence_conflict: "The server already holds a different action at that place.",
   revision_conflict: "The server holds less of this match than this device had seen.",
+  other_device: "This match is being scored on another device.",
 }
 
 /** "2–1": the winner's games first. */

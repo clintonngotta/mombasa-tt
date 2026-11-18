@@ -2316,6 +2316,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/scorecards/{id}/conflicts/:
+    post:
+      operationId: scorecards_conflicts_create
+      description: |-
+        Tell the organizers what this device wrote that the server didn't accept. Open to whoever
+        holds the sheet or held it before. It changes nothing about the score.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - scorecards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConflictReportRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictReceipt'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/scorecards/{id}/device/:
+    post:
+      operationId: scorecards_device_create
+      description: |-
+        This device takes the sheet, so that one device scores a match at a time. A sheet held by
+        another device is refused (`other_device`) unless `take_over` is set; taking over issues a new
+        assignment id, which cuts the other device off.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - scorecards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TakeDeviceRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scorecard'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/scorecards/{id}/events/:
     post:
       operationId: scorecards_events_create
@@ -3660,6 +3733,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/scoring/:
+    get:
+      operationId: tournaments_scoring_retrieve
+      description: |-
+        Scoring in one tournament as its competition staff see it (REQ-013): which matches are being
+        scored or wait for their umpire's confirmation, who held each sheet on which device, and what
+        devices wrote that the server did not accept.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoringOverview'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/scoring/conflicts/{id}/resolve/:
+    post:
+      operationId: tournaments_scoring_conflicts_resolve_create
+      description: Record what was done about a device's unaccepted events. The report
+        stays on record.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveConflictRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoringOverview'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   schemas:
     AcceptedEvent:
@@ -3725,6 +3870,41 @@ components:
           nullable: true
       required:
       - user_id
+    AssignmentStep:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/AssignmentStepKindEnum'
+        umpire:
+          type: string
+        actor:
+          type: string
+        device_label:
+          type: string
+        revision:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - actor
+      - created_at
+      - device_label
+      - kind
+      - revision
+      - umpire
+    AssignmentStepKindEnum:
+      enum:
+      - assigned
+      - unassigned
+      - device
+      - take_over
+      type: string
+      description: |-
+        * `assigned` - Assigned
+        * `unassigned` - Unassigned
+        * `device` - Device
+        * `take_over` - Take Over
     AttachmentLink:
       type: object
       description: |-
@@ -3803,6 +3983,69 @@ components:
       required:
       - assignment_id
       - revision
+    ConflictEventRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          minimum: 1
+          description: Its place in the stream on the device.
+        event: {}
+        device_time:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - event
+      - id
+      - sequence
+    ConflictReceipt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+    ConflictReportRequest:
+      type: object
+      description: |-
+        What a device wrote and the server didn't take, sent for the organizers to see. The id is the
+        device's own, so sending it twice keeps one report.
+      properties:
+        id:
+          type: string
+          format: uuid
+        assignment_id:
+          type: string
+          format: uuid
+          nullable: true
+        device_id:
+          type: string
+          format: uuid
+          nullable: true
+        device_label:
+          type: string
+          default: ''
+          maxLength: 80
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictEventRequest'
+          maxItems: 500
+          minItems: 1
+      required:
+      - events
+      - id
     DeckPlayer:
       type: object
       properties:
@@ -3829,6 +4072,28 @@ components:
       required:
       - players
       - title
+    Device:
+      type: object
+      description: Which device is scoring the sheet. `here` compares with the caller's
+        X-Device-Id header.
+      properties:
+        held:
+          type: boolean
+          description: A device has taken the sheet.
+        here:
+          type: boolean
+          description: It is the caller's device.
+        label:
+          type: string
+        since:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - held
+      - here
+      - label
+      - since
     DirectoryPlayer:
       type: object
       description: |-
@@ -5470,12 +5735,17 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        device:
+          allOf:
+          - $ref: '#/components/schemas/Device'
+          readOnly: true
       required:
       - a
       - assignment_id
       - b
       - config
       - confirmed_at
+      - device
       - event_id
       - event_name
       - id
@@ -5490,6 +5760,53 @@ components:
     NullEnum:
       enum:
       - null
+    OpenSheet:
+      type: object
+      description: A match being scored, or finished and not yet confirmed by its
+        umpire.
+      properties:
+        sheet:
+          $ref: '#/components/schemas/SheetContext'
+        status:
+          $ref: '#/components/schemas/ScoringStatusEnum'
+        umpire:
+          type: string
+        device_label:
+          type: string
+        revision:
+          type: integer
+        last_event_at:
+          type: string
+          format: date-time
+          nullable: true
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+        points:
+          type: array
+          items:
+            type: integer
+          maxItems: 2
+          minItems: 2
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentStep'
+      required:
+      - device_label
+      - games
+      - history
+      - last_event_at
+      - points
+      - revision
+      - sheet
+      - status
+      - umpire
     OptionalReasonRequest:
       type: object
       properties:
@@ -6450,6 +6767,16 @@ components:
       required:
       - code
       - sequence
+    ResolveConflictRequest:
+      type: object
+      description: What was done about it, for the record.
+      properties:
+        note:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - note
     Role:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
@@ -6600,6 +6927,51 @@ components:
         * `scheduled` - Scheduled
         * `completed` - Completed
         * `not_played` - Not Played
+    ScoreConflict:
+      type: object
+      description: A device's unaccepted events beside what the server holds at the
+        same places.
+      properties:
+        id:
+          type: string
+          format: uuid
+        sheet:
+          $ref: '#/components/schemas/SheetContext'
+        reported_by:
+          type: string
+        device_label:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreamEvent'
+        accepted:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreamEvent'
+          description: The official stream at the same sequence numbers.
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        resolved_by:
+          type: string
+        resolution:
+          type: string
+      required:
+      - accepted
+      - created_at
+      - device_label
+      - events
+      - id
+      - reported_by
+      - resolution
+      - resolved_at
+      - resolved_by
+      - sheet
     Scorecard:
       type: object
       description: Everything the deck needs to score one match, for the umpire assigned
@@ -6661,6 +7033,10 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        device:
+          allOf:
+          - $ref: '#/components/schemas/Device'
+          readOnly: true
         events:
           type: array
           items:
@@ -6672,6 +7048,7 @@ components:
       - b
       - config
       - confirmed_at
+      - device
       - event_id
       - event_name
       - events
@@ -6694,6 +7071,23 @@ components:
       required:
       - best_of
       - doubles
+    ScoringOverview:
+      type: object
+      description: |-
+        What the organizers need to see about scoring in one tournament: sheets still open, and what
+        devices reported that the server didn't accept.
+      properties:
+        sheets:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenSheet'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreConflict'
+      required:
+      - conflicts
+      - sheets
     ScoringState:
       type: object
       description: The canonical state of the scoring engine (packages/scoring).
@@ -6839,6 +7233,36 @@ components:
       - event
       - id
       - sequence
+    SheetContext:
+      type: object
+      description: Which match a sheet is for, as the organizers' scoring page shows
+        it.
+      properties:
+        scorecard_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        a:
+          type: string
+        b:
+          type: string
+      required:
+      - a
+      - b
+      - event_id
+      - event_name
+      - label
+      - match_id
+      - scorecard_id
     SignUpRequest:
       type: object
       properties:
@@ -6947,6 +7371,15 @@ components:
       - groups
       - placements
       - rules_version
+    StreamEvent:
+      type: object
+      properties:
+        sequence:
+          type: integer
+        event: {}
+      required:
+      - event
+      - sequence
     SubmitEventsRequest:
       type: object
       properties:
@@ -7017,6 +7450,23 @@ components:
           type: boolean
       required:
       - label
+    TakeDeviceRequest:
+      type: object
+      description: This device takes the sheet. `take_over` is needed when another
+        device holds it.
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          default: ''
+          maxLength: 80
+        take_over:
+          type: boolean
+          default: false
+      required:
+      - device_id
     Tie:
       type: object
       description: 'A team tie (REQ-011): its format, each team''s lineup and, once

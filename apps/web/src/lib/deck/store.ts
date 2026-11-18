@@ -14,6 +14,16 @@ export interface Sheet {
   config: unknown
   events: { id: string; sequence: number; event: unknown }[]
   confirmed_at?: string | null
+  /** Which device is scoring the sheet: `held` by some device, and whether it is this one (`here`). */
+  device?: { held: boolean; here: boolean; label: string }
+}
+
+/** What a device wrote and the server didn't take, as it is sent to the organizers. */
+export interface ConflictReport {
+  /** The report's own id: the same events sent again are the same report. */
+  id: string
+  assignment_id: string | null
+  events: { id: string; sequence: number; event: ScoreEvent; device_time: string | null }[]
 }
 
 export type Envelope = { id: string; sequence: number; event: ScoreEvent; device_time: string; expected_revision: number }
@@ -27,6 +37,10 @@ export interface Reply {
 export interface Transport<C extends Sheet> {
   load(scorecardId: string): Promise<C>
   send(card: C, events: Envelope[]): Promise<Reply>
+  /** This device takes the sheet; with `takeOver`, from the device that holds it. Resolves with the sheet. */
+  take(scorecardId: string, takeOver: boolean): Promise<C>
+  /** Send a conflict report to the organizers. */
+  report(scorecardId: string, report: ConflictReport): Promise<void>
   /**
    * What a rejection means: "gone" (the sheet isn't this umpire's any more), "stale" (this device's
    * assignment was replaced), "refused" (the server won't take it as it stands), anything else is
@@ -53,6 +67,10 @@ export interface DeckView<C extends Sheet> {
   readOnly: boolean
   /** Actions scored here that the server didn't accept and that were kept for review. */
   conflicts: number
+  /** The organizers have been sent every one of them. */
+  conflictsReported: boolean
+  /** Another device is scoring this sheet: its label ("" if it gave none). Null when this one may. */
+  elsewhere: string | null
   /** Why the last action wasn't taken, a refusal code of the rules or a sentence. */
   problem: string
   /** The device couldn't write: nothing more is shown as scored until it can. */
@@ -81,6 +99,8 @@ const empty = <C extends Sheet>(): DeckView<C> => ({
   offline: false,
   readOnly: false,
   conflicts: 0,
+  conflictsReported: false,
+  elsewhere: null,
   problem: "",
   storageFailed: false,
   failure: null,
@@ -220,6 +240,11 @@ export class DeckStore<C extends Sheet> {
     let failure: unknown = null
     try {
       card = await transport.load(scorecardId)
+      // A sheet no device holds yet is taken by the one that opens it. If that can't be done right
+      // now, the first events sent will still find it free, or find out that it isn't.
+      if (card.device && !card.device.held && !card.confirmed_at && !this.view.readOnly) {
+        card = await transport.take(scorecardId, false).catch(() => card)
+      }
     } catch (error) {
       failure = error
     }
@@ -244,11 +269,12 @@ export class DeckStore<C extends Sheet> {
         const local = kept.events.filter((event) => event.sequence > kept.sheet!.card.revision)
         this.session = this.build(kept.sheet.card, local)
         this.session.queue = this.session.queue.filter((sent) => sent.sequence > kept.sheet!.acked)
-        this.show({ offline: true, failure: null, sync: this.session.queue.length ? "waiting" : "saved", conflicts: await this.countConflicts() })
+        this.show({ offline: true, failure: null, sync: this.session.queue.length ? "waiting" : "saved", ...(await this.conflictState()) })
         return
       }
       if (this.session) this.session.queue = []
-      this.show(kind === "gone" ? { lost: true, conflicts: await this.countConflicts() } : { failure })
+      this.show(kind === "gone" ? { lost: true, ...(await this.conflictState()) } : { failure })
+      if (kind === "gone") void this.reportConflicts()
       return
     }
 
@@ -260,7 +286,9 @@ export class DeckStore<C extends Sheet> {
     const theirs = new Map(card.events.map((sent) => [sent.sequence, sent.id]))
     const acked = kept.sheet?.acked ?? 0
     const diverged = kept.events.find((event) => event.sequence > acked && event.sequence <= card.revision && theirs.get(event.sequence) !== event.id)
-    const usable = diverged || card.confirmed_at ? [] : ahead.filter((event) => event.assignmentId === card.assignment_id)
+    // Another device holds the sheet: this one shows it and sends nothing.
+    const elsewhere = card.device?.held && !card.device.here ? card.device.label : null
+    const usable = diverged || card.confirmed_at || elsewhere !== null ? [] : ahead.filter((event) => event.assignmentId === card.assignment_id)
     const session = this.build(card, usable)
     try {
       // Only the tab that owns the sheet tidies the journal; a tab that is watching just shows it.
@@ -276,15 +304,51 @@ export class DeckStore<C extends Sheet> {
       this.show({ storageFailed: true })
     }
     this.session = session
-    this.show({ offline: false, failure: null, lost: false, sync: session.queue.length ? "waiting" : "saved", conflicts: await this.countConflicts() })
+    this.show({ offline: false, failure: null, lost: false, elsewhere, sync: session.queue.length ? "waiting" : "saved", ...(await this.conflictState()) })
+    void this.reportConflicts()
     if (session.queue.length) void this.flush()
   }
 
-  private async countConflicts() {
+  /** Move the sheet to this device. The device that had it can send nothing more from that moment. */
+  takeOver = async () => {
     try {
-      return (await this.journal?.conflicts(this.options.scorecardId, this.options.userId))?.length ?? 0
+      await this.options.transport.take(this.options.scorecardId, true)
+    } catch (error) {
+      const { kind, message } = this.options.transport.classify(error)
+      if (kind === "gone") return this.show({ lost: true })
+      return this.show({ problem: kind === "offline" ? "offline_take_over" : (message ?? "refused:other_device") })
+    }
+    await this.load()
+  }
+
+  private async conflictState() {
+    try {
+      const kept = (await this.journal?.conflicts(this.options.scorecardId, this.options.userId)) ?? []
+      return { conflicts: kept.length, conflictsReported: kept.length > 0 && kept.every((event) => event.reported) }
     } catch {
-      return this.view.conflicts
+      return { conflicts: this.view.conflicts, conflictsReported: this.view.conflictsReported }
+    }
+  }
+
+  /**
+   * Send the organizers what this device holds and the server didn't take. Tried whenever the sheet is
+   * reread; it changes nothing about the score, and a report sent twice is kept once.
+   */
+  private async reportConflicts() {
+    const { scorecardId, userId, transport } = this.options
+    try {
+      const kept = ((await this.journal?.conflicts<ScoreEvent>(scorecardId, userId)) ?? []).filter((event) => !event.reported)
+      if (kept.length === 0) return
+      kept.sort((a, b) => (a.wasSequence ?? 0) - (b.wasSequence ?? 0))
+      await transport.report(scorecardId, {
+        id: kept[0].id, // the first event's id names the report: the same events again are the same report
+        assignment_id: kept[0].assignmentId || null,
+        events: kept.map((event) => ({ id: event.id, sequence: event.wasSequence ?? 1, event: event.event, device_time: event.device_time || null })),
+      })
+      await this.journal?.markReported(scorecardId, userId, kept.map((event) => event.id))
+      this.show(await this.conflictState())
+    } catch {
+      // Offline, or not allowed: they stay on the device, marked as not yet sent, and it is tried again.
     }
   }
 
@@ -292,7 +356,7 @@ export class DeckStore<C extends Sheet> {
   dismissConflicts = async () => {
     try {
       await this.journal?.clearConflicts(this.options.scorecardId, this.options.userId)
-      this.show({ conflicts: 0 })
+      this.show({ conflicts: 0, conflictsReported: false })
     } catch {
       this.show({ storageFailed: true })
     }
@@ -313,6 +377,7 @@ export class DeckStore<C extends Sheet> {
     const view = this.view
     if (!session || view.lost || view.failure || session.card.confirmed_at) return
     if (view.readOnly) return this.show({ problem: "read_only" })
+    if (view.elsewhere !== null) return this.show({ problem: "elsewhere" })
     let next: Scoring
     try {
       next = session.scoring.push(event)
@@ -357,7 +422,7 @@ export class DeckStore<C extends Sheet> {
       if (this.journal && !(await this.journal.claim(scorecardId, this.tabId, this.options.now?.()))) return this.show({ readOnly: true })
       for (;;) {
         const session = this.session
-        if (!session || session.queue.length === 0 || this.view.lost || this.view.readOnly) break
+        if (!session || session.queue.length === 0 || this.view.lost || this.view.readOnly || this.view.elsewhere !== null) break
         this.show({ sync: "sending" })
         const reply = await transport.send(session.card, session.queue.slice(0, MAX_BATCH))
         if (this.session !== session) continue // reloaded meanwhile: go on from what it holds now
@@ -389,7 +454,8 @@ export class DeckStore<C extends Sheet> {
         // Not ours any more. What this device scored and couldn't send stays on it, marked.
         await this.journal?.setAside(scorecardId, userId, (this.session?.card.revision ?? 0) + 1).catch(() => undefined)
         if (this.session) this.session.queue = []
-        this.show({ lost: true, conflicts: await this.countConflicts() })
+        this.show({ lost: true, ...(await this.conflictState()) })
+        void this.reportConflicts()
       } else {
         // Reassigned or otherwise refused as a whole: a reread decides what can still be sent. What is
         // still queued afterwards waits for the next round (a retry, the timer), not a tight loop.

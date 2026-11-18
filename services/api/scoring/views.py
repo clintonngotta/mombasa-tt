@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import transaction
 from django.db.models import Q
 from django.http import Http404
@@ -17,14 +19,19 @@ from organizations.access import membership_permissions
 from organizations.models import Membership
 
 from . import service
-from .models import Scorecard
+from .models import Scorecard, ScoreConflict
 from .serializers import (
     AssignUmpireSerializer,
     ConfirmSerializer,
+    ConflictReceiptSerializer,
+    ConflictReportSerializer,
     MyScorecardSerializer,
+    ResolveConflictSerializer,
     ScorecardSerializer,
+    ScoringOverviewSerializer,
     SubmitEventsSerializer,
     SubmitResultSerializer,
+    TakeDeviceSerializer,
     UmpireSerializer,
 )
 
@@ -40,6 +47,45 @@ def scorecards():
         "rubber__match__entry_b",
         "rubber__match__table",
     )
+
+
+def device_of(request):
+    """The caller's device, from the X-Device-Id header; None when it sends none or nonsense."""
+    try:
+        return uuid.UUID(request.headers.get("X-Device-Id", ""))
+    except ValueError:
+        return None
+
+
+class ScoringOverviewViewSet(viewsets.GenericViewSet):
+    """Scoring in one tournament as its competition staff see it (REQ-013): which matches are being
+    scored or wait for their umpire's confirmation, who held each sheet on which device, and what
+    devices wrote that the server did not accept."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ScoringOverviewSerializer
+
+    def retrieve(self, request, tournament_pk):
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        require_staff(request.user, tournament)
+        return Response(ScoringOverviewSerializer(service.overview(tournament)).data)
+
+    @extend_schema(request=ResolveConflictSerializer, responses={200: ScoringOverviewSerializer})
+    def resolve(self, request, tournament_pk, pk):
+        """Record what was done about a device's unaccepted events. The report stays on record."""
+        serializer = ResolveConflictSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            conflict = get_object_or_404(
+                ScoreConflict.objects.select_for_update(of=("self",)).filter(
+                    Q(scorecard__match__draw__event__tournament=tournament)
+                    | Q(scorecard__rubber__match__draw__event__tournament=tournament)
+                ),
+                pk=pk,
+            )
+            service.resolve_conflict(conflict, request.user, serializer.validated_data["note"])
+        return Response(ScoringOverviewSerializer(service.overview(tournament)).data)
 
 
 class UmpireViewSet(viewsets.GenericViewSet):
@@ -125,12 +171,42 @@ class ScorecardViewSet(viewsets.GenericViewSet):
         page = [card for card in self.paginate_queryset(mine) if service.is_umpire_of(card, request.user)]
         return self.get_paginated_response(MyScorecardSerializer(page, many=True).data)
 
+    def _shown(self, scorecard: Scorecard) -> Response:
+        return Response(ScorecardSerializer(scorecard, context={"device_id": device_of(self.request)}).data)
+
     def _reply(self, scorecard: Scorecard) -> Response:
-        fresh = scorecards().prefetch_related("events").get(pk=scorecard.pk)
-        return Response(ScorecardSerializer(fresh).data)
+        return self._shown(scorecards().prefetch_related("events").get(pk=scorecard.pk))
 
     def retrieve(self, request, pk):
-        return Response(ScorecardSerializer(self._mine(scorecards().prefetch_related("events"), pk)).data)
+        return self._shown(self._mine(scorecards().prefetch_related("events"), pk))
+
+    @extend_schema(request=TakeDeviceSerializer, responses={200: ScorecardSerializer})
+    def device(self, request, pk):
+        """This device takes the sheet, so that one device scores a match at a time. A sheet held by
+        another device is refused (`other_device`) unless `take_over` is set; taking over issues a new
+        assignment id, which cuts the other device off."""
+        serializer = TakeDeviceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            scorecard = service.locked(pk, request.user)
+            service.take_device(
+                scorecard, request.user, asked["device_id"], asked["label"], asked["take_over"]
+            )
+        return self._reply(scorecard)
+
+    @extend_schema(request=ConflictReportSerializer, responses={201: ConflictReceiptSerializer})
+    def conflicts(self, request, pk):
+        """Tell the organizers what this device wrote that the server didn't accept. Open to whoever
+        holds the sheet or held it before. It changes nothing about the score."""
+        serializer = ConflictReportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            scorecard = Scorecard.objects.select_for_update(of=("self",)).filter(pk=pk).first()
+            if scorecard is None or not service.may_report(scorecard, request.user):
+                raise Http404
+            kept = service.report_conflict(scorecard, request.user, serializer.validated_data)
+        return Response(ConflictReceiptSerializer(kept).data, status=201)
 
     def _mine(self, found, pk) -> Scorecard:
         scorecard = get_object_or_404(found, pk=pk, umpire=self.request.user)
@@ -150,7 +226,9 @@ class ScorecardViewSet(viewsets.GenericViewSet):
         asked = serializer.validated_data
         with transaction.atomic():
             scorecard = service.locked(pk, request.user)
-            outcome = service.submit(scorecard, request.user, asked["assignment_id"], asked["events"])
+            outcome = service.submit(
+                scorecard, request.user, asked["assignment_id"], asked["events"], device_of(request)
+            )
         return Response(
             SubmitResultSerializer(
                 {
@@ -174,5 +252,7 @@ class ScorecardViewSet(viewsets.GenericViewSet):
             Tournament.objects.select_for_update(of=("self",)).get(pk=service.event_of(found).tournament_id)
             scorecard = service.locked(pk, request.user)
             asked = serializer.validated_data
-            service.confirm(scorecard, request.user, asked["assignment_id"], asked["revision"])
+            service.confirm(
+                scorecard, request.user, asked["assignment_id"], asked["revision"], device_of(request)
+            )
         return self._reply(scorecard)

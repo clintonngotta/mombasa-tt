@@ -5,7 +5,7 @@ import { Scoring, type ScoreEvent, type State } from "@scoring"
 import { ApiError } from "@/lib/api"
 import { Journal } from "@/lib/deck/journal"
 import { DeckStore, HEARTBEAT_MS, type DeckView, type Transport } from "@/lib/deck/store"
-import { configOf, getScorecard, REFUSAL, sendEvents, type Names, type Scorecard } from "@/lib/scoring"
+import { configOf, getScorecard, REFUSAL, reportConflict, sendEvents, takeDevice, type Names, type Scorecard } from "@/lib/scoring"
 
 export type { Sync } from "@/lib/deck/store"
 
@@ -103,6 +103,8 @@ const transport: Transport<Scorecard> = {
   load: getScorecard,
   // Each event carries the server revision the device had seen when it was written (REQ-013).
   send: (card, events) => sendEvents(card.id, card.assignment_id, events),
+  take: takeDevice,
+  report: async (scorecardId, report) => void (await reportConflict(scorecardId, report)),
   classify(error) {
     if (error instanceof ApiError) {
       if (error.status === 404) return { kind: "gone" }
@@ -117,6 +119,8 @@ const transport: Transport<Scorecard> = {
 export function problemText(problem: string): string {
   if (!problem) return ""
   if (problem === "read_only") return "This match is open for scoring in another tab or window. Score it there, or close that one."
+  if (problem === "elsewhere") return "This match is being scored on another device. Take it over here to score from this one."
+  if (problem === "offline_take_over") return "Taking the match over needs a connection to Coast TT."
   if (problem === "storage") return "This device couldn't save that action, so it was NOT scored. Free some storage or leave private browsing, then try again."
   if (problem.startsWith("refused:")) return `The server didn't take an action. ${REFUSAL[problem.slice(8)] ?? ""} The score shown is what the server holds; what it didn't take is listed above.`
   return REFUSAL[problem] ?? problem
@@ -166,7 +170,7 @@ export function useDeck(scorecardId: string, userId: string) {
     }
   }, [store])
 
-  return { ...view, act: (event: ScoreEvent) => void store.act(event), retry: store.flush, reload: store.load, dismissConflicts: store.dismissConflicts }
+  return { ...view, act: (event: ScoreEvent) => void store.act(event), retry: store.flush, reload: store.load, dismissConflicts: store.dismissConflicts, takeOver: store.takeOver }
 }
 
 /** How many of the account's score actions are on this device and not yet on the server. */

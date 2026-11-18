@@ -9,6 +9,7 @@ functions as every other result (`drawing.record_result`, `ties.record_rubber`).
 import uuid
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from competitions import drawing, ties
@@ -18,11 +19,12 @@ from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
 from .engine import Scoring, ScoringError
-from .models import Scorecard, ScoreEvent, ScoringStatus
+from .models import ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
 
 # Who may be given a match to score: people the club trusts with scoring, and those who run competitions.
 UMPIRE_PERMISSIONS = {Permission.SCORING_ASSIGNED, Permission.COMPETITIONS_MANAGE, Permission.RESULTS_MANAGE}
 MAX_BATCH = 200
+MAX_CONFLICT_EVENTS = 500
 
 
 def _conflict(code: str, message: str) -> ApiException:
@@ -136,8 +138,53 @@ def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
     scorecard.assignment_id = uuid.uuid4()
     scorecard.assigned_by = actor
     scorecard.assigned_at = timezone.now()
+    # A new assignment starts without a device: whichever the umpire opens it on takes it.
+    scorecard.device_id, scorecard.device_label, scorecard.device_since = None, "", None
     scorecard.save()
+    kind = ScoreAssignment.Kind.ASSIGNED if umpire else ScoreAssignment.Kind.UNASSIGNED
+    _log(scorecard, kind, actor)
     return scorecard
+
+
+def _log(scorecard: Scorecard, kind: str, actor) -> None:
+    ScoreAssignment.objects.create(
+        scorecard=scorecard,
+        kind=kind,
+        umpire=scorecard.umpire,
+        actor=actor,
+        assignment_id=scorecard.assignment_id,
+        device_id=scorecard.device_id,
+        device_label=scorecard.device_label,
+        revision=scorecard.revision,
+    )
+
+
+def take_device(scorecard: Scorecard, actor, device_id, label: str, take_over: bool) -> None:
+    """The umpire's device takes the sheet. An unheld sheet is simply taken. A sheet held by another
+    device is taken only when the umpire says so (`take_over`): that issues a new assignment id, so the
+    other device can send nothing more, and what it hadn't sent becomes a conflict on that device.
+    Call with the sheet locked."""
+    if scorecard.confirmed_at:
+        raise _conflict("already_confirmed", "This result is confirmed.")
+    if scorecard.device_id == device_id:
+        return
+    if scorecard.device_id is None:
+        kind = ScoreAssignment.Kind.DEVICE
+    elif take_over:
+        kind = ScoreAssignment.Kind.TAKE_OVER
+        scorecard.assignment_id = uuid.uuid4()
+    else:
+        raise _conflict(
+            "other_device",
+            "This match is being scored on another device. Take it over here to carry on from this one.",
+        )
+    scorecard.device_id, scorecard.device_label, scorecard.device_since = (
+        device_id,
+        label[:80],
+        timezone.now(),
+    )
+    scorecard.save(update_fields=["assignment_id", "device_id", "device_label", "device_since"])
+    _log(scorecard, kind, actor)
 
 
 def is_umpire_of(scorecard: Scorecard, user) -> bool:
@@ -162,13 +209,16 @@ def locked(scorecard_id, user) -> Scorecard:
     return scorecard
 
 
-def _ensure_in_play(scorecard: Scorecard, assignment_id) -> None:
+def _ensure_in_play(scorecard: Scorecard, assignment_id, device_id=None) -> None:
     if scorecard.confirmed_at:
         raise _conflict(
             "already_confirmed", "This result is confirmed. A correction is made by the organizers."
         )
     if str(assignment_id) != str(scorecard.assignment_id):
         raise _conflict("stale_assignment", "This match was reassigned. Open it again to carry on.")
+    # A sheet a device has taken is scored from that device only.
+    if scorecard.device_id is not None and scorecard.device_id != device_id:
+        raise _conflict("other_device", "This match is being scored on another device.")
     event = event_of(scorecard)
     if event.tournament.status != Tournament.Status.IN_PROGRESS or event.status != Event.Status.IN_PROGRESS:
         raise _conflict(
@@ -191,12 +241,12 @@ def replayed(scorecard: Scorecard) -> Scoring:
     return scoring
 
 
-def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict]) -> dict:
+def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], device_id=None) -> dict:
     """Accept score events in order. An event already accepted (same id and sequence) is skipped, so a
     retry is harmless. The first event that is out of sequence or that the rules refuse stops the
     batch: what came before it is kept, and the reply says what was refused and why. Call with the
     sheet locked."""
-    _ensure_in_play(scorecard, assignment_id)
+    _ensure_in_play(scorecard, assignment_id, device_id)
     scoring = replayed(scorecard)
     known = dict(scorecard.events.values_list("id", "sequence"))
     accepted, refused = 0, None
@@ -241,11 +291,11 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict]) -> di
     return {"accepted": accepted, "refused": refused}
 
 
-def confirm(scorecard: Scorecard, actor, assignment_id, revision: int) -> None:
+def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id=None) -> None:
     """The umpire confirms the result, from the device that holds the current assignment. Refused
     unless the events accepted so far, replayed here, are a finished match: an early finish is not a
     result. Call with the tournament row and the sheet locked."""
-    _ensure_in_play(scorecard, assignment_id)
+    _ensure_in_play(scorecard, assignment_id, device_id)
     if revision != scorecard.revision:
         raise _conflict("stale_revision", "Not every point has reached the server yet. Wait for it to save.")
     state = replayed(scorecard).state
@@ -261,3 +311,154 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int) -> None:
     scorecard.confirmed_at = timezone.now()
     scorecard.confirmed_by = actor
     scorecard.save(update_fields=["state", "confirmed_at", "confirmed_by"])
+
+
+def sheet_context(scorecard: Scorecard) -> dict:
+    """Which match a sheet is for, as SheetContextSerializer shows it."""
+    match = scorecard.tie_or_match
+    sides = players_of(scorecard)
+
+    def title(side: str, entry) -> str:
+        names = " / ".join(user.display_name for user in sides[side])
+        return f"{names} ({entry.team_name})" if scorecard.rubber_id else names
+
+    return {
+        "scorecard_id": scorecard.id,
+        "event_id": match.draw.event_id,
+        "event_name": match.draw.event.name,
+        "match_id": match.id,
+        "label": label_of(scorecard),
+        "a": title("a", match.entry_a),
+        "b": title("b", match.entry_b),
+    }
+
+
+def overview(tournament: Tournament) -> dict:
+    """The tournament's open sheets and conflict reports, as ScoringOverviewSerializer shows them."""
+    published = DrawVersion.Status.PUBLISHED
+    cards = (
+        Scorecard.objects.filter(
+            Q(match__draw__event__tournament=tournament, match__draw__status=published)
+            | Q(rubber__match__draw__event__tournament=tournament, rubber__match__draw__status=published)
+        )
+        .select_related(
+            "umpire",
+            "match__draw__event",
+            "match__entry_a",
+            "match__entry_b",
+            "rubber__match__draw__event",
+            "rubber__match__entry_a",
+            "rubber__match__entry_b",
+        )
+        .prefetch_related("assignments__umpire", "assignments__actor", "conflicts__reported_by", "events")
+    )
+
+    def name(user) -> str:
+        return user.display_name if user else ""
+
+    sheets, conflicts = [], []
+    for card in cards:
+        context = None
+        if not card.confirmed_at and card.revision > 0:
+            context = sheet_context(card)
+            events = list(card.events.all())
+            sheets.append(
+                {
+                    "sheet": context,
+                    "status": card.shown_status,
+                    "umpire": name(card.umpire),
+                    "device_label": card.device_label,
+                    "revision": card.revision,
+                    "last_event_at": events[-1].received_at if events else None,
+                    "games": card.state["games"],
+                    "points": card.state["points"],
+                    "history": [
+                        {
+                            "kind": step.kind,
+                            "umpire": name(step.umpire),
+                            "actor": name(step.actor),
+                            "device_label": step.device_label,
+                            "revision": step.revision,
+                            "created_at": step.created_at,
+                        }
+                        for step in card.assignments.all()
+                    ],
+                }
+            )
+        reports = list(card.conflicts.all())
+        if not reports:
+            continue
+        context = context or sheet_context(card)
+        official = {kept.sequence: kept.payload for kept in card.events.all()}
+        for report in reports:
+            places = [sent["sequence"] for sent in report.events]
+            conflicts.append(
+                {
+                    "id": report.id,
+                    "sheet": context,
+                    "reported_by": name(report.reported_by),
+                    "device_label": report.device_label,
+                    "created_at": report.created_at,
+                    "events": [
+                        {"sequence": sent["sequence"], "event": sent["event"]} for sent in report.events
+                    ],
+                    "accepted": [
+                        {"sequence": place, "event": official[place]} for place in places if place in official
+                    ],
+                    "resolved_at": report.resolved_at,
+                    "resolved_by": name(report.resolved_by),
+                    "resolution": report.resolution,
+                }
+            )
+    sheets.sort(
+        key=lambda row: (
+            row["status"] != ScoringStatus.FINISHED,
+            row["sheet"]["event_name"],
+            row["sheet"]["label"],
+        )
+    )
+    conflicts.sort(key=lambda row: (row["resolved_at"] is not None, row["created_at"]))
+    return {"sheets": sheets, "conflicts": conflicts}
+
+
+def may_report(scorecard: Scorecard, user) -> bool:
+    """Whoever holds the sheet, or held it once, may say what their device still has."""
+    return scorecard.umpire_id == user.id or scorecard.assignments.filter(umpire=user).exists()
+
+
+def report_conflict(scorecard: Scorecard, user, report: dict) -> ScoreConflict:
+    """Keep what a device wrote and the server didn't take. Nothing about the score changes. Sending
+    the same report again (same id) returns the one already kept."""
+    known = ScoreConflict.objects.filter(pk=report["id"]).first()
+    if known is not None:
+        if known.scorecard_id != scorecard.id:
+            raise _conflict("conflict_exists", "That report belongs to another match.")
+        return known
+    return ScoreConflict.objects.create(
+        id=report["id"],
+        scorecard=scorecard,
+        reported_by=user,
+        assignment_id=report.get("assignment_id"),
+        device_id=report.get("device_id"),
+        device_label=report.get("device_label", "")[:80],
+        events=[
+            {
+                "id": str(sent["id"]),
+                "sequence": sent["sequence"],
+                "event": sent["event"],
+                "device_time": sent["device_time"].isoformat() if sent.get("device_time") else None,
+            }
+            for sent in report["events"]
+        ],
+        revision=scorecard.revision,
+    )
+
+
+def resolve_conflict(conflict: ScoreConflict, actor, note: str) -> None:
+    """Staff have looked at it and say what was done. The record stays."""
+    if conflict.resolved_at:
+        raise _conflict("already_resolved", "This has already been dealt with.")
+    conflict.resolved_at = timezone.now()
+    conflict.resolved_by = actor
+    conflict.resolution = note
+    conflict.save(update_fields=["resolved_at", "resolved_by", "resolution"])

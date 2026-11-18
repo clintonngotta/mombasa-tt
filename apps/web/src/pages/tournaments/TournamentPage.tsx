@@ -320,6 +320,11 @@ function Manage({ tournament: t }: { tournament: Tournament }) {
         <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organization.name} see this.</p>
       </div>
 
+      {t.status === "in_progress" && (
+        <Link to={`/tournaments/${t.id}/scoring`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Scoring: matches on the tables and device reports
+        </Link>
+      )}
       {move.isError && <FormAlert>{errorMessage(move.error)}</FormAlert>}
       {remove.isError && <FormAlert>{errorMessage(remove.error)}</FormAlert>}
 

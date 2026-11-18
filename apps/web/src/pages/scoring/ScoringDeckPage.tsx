@@ -68,6 +68,18 @@ function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
         {deck.readOnly && !deck.lost && (
           <Message title="Open in another tab">This match is being scored in another tab or window on this device. This one only shows the score; it takes over by itself if the other is closed.</Message>
         )}
+        {deck.elsewhere !== null && !deck.lost && card && !card.confirmed_at && (
+          <div role="alert" className="flex flex-col gap-2 rounded-xl border border-white/20 bg-white/5 p-4">
+            <h1 className="text-2xl font-bold">Being scored on another device</h1>
+            <p className="text-white/80">
+              {deck.elsewhere ? `${deck.elsewhere} has this match.` : "Another device has this match."} This one only shows the score. Taking it over moves the scoring here: the other device can send nothing
+              more, and anything it hadn't sent yet is kept on it and reported to the organizers, not added to the score.
+            </p>
+            <button type="button" className={cn(primaryButton, "self-start")} onClick={() => void deck.takeOver()}>
+              Take over on this device
+            </button>
+          </div>
+        )}
         {deck.offline && !deck.lost && (
           <p role="status" className="flex items-start gap-2 rounded-lg border border-white/30 bg-white/5 p-3">
             <WifiOff aria-hidden className="mt-0.5 size-5 shrink-0" />
@@ -83,10 +95,12 @@ function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
           <div role="alert" className="flex flex-col gap-2 rounded-lg border border-brand-gold/60 bg-brand-gold/10 p-3 text-brand-gold">
             <p>
               {deck.conflicts} {deck.conflicts === 1 ? "action" : "actions"} scored on this device {deck.conflicts === 1 ? "was" : "were"} not accepted by the server (the match was reassigned, scored from somewhere else first, or the server refused
-              the action). {deck.conflicts === 1 ? "It is" : "They are"} still kept here and {deck.conflicts === 1 ? "is" : "are"} not part of the score. Tell the organizers if the score shown is wrong.
+              the action). {deck.conflicts === 1 ? "It is" : "They are"} still kept here and {deck.conflicts === 1 ? "is" : "are"} not part of the score.{" "}
+              {deck.conflictsReported ? "The organizers have been sent a report and can see it on their scoring page." : "A report goes to the organizers as soon as there is a connection."} Tell them if
+              the score shown is wrong.
             </p>
-            <button type="button" className={cn(deckButton, "self-start border-brand-gold text-brand-gold")} onClick={() => void deck.dismissConflicts()}>
-              I have told them. Remove from this device
+            <button type="button" className={cn(deckButton, "self-start border-brand-gold text-brand-gold")} disabled={!deck.conflictsReported} onClick={() => void deck.dismissConflicts()}>
+              Remove from this device
             </button>
           </div>
         )}
@@ -100,7 +114,11 @@ function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
             {card.confirmed_at ? (
               <Confirmed card={card} state={state} back={back} />
             ) : state.status === "not_started" ? (
-              <Setup card={card} onStart={deck.act} />
+              deck.elsewhere !== null || deck.readOnly ? (
+                <p className="rounded-xl border border-white/20 bg-white/5 p-4 text-white/80">The match hasn't started yet.</p>
+              ) : (
+                <Setup card={card} onStart={deck.act} />
+              )
             ) : (
               <Play card={card} state={state} deck={deck} />
             )}
