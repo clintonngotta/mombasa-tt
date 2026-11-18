@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
+import { SearchSelect } from "@/components/forms/SelectField"
 import { errorMessage } from "@/lib/api"
 import { drawKeys, type MatchDetail } from "@/lib/draws"
 import { assignUmpire, listUmpires, SCORING_STATUS_LABEL, scoringKeys, type ScoringSummary } from "@/lib/scoring"
@@ -51,14 +52,16 @@ export function UmpireControl({ scoring, ids, rubberId, what }: { scoring: Scori
             Umpire for {what}
           </label>
           {umpires.isError && <FormAlert>{errorMessage(umpires.error, "We couldn't load who can umpire.")}</FormAlert>}
-          <select id={selectId} value={chosen} onChange={(e) => setChosen(e.target.value)} disabled={umpires.isPending} className="h-12 rounded-lg border bg-card px-3 text-base outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-            <option value="">{umpires.isPending ? "Loading…" : "Choose a member"}</option>
-            {umpires.data?.map((umpire) => (
-              <option key={umpire.id} value={umpire.id}>
-                {umpire.display_name}
-              </option>
-            ))}
-          </select>
+          <SearchSelect
+            id={selectId}
+            value={chosen}
+            onChange={setChosen}
+            disabled={umpires.isPending}
+            options={[
+              { value: "", label: umpires.isPending ? "Loading…" : "Choose a member" },
+              ...(umpires.data ?? []).map((umpire) => ({ value: umpire.id, label: umpire.display_name })),
+            ]}
+          />
           <p className="text-muted-foreground">Members whose role lets them score matches, and those who run competitions. A player can't umpire their own match.</p>
           {assign.isError && <FormAlert>{errorMessage(assign.error)}</FormAlert>}
           <div className="flex flex-wrap gap-2">

@@ -6,9 +6,13 @@ Callers hold the tournament row lock, like every other change to a tournament.
 import hashlib
 import secrets
 
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from core.exceptions import ApiException
+from ratings.elo import START
+from ratings.models import Discipline, Rating
+from scoring.models import EnginePhase, Scorecard
 
 from . import draws, official, signals, standings
 from .models import DrawPlace, DrawVersion, Entry, Event, Match, Rubber, Tournament
@@ -33,6 +37,28 @@ def ensure_drawable(tournament: Tournament, event: Event) -> None:
 
 def accepted_ids(event: Event) -> set[str]:
     return {str(pk) for pk in event.entries.filter(status=Entry.Status.ACCEPTED).values_list("pk", flat=True)}
+
+
+def rating_seeds(event: Event) -> list[str]:
+    if event.seeding != Event.Seeding.RATING:
+        return []
+    entries = list(event.entries.filter(status=Entry.Status.ACCEPTED).prefetch_related("players"))
+    if len(entries) < 2:
+        return []
+    discipline = Discipline.DOUBLES if event.kind == Event.Kind.DOUBLES else Discipline.SINGLES
+    user_ids = {place.user_id for entry in entries for place in entry.players.all()}
+    ratings = dict(
+        Rating.objects.filter(discipline=discipline, user_id__in=user_ids, played__gt=0)
+        .values_list("user_id", "rating")
+    )
+    ranked = []
+    for entry in entries:
+        players = [place.user_id for place in entry.players.all()]
+        if any(user_id in ratings for user_id in players):
+            rating = sum(ratings.get(user_id, START) for user_id in players) / len(players)
+            ranked.append((-rating, entry.created_at, str(entry.id)))
+    limit = min(draws.MAX_SEEDS, draws.bracket_size(len(entries)) // 2) if event.format == Event.Format.KNOCKOUT else draws.MAX_SEEDS
+    return [entry_id for _, _, entry_id in sorted(ranked)[:limit]]
 
 
 def is_stale(draw: DrawVersion, places=None) -> bool:
@@ -344,7 +370,7 @@ def describe(draw: DrawVersion) -> dict:
     entries = {place.entry_id: place.entry for place in places}
     seeds = {place.entry_id: place.seed for place in places}
     matches = _matches_of(draw)
-    shown = _match_describer(matches, entries, seeds)
+    shown = _match_describer(matches, entries, seeds, draw.event.status == Event.Status.IN_PROGRESS)
     numbers = sorted({place.group for place in places if place.group})
     return {
         "id": draw.id,
@@ -362,11 +388,21 @@ def describe(draw: DrawVersion) -> dict:
 
 
 def _matches_of(draw: DrawVersion) -> list[Match]:
-    """Every match of the draw with what describing one needs: its table and, for ties, its rubbers."""
-    return list(draw.matches.select_related("table").prefetch_related("rubbers"))
+    """Load matches, tables, rubbers and the scoring activity needed for the draw."""
+    active_sheets = Scorecard.objects.filter(state__status=EnginePhase.IN_PROGRESS, confirmed_at__isnull=True)
+    return list(
+        draw.matches.select_related("table")
+        .prefetch_related("rubbers")
+        .annotate(
+            scoring_live=Exists(active_sheets.filter(match_id=OuterRef("pk")))
+            | Exists(
+                active_sheets.filter(rubber__match_id=OuterRef("pk"), rubber__status=Rubber.Status.SCHEDULED)
+            )
+        )
+    )
 
 
-def _match_describer(matches: list[Match], entries: dict, seeds: dict):
+def _match_describer(matches: list[Match], entries: dict, seeds: dict, event_in_progress: bool):
     """A function turning one of `matches` (all those of a draw) into what MatchSerializer shows."""
     by_id = {match.id: match for match in matches}
     rounds = max((match.round for match in matches if match.stage == Match.Stage.KNOCKOUT), default=0)
@@ -398,6 +434,7 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict):
             if match.status == Match.Status.BYE
             else side(match.entry_b_id, match.feeder_b_id, match.b_from_group, match.b_from_rank),
             "status": match.status,
+            "is_live": event_in_progress and match.status == Match.Status.SCHEDULED and match.scoring_live,
             "winner_id": match.winner_id,
             "outcome": match.outcome,
             "games": match.games,
@@ -427,6 +464,7 @@ def describe_match(draw: DrawVersion, match_id) -> dict | None:
         matches,
         {place.entry_id: place.entry for place in places},
         {place.entry_id: place.seed for place in places},
+        draw.event.status == Event.Status.IN_PROGRESS,
     )
     # A winner of this match plays on in the match it feeds; the final feeds nothing.
     onward = next((m for m in matches if match.id in (m.feeder_a_id, m.feeder_b_id)), None)

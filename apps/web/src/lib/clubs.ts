@@ -6,7 +6,8 @@ import { useMe } from "@/lib/session"
 
 export type Organization = Schemas["Organization"]
 export type OrganizationKind = Schemas["KindEnum"]
-export type Membership = Schemas["Membership"]
+type Management = Schemas["ManagementOrganization"]
+export type Membership = Schemas["Membership"] & { authority?: Management["authority"]; managedOnly?: boolean }
 export type JoinRequest = Schemas["JoinRequest"]
 export type Invitation = Schemas["Invitation"]
 export type MyInvitation = Schemas["MyInvitation"]
@@ -56,6 +57,7 @@ export const clubKeys = {
   all: ["clubs"] as const,
   search: (term: string) => ["clubs", "search", term] as const,
   memberships: ["clubs", "memberships"] as const,
+  management: ["clubs", "management"] as const,
   myInvitations: ["clubs", "my-invitations"] as const,
   myJoinRequests: ["clubs", "my-join-requests"] as const,
   joinRequests: (orgId: string) => ["clubs", orgId, "join-requests"] as const,
@@ -79,12 +81,15 @@ export const requestToJoin = (organizationId: string) => api<MyJoinRequest>(`${o
 
 // A player belongs to a handful of organizations, so the first page (50) covers the switcher.
 export const listMyMemberships = () => api<Schemas["PaginatedMembershipList"]>("/me/memberships/?page_size=50")
+const listManagement = () => api<Management[]>("/me/managed-organizations/")
 export const listMyInvitations = () => api<Schemas["PaginatedMyInvitationList"]>("/me/invitations/")
 export const listMyJoinRequests = () => api<Schemas["PaginatedMyJoinRequestList"]>("/me/join-requests/")
 export const acceptInvitation = (id: string) => api<MyInvitation>(`/me/invitations/${id}/accept/`, { body: {} })
 export const declineInvitation = (id: string) => api<MyInvitation>(`/me/invitations/${id}/decline/`, { body: {} })
 
 export const createOrganization = (input: OrganizationInput) => api<Organization>("/organizations/", { body: input })
+export const updateOrganizationLocation = (id: string, input: Schemas["PatchedOrganizationLocationRequest"]) =>
+  api<Organization>(`/organizations/${id}/`, { method: "PATCH", body: input })
 
 export const listJoinRequests = (orgId: string) => api<Schemas["PaginatedJoinRequestList"]>(`${orgPath(orgId)}/join-requests/`)
 export const decideJoinRequest = (orgId: string, id: string, outcome: JoinDecision) =>
@@ -136,7 +141,23 @@ export const saveMyFieldValues = (membershipId: string, values: FieldValues) =>
 export function useMemberships() {
   const me = useMe()
   const query = useQuery({ queryKey: clubKeys.memberships, queryFn: listMyMemberships, enabled: me.isSuccess })
-  return { query, results: me.isSuccess ? (query.data?.results ?? []) : [] }
+  const management = useQuery({ queryKey: clubKeys.management, queryFn: listManagement, enabled: me.isSuccess })
+  const contexts = new Map<string, Membership>()
+  for (const membership of query.data?.results ?? []) contexts.set(membership.organization.id, membership)
+  for (const { organization, authority, permissions } of management.data ?? []) {
+    const member = contexts.get(organization.id)
+    contexts.set(organization.id, member ? { ...member, authority, permissions } : {
+      id: organization.id,
+      organization,
+      permissions,
+      authority,
+      managedOnly: true,
+      roles: [],
+      status: "active",
+      joined_at: "",
+    })
+  }
+  return { query, results: me.isSuccess ? [...contexts.values()] : [] }
 }
 
 // The organization context the player last chose (REQ-004 switcher). Kept per device; the server

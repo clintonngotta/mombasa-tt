@@ -31,6 +31,37 @@ class RankingSerializer(serializers.Serializer):
     rows = RankingRowSerializer(many=True)
 
 
+class ClubRankingRowSerializer(serializers.Serializer):
+    rank = serializers.IntegerField(help_text="Clubs with the same total share a rank.")
+    organization_id = serializers.UUIDField()
+    name = serializers.CharField()
+    town = serializers.CharField(allow_blank=True)
+    total_points = serializers.FloatField(help_text="Sum of current ratings of active rated members.")
+    rated_members = serializers.IntegerField()
+
+
+class ClubRankingSerializer(serializers.Serializer):
+    discipline = serializers.ChoiceField(choices=Discipline.choices)
+    processing = serializers.BooleanField()
+    rows = ClubRankingRowSerializer(many=True)
+
+
+class GeographyRankingRowSerializer(serializers.Serializer):
+    rank = serializers.IntegerField()
+    country = serializers.CharField()
+    region = serializers.CharField(allow_blank=True)
+    city = serializers.CharField(allow_blank=True)
+    total_points = serializers.FloatField()
+    rated_players = serializers.IntegerField()
+
+
+class GeographyRankingSerializer(serializers.Serializer):
+    discipline = serializers.ChoiceField(choices=Discipline.choices)
+    level = serializers.ChoiceField(choices=["country", "region", "city"])
+    processing = serializers.BooleanField()
+    rows = GeographyRankingRowSerializer(many=True)
+
+
 class RatingSummarySerializer(serializers.Serializer):
     discipline = serializers.ChoiceField(choices=Discipline.choices)
     rating = serializers.FloatField(allow_null=True, help_text="Null until a rated match is played.")

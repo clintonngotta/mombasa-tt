@@ -17,4 +17,4 @@ RUN uv sync --locked --no-install-project
 COPY . .
 
 EXPOSE 8000
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_dev && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_geography && python manage.py seed_dev && python manage.py runserver 0.0.0.0:8000"]

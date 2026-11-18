@@ -37,6 +37,18 @@ class Tournament(models.Model):
         COMPLETED = "completed"
         CANCELLED = "cancelled"
 
+    class Scope(models.TextChoices):
+        LOCAL = "local", "Local"
+        REGIONAL = "regional", "Regional"
+        NATIONAL = "national", "National"
+        INTERNATIONAL = "international", "International"
+
+    class Approval(models.TextChoices):
+        NOT_REQUESTED = "not_requested", "Not requested"
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="tournaments")
     venue = models.ForeignKey(
@@ -47,6 +59,10 @@ class Tournament(models.Model):
     starts_on = models.DateField()
     ends_on = models.DateField()
     timezone = models.CharField(max_length=64)
+    scope = models.CharField(max_length=13, choices=Scope.choices, default=Scope.LOCAL)
+    approval_status = models.CharField(max_length=13, choices=Approval.choices, default=Approval.NOT_REQUESTED)
+    registration_fee_minor = models.PositiveIntegerField(default=0)
+    registration_fee_currency = models.CharField(max_length=3, default="KES")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
@@ -90,6 +106,10 @@ class Event(models.Model):
         DOUBLES = "doubles"
         TEAM = "team"
 
+    class Admission(models.TextChoices):
+        OPEN = "open", "Open"
+        CLOSED = "closed", "Closed"
+
     class Format(models.TextChoices):
         ROUND_ROBIN = "round_robin"
         KNOCKOUT = "knockout"
@@ -116,6 +136,7 @@ class Event(models.Model):
         "qualifiers_per_group",
         "tie_rubbers",
         "tie_wins_needed",
+        "admission",
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -128,6 +149,7 @@ class Event(models.Model):
     rest_minutes = models.PositiveSmallIntegerField(default=10)
     registration_opens_at = models.DateTimeField(null=True, blank=True)
     registration_closes_at = models.DateTimeField(null=True, blank=True)
+    admission = models.CharField(max_length=6, choices=Admission.choices, default=Admission.CLOSED)
     # Declared only (REQ-008); payments are recorded in Phase 2.
     entry_fee_minor = models.PositiveIntegerField(default=0)
     entry_fee_currency = models.CharField(max_length=3, default="KES")
@@ -171,6 +193,8 @@ class LifecycleEntry(models.Model):
 
     class Action(models.TextChoices):
         PUBLISHED = "published"
+        APPROVAL_REQUESTED = "approval_requested"
+        APPROVAL_REJECTED = "approval_rejected"
         UPDATED = "updated"
         STARTED = "started"
         COMPLETED = "completed"
@@ -259,6 +283,7 @@ class EntryPlayer(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entry_places")
     position = models.PositiveSmallIntegerField(default=0)
     live = models.BooleanField(default=True)
+    checked_in_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["position"]

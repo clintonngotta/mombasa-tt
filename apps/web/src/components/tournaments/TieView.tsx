@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { CircleCheck, Hourglass } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
+import { SearchSelect } from "@/components/forms/SelectField"
 import { errorMessage } from "@/lib/api"
 import { WinnerMark } from "@/components/tournaments/MatchCard"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
@@ -143,20 +144,20 @@ function LineupForm({ tie, sideKey, entry, ids, onDone }: { tie: Tie; sideKey: S
             </span>
             <span className="grid gap-2 sm:grid-cols-2">
               {picks[rubber].map((chosen, place) => (
-                <select
+                <SearchSelect
                   key={place}
                   aria-label={`Rubber ${rubber + 1}${kind === "doubles" ? `, player ${place + 1}` : ""}`}
                   value={chosen}
-                  onChange={(e) => choose(rubber, place, e.target.value)}
-                  className="h-12 min-w-0 rounded-lg border bg-card px-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  <option value="">Choose a player</option>
-                  {entry.players.map((player) => (
-                    <option key={player.id} value={player.id} disabled={picks[rubber].some((other, i) => i !== place && other === player.id)}>
-                      {player.display_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => choose(rubber, place, value)}
+                  options={[
+                    { value: "", label: "Choose a player" },
+                    ...entry.players.map((player) => ({
+                      value: player.id,
+                      label: player.display_name,
+                      disabled: picks[rubber].some((other, i) => i !== place && other === player.id),
+                    })),
+                  ]}
+                />
               ))}
             </span>
           </li>

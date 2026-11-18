@@ -4,9 +4,11 @@ import { daysBetween, todayIn } from "@/lib/dates"
 import type { Schemas } from "@/lib/schema"
 
 export type Tournament = Schemas["Tournament"]
+export type TournamentScope = Tournament["scope"]
 export type TournamentStatus = Schemas["TournamentStatusEnum"]
 export type TournamentInput = Schemas["TournamentRequest"]
 export type TournamentEvent = Schemas["Event"]
+export type EventAdmission = TournamentEvent["admission"]
 export type EventStatus = Schemas["EventStatusEnum"]
 export type EventKind = Schemas["EventKindEnum"]
 export type EventFormat = Schemas["EventFormatEnum"]
@@ -29,12 +31,21 @@ export type EventInput = Schemas["EventRequest"]
 export type LifecycleEntry = Schemas["LifecycleEntry"]
 export type Money = Schemas["Money"]
 export type When = "upcoming" | "past"
-export type TournamentAction = "publish" | "start" | "complete"
+export type TournamentAction = "publish" | "start" | "complete" | "approval/request"
 export type EventAction = "start" | "complete"
+
+export const SCOPE_LABEL: Record<TournamentScope, string> = {
+  local: "Local",
+  regional: "Regional",
+  national: "National",
+  international: "International",
+}
+export const SCOPE_OPTIONS = (Object.keys(SCOPE_LABEL) as TournamentScope[]).map((value) => ({ value, label: SCOPE_LABEL[value] }))
+export const ADMISSION_LABEL: Record<EventAdmission, string> = { open: "Open admission", closed: "Organizer approval" }
 
 export const tournamentKeys = {
   all: ["tournaments"] as const,
-  list: (when: When, term: string) => ["tournaments", "list", when, term] as const,
+  list: (when: When, term: string, scope: TournamentScope | "") => ["tournaments", "list", when, term, scope] as const,
   hosted: (orgId: string) => ["tournaments", "hosted", orgId] as const,
   detail: (id: string) => ["tournaments", "detail", id] as const,
   history: (id: string) => ["tournaments", "history", id] as const,
@@ -44,8 +55,8 @@ const BASE = "/tournaments/"
 const one = (id: string) => `${BASE}${id}/`
 const event = (id: string, eventId: string) => `${one(id)}events/${eventId}/`
 
-export const listTournaments = (when: When, term: string) =>
-  api<Schemas["PaginatedTournamentList"]>(`${BASE}?when=${when}&search=${encodeURIComponent(term)}`)
+export const listTournaments = (when: When, term: string, scope: TournamentScope | "") =>
+  api<Schemas["PaginatedTournamentList"]>(`${BASE}?${new URLSearchParams({ when, search: term, scope })}`)
 /** Every tournament the organization hosts, drafts included; needs competitions.manage. */
 export const listHostedTournaments = (orgId: string) => api<Schemas["PaginatedTournamentList"]>(`/organizations/${orgId}/tournaments/?page_size=100`)
 export const getTournament = (id: string) => api<Tournament>(one(id))
@@ -53,6 +64,7 @@ export const createTournament = (orgId: string, body: TournamentInput) => api<To
 export const updateTournament = (id: string, body: Schemas["PatchedTournamentRequest"]) => api<Tournament>(one(id), { method: "PATCH", body })
 export const deleteTournament = (id: string) => api<void>(one(id), { method: "DELETE" })
 export const moveTournament = (id: string, action: TournamentAction) => api<Tournament>(`${one(id)}${action}/`, { body: {} })
+export const rejectTournamentApproval = (id: string, reason: string) => api<Tournament>(`${one(id)}approval/reject/`, { body: { reason } })
 export const cancelTournament = (id: string, reason: string) => api<Tournament>(`${one(id)}cancel/`, { body: { reason } })
 export const getTournamentHistory = (id: string) => api<LifecycleEntry[]>(`${one(id)}history/`)
 
@@ -98,6 +110,8 @@ export const FORMAT_LABEL: Record<EventFormat, string> = {
 export const SEEDING_LABEL: Record<Seeding, string> = { rating: "Seeded by rating", manual: "Seeded by staff", none: "Unseeded" }
 
 export const ACTION_LABEL: Record<LifecycleEntry["action"], string> = {
+  approval_requested: "Approval requested",
+  approval_rejected: "Approval declined",
   published: "Published",
   updated: "Details changed",
   started: "Started",

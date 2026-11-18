@@ -2,6 +2,7 @@ import { useId, useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
+import { SearchSelect } from "@/components/forms/SelectField"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { drawKeys, type MatchDetail } from "@/lib/draws"
@@ -116,14 +117,16 @@ export function TableControl({ match, ids, timeZone }: { match: MatchDetail; ids
           Send to a table
         </label>
         {tables.isError && <FormAlert>{errorMessage(tables.error, "We couldn't load the tables.")}</FormAlert>}
-        <select id={selectId} value={tableId} onChange={(e) => setChosen(e.target.value)} disabled={tables.isPending} className="h-12 rounded-lg border bg-card px-3 text-base outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-          <option value="">{tables.isPending ? "Loading…" : free.length ? "Choose a free table" : "No table is free"}</option>
-          {free.map((table) => (
-            <option key={table.id} value={table.id}>
-              {table.label}
-            </option>
-          ))}
-        </select>
+        <SearchSelect
+          id={selectId}
+          value={tableId}
+          onChange={setChosen}
+          disabled={tables.isPending}
+          options={[
+            { value: "", label: tables.isPending ? "Loading…" : free.length ? "Choose a free table" : "No table is free" },
+            ...free.map((table) => ({ value: table.id, label: table.label })),
+          ]}
+        />
         {busy.length > 0 && (
           <p className="text-sm text-muted-foreground">
             In use: {busy.map((table) => `${table.label} (${table.held_by})`).join("; ")}.

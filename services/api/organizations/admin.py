@@ -1,10 +1,15 @@
 from django.contrib import admin
 
-from .models import Organization
+from core.admin import PlatformOnlyAdmin
 
-# Memberships and join requests are deliberately not editable here: platform operator authority is
-# separate from club roles (REQ-004), and role changes need the audited flows from TASK-013.
+from .models import OfficialAppointment, Organization
 
+
+@admin.register(OfficialAppointment)
+class OfficialAppointmentAdmin(PlatformOnlyAdmin):
+    list_display = ("user", "country", "region")
+    list_filter = ("country", "region")
+    search_fields = ("user__display_name", "user__email")
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):

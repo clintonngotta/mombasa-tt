@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, login, logout, password_validation
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -10,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
+from profiles.models import PlayerProfile
 
 from . import emails
 from .models import User
@@ -59,9 +61,14 @@ class SignUpView(PublicAuthView):
             # Same response as a new signup; the owner hears about it by email instead (REQ-003).
             emails.send_existing_account_email(existing)
         else:
-            user = User.objects.create_user(
-                email=data["email"], password=data["password"], display_name=data["display_name"]
-            )
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    email=data["email"], password=data["password"], display_name=data["display_name"]
+                )
+                if data.get("country"):
+                    PlayerProfile.objects.create(
+                        user=user, country=data["country"], region=data["region"], city=data["city"]
+                    )
             emails.send_verification_email(user)
         return Response(ACCEPTED, status=status.HTTP_201_CREATED)
 

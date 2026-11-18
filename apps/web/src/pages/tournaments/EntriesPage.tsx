@@ -10,7 +10,7 @@ import { PlayerPicker, type Picked } from "@/components/tournaments/PlayerPicker
 import { EntryStatusChip, EventStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
-import { formatInstant } from "@/lib/dates"
+import { formatInstant, todayIn } from "@/lib/dates"
 import {
   changeEntry,
   createEntry,
@@ -22,6 +22,7 @@ import {
   listMyEntries,
   MAX_TEAM_ROSTER,
   placesTaken,
+  selfCheckIn,
   withdrawEntry,
   type Entry,
   type EntryStatus,
@@ -125,6 +126,12 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
   const live = entries.find(isLive)
   const last = entries[0] // newest first
   const block = entryBlock(t, event, { staff })
+  const today = todayIn(t.timezone)
+  const checkInDay = t.starts_on <= today && today <= t.ends_on
+  const checkIn = useMutation({
+    mutationFn: (entryId: string) => selfCheckIn(t.id, event.id, entryId),
+    onSuccess: onChange,
+  })
   const withdraw = useMutation({
     mutationFn: (entryId: string) => withdrawEntry(t.id, event.id, entryId),
     onSuccess: () => {
@@ -146,6 +153,15 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
           </div>
           <Players entry={live} />
           <CheckedIn entry={live} zone={t.timezone} />
+          {live.status === "accepted" && !live.checked_in_at && live.my_check_in_at && (
+            <p className="text-sm text-success">You’re checked in. Waiting for the rest of your entry.</p>
+          )}
+          {live.status === "accepted" && !live.my_check_in_at && !live.checked_in_at && checkInDay && !isClosed(event) && !isClosed(t) && (
+            <Button type="button" className="self-start" disabled={checkIn.isPending} onClick={() => checkIn.mutate(live.id)}>
+              {checkIn.isPending ? "Checking in…" : "Check in now"}
+            </Button>
+          )}
+          {checkIn.isError && <FormAlert>{errorMessage(checkIn.error)}</FormAlert>}
           {live.status === "pending" && <p className="text-sm text-muted-foreground">The organizers accept entries one by one. You'll get an email when they decide.</p>}
           {live.status === "waitlisted" && <p className="text-sm text-muted-foreground">The event is full for now. The organizers will email you if a place opens up.</p>}
           {withdraw.isError && <FormAlert>{errorMessage(withdraw.error)}</FormAlert>}
@@ -240,19 +256,25 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
         fieldErrors.player_ids && <FormAlert>{fieldErrors.player_ids}</FormAlert>
       )}
       {event.kind === "team" && players.length > 0 && (
-        <SelectField label="Captain" value={captainId} onChange={(e) => setCaptain(e.target.value)} error={fieldErrors.captain_id}>
-          {players.map((player) => (
-            <option key={player.id} value={player.id}>
-              {player.display_name}
-            </option>
-          ))}
-        </SelectField>
+        <SelectField
+          label="Captain"
+          value={captainId}
+          onChange={setCaptain}
+          error={fieldErrors.captain_id}
+          options={players.map((player) => ({ value: player.id, label: player.display_name }))}
+        />
       )}
       {other && <FormAlert>{errorMessage(enter.error)}</FormAlert>}
       <Button type="submit" size="lg" className="self-start" disabled={enter.isPending}>
         {enter.isPending ? "Entering…" : staff ? "Add entry" : `Enter ${event.name}`}
       </Button>
-      {mode === "own" && <p className="text-sm text-muted-foreground">Your entry waits for the organizers to accept it.</p>}
+      {mode === "own" && (
+        <p className="text-sm text-muted-foreground">
+          {event.admission === "open"
+            ? "Your entry is accepted automatically if there is a place. If the event is full, you join the waiting list."
+            : "The organizers review your request and decide whether to accept it."}
+        </p>
+      )}
       {mode === "own-as-staff" && (
         <p className="text-sm text-muted-foreground">You run this tournament, so your own entry takes a place straight away, or joins the waiting list if the event is full.</p>
       )}

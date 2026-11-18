@@ -5,7 +5,9 @@ import pytest
 from django.db import transaction
 
 from competitions.models import Entry, Match, OfficialResult
+from organizations.models import Membership, Organization
 from outbox import service as outbox
+from profiles.models import PlayerProfile
 from ratings import elo, service
 from ratings.models import Rating, RatingEvent
 
@@ -280,6 +282,100 @@ def test_the_ranking_names_its_discipline_and_scope_and_shows_form(staff, club, 
     assert refused.status_code == 403
     mine = staff.get(f"/api/v1/rankings/?organization={club.id}").json()
     assert (mine["scope"], mine["organization_name"]) == ("club", club.name)
+
+
+def test_club_rankings_sum_current_ratings_of_active_members_by_discipline():
+    coast = Organization.objects.create(name="Coast", town="Mombasa")
+    nyali = Organization.objects.create(name="Nyali", town="Mombasa", kind=Organization.Kind.CLUB_FACILITY)
+    tudor = Organization.objects.create(name="Tudor", town="Mombasa")
+    facility = Organization.objects.create(name="Tables", town="Mombasa", kind=Organization.Kind.FACILITY)
+    shared = make_user("shared@example.com")
+    singles = make_user("singles@example.com")
+    left = make_user("left@example.com")
+    inactive = make_user("inactive@example.com")
+    inactive.is_active = False
+    inactive.save(update_fields=["is_active"])
+    unrated = make_user("unrated@example.com")
+    Membership.objects.bulk_create(
+        [
+            Membership(organization=coast, user=shared),
+            Membership(organization=coast, user=singles),
+            Membership(organization=coast, user=left, status=Membership.Status.LEFT),
+            Membership(organization=coast, user=inactive),
+            Membership(organization=coast, user=unrated),
+            Membership(organization=nyali, user=shared),
+            Membership(organization=tudor, user=shared),
+            Membership(organization=facility, user=shared),
+        ]
+    )
+    Rating.objects.bulk_create(
+        [
+            Rating(user=shared, discipline="singles", rating=1016.25, played=2),
+            Rating(user=shared, discipline="doubles", rating=984, played=1),
+            Rating(user=singles, discipline="singles", rating=950, played=1),
+            Rating(user=left, discipline="singles", rating=1500, played=2),
+            Rating(user=inactive, discipline="singles", rating=1500, played=2),
+            Rating(user=unrated, discipline="singles"),
+        ]
+    )
+    viewer = logged_in(make_user("club-rankings-viewer@example.com"))
+    endpoint = "/api/v1/rankings/clubs/"
+    shown = viewer.get(endpoint).json()
+    assert shown["discipline"] == "singles" and shown["processing"] is False
+    assert [
+        (row["name"], row["rank"], row["total_points"], row["rated_members"]) for row in shown["rows"]
+    ] == [
+        ("Coast", 1, 1966.25, 2),
+        ("Nyali", 2, 1016.25, 1),
+        ("Tudor", 2, 1016.25, 1),
+    ]
+    assert set(shown["rows"][0]) == {
+        "organization_id",
+        "town",
+        "name",
+        "rank",
+        "total_points",
+        "rated_members",
+    }
+    doubles = viewer.get(endpoint + "?discipline=doubles").json()
+    assert doubles["discipline"] == "doubles"
+    assert [(row["name"], row["rank"], row["total_points"]) for row in doubles["rows"]] == [
+        ("Coast", 1, 984),
+        ("Nyali", 1, 984),
+        ("Tudor", 1, 984),
+    ]
+    assert viewer.get(endpoint + "?discipline=mixed").status_code == 400
+
+
+def test_geography_groups_players_by_their_full_location_and_discipline():
+    locations = [
+        ("KE", "Coast", "Springfield", 1200),
+        ("KE", "coast", "springfield", 900),
+        ("KE", "Central", "Springfield", 1100),
+        ("TZ", "Coast", "Springfield", 1800),
+        ("", "", "", 2000),
+    ]
+    for index, (country, region, city, rating) in enumerate(locations):
+        player = make_user(f"geo-{index}@example.com")
+        PlayerProfile.objects.create(user=player, country=country, region=region, city=city)
+        Rating.objects.create(user=player, discipline="singles", rating=rating, played=1)
+    viewer = logged_in(make_user("geography-viewer@example.com"))
+    endpoint = "/api/v1/rankings/geography/"
+    countries = viewer.get(endpoint).json()["rows"]
+    assert [(row["country"], row["total_points"], row["rated_players"]) for row in countries] == [
+        ("KE", 3200, 3),
+        ("TZ", 1800, 1),
+    ]
+    cities = viewer.get(endpoint + "?level=city").json()["rows"]
+    assert [
+        (row["country"], row["region"].lower(), row["city"].lower(), row["total_points"]) for row in cities
+    ] == [
+        ("KE", "coast", "springfield", 2100),
+        ("TZ", "coast", "springfield", 1800),
+        ("KE", "central", "springfield", 1100),
+    ]
+    assert viewer.get(endpoint + "?discipline=doubles&level=region").json()["rows"] == []
+    assert viewer.get(endpoint + "?level=unknown").status_code == 400
 
 
 def test_a_players_history_shows_before_and_after_and_can_be_filtered(staff, club, hall):  # noqa: F811

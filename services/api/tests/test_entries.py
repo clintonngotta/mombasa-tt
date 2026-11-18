@@ -110,6 +110,7 @@ def test_a_player_enters_and_staff_accept(staff, cup, singles):
         "decided_at",
         "withdrawn_at",
         "checked_in_at",
+        "my_check_in_at",
         "mine",
     }
     assert set(seen[0]["players"][0]) == {"id", "display_name"}
@@ -121,6 +122,41 @@ def test_a_player_enters_and_staff_accept(staff, cup, singles):
         ("Singles", "Coast Open", "accepted")
     ]
     assert logged_in(kofi).get(ME).json()["results"] == []
+
+
+def test_open_admission_accepts_up_to_capacity_and_waitlists_overflow(staff, cup, singles):
+    changed = staff.patch(url(cup, event=singles), {"admission": "open"}, format="json")
+    assert changed.status_code == 200 and changed.json()["events"][0]["admission"] == "open"
+    clients = [logged_in(player(name)) for name in ("Ama", "Kofi", "Esi")]
+    first, second, overflow = (enter(client, cup, singles) for client in clients)
+    assert [entry["status"] for entry in (first, second, overflow)] == [
+        "accepted",
+        "accepted",
+        "waitlisted",
+    ]
+    assert first["decided_at"] and overflow["decided_at"]
+    assert Entry.objects.get(pk=first["id"]).decided_by_id is None
+    act(clients[0], cup, singles, first, "withdraw")
+    assert Entry.objects.get(pk=overflow["id"]).status == "waitlisted"
+    assert act(staff, cup, singles, overflow, "accept")["status"] == "accepted"
+
+
+def test_self_check_in_requires_the_event_day_and_checks_in_each_doubles_player(staff, cup, doubles):
+    from competitions.models import Tournament
+
+    ama, kofi, esi = (player(name) for name in ("Ama", "Kofi", "Esi"))
+    pair = enter(staff, cup, doubles, player_ids=[str(ama.id), str(kofi.id)])
+    assert act(logged_in(esi), cup, doubles, pair, "self-check-in", expect=404)
+    expected = act(logged_in(ama), cup, doubles, pair, "self-check-in", expect=409)
+    assert expected["code"] == "check_in_not_today"
+    tournament_day = timezone.localdate()
+    Tournament.objects.filter(pk=cup["id"]).update(starts_on=tournament_day, ends_on=tournament_day)
+    partial = act(logged_in(ama), cup, doubles, pair, "self-check-in")
+    assert partial["my_check_in_at"] and not partial["checked_in_at"]
+    assert act(logged_in(ama), cup, doubles, pair, "self-check-in")["my_check_in_at"] == partial["my_check_in_at"]
+    full = act(logged_in(kofi), cup, doubles, pair, "self-check-in")
+    assert full["my_check_in_at"] and full["checked_in_at"]
+    assert act(staff, cup, doubles, pair, "undo-check-in")["checked_in_at"] is None
 
 
 def test_doubles_are_two_players_and_teams_a_roster_with_a_captain(staff, cup, singles, doubles, teams):

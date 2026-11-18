@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, mixins, status, viewsets
+from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -12,12 +13,15 @@ from rest_framework.response import Response
 
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
+from core.permissions import is_platform_super_admin
 
 from .access import (
     effective_permissions,
     ensure_admin_remains,
     lock_organization,
+    managed_organizations,
     membership_permissions,
+    official_for,
     require_membership,
     require_permission,
     require_within_authority,
@@ -35,11 +39,12 @@ from .models import (
     invitation_expiry,
     seed_roles,
 )
-from .permissions import ROLE_TEMPLATES, Permission, RoleKey
+from .permissions import ALL_PERMISSIONS, ROLE_TEMPLATES, Permission, RoleKey
 from .serializers import (
     InvitationCreateSerializer,
     InvitationSerializer,
     JoinRequestSerializer,
+    ManagementOrganizationSerializer,
     MemberFieldEntrySerializer,
     MemberFieldSerializer,
     MemberFieldValuesSerializer,
@@ -48,6 +53,7 @@ from .serializers import (
     MembershipSerializer,
     MyInvitationSerializer,
     MyJoinRequestSerializer,
+    OrganizationLocationSerializer,
     OrganizationSerializer,
     PermissionInfoSerializer,
     RoleSerializer,
@@ -108,8 +114,26 @@ class OrganizationViewSet(
             return queryset
         term = search_term(self.request)
         if term:
-            queryset = queryset.filter(Q(name__icontains=term) | Q(town__icontains=term))
+            queryset = queryset.filter(
+                Q(name__icontains=term) | Q(town__icontains=term) | Q(region__icontains=term)
+            )
         return queryset
+
+    @extend_schema(request=OrganizationLocationSerializer, responses={200: OrganizationSerializer})
+    @transaction.atomic
+    def partial_update(self, request, pk):
+        organization = get_object_or_404(Organization.objects.select_for_update(), pk=pk)
+        require_permission(request.user, organization, MANAGE_ROLES)
+        serializer = OrganizationLocationSerializer(organization, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        moving = data.get("country", organization.country) != organization.country or (
+            data.get("region", organization.region).lower() != organization.region.lower()
+        )
+        if organization.country and moving and not is_platform_super_admin(request.user):
+            raise ApiException("permission_denied", "Ask a platform super admin to change the club's jurisdiction.", 403)
+        serializer.save()
+        return Response(OrganizationSerializer(organization).data)
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -309,6 +333,23 @@ class MyInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     @action(detail=True, methods=["post"])
     def decline(self, request, pk=None):
         return self._answer(pk, Invitation.Status.DECLINED)
+
+
+class MyManagedOrganizationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: ManagementOrganizationSerializer(many=True)})
+    def get(self, request):
+        platform = is_platform_super_admin(request.user)
+        rows = [
+            {
+                "organization": organization,
+                "authority": "platform" if platform else "country" if official_for(request.user, organization, country_only=True) else "regional",
+                "permissions": sorted(ALL_PERMISSIONS),
+            }
+            for organization in managed_organizations(request.user)
+        ]
+        return Response(ManagementOrganizationSerializer(rows, many=True).data)
 
 
 class MyMembershipViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):

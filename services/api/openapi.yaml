@@ -2156,6 +2156,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_partial_update
+      description: Search, view and register organizations (REQ-004).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this organization.
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrganizationLocationRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/permissions/:
     get:
       operationId: organizations_permissions_list
@@ -2327,6 +2360,75 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Ranking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/rankings/clubs/:
+    get:
+      operationId: rankings_clubs_retrieve
+      description: Rank clubs by the sum of their active members' ratings for one
+        discipline.
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+        description: Default singles.
+      tags:
+      - rankings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubRanking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/rankings/geography/:
+    get:
+      operationId: rankings_geography_retrieve
+      description: Aggregate player ratings by the location each player provides in
+        their profile.
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+      - in: query
+        name: level
+        schema:
+          type: string
+          enum:
+          - city
+          - country
+          - region
+      tags:
+      - rankings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeographyRanking'
           description: ''
         4XX:
           description: Error envelope
@@ -2536,6 +2638,15 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: scope
+        schema:
+          type: string
+          enum:
+          - international
+          - local
+          - national
+          - regional
       - in: query
         name: search
         schema:
@@ -3203,9 +3314,8 @@ paths:
     post:
       operationId: tournaments_events_entries_create
       description: |-
-        Enter the event. A player's own entry includes them and waits for staff, inside the
-        registration window. Staff enter anybody at any time before the event starts: the entry takes
-        a place if there is one and joins the waiting list if not.
+        Enter the event during its registration window. Open admission places or waitlists
+        the entry. Closed admission sends it to staff for approval. Staff may enter players directly.
       parameters:
       - in: path
         name: event_pk
@@ -3421,10 +3531,9 @@ paths:
     post:
       operationId: tournaments_events_entries_undo_check_in_create
       description: |-
-        Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
-        event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
-        check in. Accepted entries are open to every signed-in player; the rest only to their own players
-        and to the host's competition staff.
+        Entries of one event (REQ-008). Open events admit players automatically within capacity.
+        Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+        players; staff and the entry's own players can also see its other statuses.
       parameters:
       - in: path
         name: event_pk
@@ -3465,10 +3574,9 @@ paths:
     post:
       operationId: tournaments_events_entries_waitlist_create
       description: |-
-        Entries of one event (REQ-008). Players enter themselves (with a partner or a team where the
-        event asks for one) and wait for staff; staff enter anyone, accept, waitlist, reject, withdraw and
-        check in. Accepted entries are open to every signed-in player; the rest only to their own players
-        and to the host's competition staff.
+        Entries of one event (REQ-008). Open events admit players automatically within capacity.
+        Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+        players; staff and the entry's own players can also see its other statuses.
       parameters:
       - in: path
         name: event_pk
@@ -4372,6 +4480,14 @@ components:
         * `event_completed` - Event Completed
         * `event_cancelled` - Event Cancelled
         * `event_removed` - Event Removed
+    AdmissionEnum:
+      enum:
+      - open
+      - closed
+      type: string
+      description: |-
+        * `open` - Open
+        * `closed` - Closed
     AssignUmpireRequest:
       type: object
       description: '`user_id` null takes the match back from its umpire. `rubber_id`
@@ -4561,6 +4677,47 @@ components:
       - playing
       - since
       - suggested_match_id
+    ClubRanking:
+      type: object
+      properties:
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        processing:
+          type: boolean
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubRankingRow'
+      required:
+      - discipline
+      - processing
+      - rows
+    ClubRankingRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Clubs with the same total share a rank.
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        town:
+          type: string
+        total_points:
+          type: number
+          format: double
+          description: Sum of current ratings of active rated members.
+        rated_members:
+          type: integer
+      required:
+      - name
+      - organization_id
+      - rank
+      - rated_members
+      - total_points
+      - town
     ConfirmRequest:
       type: object
       description: |-
@@ -5089,6 +5246,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        admission:
+          $ref: '#/components/schemas/AdmissionEnum'
         entry_fee:
           $ref: '#/components/schemas/Money'
         seeding:
@@ -5154,6 +5313,7 @@ components:
           readOnly: true
       required:
       - accepted_count
+      - admission
       - best_of
       - cancel_reason
       - cancelled_at
@@ -5242,6 +5402,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        admission:
+          $ref: '#/components/schemas/AdmissionEnum'
         entry_fee:
           $ref: '#/components/schemas/MoneyRequest'
         seeding:
@@ -5334,6 +5496,47 @@ components:
       required:
       - my_points
       - opponent_points
+    GeographyRanking:
+      type: object
+      properties:
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        level:
+          $ref: '#/components/schemas/LevelEnum'
+        processing:
+          type: boolean
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeographyRankingRow'
+      required:
+      - discipline
+      - level
+      - processing
+      - rows
+    GeographyRankingRow:
+      type: object
+      properties:
+        rank:
+          type: integer
+        country:
+          type: string
+        region:
+          type: string
+        city:
+          type: string
+        total_points:
+          type: number
+          format: double
+        rated_players:
+          type: integer
+      required:
+      - city
+      - country
+      - rank
+      - rated_players
+      - region
+      - total_points
     Goals:
       type: object
       properties:
@@ -5541,6 +5744,16 @@ components:
       - lost
       - played
       - won
+    LevelEnum:
+      enum:
+      - country
+      - region
+      - city
+      type: string
+      description: |-
+        * `country` - country
+        * `region` - region
+        * `city` - city
     LifecycleEntry:
       type: object
       properties:
@@ -5667,6 +5880,9 @@ components:
           description: 'Null is a bye: `a` goes through without playing.'
         status:
           $ref: '#/components/schemas/MatchStatusEnum'
+        is_live:
+          type: boolean
+          description: A match or team rubber is currently being scored.
         winner_id:
           type: string
           format: uuid
@@ -5713,6 +5929,7 @@ components:
       - games
       - group
       - id
+      - is_live
       - outcome
       - position
       - round
@@ -5751,6 +5968,9 @@ components:
           description: 'Null is a bye: `a` goes through without playing.'
         status:
           $ref: '#/components/schemas/MatchStatusEnum'
+        is_live:
+          type: boolean
+          description: A match or team rubber is currently being scored.
         winner_id:
           type: string
           format: uuid
@@ -5845,6 +6065,7 @@ components:
       - group_name
       - held_for_correction
       - id
+      - is_live
       - on_table
       - outcome
       - position
@@ -6583,15 +6804,23 @@ components:
         town:
           type: string
           maxLength: 80
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
           type: string
           maxLength: 64
       required:
+      - country
       - id
       - kind
       - name
+      - region
       - timezone
       - town
     OrganizationRequest:
@@ -6605,6 +6834,12 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -6627,9 +6862,17 @@ components:
         town:
           type: string
           readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
       required:
+      - country
       - id
       - name
+      - region
       - town
     OverridesEnum:
       enum:
@@ -7036,6 +7279,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        admission:
+          $ref: '#/components/schemas/AdmissionEnum'
         entry_fee:
           $ref: '#/components/schemas/MoneyRequest'
         seeding:
@@ -7100,6 +7345,21 @@ components:
             - type: number
             - type: boolean
             nullable: true
+    PatchedOrganizationLocationRequest:
+      type: object
+      properties:
+        country:
+          type: string
+          minLength: 1
+          maxLength: 2
+        region:
+          type: string
+          minLength: 1
+          maxLength: 100
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
     PatchedPersonalMatchRequest:
       type: object
       properties:
@@ -7157,6 +7417,15 @@ components:
         bio:
           type: string
           maxLength: 280
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
         directory_opt_in:
           type: boolean
         published_details:
@@ -7213,6 +7482,8 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+        scope:
+          $ref: '#/components/schemas/TournamentScopeEnum'
     PatchedVenueRequest:
       type: object
       description: A venue with its tables in playing order.
@@ -7527,6 +7798,15 @@ components:
         bio:
           type: string
           maxLength: 280
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
         directory_opt_in:
           type: boolean
         published_details:
@@ -7544,6 +7824,8 @@ components:
       required:
       - avatar
       - bio
+      - city
+      - country
       - directory_opt_in
       - display_name
       - experience
@@ -7553,6 +7835,7 @@ components:
       - nickname
       - onboarding_completed
       - published_details
+      - region
       - style
     ProgressEnum:
       enum:
@@ -7643,7 +7926,7 @@ components:
         discipline:
           $ref: '#/components/schemas/SinglesOrDoublesEnum'
         scope:
-          $ref: '#/components/schemas/ScopeEnum'
+          $ref: '#/components/schemas/RankingScopeEnum'
         organization_id:
           type: string
           format: uuid
@@ -7717,6 +8000,14 @@ components:
       - rating
       - user_id
       - won
+    RankingScopeEnum:
+      enum:
+      - platform
+      - club
+      type: string
+      description: |-
+        * `platform` - platform
+        * `club` - club
     RatingChange:
       type: object
       properties:
@@ -8274,14 +8565,6 @@ components:
         * `scheduled` - Scheduled
         * `completed` - Completed
         * `not_played` - Not Played
-    ScopeEnum:
-      enum:
-      - platform
-      - club
-      type: string
-      description: |-
-        * `platform` - platform
-        * `club` - club
     ScoreConflict:
       type: object
       description: A device's unaccepted events beside what the server holds at the
@@ -8648,6 +8931,18 @@ components:
           type: string
           writeOnly: true
           minLength: 1
+        country:
+          type: string
+          minLength: 1
+          maxLength: 2
+        region:
+          type: string
+          minLength: 1
+          maxLength: 100
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
       required:
       - display_name
       - email
@@ -8984,6 +9279,8 @@ components:
         timezone:
           type: string
           maxLength: 64
+        scope:
+          $ref: '#/components/schemas/TournamentScopeEnum'
         status:
           allOf:
           - $ref: '#/components/schemas/TournamentStatusEnum'
@@ -9027,6 +9324,7 @@ components:
       - name
       - organization
       - published_at
+      - scope
       - started_at
       - starts_on
       - status
@@ -9060,10 +9358,24 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+        scope:
+          $ref: '#/components/schemas/TournamentScopeEnum'
       required:
       - ends_on
       - name
       - starts_on
+    TournamentScopeEnum:
+      enum:
+      - local
+      - regional
+      - national
+      - international
+      type: string
+      description: |-
+        * `local` - Local
+        * `regional` - Regional
+        * `national` - National
+        * `international` - International
     TournamentStatusEnum:
       enum:
       - draft

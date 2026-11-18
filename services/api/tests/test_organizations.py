@@ -66,9 +66,21 @@ def test_search_by_name_or_town(player, club):
         "id": str(club.id),
         "name": "Coast TT Club",
         "town": "Mombasa",
+        "country": "",
+        "region": "",
         "kind": "club_facility",
         "timezone": "Africa/Nairobi",
     }
+
+
+def test_admin_can_set_a_clubs_location_and_members_cannot(admin, player, club):
+    Membership.objects.create(organization=club, user=player)
+    endpoint = f"{ORGS}{club.id}/"
+    location = {"country": "ke", "region": "Mombasa", "town": "Mombasa"}
+    assert logged_in(player).patch(endpoint, location, format="json").status_code == 403
+    saved = logged_in(admin).patch(endpoint, location, format="json")
+    assert saved.status_code == 200
+    assert {key: saved.json()[key] for key in location} == location | {"country": "KE"}
 
 
 def test_join_request_approve_flow(admin, player, club):

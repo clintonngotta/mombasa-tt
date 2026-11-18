@@ -43,27 +43,43 @@ export function YouBadge() {
 }
 
 /** A winner is marked with an icon and a word, not by weight alone (REQ-002). */
-export function WinnerMark() {
+export function WinnerMark({ highlighted = false }: { highlighted?: boolean }) {
   return (
     <>
-      <CircleCheck aria-hidden className="ml-1 inline size-4 text-success" />
+      <CircleCheck aria-hidden className={cn("ml-1 inline size-4", !highlighted && "text-success")} />
       <span className="sr-only"> (winner)</span>
     </>
   )
 }
 
-function SideName({ side, won, align }: { side: DrawSide; won: boolean; align: "left" | "right" }) {
+type Journey = {
+  entryId: string | null
+  onChange: (entryId: string | null) => void
+}
+
+function SideName({ side, won, align, highlighted, onJourneyChange }: {
+  side: DrawSide
+  won: boolean
+  align: "left" | "right"
+  highlighted: boolean
+  onJourneyChange?: Journey["onChange"]
+}) {
+  const entry = side.entry
   return (
     <span className={cn("min-w-0 break-words", align === "right" && "text-right")}>
-      {side.entry ? (
-        <span className={won ? "font-bold" : undefined}>
-          {side.entry.title}
-          {side.seed && <span className="ml-1 text-sm font-normal text-muted-foreground">[{side.seed}]</span>}
-          {side.entry.mine && <YouBadge />}
-          {won && <WinnerMark />}
+      {entry ? (
+        <span
+          className={won ? "font-bold" : undefined}
+          onMouseEnter={onJourneyChange && (() => onJourneyChange(entry.id))}
+          onMouseLeave={onJourneyChange && (() => onJourneyChange(null))}
+        >
+          {entry.title}
+          {side.seed && <span className={cn("ml-1 text-sm font-normal", !highlighted && "text-muted-foreground")}>[{side.seed}]</span>}
+          {entry.mine && <YouBadge />}
+          {won && <WinnerMark highlighted={highlighted} />}
         </span>
       ) : (
-        <span className="text-sm text-muted-foreground italic">{side.awaiting}</span>
+        <span className={cn("text-sm italic", !highlighted && "text-muted-foreground")}>{side.awaiting}</span>
       )}
     </span>
   )
@@ -73,32 +89,45 @@ function SideName({ side, won, align }: { side: DrawSide; won: boolean; align: "
  * One match as a card: the two sides left and right, never one above the other (REQ-002), the score
  * between them, and a line with what else is known. A bye is shown as a bye and leads nowhere.
  */
-export function MatchCard({ match, to, heading, timeZone, compact = false }: { match: DrawMatch; to?: string; heading?: string; timeZone: string; compact?: boolean }) {
+export function MatchCard({ match, to, heading, timeZone, compact = false, journey, showLive = false }: { match: DrawMatch; to?: string; heading?: string; timeZone: string; compact?: boolean; journey?: Journey; showLive?: boolean }) {
   const score = scoreLine(match)
   const detail = whenAndWhere(match, timeZone)
+  const entryId = journey?.entryId
+  const highlighted = entryId != null && (match.a.entry?.id === entryId || match.b?.entry?.id === entryId)
+  const live = showLive && match.is_live
+  const secondaryText = !highlighted && "text-muted-foreground"
   const body = (
     <>
-      {heading && <span className="text-sm font-semibold text-muted-foreground">{heading}</span>}
+      {heading && <span className={cn("text-sm font-semibold", secondaryText)}>{heading}</span>}
+      {live && <span className="self-start rounded-sm bg-destructive px-1.5 py-0.5 text-xs font-bold text-white">Live</span>}
       <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <SideName side={match.a} won={sideWon(match, match.a)} align="left" />
-        <span className={cn("font-display text-xl font-bold tabular-nums", !score && "text-sm font-normal text-muted-foreground")}>
+        <SideName side={match.a} won={sideWon(match, match.a)} align="left" highlighted={highlighted} onJourneyChange={journey?.onChange} />
+        <span className={cn("font-display text-xl font-bold tabular-nums", !score && "text-sm font-normal", !score && secondaryText)}>
           <span aria-hidden>{match.b ? (score ?? "v") : "–"}</span>
           <span className="sr-only">{match.b ? `, ${spokenScore(match)}, ` : ", "}</span>
         </span>
-        {match.b ? <SideName side={match.b} won={sideWon(match, match.b)} align="right" /> : <span className="text-right font-semibold text-muted-foreground">Bye</span>}
+        {match.b ? <SideName side={match.b} won={sideWon(match, match.b)} align="right" highlighted={highlighted} onJourneyChange={journey?.onChange} /> : <span className={cn("text-right font-semibold", secondaryText)}>Bye</span>}
       </span>
       {match.b && (!compact || detail) && (
-        <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span className={cn("flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm", secondaryText)}>
           {!compact && <MatchStateChip match={match} />}
           {detail && <span>{detail}</span>}
         </span>
       )}
     </>
   )
-  const className = cn("flex min-h-12 flex-col justify-center gap-1.5 rounded-xl border bg-card px-3 py-2.5", isMine(match) && "border-brand-blue bg-surface-selected")
+  const className = cn(
+    "flex min-h-12 flex-col justify-center gap-1.5 rounded-xl border bg-card px-3 py-2.5",
+    isMine(match) && "border-brand-blue bg-surface-selected",
+    highlighted && "border-primary bg-primary text-primary-foreground",
+    live && "border-destructive ring-1 ring-destructive",
+  )
   if (!to || !match.b) return <div className={className}>{body}</div>
   return (
-    <Link to={to} className={cn(className, "outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50")}>
+    <Link
+      to={to}
+      className={cn(className, "outline-none focus-visible:outline-2 focus-visible:outline-ring", !live && "hover:border-brand-blue")}
+    >
       {body}
     </Link>
   )

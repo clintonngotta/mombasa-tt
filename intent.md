@@ -40,6 +40,7 @@ Success means that confirmed results produce correct progression and ratings; co
 | Organizations | Multiple clubs/facilities; an organization can be either or both |
 | Identity | One player across multiple organizations; self-signup plus staff-created claimable guests |
 | Membership | Join requests approved by staff; public event entry does not require joining the host club |
+| Event admission | Open events accept eligible entries automatically while space remains. Closed events send entry requests to the organizer. |
 | Launch application | Mobile-first React + Vite + TypeScript installable PWA with TanStack Query |
 | Styling | Tailwind CSS, shadcn/ui, and the approved shared design tokens |
 | Browser | One responsive PWA serving players, umpires, public pages and organizer dashboard |

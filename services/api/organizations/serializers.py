@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from core.geography import CountryField, validate_location
 from core.timezones import validate_timezone
 
 from .access import membership_permissions
@@ -13,10 +14,34 @@ class OrganizationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=120, trim_whitespace=True)
     town = serializers.CharField(max_length=80, trim_whitespace=True)
     timezone = serializers.CharField(max_length=64, required=False, validators=[validate_timezone])
+    country = CountryField(max_length=2, required=False, allow_blank=True)
 
     class Meta:
         model = Organization
-        fields = ["id", "name", "town", "kind", "timezone"]
+        fields = ["id", "name", "town", "country", "region", "kind", "timezone"]
+
+    def validate(self, attrs):
+        validate_location(attrs, self.instance, city_field="town", legacy_town=True)
+        return attrs
+
+
+class OrganizationLocationSerializer(serializers.ModelSerializer):
+    country = CountryField(max_length=2)
+
+    class Meta:
+        model = Organization
+        fields = ["country", "region", "town"]
+        extra_kwargs = {"region": {"allow_blank": False, "required": True}}
+
+    def validate(self, attrs):
+        validate_location(attrs, self.instance, city_field="town")
+        return attrs
+
+
+class ManagementOrganizationSerializer(serializers.Serializer):
+    organization = OrganizationSerializer()
+    authority = serializers.ChoiceField(choices=["platform", "country", "regional"])
+    permissions = serializers.ListField(child=serializers.ChoiceField(choices=Permission.choices))
 
 
 class RoleSummarySerializer(serializers.ModelSerializer):

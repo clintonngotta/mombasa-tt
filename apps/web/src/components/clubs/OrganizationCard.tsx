@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { Building2, MapPin } from "lucide-react"
 import { KIND_LABEL, type Organization } from "@/lib/clubs"
+import { countryName } from "@/lib/geography"
 
 /** One organization as a list row: icon, name, town and kind, plus an optional action on the right. */
 export function OrganizationCard({ organization, children }: { organization: Organization; children?: ReactNode }) {
@@ -13,7 +14,7 @@ export function OrganizationCard({ organization, children }: { organization: Org
         <span className="font-semibold">{organization.name}</span>
         <span className="flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin aria-hidden className="size-3.5" />
-          {organization.town} · {KIND_LABEL[organization.kind]}
+          {[...new Set([organization.town, organization.region, countryName(organization.country)])].filter(Boolean).join(", ")} · {KIND_LABEL[organization.kind]}
         </span>
       </div>
       {children}

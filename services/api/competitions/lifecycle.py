@@ -13,6 +13,8 @@ from django.utils import timezone
 from rest_framework.renderers import JSONRenderer
 
 from core.exceptions import ApiException
+from core.permissions import is_platform_super_admin
+from organizations.access import official_for
 
 from . import signals
 from .models import Event, LifecycleEntry, Tournament
@@ -61,7 +63,7 @@ def _move(subject, status: str, stamp: str, **fields) -> None:
     subject.save(update_fields=["status", stamp, *fields])
 
 
-def publish(tournament: Tournament, actor) -> None:
+def _ready_to_publish(tournament: Tournament) -> None:
     _require(tournament, T.DRAFT, doing="published")
     missing = []
     if tournament.venue_id is None:
@@ -70,7 +72,52 @@ def publish(tournament: Tournament, actor) -> None:
         missing.append("at least one event")
     if missing:
         raise ApiException("not_ready", f"Add {' and '.join(missing)} before publishing.", 409)
-    _move(tournament, T.PUBLISHED, "published_at")
+
+
+def can_approve(tournament: Tournament, actor) -> bool:
+    if is_platform_super_admin(actor):
+        return True
+    if tournament.scope == Tournament.Scope.INTERNATIONAL:
+        return False
+    return official_for(actor, tournament.organization, country_only=tournament.scope == Tournament.Scope.NATIONAL)
+
+
+def request_approval(tournament: Tournament, actor) -> None:
+    _ready_to_publish(tournament)
+    if tournament.scope == Tournament.Scope.LOCAL or tournament.approval_status == Tournament.Approval.PENDING:
+        raise ApiException("invalid_transition", "This tournament cannot request approval now.", 409)
+    tournament.approval_status = Tournament.Approval.PENDING
+    tournament.save(update_fields=["approval_status"])
+    record(tournament, A.APPROVAL_REQUESTED, actor)
+
+
+def reset_pending_approval(tournament: Tournament) -> None:
+    if tournament.approval_status == Tournament.Approval.PENDING:
+        tournament.approval_status = Tournament.Approval.NOT_REQUESTED
+        tournament.save(update_fields=["approval_status"])
+
+
+def reject_approval(tournament: Tournament, actor, reason: str) -> None:
+    if not can_approve(tournament, actor):
+        raise ApiException("permission_denied", "Only the official for this tournament can decide.", 403)
+    _require(tournament, T.DRAFT, doing="reviewed")
+    if tournament.approval_status != Tournament.Approval.PENDING:
+        raise ApiException("invalid_transition", "There is no pending approval to decline.", 409)
+    tournament.approval_status = Tournament.Approval.REJECTED
+    tournament.save(update_fields=["approval_status"])
+    record(tournament, A.APPROVAL_REJECTED, actor, reason=reason)
+
+
+def publish(tournament: Tournament, actor) -> None:
+    _ready_to_publish(tournament)
+    if tournament.scope == Tournament.Scope.LOCAL:
+        _move(tournament, T.PUBLISHED, "published_at")
+    else:
+        if not can_approve(tournament, actor):
+            raise ApiException("permission_denied", "This tournament needs approval from the responsible official.", 403)
+        if tournament.approval_status != Tournament.Approval.PENDING and not is_platform_super_admin(actor):
+            raise ApiException("approval_not_requested", "Request approval before publishing.", 409)
+        _move(tournament, T.PUBLISHED, "published_at", approval_status=Tournament.Approval.APPROVED)
     record(tournament, A.PUBLISHED, actor)
 
 

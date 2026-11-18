@@ -25,6 +25,8 @@ class Organization(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
     town = models.CharField(max_length=80)
+    country = models.CharField(max_length=2, blank=True)
+    region = models.CharField(max_length=100, blank=True)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.CLUB)
     # Dates of the organization's tournaments and activities are entered and shown in this timezone.
     timezone = models.CharField(max_length=64, default=DEFAULT_TIMEZONE)
@@ -77,6 +79,34 @@ class Role(models.Model):
     @property
     def permission_set(self) -> frozenset[str]:
         return ALL_PERMISSIONS if self.is_admin else frozenset(self.permissions)
+
+
+class OfficialAppointment(models.Model):
+    """A platform-appointed official's geographic jurisdiction."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="official_appointments"
+    )
+    country = models.ForeignKey("core.Country", on_delete=models.PROTECT)
+    region = models.ForeignKey("core.Region", on_delete=models.PROTECT, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "country", "region"],
+                nulls_distinct=False,
+                name="unique_official_jurisdiction",
+            )
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.region_id and self.region.country_id != self.country_id:
+            raise ValidationError({"region": "Choose a region of the appointed country."})
+
+    def __str__(self):
+        return f"{self.user.display_name} · {self.region or self.country}"
 
 
 def seed_roles(organization: Organization) -> dict[str, Role]:

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from attachments.serializers import AttachmentLinkSerializer
+from core.geography import CountryField, validate_location
 
 from .models import PlayerProfile
 
@@ -15,6 +16,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     onboarding_completed = serializers.SerializerMethodField()
     # Changed through /me/avatar/ (a file upload), not through this serializer.
     avatar = AttachmentLinkSerializer(source="avatar_id", read_only=True, allow_null=True)
+    country = CountryField(max_length=2, required=False, allow_blank=True)
 
     class Meta:
         model = PlayerProfile
@@ -27,6 +29,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             "style",
             "experience",
             "bio",
+            "country",
+            "region",
+            "city",
             "directory_opt_in",
             "published_details",
             "goals",
@@ -44,6 +49,10 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def validate_published_details(self, value):
         return list(dict.fromkeys(value))
+
+    def validate(self, attrs):
+        validate_location(attrs, self.instance)
+        return attrs
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})

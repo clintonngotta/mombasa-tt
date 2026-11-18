@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { Toggle } from "@/components/forms/Toggle"
+import { LocationFields } from "@/components/forms/LocationFields"
 import { AvatarField } from "@/components/profile/AvatarField"
 import { BioField } from "@/components/profile/BioField"
 import { ApiError, errorMessage } from "@/lib/api"
@@ -94,6 +95,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
         error={fields.display_name}
       />
       <Field label="Nickname" optional maxLength={40} value={form.nickname} onChange={(e) => set({ nickname: e.target.value })} error={fields.nickname} />
+      <LocationFields value={form} onChange={set} errors={fields} />
       <ChoiceGroup
         legend="Playing hand"
         optional

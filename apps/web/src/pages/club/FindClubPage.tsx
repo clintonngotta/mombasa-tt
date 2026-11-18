@@ -28,7 +28,7 @@ export function FindClubPage() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.all }),
   })
 
-  const memberOf = new Set(memberships.results.map((m) => m.organization.id))
+  const memberOf = new Set(memberships.results.filter((m) => !m.managedOnly).map((m) => m.organization.id))
   const pending = new Set(myRequests.data?.results.filter((r) => r.status === "pending").map((r) => r.organization.id))
   // Until both lists load we can't tell "member" or "pending" from "can ask", so offer no join button.
   const statusKnown = memberships.query.isSuccess && myRequests.isSuccess

@@ -121,14 +121,15 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
       {open && target && (
         <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-lg border bg-card p-3" noValidate>
           {targets.length > 1 && (
-            <SelectField label="Result of" value={target.key} onChange={(e) => start(targets.find((candidate) => candidate.key === e.target.value) ?? targets[0])}>
-              {targets.map((candidate) => (
-                <option key={candidate.key} value={candidate.key}>
-                  {candidate.label}
-                  {candidate.decided ? " (correct it)" : ""}
-                </option>
-              ))}
-            </SelectField>
+            <SelectField
+              label="Result of"
+              value={target.key}
+              onChange={(key) => start(targets.find((candidate) => candidate.key === key) ?? targets[0])}
+              options={targets.map((candidate) => ({
+                value: candidate.key,
+                label: candidate.label + (candidate.decided ? " (correct it)" : ""),
+              }))}
+            />
           )}
           <div className="flex flex-col gap-2">
             <span className="font-semibold">Winner</span>
@@ -152,13 +153,15 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
               ))}
             </div>
           </div>
-          <SelectField label="How it ended" value={outcome} onChange={(e) => setOutcome(e.target.value as Outcome)}>
-            {(m.tie && !target.rubberId ? (["walkover", "retired"] as const) : (["played", "walkover", "retired"] as const)).map((value) => (
-              <option key={value} value={value}>
-                {OUTCOME_LABEL[value]}
-              </option>
-            ))}
-          </SelectField>
+          <SelectField
+            label="How it ended"
+            value={outcome}
+            onChange={(value) => setOutcome(value as Outcome)}
+            options={(m.tie && !target.rubberId ? (["walkover", "retired"] as const) : (["played", "walkover", "retired"] as const)).map((value) => ({
+              value,
+              label: OUTCOME_LABEL[value],
+            }))}
+          />
           {outcome !== "walkover" && !(m.tie && !target.rubberId) && (
             <Field
               label="Games"

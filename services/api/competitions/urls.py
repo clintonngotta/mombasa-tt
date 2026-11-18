@@ -24,6 +24,16 @@ urlpatterns = [
         name="tournament-detail",
     ),
     path("<uuid:pk>/publish/", action(TournamentViewSet, "publish"), name="tournament-publish"),
+    path(
+        "<uuid:pk>/approval/request/",
+        action(TournamentViewSet, "request_approval"),
+        name="tournament-request-approval",
+    ),
+    path(
+        "<uuid:pk>/approval/reject/",
+        action(TournamentViewSet, "reject_approval"),
+        name="tournament-reject-approval",
+    ),
     path("<uuid:pk>/start/", action(TournamentViewSet, "start"), name="tournament-start"),
     path("<uuid:pk>/complete/", action(TournamentViewSet, "complete"), name="tournament-complete"),
     path("<uuid:pk>/cancel/", action(TournamentViewSet, "cancel"), name="tournament-cancel"),
@@ -122,6 +132,7 @@ urlpatterns = [
             "staff-withdraw",
             "check-in",
             "undo-check-in",
+            "self-check-in",
             "withdraw",
         )
     ),

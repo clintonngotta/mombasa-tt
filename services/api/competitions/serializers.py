@@ -1,6 +1,6 @@
 from zoneinfo import ZoneInfo
 
-from drf_spectacular.utils import extend_schema_serializer
+from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
 
 from core.money import MAX_AMOUNT_MINOR
@@ -42,6 +42,11 @@ class EntryFeeSerializer(serializers.Serializer):
     currency = serializers.RegexField(r"^[A-Z]{3}$", source="entry_fee_currency", default="KES")
 
 
+class RegistrationFeeSerializer(serializers.Serializer):
+    amount_minor = serializers.IntegerField(source="registration_fee_minor", min_value=0, max_value=MAX_AMOUNT_MINOR)
+    currency = serializers.RegexField(r"^[A-Z]{3}$", source="registration_fee_currency", default="KES")
+
+
 class EventSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=80, trim_whitespace=True)
     entry_fee = EntryFeeSerializer(source="*", required=False)
@@ -80,6 +85,7 @@ class EventSerializer(serializers.ModelSerializer):
             "rest_minutes",
             "registration_opens_at",
             "registration_closes_at",
+            "admission",
             "entry_fee",
             "seeding",
             "group_count",
@@ -190,7 +196,7 @@ class EventSerializer(serializers.ModelSerializer):
 class OrganizationSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ["id", "name", "town"]
+        fields = ["id", "name", "town", "country", "region"]
         read_only_fields = fields
 
 
@@ -209,6 +215,7 @@ class TournamentSerializer(serializers.ModelSerializer):
     )
     timezone = serializers.CharField(max_length=64, required=False, validators=[validate_timezone])
     events = EventSerializer(many=True, read_only=True)
+    registration_fee = RegistrationFeeSerializer(source="*", required=False)
 
     class Meta:
         model = Tournament
@@ -222,6 +229,9 @@ class TournamentSerializer(serializers.ModelSerializer):
             "starts_on",
             "ends_on",
             "timezone",
+            "scope",
+            "approval_status",
+            "registration_fee",
             "status",
             "published_at",
             "started_at",
@@ -232,6 +242,7 @@ class TournamentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "approval_status",
             "status",
             "published_at",
             "started_at",
@@ -257,6 +268,13 @@ class TournamentSerializer(serializers.ModelSerializer):
         ends = attrs.get("ends_on", getattr(self.instance, "ends_on", None))
         if starts and ends and ends < starts:
             raise serializers.ValidationError({"ends_on": "The last day can't be before the first day."})
+        if "scope" in attrs:
+            organization = self.context["organization"]
+            scope = attrs["scope"]
+            if scope != Tournament.Scope.LOCAL and not organization.country:
+                raise serializers.ValidationError({"scope": "Set the host club's country first."})
+            if scope == Tournament.Scope.REGIONAL and not organization.region:
+                raise serializers.ValidationError({"scope": "Set the host club's region first."})
         return attrs
 
 
@@ -292,6 +310,7 @@ class EntrySerializer(serializers.ModelSerializer):
     players = EntryPlayerSerializer(many=True, read_only=True)
     captain_id = serializers.UUIDField(read_only=True, allow_null=True)
     mine = serializers.SerializerMethodField()
+    my_check_in_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Entry
@@ -306,6 +325,7 @@ class EntrySerializer(serializers.ModelSerializer):
             "decided_at",
             "withdrawn_at",
             "checked_in_at",
+            "my_check_in_at",
             "mine",
         ]
         read_only_fields = fields
@@ -314,6 +334,14 @@ class EntrySerializer(serializers.ModelSerializer):
         """Whether the caller plays in it, so may withdraw it."""
         user = self.context["request"].user
         return any(place.user_id == user.id for place in entry.players.all())
+
+    @extend_schema_field(serializers.DateTimeField(allow_null=True))
+    def get_my_check_in_at(self, entry):
+        user = self.context["request"].user
+        for place in entry.players.all():
+            if place.user_id == user.id:
+                return self.fields["checked_in_at"].to_representation(place.checked_in_at or entry.checked_in_at)
+        return None
 
 
 class EntryEventSerializer(serializers.ModelSerializer):
@@ -408,6 +436,7 @@ class MatchSerializer(serializers.Serializer):
     a = MatchSideSerializer()
     b = MatchSideSerializer(allow_null=True, help_text="Null is a bye: `a` goes through without playing.")
     status = serializers.ChoiceField(choices=Match.Status.choices)
+    is_live = serializers.BooleanField(help_text="A match or team rubber is currently being scored.")
     winner_id = serializers.UUIDField(allow_null=True)
     outcome = serializers.ChoiceField(choices=Match.Outcome.choices, allow_blank=True)
     games = serializers.ListField(
@@ -624,6 +653,7 @@ class EventDrawSerializer(serializers.Serializer):
 
     published = DrawSerializer(allow_null=True)
     preview = DrawSerializer(allow_null=True)
+    recommended_seeds = serializers.ListField(child=serializers.UUIDField())
 
 
 class DrawRequestSerializer(serializers.Serializer):

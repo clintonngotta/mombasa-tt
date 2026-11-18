@@ -3,6 +3,8 @@
 Table-tennis club and tournament PWA: a React/Vite web app (`apps/web`) and a Django/DRF API (`services/api`).
 Product docs: `spec.md`, `tasks.md`, `test.md`, `intent.md`, `deployment.md`.
 
+Open events accept eligible registrations automatically while space remains. Closed events require organizer approval. See [the registration rules](spec.md#req-008).
+
 ## Run everything with Docker
 
 ```sh

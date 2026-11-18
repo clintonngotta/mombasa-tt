@@ -48,6 +48,9 @@ class PlayerProfile(models.Model):
     style = models.CharField(max_length=80, blank=True)
     experience = models.CharField(max_length=12, choices=Experience.choices, blank=True)
     bio = models.CharField(max_length=280, blank=True)
+    country = models.CharField(max_length=2, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    city = models.CharField(max_length=100, blank=True)
     # Shown to the player, and to other signed-in players only while directory_opt_in is on.
     avatar = models.OneToOneField(
         "attachments.Attachment", null=True, blank=True, on_delete=models.SET_NULL, related_name="avatar_of"

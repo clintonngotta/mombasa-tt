@@ -72,7 +72,13 @@ def test_events_of_every_type_and_format_are_configured_in_a_draft(staff, club, 
         "town": "Mombasa",
         "address": "",
     }
-    assert tournament["organization"] == {"id": str(club.id), "name": club.name, "town": club.town}
+    assert tournament["organization"] == {
+        "id": str(club.id),
+        "name": club.name,
+        "town": club.town,
+        "country": club.country,
+        "region": club.region,
+    }
 
     set_up = [
         {"name": "Men's singles", "kind": "singles", "format": "knockout"},
@@ -187,6 +193,53 @@ def test_tournament_setup_is_validated(staff, club, venue):
     staff.patch(f"{ORGS}{club.id}/venues/{venue['id']}/", {"active": False}, format="json")
     kept = staff.patch(url(tournament), {"venue_id": venue["id"], "name": "Coast Open 2026"}, format="json")
     assert kept.status_code == 200 and kept.json()["venue"]["id"] == venue["id"]
+
+
+def test_regional_tournament_uses_the_hosts_location_and_can_be_filtered(staff, club, venue):
+    from core.models import Country, Region
+    from organizations.models import OfficialAppointment
+
+    refused = staff.post(
+        f"/api/v1/organizations/{club.id}/tournaments/",
+        {"name": "Coast Regional", "starts_on": "2026-12-05", "ends_on": "2026-12-05", "scope": "regional"},
+        format="json",
+    )
+    assert refused.status_code == 400 and "scope" in refused.json()["fields"]
+    club.country, club.region = "KE", "Mombasa"
+    club.save(update_fields=["country", "region"])
+    tournament = make_tournament(staff, club, venue, scope="regional")
+    assert tournament["scope"] == "regional" and tournament["organization"]["region"] == "Mombasa"
+    tournament = add_event(staff, tournament, name="Singles", kind="singles", format="knockout")
+    assert staff.post(url(tournament, "publish"), {}, format="json").status_code == 403
+    assert do(staff, tournament, "approval/request")["approval_status"] == "pending"
+    country = Country.objects.create(code="KE", name="Kenya")
+    match = Region.objects.create(country=country, name="Mombasa")
+    outside = Region.objects.create(country=country, name="Kilifi")
+    official = make_user("official@example.com")
+    other = make_user("outside@example.com")
+    OfficialAppointment.objects.create(user=official, country=country, region=match)
+    OfficialAppointment.objects.create(user=other, country=country, region=outside)
+    denied = logged_in(other).post(url(tournament, "publish"), {}, format="json")
+    assert denied.status_code == 404
+    tournament = do(logged_in(official), tournament, "publish")
+    assert tournament["approval_status"] == "approved"
+    assert [row["id"] for row in staff.get("/api/v1/tournaments/?scope=regional").json()["results"]] == [
+        tournament["id"]
+    ]
+    assert staff.get("/api/v1/tournaments/?scope=international").json()["results"] == []
+    do(staff, tournament, "start")
+    changed = staff.patch(url(tournament), {"scope": "national"}, format="json")
+    assert changed.status_code == 409 and changed.json()["code"] == "structure_frozen"
+
+
+def test_tournament_fee_defaults_new_events_and_can_be_overridden(staff, club, venue):
+    fee = {"amount_minor": 50000, "currency": "KES"}
+    tournament = make_tournament(staff, club, venue, registration_fee=fee)
+    assert tournament["registration_fee"] == fee
+    tournament = add_event(staff, tournament, name="Singles")
+    assert tournament["events"][0]["entry_fee"] == fee
+    tournament = add_event(staff, tournament, name="Doubles", kind="doubles", entry_fee={"amount_minor": 0})
+    assert tournament["events"][1]["entry_fee"]["amount_minor"] == 0
 
 
 def test_dates_are_calendar_days_in_the_organizations_timezone(staff, admin, venue, club):
