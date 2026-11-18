@@ -28,9 +28,10 @@ async function countryOptions() {
   ].map((option) => [option.value, option])).values()].sort((a, b) => a.label.localeCompare(b.label))
 }
 
-async function countryRegions(code: string) {
+async function countryRegions(code: string): Promise<{ fixed: boolean; regions: Region[] }> {
   const managed = await api<Catalogue>(`/geography/countries/${encodeURIComponent(code)}/`).catch(() => null)
-  if (managed?.catalogue_only) return managed.regions
+  // A catalogue-only country takes only its listed regions; the API refuses any other.
+  if (managed?.catalogue_only) return { fixed: true, regions: managed.regions }
   const known = await getOptions<Region[]>(code).catch(() => [] as Region[])
   const merged = new Map(known.map((region) => [region.name.toLowerCase(), region]))
   for (const region of managed?.regions ?? []) {
@@ -38,7 +39,7 @@ async function countryRegions(code: string) {
     const cities = [...new Set([...(merged.get(key)?.cities ?? []), ...region.cities])].sort()
     merged.set(key, { name: region.name, cities })
   }
-  return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name))
+  return { fixed: false, regions: [...merged.values()].sort((a, b) => a.name.localeCompare(b.name)) }
 }
 
 export function LocationFields({ value, onChange, errors = {}, cityLimit = 100 }: {
@@ -58,7 +59,8 @@ export function LocationFields({ value, onChange, errors = {}, cityLimit = 100 }
     queryFn: () => countryRegions(value.country),
     enabled: !!value.country,
   })
-  const regions = country.data ?? []
+  const regions = country.data?.regions ?? []
+  const fixedRegions = country.data?.fixed ?? false
   const cities = regions.find((region) => region.name === value.region)?.cities ?? []
 
   function chooseRegion(region: string) {
@@ -85,7 +87,7 @@ export function LocationFields({ value, onChange, errors = {}, cityLimit = 100 }
       {countries.isError && <FormAlert>Countries could not be loaded. Refresh the page to try again.</FormAlert>}
       <div className="grid items-start gap-3 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1">
-          {value.country && (otherRegion || country.isError || (country.isSuccess && regions.length === 0)) ? (
+          {value.country && ((otherRegion && !fixedRegions) || country.isError || (country.isSuccess && regions.length === 0)) ? (
             <Field label="Region" autoComplete="address-level1" maxLength={100} value={value.region} onChange={(event) => chooseRegion(event.target.value)} error={errors.region} />
           ) : (
             <SelectField
@@ -98,7 +100,7 @@ export function LocationFields({ value, onChange, errors = {}, cityLimit = 100 }
               error={errors.region}
             />
           )}
-          {regions.length > 0 && (
+          {regions.length > 0 && !fixedRegions && (
             <Button type="button" variant="link" size="sm" className="self-start px-0" onClick={() => setOtherRegion(!otherRegion)}>
               {otherRegion ? "Choose a listed region" : "Enter another region"}
             </Button>

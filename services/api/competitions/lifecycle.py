@@ -14,7 +14,9 @@ from rest_framework.renderers import JSONRenderer
 
 from core.exceptions import ApiException
 from core.permissions import is_platform_super_admin
-from organizations.access import official_for
+from organizations.access import membership_permissions, official_for
+from organizations.models import Membership
+from organizations.permissions import Permission
 
 from . import signals
 from .models import Event, LifecycleEntry, Tournament
@@ -82,6 +84,29 @@ def can_approve(tournament: Tournament, actor) -> bool:
     return official_for(
         actor, tournament.organization, country_only=tournament.scope == Tournament.Scope.NATIONAL
     )
+
+
+def ensure_may_change_scope(tournament: Tournament, actor) -> None:
+    """The host club chooses its tournament's tier. An official from outside the club can change it only
+    when they could approve the tier it has now, so nobody can move a tournament down into a tier they
+    approve themselves."""
+    if is_platform_super_admin(actor):
+        return
+    host = (
+        Membership.objects.active()
+        .filter(organization=tournament.organization, user=actor)
+        .select_related("organization")
+        .prefetch_related("roles", "organization__roles")
+        .first()
+    )
+    if host and Permission.COMPETITIONS_MANAGE in membership_permissions(host):
+        return
+    if tournament.scope != Tournament.Scope.LOCAL and not can_approve(tournament, actor):
+        raise ApiException(
+            "permission_denied",
+            "Only the host club or an official who approves its current tier can change the scope.",
+            403,
+        )
 
 
 def request_approval(tournament: Tournament, actor) -> None:

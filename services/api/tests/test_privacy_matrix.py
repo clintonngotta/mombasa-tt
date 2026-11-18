@@ -126,6 +126,9 @@ ACCESS: dict[str, dict[str, str]] = {
     # drafts and every change are for the host's competition staff.
     "organization-tournaments": {"get": STAFF, "post": STAFF},
     "tournament-list": {"get": SIGNED_IN},
+    "tournament-awaiting-approval": {
+        "get": SIGNED_IN
+    },  # only drafts the caller may approve; see test_authority
     "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
     "tournament-publish": {"post": STAFF},
     "tournament-request-approval": {"post": STAFF},

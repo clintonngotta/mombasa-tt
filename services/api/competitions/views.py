@@ -14,7 +14,8 @@ from rest_framework.response import Response
 from accounts.models import User
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
-from organizations.access import effective_permissions, require_permission
+from core.permissions import is_platform_super_admin
+from organizations.access import effective_permissions, managed_organizations, require_permission
 from organizations.models import Organization
 from organizations.permissions import Permission
 
@@ -183,6 +184,19 @@ class TournamentViewSet(viewsets.GenericViewSet):
         page = self.paginate_queryset(found)
         return self.get_paginated_response(TournamentSerializer(page, many=True).data)
 
+    @extend_schema(responses={200: TournamentSerializer(many=True)})
+    def awaiting_approval(self, request):
+        """Drafts whose host asked for approval and that the caller may approve: any of them for a
+        platform super admin, otherwise those in the caller's jurisdiction and tier."""
+        pending = tournaments().filter(status=T.DRAFT, approval_status=Tournament.Approval.PENDING)
+        if not is_platform_super_admin(request.user):
+            pending = pending.filter(organization__in=managed_organizations(request.user))
+        found = [
+            t for t in pending.order_by("starts_on", "name", "id") if lifecycle.can_approve(t, request.user)
+        ]
+        page = self.paginate_queryset(found)
+        return self.get_paginated_response(TournamentSerializer(page, many=True).data)
+
     def retrieve(self, request, pk):
         tournament = get_object_or_404(tournaments(), pk=pk)
         if tournament.status == T.DRAFT and not manages(request.user, tournament.organization):
@@ -207,6 +221,8 @@ class TournamentViewSet(viewsets.GenericViewSet):
                 raise ApiException(
                     "structure_frozen", "The tournament scope can't change once it is published.", 409
                 )
+            if scope != tournament.scope:
+                lifecycle.ensure_may_change_scope(tournament, request.user)
             changed = any(
                 getattr(tournament, name) != value for name, value in serializer.validated_data.items()
             )

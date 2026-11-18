@@ -13,6 +13,8 @@ class OfficialAppointmentAdmin(PlatformOnlyAdmin):
 
 
 @admin.register(Organization)
-class OrganizationAdmin(admin.ModelAdmin):
+class OrganizationAdmin(PlatformOnlyAdmin):
+    """A club's country and region decide which officials govern it, so only the platform edits them here."""
+
     list_display = ["name", "town", "kind", "created_at"]
     search_fields = ["name", "town"]

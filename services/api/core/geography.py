@@ -2,7 +2,7 @@ import unicodedata
 
 from rest_framework import serializers
 
-from .models import Country
+from .models import Country, Region
 
 # ISO 3166-1 alpha-2 and XK, the user-assigned code used by the location picker.
 COUNTRY_CODES = frozenset(
@@ -52,3 +52,11 @@ def validate_location(attrs, instance=None, *, city_field="city", legacy_town=Fa
     missing = {field: f"Choose a {labels[field]}." for field, value in location.items() if not value}
     if missing:
         raise serializers.ValidationError(missing)
+    # A catalogue-only country (Kenya) takes only its listed regions, so a club can't pick a region no
+    # official governs. Spelling and case follow the catalogue.
+    region = location["region"]
+    if region and Country.objects.filter(pk=location["country"], catalogue_only=True).exists():
+        known = Region.objects.filter(country_id=location["country"], name__iexact=region).first()
+        if known is None:
+            raise serializers.ValidationError({"region": "Choose a region from the list."})
+        attrs["region"] = known.name

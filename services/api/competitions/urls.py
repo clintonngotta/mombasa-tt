@@ -19,6 +19,11 @@ def action(viewset, name):
 urlpatterns = [
     path("", TournamentViewSet.as_view({"get": "list"}), name="tournament-list"),
     path(
+        "awaiting-approval/",
+        TournamentViewSet.as_view({"get": "awaiting_approval"}),
+        name="tournament-awaiting-approval",
+    ),
+    path(
         "<uuid:pk>/",
         TournamentViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
         name="tournament-detail",
