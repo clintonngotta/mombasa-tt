@@ -375,6 +375,8 @@ class Match(models.Model):
     # is an estimate, never a promise (REQ-014).
     table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     scheduled_at = models.DateTimeField(null=True, blank=True)
+    # When it was sent to its table; empty while it isn't on one (REQ-014).
+    dispatched_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["stage", "group", "round", "position"]

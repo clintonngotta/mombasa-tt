@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils"
 type State = { label: string; icon: LucideIcon; className: string }
 
 /** Where a match stands, in words (REQ-002: never colour alone). */
-type Stateful = Pick<DrawMatch, "status" | "a" | "b" | "scheduled_at" | "tie_score">
+type Stateful = Pick<DrawMatch, "status" | "a" | "b" | "scheduled_at" | "tie_score" | "dispatched_at" | "table">
 
 function matchState(match: Stateful): State {
   if (match.status === "completed") return { label: "Finished", icon: CircleCheck, className: "text-success" }
+  // Sent to a table: its table and players are held (REQ-014). Nothing here says a point was played.
+  if (match.dispatched_at) return { label: match.table ? `On ${match.table}` : "On a table", icon: Radio, className: "text-brand-navy" }
   // A tie whose lineups are in has begun, whether or not a rubber is decided yet.
   if (match.tie_score) return { label: "Under way", icon: Radio, className: "text-brand-navy" }
   if (!match.a.entry || !match.b?.entry) return { label: "Waiting for players", icon: Hourglass, className: "text-muted-foreground" }

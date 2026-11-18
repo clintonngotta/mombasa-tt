@@ -1558,6 +1558,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/dispatch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send the match to a table. The table and the players are held from now until the result is
+         *     official or staff call the match back. Refused with the constraint that stands in the way
+         *     (`table_busy`, `player_busy`, `not_checked_in`, `resting`, ...); everything is checked again
+         *     here whatever was shown before.
+         */
+        post: operations["tournaments_events_matches_dispatch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/": {
         parameters: {
             query?: never;
@@ -1590,6 +1612,26 @@ export interface paths {
         put?: never;
         /** @description Competition staff send both teams back to choose again, while no rubber has been decided. */
         post: operations["tournaments_events_matches_lineup_reset_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recall/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Take the match off its table, with a reason. The table and players are free again; a score
+         *     sheet already started stays as it is.
+         */
+        post: operations["tournaments_events_matches_recall_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1738,6 +1780,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/reservations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Matches of this tournament that are on a table, with who is held. */
+        get: operations["tournaments_reservations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/scoring/": {
         parameters: {
             query?: never;
@@ -1770,6 +1829,26 @@ export interface paths {
         put?: never;
         /** @description Record what was done about a device's unaccepted events. The report stays on record. */
         post: operations["tournaments_scoring_conflicts_resolve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/tables/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The tournament's tables in use and which are free. A table at a shared venue may be held by
+         *     another tournament's match.
+         */
+        get: operations["tournaments_tables_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1939,6 +2018,16 @@ export interface components {
             nickname: string;
             readonly avatar: components["schemas"]["AttachmentLink"] | null;
             readonly clubs: string[];
+        };
+        /**
+         * @description Send the match to a table. `overrides` sets aside the check-in or rest check, with a reason;
+         *     nothing sets aside that a table and a player are in one place at a time.
+         */
+        DispatchRequest: {
+            /** Format: uuid */
+            table_id: string;
+            overrides?: components["schemas"]["OverridesEnum"][];
+            reason?: string;
         };
         /** @description One version of an event's draw: who sits where, and every match with its sides. */
         Draw: {
@@ -2323,6 +2412,11 @@ export interface components {
              * @description When it is expected to start: an estimate. Null until it is scheduled.
              */
             scheduled_at: string | null;
+            /**
+             * Format: date-time
+             * @description When it was sent to its table. Null while it isn't on one.
+             */
+            dispatched_at: string | null;
         };
         /** @description One match of the published draw on its own page. Reading it gives nobody a way to score it. */
         MatchDetail: {
@@ -2351,6 +2445,11 @@ export interface components {
              * @description When it is expected to start: an estimate. Null until it is scheduled.
              */
             scheduled_at: string | null;
+            /**
+             * Format: date-time
+             * @description When it was sent to its table. Null while it isn't on one.
+             */
+            dispatched_at: string | null;
             /** @description Empty for a knockout match. */
             group_name: string;
             /** @description The round its winner goes on to; empty when nothing follows. */
@@ -2360,6 +2459,9 @@ export interface components {
             tie: components["schemas"]["Tie"] | null;
             /** @description Null for a tie: its rubbers are scored. */
             scoring: components["schemas"]["ScoringSummary"] | null;
+            on_table: components["schemas"]["OnTable"] | null;
+            /** @description The caller may send it to a table or call it back. */
+            can_dispatch: boolean;
         };
         MatchLabels: {
             labels: string[];
@@ -2588,6 +2690,15 @@ export interface components {
         };
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description The match is on a table: the table and its players are held until the result is official. */
+        OnTable: {
+            table: string;
+            /** Format: date-time */
+            since: string;
+            people: string[];
+            /** @description Players of the tie's current rubber who are in use elsewhere (staff only). */
+            waiting_for: string[];
+        };
         /** @description A match being scored, or finished and not yet confirmed by its umpire. */
         OpenSheet: {
             sheet: components["schemas"]["SheetContext"];
@@ -2624,6 +2735,12 @@ export interface components {
             readonly name: string;
             readonly town: string;
         };
+        /**
+         * @description * `check_in` - check_in
+         *     * `rest` - rest
+         * @enum {string}
+         */
+        OverridesEnum: "check_in" | "rest";
         PaginatedDirectoryPlayerList: {
             /** @example 123 */
             count: number;
@@ -3029,10 +3146,34 @@ export interface components {
         ReasonRequest: {
             reason: string;
         };
+        RecallRequest: {
+            reason: string;
+        };
         RefusedEvent: {
             sequence: number;
             /** @description A scoring engine code, `sequence_gap`, `sequence_conflict` or `revision_conflict`. */
             code: string;
+        };
+        /** @description A match on a table: the table and the people held until its result is official. */
+        Reservation: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            table_id: string;
+            table: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            a: string;
+            b: string;
+            /** Format: date-time */
+            since: string;
+            /** @description Players held with the table. */
+            people: string[];
+            overrides: string[];
+            override_reason: string;
         };
         /** @description What was done about it, for the record. */
         ResolveConflictRequest: {
@@ -3153,6 +3294,8 @@ export interface components {
         ScoringOverview: {
             sheets: components["schemas"]["OpenSheet"][];
             conflicts: components["schemas"]["ScoreConflict"][];
+            /** @description Matches on a table: the table and players held until the result is official. */
+            reservations: components["schemas"]["Reservation"][];
         };
         /** @description The canonical state of the scoring engine (packages/scoring). */
         ScoringState: {
@@ -3302,6 +3445,17 @@ export interface components {
         TableRequest: {
             label: string;
             active?: boolean;
+        };
+        /** @description One of the tournament's tables and whether a match holds it right now. */
+        TableState: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            free: boolean;
+            /** @description Tournament and event of the match on it. */
+            held_by: string;
+            /** Format: date-time */
+            since: string | null;
         };
         /** @description This device takes the sheet. `take_over` is needed when another device holds it. */
         TakeDeviceRequest: {
@@ -6596,6 +6750,42 @@ export interface operations {
             };
         };
     };
+    tournaments_events_matches_dispatch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DispatchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_events_matches_lineup_create: {
         parameters: {
             query?: never;
@@ -6644,6 +6834,42 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_recall_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecallRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -6925,6 +7151,36 @@ export interface operations {
             };
         };
     };
+    tournaments_reservations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reservation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_scoring_retrieve: {
         parameters: {
             query?: never;
@@ -6977,6 +7233,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScoringOverview"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_tables_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableState"][];
                 };
             };
             /** @description Error envelope */

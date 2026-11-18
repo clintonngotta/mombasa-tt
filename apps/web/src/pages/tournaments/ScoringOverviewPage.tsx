@@ -59,7 +59,7 @@ export function ScoringOverviewPage() {
       <BackLink to={`/tournaments/${id}`}>{t?.name ?? "Tournament"}</BackLink>
       <header className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Scoring</h1>
-        <p className="text-muted-foreground">Matches on the tables, results waiting for their umpire, and anything a device scored that didn't reach the official score.</p>
+        <p className="text-muted-foreground">Tables and players in use, results waiting for their umpire, and anything a device scored that didn't reach the official score.</p>
       </header>
       {(overview.isPending || (tournament.isPending && !overview.isError)) && <p className="text-muted-foreground">Loading…</p>}
       {tournament.isError && !refused && <FormAlert>{errorMessage(tournament.error, "We couldn't load this tournament.")}</FormAlert>}
@@ -84,6 +84,41 @@ export function ScoringOverviewPage() {
                 <ul className="flex flex-col gap-3">
                   {open.map((conflict) => (
                     <Conflict key={conflict.id} tournamentId={id} conflict={conflict} timeZone={t.timezone} />
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+
+          <section aria-labelledby="tables-heading" className="flex flex-col gap-3">
+            <h2 id="tables-heading" className="text-2xl font-bold">
+              On the tables
+            </h2>
+            {overview.data.reservations.length === 0 ? (
+              <p className="text-muted-foreground">No match is on a table.</p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">A table and its players stay held until the umpire confirms the result or the match is called back, however long ago it finished.</p>
+                <ul className="flex flex-col gap-3">
+                  {overview.data.reservations.map((held) => (
+                    <li key={held.id} className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+                      <p className="text-sm font-semibold text-muted-foreground">
+                        {held.table} · {held.event_name}
+                      </p>
+                      <p className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 font-semibold">
+                        <span className="min-w-0 break-words">{held.a}</span>
+                        <span className="text-sm font-normal text-muted-foreground">v</span>
+                        <span className="min-w-0 text-right break-words">{held.b}</span>
+                      </p>
+                      <p className="text-sm">
+                        Since {formatInstant(held.since, t.timezone)}. Held: {held.table}
+                        {held.people.length > 0 && `, ${held.people.join(", ")}`}.
+                        {held.overrides.length > 0 && ` Sent with ${held.overrides.map((name) => (name === "check_in" ? "check-in" : "rest")).join(" and ")} set aside: ${held.override_reason}`}
+                      </p>
+                      <Link to={`/tournaments/${id}/events/${held.event_id}/matches/${held.match_id}`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+                        Open the match
+                      </Link>
+                    </li>
                   ))}
                 </ul>
               </>

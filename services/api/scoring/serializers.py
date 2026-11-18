@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from reservations.serializers import ReservationSerializer
+
 from . import service
 from .models import EnginePhase, ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
 
@@ -346,6 +348,9 @@ class ScoringOverviewSerializer(serializers.Serializer):
 
     sheets = OpenSheetSerializer(many=True)
     conflicts = ScoreConflictSerializer(many=True)
+    reservations = ReservationSerializer(
+        many=True, help_text="Matches on a table: the table and players held until the result is official."
+    )
 
 
 class ResolveConflictSerializer(serializers.Serializer):

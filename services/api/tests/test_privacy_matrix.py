@@ -47,6 +47,8 @@ from organizations.models import (
 )
 from organizations.permissions import RoleKey
 from profiles.models import PlayerProfile
+from reservations import service as reservations
+from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
 
 from .conftest import BrowserClient
@@ -157,6 +159,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "scorecard-device": {"post": OWNER},
     # A conflict report is taken from whoever holds the sheet or held it before (test_scoring_conflicts.py).
     "scorecard-conflicts": {"post": OWNER},
+    # Tables and what is on them, sending a match to a table and calling it back: competition staff.
+    "tournament-tables": {"get": STAFF},
+    "tournament-reservations": {"get": STAFF},
+    "tournament-event-match-dispatch": {"post": STAFF},
+    "tournament-event-match-recall": {"post": STAFF},
     "tournament-scoring": {"get": STAFF},
     "tournament-scoring-conflict-resolve": {"post": STAFF},
     "tournament-event-draw-preview": {"post": STAFF},
@@ -164,6 +171,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
 }
+
+SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 BODIES = {
@@ -212,6 +221,8 @@ BODIES = {
             }
         ],
     },
+    ("tournament-event-match-dispatch", "post"): {"table_id": SPARE_TABLE},
+    ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
     ("tournament-scoring-conflict-resolve", "post"): {"note": "Checked with both players"},
     ("scorecard-confirm", "post"): {"assignment_id": "00000000-0000-4000-8000-000000000000", "revision": 0},
 }
@@ -414,6 +425,26 @@ class World:
         )
         Membership.objects.create(organization=self.coast, user=self.scorer).roles.add(scoring_only)
         self.scorecard = Scorecard.objects.create(match=self.scored_match, umpire=self.scorer)
+
+        # Two more matches under way for the dispatch routes: one to send to a table, one already on one.
+        def under_way(name, players):
+            cup = tournament(name, status.IN_PROGRESS, Event.Status.IN_PROGRESS)
+            for label in players:
+                made = Entry.objects.create(
+                    event=cup.event, status=Entry.Status.ACCEPTED, checked_in_at=timezone.now()
+                )
+                EntryPlayer.objects.create(
+                    entry=made, event=made.event, user=make_user(f"{label}@dispatch.example")
+                )
+            drawing.make_preview(cup.event, self.amina, [], rng_seed=1)
+            return cup, drawing.publish(cup.event, self.amina).matches.get()
+
+        self.dispatch_cup, self.to_dispatch = under_way("Dispatch Cup", ("d1", "d2"))
+        self.recall_cup, self.on_table = under_way("Recall Cup", ("r1", "r2"))
+        self.spare_table = Table.objects.create(id=SPARE_TABLE, venue=self.venue, label="Dispatch table")
+        reservations.dispatch(
+            self.on_table, Table.objects.create(venue=self.venue, label="Recall table"), self.amina
+        )
         self.conflict = ScoreConflict.objects.create(
             id=uuid.uuid4(),
             scorecard=self.scorecard,
@@ -484,6 +515,8 @@ class World:
             "tournament-event-match-lineup": self.tie.id,
             "tournament-event-match-lineup-reset": self.tie.id,
             "tournament-event-match-umpire": self.scored_match.id,
+            "tournament-event-match-dispatch": self.to_dispatch.id,
+            "tournament-event-match-recall": self.on_table.id,
             "scorecard-detail": self.scorecard.id,
             "scorecard-events": self.scorecard.id,
             "scorecard-confirm": self.scorecard.id,
@@ -500,8 +533,12 @@ class World:
             found["pk"] = pk[name]
         if "table_pk" in names:
             found["table_pk"] = self.table.id
-        if name.startswith("tournament-scoring"):
+        if name.startswith("tournament-scoring") or name in ("tournament-tables", "tournament-reservations"):
             found["tournament_pk"] = self.scored_cup.id
+            return found
+        if name in ("tournament-event-match-dispatch", "tournament-event-match-recall"):
+            cup = self.dispatch_cup if name.endswith("dispatch") else self.recall_cup
+            found["event_pk"], found["tournament_pk"] = cup.event.id, cup.id
             return found
         if name in ("tournament-event-umpires", "tournament-event-match-umpire"):
             found["event_pk"] = self.scored_cup.event.id
@@ -545,6 +582,8 @@ class World:
             "entry_players": sorted(EntryPlayer.objects.values_list("entry_id", "user__email", "live")),
             "scorecards": sorted(Scorecard.objects.values_list("umpire__email", "revision", "confirmed_at")),
             "score_events": ScoreEvent.objects.count(),
+            "reservations": sorted(Reservation.objects.values_list("match_id", "status")),
+            "holds": Hold.objects.filter(active=True).count(),
             "score_conflicts": sorted(ScoreConflict.objects.values_list("id", "resolved_at")),
             "score_devices": sorted(Scorecard.objects.values_list("device_id", "assignment_id")),
             "lineups": Lineup.objects.count(),
