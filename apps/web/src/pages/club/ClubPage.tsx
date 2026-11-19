@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, CalendarClock, CalendarDays, PartyPopper, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, UserRoundPlus, Users } from "lucide-react"
+import { Banknote, CalendarClock, CalendarDays, Megaphone, PartyPopper, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, UserRoundPlus, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
@@ -205,6 +205,11 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
       {!membership.managedOnly && (
         <AdminLink to="/club/schedule" icon={<CalendarDays aria-hidden className="size-5 text-brand-blue" />}>
           Club schedule: activities, tournaments and training
+        </AdminLink>
+      )}
+      {can(membership, "announcements.manage") && (
+        <AdminLink to="/club/external-events" icon={<Megaphone aria-hidden className="size-5 text-brand-blue" />}>
+          Events elsewhere: list a tournament run outside Coast TT
         </AdminLink>
       )}
       {can(membership, "activities.manage") && (

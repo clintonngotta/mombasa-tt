@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { CupSoda, NotebookPen, Search, Timer, Trophy, Warehouse } from "lucide-react"
+import { CalendarRange, CupSoda, NotebookPen, Search, Timer, Trophy, Warehouse } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FormAlert } from "@/components/forms/Field"
@@ -103,6 +103,7 @@ export function PlayPage() {
         </div>
       </section>
 
+      <NavCard to="/events" icon={CalendarRange} title="Events calendar" description="Tournaments across the country, on Coast TT and elsewhere, with live links" />
       <NavCard to="/rankings" icon={Trophy} title="Rankings" description="Singles and doubles ratings from tournament matches" />
       <NavCard to="/facilities" icon={Warehouse} title="Find a place to play" description="Halls with tables: hours, open now and what a visit includes" />
       <NavCard to="/play/soda" icon={CupSoda} title="Soda games" description="Challenge a friend to a friendly match: unrated, no booking" />

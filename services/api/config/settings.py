@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "competitions",
     "facilities",
     "coaching",
+    "events",
     "matchlog",
     "profiles",
     "organizations",

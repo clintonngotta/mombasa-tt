@@ -220,6 +220,16 @@ The privacy matrix covers every new route and keeps the challenge to its two pla
 
 **Events calendar and live links — integration/UI.** Setup: published Coast TT tournaments from our club and another club, one external event submitted by our club staff, one submitted with an http live link, and a cancelled event. Steps: view the listing as the public, a member of the submitting club and a curator; approve and reject submissions; move the clock into an event's live window; mark an external event live; report and remove a link. Pass: unreviewed external events are visible only to the submitting club's members with "awaiting review"; http links are rejected; live events show the badge and correct link (tournament page/broadcast for internal, stream URL for external); external events never gain draws, entries or ratings; filters and the "our club" view are correct; cancelled events show their status. Evidence: API tests and screenshots of list, calendar and live states.
 
+*Built in TASK-080 (2026-11-19).* `tests/test_events_listing.py` checks the following:
+- The public sees both clubs' published tournaments and only approved external events, while pending ones reach the submitting club's members as awaiting review.
+- Only `announcements.manage` submits and only curators review. Rejection needs a note, editing details sends an event back for review, and cancelling keeps it listed with its status.
+- http, localhost, IP and `javascript:` links are refused.
+- Live follows today's date in the event's timezone or the organizer's mark, shows the stream and its domain only while live, and a running Coast TT tournament is live with no external URL.
+- Reports count once per person and curators remove the link.
+- The town, category, host, past, month and our-club filters return the right events, and bad parameters are refused.
+
+The privacy matrix covers every new route, and pending submissions reach the submitting club only. Screenshots are still to take.
+
 
 **Watch links — integration.** Setup: a published tournament with a started event and a draft. Steps: staff add links from each named site and another https site, for the tournament and a match; try http, javascript:, localhost, an IP address, credentials and a port; a viewer lists the tournament's and a match's links, reports one twice and another viewer once; a non-staff caller adds, changes and removes. Pass: platforms and domains named correctly (a look-alike host is "Other site"); bad links refused with the reason; the match view shows the match's and the tournament's links only; one report per person, counts shown to staff alone; only host staff add, change and remove; a draft refuses links and hides them from everyone else. Evidence: tests/test_streams.py.
 ### EVAL-043

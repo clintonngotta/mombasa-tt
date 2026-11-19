@@ -486,6 +486,219 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/events/:
+    get:
+      operationId: events_list
+      description: 'GET /events/: the public listing of table tennis events, on Coast
+        TT and elsewhere.'
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Events still on from this day (calendar view)
+      - in: query
+        name: host
+        schema:
+          type: string
+        description: The host or submitting club's id
+      - in: query
+        name: ours
+        schema:
+          type: boolean
+        description: Only the caller's clubs
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: Events starting by this day
+      - in: query
+        name: town
+        schema:
+          type: string
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+      tags:
+      - events
+      security:
+      - sessionAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListedEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/external-events/{id}/approve/:
+    post:
+      operationId: external_events_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - external-events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/external-events/{id}/reject/:
+    post:
+      operationId: external_events_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - external-events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/external-events/{id}/remove-link/:
+    post:
+      operationId: external_events_remove_link_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - external-events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/external-events/{id}/report/:
+    post:
+      operationId: external_events_report_create
+      description: Report an external event's live link. Once per person.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - external-events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkReportRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/external-events/review/:
+    get:
+      operationId: external_events_review_list
+      description: External events waiting for review, and reported links, for the
+        platform's curators.
+      tags:
+      - external-events
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/facilities/:
     get:
       operationId: facilities_list
@@ -5925,6 +6138,149 @@ paths:
       responses:
         '204':
           description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/external-events/:
+    get:
+      operationId: organizations_external_events_list
+      description: A club's external event submissions, for its staff with announcements.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_external_events_create
+      description: A club's external event submissions, for its staff with announcements.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalEventRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/external-events/{id}/:
+    patch:
+      operationId: organizations_external_events_partial_update
+      description: 'Change a submission: details go back for review; postponing or
+        cancelling doesn''t.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExternalEventRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalEvent'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/external-events/{id}/live/:
+    post:
+      operationId: organizations_external_events_live_create
+      description: The organizer says it's on now (or no longer).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkLiveRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalEvent'
+          description: ''
         4XX:
           description: Error envelope
           content:
@@ -13421,6 +13777,26 @@ components:
       required:
       - display_name
       - id
+    CategoriesEnum:
+      enum:
+      - singles
+      - doubles
+      - team
+      - juniors
+      - veterans
+      - women
+      - open
+      - para
+      type: string
+      description: |-
+        * `singles` - Singles
+        * `doubles` - Doubles
+        * `team` - Team
+        * `juniors` - Juniors
+        * `veterans` - Veterans
+        * `women` - Women
+        * `open` - Open
+        * `para` - Para
     CategoryEnum:
       enum:
       - serve
@@ -15699,6 +16075,166 @@ components:
         * `casual` - Casual
         * `club` - Club
         * `competitive` - Competitive
+    ExternalEvent:
+      type: object
+      description: An external event as its submitting club's staff and the curators
+        see it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        organizer:
+          type: string
+          maxLength: 120
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        timezone:
+          type: string
+          maxLength: 64
+        venue:
+          type: string
+          maxLength: 120
+        town:
+          type: string
+          maxLength: 80
+        country:
+          type: string
+          maxLength: 2
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoriesEnum'
+          maxItems: 8
+        entry_info:
+          type: string
+          maxLength: 1000
+        info_url:
+          type: string
+          maxLength: 500
+        live_url:
+          type: string
+          maxLength: 500
+        live_domain:
+          type: string
+          readOnly: true
+        marked_live:
+          type: boolean
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/ExternalEventStatusEnum'
+        review:
+          allOf:
+          - $ref: '#/components/schemas/ReviewEnum'
+          readOnly: true
+        review_note:
+          type: string
+          readOnly: true
+        submitted_by_club:
+          type: string
+          readOnly: true
+        report_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - categories
+      - country
+      - created_at
+      - ends_on
+      - entry_info
+      - id
+      - info_url
+      - live_domain
+      - live_url
+      - marked_live
+      - name
+      - organizer
+      - report_count
+      - review
+      - review_note
+      - starts_on
+      - status
+      - submitted_by_club
+      - timezone
+      - town
+      - venue
+    ExternalEventRequest:
+      type: object
+      description: An external event as its submitting club's staff and the curators
+        see it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        organizer:
+          type: string
+          minLength: 1
+          maxLength: 120
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        venue:
+          type: string
+          maxLength: 120
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
+        country:
+          type: string
+          minLength: 1
+          maxLength: 2
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoriesEnum'
+          maxItems: 8
+        entry_info:
+          type: string
+          maxLength: 1000
+        info_url:
+          type: string
+          maxLength: 500
+        live_url:
+          type: string
+          maxLength: 500
+        status:
+          $ref: '#/components/schemas/ExternalEventStatusEnum'
+      required:
+      - ends_on
+      - name
+      - organizer
+      - starts_on
+      - town
+    ExternalEventStatusEnum:
+      enum:
+      - scheduled
+      - postponed
+      - cancelled
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `postponed` - Postponed
+        * `cancelled` - Cancelled
     Facility:
       type: object
       description: A facility branch as players find it (REQ-044).
@@ -16608,6 +17144,117 @@ components:
       - picks
       - submitted
       - submitted_at
+    LinkReportReasonEnum:
+      enum:
+      - broken
+      - wrong
+      - inappropriate
+      - other
+      type: string
+      description: |-
+        * `broken` - Doesn't work
+        * `wrong` - Wrong event
+        * `inappropriate` - Inappropriate
+        * `other` - Other
+    LinkReportRequest:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/LinkReportReasonEnum'
+      required:
+      - reason
+    ListedEvent:
+      type: object
+      description: 'One entry of the public listing: a Coast TT tournament or an external
+        event.'
+      properties:
+        kind:
+          $ref: '#/components/schemas/ListedEventKindEnum'
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        organizer:
+          type: string
+        host_id:
+          type: string
+          format: uuid
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        timezone:
+          type: string
+        venue:
+          type: string
+        town:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/ListedEventStatusEnum'
+        review:
+          type: string
+          nullable: true
+          description: 'External events: pending shows as awaiting review.'
+        live:
+          type: boolean
+        info_url:
+          type: string
+        info_domain:
+          type: string
+        live_url:
+          type: string
+          description: External events while live; a Coast TT event links to its page.
+        live_domain:
+          type: string
+        entry_info:
+          type: string
+      required:
+      - categories
+      - ends_on
+      - entry_info
+      - host_id
+      - id
+      - info_domain
+      - info_url
+      - kind
+      - live
+      - live_domain
+      - live_url
+      - name
+      - organizer
+      - review
+      - starts_on
+      - status
+      - timezone
+      - town
+      - venue
+    ListedEventKindEnum:
+      enum:
+      - coast
+      - external
+      type: string
+      description: |-
+        * `coast` - coast
+        * `external` - external
+    ListedEventStatusEnum:
+      enum:
+      - scheduled
+      - postponed
+      - cancelled
+      - completed
+      type: string
+      description: |-
+        * `scheduled` - scheduled
+        * `postponed` - postponed
+        * `cancelled` - cancelled
+        * `completed` - completed
     LiveStream:
       type: object
       properties:
@@ -16711,6 +17358,13 @@ components:
       - authority
       - organization
       - permissions
+    MarkLiveRequest:
+      type: object
+      properties:
+        live:
+          type: boolean
+      required:
+      - live
     Match:
       type: object
       properties:
@@ -19832,6 +20486,56 @@ components:
           nullable: true
           description: 'Team events: rubbers a team must win to take the tie; at most
             half of them, rounded up, so a tie always has a winner. Null otherwise.'
+    PatchedExternalEventRequest:
+      type: object
+      description: An external event as its submitting club's staff and the curators
+        see it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        organizer:
+          type: string
+          minLength: 1
+          maxLength: 120
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        venue:
+          type: string
+          maxLength: 120
+        town:
+          type: string
+          minLength: 1
+          maxLength: 80
+        country:
+          type: string
+          minLength: 1
+          maxLength: 2
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoriesEnum'
+          maxItems: 8
+        entry_info:
+          type: string
+          maxLength: 1000
+        info_url:
+          type: string
+          maxLength: 500
+        live_url:
+          type: string
+          maxLength: 500
+        status:
+          $ref: '#/components/schemas/ExternalEventStatusEnum'
     PatchedGuestWriteRequest:
       type: object
       properties:
@@ -21879,6 +22583,22 @@ components:
           maxLength: 300
       required:
       - reason
+    ReviewEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `approved` - Approved
+        * `rejected` - Rejected
+    ReviewRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 300
     Role:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every

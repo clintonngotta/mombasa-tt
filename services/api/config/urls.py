@@ -8,6 +8,7 @@ from competitions.urls import me_urlpatterns as my_entries
 from competitions.urls import organization_urlpatterns as organization_tournaments
 from core import views as core_views
 from core.catalogue import CountryCatalogueView, CountryOptionsView
+from events.urls import club_urls as event_club_urls
 from facilities.urls import finder_urls
 from facilities.urls import my_urls as facility_my_urls
 from guests.urls import club_urlpatterns as club_guests
@@ -44,6 +45,8 @@ api_v1 = [
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
     path("organizations/<uuid:organization_pk>/", include("activities.urls")),
     path("organizations/<uuid:organization_pk>/", include(soda_club_urls)),
+    path("organizations/<uuid:organization_pk>/", include(event_club_urls)),
+    path("", include("events.urls")),
     path("organizations/<uuid:organization_pk>/", include(organization_tournaments)),
     path("organizations/<uuid:organization_pk>/", include(club_drills)),
     path("organizations/<uuid:organization_pk>/", include(club_guests)),
