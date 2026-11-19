@@ -451,3 +451,23 @@ def test_entering_is_rate_limited_per_caller(staff, cup, singles, settings):
         ama.post(entries_url(cup, singles), {"player_ids": []}, format="json")
     assert ama.post(entries_url(cup, singles), {}, format="json").status_code == 429
     assert listed(ama, cup, singles) == []  # reading is not limited
+
+
+def test_a_player_of_another_club_enters_a_public_event_without_joining_the_host(staff, cup, singles, club):
+    """EVAL-004: entering club C's public event never makes the player a member of C, or asks to be."""
+    from organizations.models import JoinRequest, Membership
+
+    from .test_roles import create_club
+
+    juma = player("Juma")
+    home = create_club(juma, name="Kilifi Smashers")  # Juma runs his own club
+    found = logged_in(juma).get("/api/v1/tournaments/").json()["results"]
+    assert cup["id"] in [t["id"] for t in found], "the public list shows other clubs' tournaments"
+    entry = enter(logged_in(juma), cup, singles)
+    assert entry["status"] == "pending" and names(entry) == ["Juma"]
+    act(staff, cup, singles, entry, "accept")
+    assert not Membership.objects.filter(organization=club, user=juma).exists()
+    assert not JoinRequest.objects.filter(organization=club, user=juma).exists()
+    assert list(Membership.objects.filter(user=juma).values_list("organization_id", flat=True)) == [home.id]
+    members = staff.get(f"{ORGS}{club.id}/members/").json()["results"]
+    assert juma.email not in str(members)
