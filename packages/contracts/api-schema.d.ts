@@ -885,6 +885,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/match-notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        get: operations["me_match_notes_list"];
+        put?: never;
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        post: operations["me_match_notes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/match-notes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        get: operations["me_match_notes_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        delete: operations["me_match_notes_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        patch: operations["me_match_notes_partial_update"];
+        trace?: never;
+    };
     "/api/v1/me/matches/": {
         parameters: {
             query?: never;
@@ -5647,6 +5704,37 @@ export interface components {
         MatchLabels: {
             labels: string[];
         };
+        /** @description The owner's notes on one match, with enough about the match to find it again (REQ-025). */
+        MatchNote: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            match_id: string | null;
+            /** Format: uuid */
+            personal_match_id: string | null;
+            /** @description official: an umpire-scored match; own: self-recorded. */
+            readonly kind: string;
+            /** @description The match, in words: sides, or label and opponent. */
+            readonly title: string;
+            readonly tournament_id: string | null;
+            readonly event_id: string | null;
+            readonly tournament_name: string | null;
+            observations: string;
+            goals: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description The owner's notes on one match, with enough about the match to find it again (REQ-025). */
+        MatchNoteRequest: {
+            /** Format: uuid */
+            match_id?: string | null;
+            /** Format: uuid */
+            personal_match_id?: string | null;
+            observations?: string;
+            goals?: string;
+        };
         /**
          * @description * `played` - Played
          *     * `walkover` - Walkover
@@ -6216,6 +6304,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["LifecycleEntry"][];
         };
+        PaginatedMatchNoteList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MatchNote"][];
+        };
         PaginatedMemberList: {
             /** @example 123 */
             count: number;
@@ -6477,6 +6580,11 @@ export interface components {
             match_id?: string | null;
             url?: string;
             title?: string;
+        };
+        /** @description Editing keeps the note on its match: only what it says changes. */
+        PatchedMatchNoteChangeRequest: {
+            observations?: string;
+            goals?: string;
         };
         /**
          * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
@@ -9947,6 +10055,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManagementOrganization"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_list: {
+        parameters: {
+            query?: {
+                /** @description Only the note on this official match. */
+                match?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only the note on this recorded match. */
+                personal_match?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMatchNoteList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MatchNoteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchNote"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this match note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchNote"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this match note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this match note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMatchNoteChangeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchNote"];
                 };
             };
             /** @description Error envelope */

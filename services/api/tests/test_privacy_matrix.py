@@ -45,7 +45,7 @@ from competitions.models import (
     Tournament,
 )
 from facilities.models import Table, Venue
-from matchlog.models import PersonalMatch
+from matchlog.models import MatchNote, PersonalMatch
 from organizations.models import (
     AdminHandover,
     CommitteeField,
@@ -101,6 +101,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "personal-match-labels": {"get": OWNER},
     "personal-match-stats": {"get": OWNER},
     "personal-match-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
+    "match-note-list": {"get": OWNER, "post": OWNER},
+    "match-note-detail": {"get": OWNER, "patch": OWNER, "delete": OWNER},
     "me-profile": {"get": OWNER, "patch": OWNER},
     "me-avatar": {"put": OWNER, "delete": OWNER},
     "me-goals": {"put": OWNER},
@@ -553,6 +555,9 @@ class World:
             opponent_name="MARK-BARAKA-OPPONENT",
             notes="MARK-BARAKA-NOTE",
         )
+        self.match_note = MatchNote.objects.create(
+            owner=self.baraka, personal_match=self.match, observations="MARK-BARAKA-OBSERVATION"
+        )
         self.invitation = Invitation.objects.create(
             organization=self.coast, email=self.imani.email, invited_by=self.amina
         )
@@ -897,6 +902,7 @@ class World:
             "attachment-link": self.baraka_avatar.id,
             "attachment-content": self.baraka_avatar.id,
             "personal-match-detail": self.match.id,
+            "match-note-detail": self.match_note.id,
             "me-admin-nomination-accept": self.nomination.id,
             "me-admin-nomination-decline": self.nomination.id,
             "me-invitation-accept": self.invitation.id,
@@ -1079,6 +1085,7 @@ class World:
             "admin_handovers": sorted(AdminHandover.objects.values_list("to_user__email", "status")),
             "join_requests": sorted(JoinRequest.objects.values_list("user__email", "status")),
             "matches": sorted(PersonalMatch.objects.values_list("id", "label", "notes")),
+            "match_notes": sorted(MatchNote.objects.values_list("id", "observations", "goals")),
             "avatars": sorted(PlayerProfile.objects.values_list("user__email", "avatar_id")),
             "member_fields": sorted(
                 MemberField.objects.values_list("label", "visibility", "required", "retired_at")
@@ -1329,6 +1336,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-LABEL": {"baraka"},
         "MARK-BARAKA-OPPONENT": {"baraka"},
         "MARK-BARAKA-NOTE": {"baraka"},
+        "MARK-BARAKA-OBSERVATION": {"baraka"},
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},
         "MARK-FAITH-BIO": {"faith"},  # unpublished
