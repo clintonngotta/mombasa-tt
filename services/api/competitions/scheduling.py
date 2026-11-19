@@ -1,5 +1,14 @@
-"""The day schedule (TASK-099): a recommended start time and table for every match still to be played,
-which the organizers edit before keeping it, and the checks that refuse a schedule that can't work.
+"""The day schedule (TASK-099, TASK-081): a recommended start time and table for every match still to be
+played, which the organizers edit before keeping it, and the checks that refuse a schedule that can't
+work.
+
+The organizers' working plan is each match's `draft_table` and `draft_at`; what everybody else sees is
+`planned_table` and `scheduled_at`, which only publishing (`publication.py`) changes. Days are built
+of sessions when the organizers set them; without sessions every day of the tournament is one session
+on the tables chosen.
+
+Matches already on a table hold it, and their players, for their estimated length: plans are checked
+against those reservations, whichever tournament at the venue made them.
 
 A match takes an estimated number of minutes from its best-of. Nobody plays two matches at once or
 without the event's rest in between, a table holds one match at a time, and a match never starts
@@ -18,7 +27,7 @@ from django.utils import timezone
 
 from facilities.models import Table
 
-from .models import DrawVersion, Event, Match, Tournament
+from .models import DrawVersion, Event, Match, ScheduleSession, Tournament
 
 MINUTES_BY_BEST_OF = {1: 10, 3: 20, 5: 30, 7: 40}
 DAY_STARTS = time(9, 0)
@@ -75,20 +84,100 @@ def plannable(tournament: Tournament) -> list[Match]:
             status=Match.Status.SCHEDULED,
             dispatched_at__isnull=True,
         )
-        .select_related("draw__event", "planned_table", "entry_a", "entry_b")
+        .select_related("draw__event", "planned_table", "draft_table", "entry_a", "entry_b")
         .prefetch_related("entry_a__players__user", "entry_b__players__user")
         .order_by("draw__event__position", "draw__event__created_at", "stage", "group", "round", "position")
     )
 
 
-def on_tables(tournament: Tournament) -> list[Match]:
-    return list(
-        Match.objects.filter(
-            draw__event__tournament=tournament, status=Match.Status.SCHEDULED, dispatched_at__isnull=False
-        )
-        .select_related("draw__event")
-        .prefetch_related("entry_a__players", "entry_b__players")
+@dataclass
+class Busy:
+    """A match on a table now: its table (when it is at this venue) and people are held until about
+    `until`, and its people need their rest after."""
+
+    table: Table | None
+    users: set
+    until: datetime
+    rest: timedelta
+    label: str
+
+
+def reserved(tournament: Tournament, people: set) -> list[Busy]:
+    """The active reservations on this venue's tables, or holding someone who plays here."""
+    from django.db.models import Q
+
+    from reservations.models import Reservation
+
+    found = []
+    now = timezone.now()
+    reservations = (
+        Reservation.objects.filter(status=Reservation.Status.ACTIVE)
+        .filter(Q(table__venue_id=tournament.venue_id) | Q(holds__active=True, holds__user_id__in=people))
+        .distinct()
+        .select_related("table", "match__draw__event")
+        .prefetch_related("holds")
     )
+    for reservation in reservations:
+        event = reservation.match.draw.event
+        found.append(
+            Busy(
+                table=reservation.table if reservation.table.venue_id == tournament.venue_id else None,
+                users={hold.user_id for hold in reservation.holds.all() if hold.active and hold.user_id},
+                until=max(now, reservation.created_at + timedelta(minutes=match_minutes(event))),
+                rest=timedelta(minutes=event.rest_minutes),
+                label=label(reservation.match),
+            )
+        )
+    return found
+
+
+@dataclass
+class Window:
+    """Hours in which matches may be planned, on these tables, for these events (None: any)."""
+
+    start: datetime
+    end: datetime
+    tables: list
+    events: set | None
+
+
+def sessions(tournament: Tournament) -> list[ScheduleSession]:
+    return list(tournament.schedule_sessions.prefetch_related("tables", "events"))
+
+
+def windows(
+    tournament: Tournament, tables: list[Table], day_starts: time, day_ends: time, extra_days: int = 60
+) -> list[Window]:
+    """The organizers' sessions, on the tables chosen; without any, every day from the first day on
+    (past the last as well, so that what doesn't fit is still placed and flagged) on those tables."""
+    zone = ZoneInfo(tournament.timezone)
+    allowed = {table.id for table in tables}
+    made = sessions(tournament)
+    if made:
+        found = []
+        for session in made:
+            own = [table for table in session.tables.all() if table.id in allowed and table.active]
+            if own:
+                events = {event.id for event in session.events.all()} or None
+                found.append(
+                    Window(
+                        _at(session.day, session.starts, zone),
+                        _at(session.day, session.ends, zone),
+                        own,
+                        events,
+                    )
+                )
+        return sorted(found, key=lambda w: w.start)
+    days = (tournament.ends_on - tournament.starts_on).days + 1 + extra_days
+    return [
+        Window(
+            _at(tournament.starts_on + timedelta(days=n), day_starts, zone),
+            _at(tournament.starts_on + timedelta(days=n), day_ends, zone),
+            tables,
+            None,
+        )
+        for n in range(days)
+    ]
 
 
 def items_for(matches: list[Match]) -> dict:
@@ -157,7 +246,8 @@ def recommend(
     day_starts: time = DAY_STARTS,
     day_ends: time = DAY_ENDS,
 ) -> list[dict]:
-    """A start and table for every plannable match, earliest first. Nothing is saved."""
+    """A start and table for every plannable match, earliest first, inside the sessions (or the day
+    hours). A match no session can hold comes back without either. Nothing is saved."""
     zone = ZoneInfo(tournament.timezone)
     first_day = _at(tournament.starts_on, day_starts, zone)
     start = _round_up(max(starts_at or first_day, timezone.now(), first_day))
@@ -165,25 +255,16 @@ def recommend(
     order = sorted(items.values(), key=lambda i: (i.level, i.match.round, *_order_key(i.match)))
     if not tables:
         return []
-
-    def into_day(moment: datetime, length: timedelta) -> datetime:
-        local = _local(moment, zone)
-        opens = _at(local.date(), day_starts, zone)
-        if local < opens:
-            return opens
-        if local + length > _at(local.date(), day_ends, zone):
-            return _at(local.date() + timedelta(days=1), day_starts, zone)
-        return moment
+    spans = [w for w in windows(tournament, tables, day_starts, day_ends) if w.end > start]
 
     table_free = {table.id: start for table in tables}
     person_free: dict = {}
-    # Matches on a table now keep it, and their players, for their estimated length.
-    for match in on_tables(tournament):
-        busy_until = max(start, match.dispatched_at + timedelta(minutes=match_minutes(match.draw.event)))
-        if match.table_id in table_free:
-            table_free[match.table_id] = max(table_free[match.table_id], busy_until)
-        for user_id in {**_people(match.entry_a), **_people(match.entry_b)}:
-            person_free[user_id] = busy_until + timedelta(minutes=match.draw.event.rest_minutes)
+    everyone = {user_id for item in items.values() for user_id in item.people}
+    for busy in reserved(tournament, everyone):
+        if busy.table and busy.table.id in table_free:
+            table_free[busy.table.id] = max(table_free[busy.table.id], busy.until)
+        for user_id in busy.users:
+            person_free[user_id] = max(person_free.get(user_id, start), busy.until + busy.rest)
     ends: dict = {}
     slots = []
     for item in order:
@@ -191,10 +272,20 @@ def recommend(
         for user_id in {**item.people, **item.maybe}:
             earliest = max(earliest, person_free.get(user_id, earliest))
         best = None
-        for table in tables:
-            at = into_day(max(earliest, table_free[table.id]), item.length)
-            if best is None or at < best[0]:
-                best = (at, table)
+        for span in spans:
+            if span.events is not None and item.match.draw.event_id not in span.events:
+                continue
+            if best is not None and span.start >= best[0]:
+                break
+            for table in span.tables:
+                at = max(earliest, table_free[table.id], span.start)
+                if at + item.length <= span.end and (best is None or at < best[0]):
+                    best = (at, table)
+        if best is None:
+            slots.append(
+                {"match_id": item.match.id, "table_id": None, "scheduled_at": None, "beyond_last_day": True}
+            )
+            continue
         at, table = best
         end = at + item.length
         table_free[table.id] = end
@@ -228,15 +319,24 @@ class Plan:
         return self.at + self.item.length
 
 
-def check(tournament: Tournament, chosen: dict) -> tuple[list[dict], list[dict]]:
+def working(item: Item) -> tuple:
+    return item.match.draft_table, item.match.draft_at
+
+
+def published(item: Item) -> tuple:
+    return item.match.planned_table, item.match.scheduled_at
+
+
+def check(tournament: Tournament, chosen: dict, plan_of=working) -> tuple[list[dict], list[dict]]:
     """Conflicts and warnings of the schedule that `chosen` (match id -> (table, start)) would make,
-    with every other plannable match as it is now planned."""
+    with every other plannable match as `plan_of` has it (the working plan, by default)."""
     zone = ZoneInfo(tournament.timezone)
     items = items_for(plannable(tournament))
-    plans = {
-        pk: Plan(item, *(chosen.get(pk) or (item.match.planned_table, item.match.scheduled_at)))
-        for pk, item in items.items()
-    }
+    plans = {pk: Plan(item, *(chosen.get(pk) or plan_of(item))) for pk, item in items.items()}
+    return _problems(tournament, plans, items, zone)
+
+
+def _problems(tournament: Tournament, plans: dict, items: dict, zone) -> tuple[list[dict], list[dict]]:
     conflicts: list[dict] = []
     warnings: list[dict] = []
 
@@ -244,10 +344,52 @@ def check(tournament: Tournament, chosen: dict) -> tuple[list[dict], list[dict]]
         into.append({"match_id": plan.item.match.id, "code": code, "message": message})
 
     timed = sorted((plan for plan in plans.values() if plan.at), key=lambda p: (p.at, str(p.item.match.id)))
+    everyone = {user_id for plan in timed for user_id in plan.item.people}
+    held = reserved(tournament, everyone) if timed else []
+    spans = [
+        Window(
+            _at(session.day, session.starts, zone),
+            _at(session.day, session.ends, zone),
+            list(session.tables.all()),
+            {event.id for event in session.events.all()} or None,
+        )
+        for session in sessions(tournament)
+    ]
     for plan in timed:
         day = _local(plan.at, zone).date()
         if not tournament.starts_on <= day <= tournament.ends_on:
             problem(conflicts, plan, "outside_dates", "It is planned outside the tournament's dates.")
+        for busy in held:
+            if busy.table and plan.table and busy.table.id == plan.table.id and plan.at < busy.until:
+                problem(
+                    conflicts,
+                    plan,
+                    "table_in_use",
+                    f"{plan.table.label} has {busy.label} on it until about "
+                    f"{_local(busy.until, zone):%H:%M}.",
+                )
+            shared = set(plan.item.people) & busy.users
+            if shared and plan.at < busy.until + busy.rest:
+                name = min(plan.item.people[k] for k in shared)
+                problem(
+                    conflicts,
+                    plan,
+                    "player_on_table",
+                    f"{name} is playing {busy.label} until about {_local(busy.until, zone):%H:%M}.",
+                )
+        if spans and not any(
+            span.start <= plan.at
+            and plan.end <= span.end
+            and (plan.table is None or plan.table.id in {t.id for t in span.tables})
+            and (span.events is None or plan.item.match.draw.event_id in span.events)
+            for span in spans
+        ):
+            problem(
+                warnings,
+                plan,
+                "outside_session",
+                "It is planned outside the sessions set for its table and event.",
+            )
         for pk in plan.item.after:
             earlier = plans[pk]
             if earlier.at and plan.at < earlier.end:
@@ -321,8 +463,38 @@ def rows(tournament: Tournament) -> list[dict]:
             "label": label(match),
             "title": _title(match),
             "minutes": items[match.id].minutes,
-            "table_id": match.planned_table_id,
-            "scheduled_at": match.scheduled_at,
+            "table_id": match.draft_table_id,
+            "scheduled_at": match.draft_at,
+            "published_table_id": match.planned_table_id,
+            "published_at": match.scheduled_at,
+            "unpublished": (match.draft_table_id, match.draft_at)
+            != (match.planned_table_id, match.scheduled_at),
         }
         for match in matches
     ]
+
+
+def push_on(plans: dict) -> None:
+    """Move later, never earlier, every planned match that now starts before its table is free, before
+    one of its people has finished and rested, or before a match it waits for ends: what a delay sets
+    off. Starts move in whole steps."""
+    for _ in range(50 * len(plans) + 1):
+        timed = sorted((p for p in plans.values() if p.at), key=lambda p: (p.at, str(p.item.match.id)))
+        moved = False
+        for index, plan in enumerate(timed):
+            earliest = plan.at
+            for pk in plan.item.after:
+                earlier = plans.get(pk)
+                if earlier and earlier.at:
+                    earliest = max(earliest, earlier.end)
+            for other in timed[:index]:
+                if plan.table and other.table and other.table.id == plan.table.id:
+                    earliest = max(earliest, other.end)
+                if set(plan.item.people) & set(other.item.people):
+                    earliest = max(earliest, other.end + other.item.rest)
+            if earliest > plan.at:
+                plan.at = _round_up(earliest)
+                moved = True
+                break
+        if not moved:
+            return

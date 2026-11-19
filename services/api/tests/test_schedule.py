@@ -63,6 +63,12 @@ def keep(client, cup, slots, expect=200) -> dict:
     return response.json()
 
 
+def publish(client, cup, expect=200, **body) -> dict:
+    response = client.post(url(cup) + "schedule/publish/", body, format="json")
+    assert response.status_code == expect, response.json()
+    return response.json()
+
+
 def at(value) -> datetime:
     return datetime.fromisoformat(value)
 
@@ -104,7 +110,12 @@ def test_the_recommendation_keeps_tables_players_and_rounds_apart(staff, cup):
     kept = keep(staff, cup, [{k: s[k] for k in ("match_id", "table_id", "scheduled_at")} for s in slots])
     assert kept["conflicts"] == []
     assert {row["match_id"]: at(row["scheduled_at"]) for row in kept["rows"]} == starts
-    shown = staff.get(url(cup, event=cup["events"][1]) + f"matches/{final.id}/").json()
+    # Kept is the organizers' working plan; players see it once it is published.
+    match_page = url(cup, event=cup["events"][1]) + f"matches/{final.id}/"
+    assert staff.get(match_page).json()["scheduled_at"] is None
+    assert all(row["unpublished"] for row in kept["rows"])
+    publish(staff, cup)
+    shown = staff.get(match_page).json()
     assert shown["table"] in {"Table 1", "Table 2"} and at(shown["scheduled_at"]) == starts[str(final.id)]
 
 
@@ -170,9 +181,9 @@ def test_edits_that_cannot_work_are_refused_with_every_conflict(staff, cup):
         format="json",
     ).json()
     assert [c["code"] for c in checked["conflicts"]] == ["table_taken"]
-    assert Match.objects.filter(scheduled_at__isnull=False).count() == 0
+    assert Match.objects.filter(draft_at__isnull=False).count() == 0
     keep(staff, cup, [slot(first, one, nine), slot(second, two, nine)])
-    assert Match.objects.filter(scheduled_at__isnull=False).count() == 2
+    assert Match.objects.filter(draft_at__isnull=False).count() == 2
 
 
 def test_a_possible_player_is_a_warning_not_a_conflict(staff, cup):
@@ -216,6 +227,7 @@ def test_the_schedule_is_for_staff_and_the_board_offers_the_planned_table(staff,
         "scheduled_at": "2026-12-05T09:00:00+03:00",
     }
     keep(staff, cup, [planned])
+    publish(staff, cup)
     league = cup["events"][0]
     for entry in Entry.objects.filter(event_id=league["id"]):
         staff.post(url(cup, event=league) + f"entries/{entry.id}/check-in/", {}, format="json")

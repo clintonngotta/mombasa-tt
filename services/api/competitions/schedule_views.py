@@ -10,8 +10,8 @@ from rest_framework.response import Response
 from core.exceptions import ApiException
 from facilities.models import Table
 
-from . import scheduling
-from .models import Tournament
+from . import publication, scheduling
+from .models import Event, ScheduleSession, ScheduleVersion, Tournament
 from .views import require_staff, staff_tournament
 
 
@@ -43,14 +43,136 @@ class ScheduleRowSerializer(serializers.Serializer):
     label = serializers.CharField(help_text="Event, group or round, and match.")
     title = serializers.CharField(help_text="The two sides, or 'To come'.")
     minutes = serializers.IntegerField(help_text="The estimated length, from the event's best-of.")
-    table_id = serializers.UUIDField(allow_null=True)
-    scheduled_at = serializers.DateTimeField(allow_null=True)
+    table_id = serializers.UUIDField(allow_null=True, help_text="In the working plan.")
+    scheduled_at = serializers.DateTimeField(allow_null=True, help_text="In the working plan.")
+    published_table_id = serializers.UUIDField(allow_null=True, help_text="As everybody sees it.")
+    published_at = serializers.DateTimeField(allow_null=True, help_text="As everybody sees it.")
+    unpublished = serializers.BooleanField(help_text="The working plan differs from what is published.")
+
+
+class SessionSerializer(serializers.ModelSerializer):
+    """A block of one day's play. No events means every event."""
+
+    table_ids = serializers.PrimaryKeyRelatedField(
+        source="tables", many=True, queryset=Table.objects.all(), help_text="At least one."
+    )
+    event_ids = serializers.PrimaryKeyRelatedField(
+        source="events", many=True, queryset=Event.objects.all(), required=False
+    )
+    name = serializers.CharField(max_length=80, allow_blank=True, required=False, trim_whitespace=True)
+
+    class Meta:
+        model = ScheduleSession
+        fields = ["id", "name", "day", "starts", "ends", "table_ids", "event_ids"]
+        read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        tournament = self.context["tournament"]
+        day = attrs.get("day", getattr(self.instance, "day", None))
+        starts = attrs.get("starts", getattr(self.instance, "starts", None))
+        ends = attrs.get("ends", getattr(self.instance, "ends", None))
+        if day and not tournament.starts_on <= day <= tournament.ends_on:
+            raise serializers.ValidationError({"day": "Choose one of the tournament's days."})
+        if starts and ends and ends <= starts:
+            raise serializers.ValidationError({"ends": "A session ends after it starts."})
+        if "tables" in attrs:
+            if not attrs["tables"]:
+                raise serializers.ValidationError({"table_ids": "Choose at least one table."})
+            if any(t.venue_id != tournament.venue_id or not t.active for t in attrs["tables"]):
+                raise serializers.ValidationError({"table_ids": "Choose tables in use at the venue."})
+        if any(event.tournament_id != tournament.id for event in attrs.get("events", [])):
+            raise serializers.ValidationError({"event_ids": "Choose this tournament's events."})
+        return attrs
 
 
 class ScheduleSerializer(serializers.Serializer):
     tables = ScheduleTableSerializer(many=True)
+    sessions = SessionSerializer(many=True)
     rows = ScheduleRowSerializer(many=True)
     conflicts = ProblemSerializer(many=True)
+    warnings = ProblemSerializer(many=True)
+    published_version = serializers.IntegerField(allow_null=True, help_text="The latest version's number.")
+    notice_minutes = serializers.IntegerField(
+        help_text="A published match moved by more than this, or to another table, is news for its people."
+    )
+
+
+class PlaceSerializer(serializers.Serializer):
+    table = ScheduleTableSerializer(allow_null=True)
+    scheduled_at = serializers.DateTimeField(allow_null=True)
+
+
+class ChangeSerializer(serializers.Serializer):
+    match_id = serializers.UUIDField()
+    label = serializers.CharField()
+    title = serializers.CharField()
+    before = PlaceSerializer()
+    after = PlaceSerializer()
+    notify = serializers.BooleanField(help_text="Its players and umpire are told.")
+
+
+class VersionSlotSerializer(serializers.Serializer):
+    match_id = serializers.UUIDField()
+    label = serializers.CharField()
+    title = serializers.CharField()
+    table = ScheduleTableSerializer(allow_null=True)
+    scheduled_at = serializers.DateTimeField(allow_null=True)
+
+
+class ScheduleVersionSummarySerializer(serializers.ModelSerializer):
+    published_by_name = serializers.CharField(source="published_by.display_name", default="", read_only=True)
+    delayed_table = ScheduleTableSerializer(allow_null=True, read_only=True)
+    change_count = serializers.SerializerMethodField()
+    notify_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ScheduleVersion
+        fields = [
+            "number",
+            "kind",
+            "reason",
+            "note",
+            "delayed_table",
+            "delay_minutes",
+            "published_by_name",
+            "published_at",
+            "change_count",
+            "notify_count",
+            "notified_at",
+            "notified_count",
+        ]
+        read_only_fields = fields
+
+    def get_change_count(self, version) -> int:
+        return len(version.changes)
+
+    def get_notify_count(self, version) -> int:
+        """Matches whose people are told."""
+        return sum(1 for change in version.changes if change["notify"])
+
+
+class ScheduleVersionSerializer(ScheduleVersionSummarySerializer):
+    changes = ChangeSerializer(many=True, read_only=True)
+    slots = VersionSlotSerializer(many=True, read_only=True)
+
+    class Meta(ScheduleVersionSummarySerializer.Meta):
+        fields = [*ScheduleVersionSummarySerializer.Meta.fields, "changes", "slots"]
+        read_only_fields = fields
+
+
+class PublishNoteSerializer(serializers.Serializer):
+    note = serializers.CharField(max_length=300, allow_blank=True, required=False, trim_whitespace=True)
+
+
+class TableDelaySerializer(PublishNoteSerializer):
+    table_id = serializers.UUIDField()
+    minutes = serializers.IntegerField(min_value=1, max_value=480)
+    reason = serializers.ChoiceField(choices=ScheduleVersion.Reason.choices)
+
+
+class DelayedSerializer(serializers.Serializer):
+    version = ScheduleVersionSerializer()
+    conflicts = ProblemSerializer(many=True, help_text="What the published schedule still has wrong.")
     warnings = ProblemSerializer(many=True)
 
 
@@ -78,7 +200,9 @@ class RecommendRequestSerializer(serializers.Serializer):
 
 
 class RecommendationSerializer(serializers.Serializer):
-    slots = RecommendedSlotSerializer(many=True)
+    slots = RecommendedSlotSerializer(
+        many=True, help_text="A match no session can hold has neither table nor start."
+    )
     conflicts = ProblemSerializer(many=True)
     warnings = ProblemSerializer(many=True)
 
@@ -123,12 +247,16 @@ class ScheduleViewSet(viewsets.GenericViewSet):
         """Every match of a published draw still to be played and not on a table, with the table and
         start planned for it, and what is wrong with the plan as it stands."""
         tournament = self._tournament(request, tournament_pk)
+        latest = tournament.schedule_versions.values_list("number", flat=True).first()
         return Response(
             ScheduleSerializer(
                 {
                     "tables": _tables(tournament),
+                    "sessions": scheduling.sessions(tournament),
                     "rows": scheduling.rows(tournament),
                     **_checked(*scheduling.check(tournament, {})),
+                    "published_version": latest,
+                    "notice_minutes": tournament.schedule_notice_minutes,
                 }
             ).data
         )
@@ -155,7 +283,11 @@ class ScheduleViewSet(viewsets.GenericViewSet):
             day_ends=options["day_ends"],
         )
         by_id = {table.id: table for table in tables}
-        chosen = {slot["match_id"]: (by_id[slot["table_id"]], slot["scheduled_at"]) for slot in slots}
+        chosen = {
+            slot["match_id"]: (by_id[slot["table_id"]], slot["scheduled_at"])
+            for slot in slots
+            if slot["table_id"] is not None
+        }
         return Response(
             RecommendationSerializer({"slots": slots, **_checked(*scheduling.check(tournament, chosen))}).data
         )
@@ -171,8 +303,9 @@ class ScheduleViewSet(viewsets.GenericViewSet):
 
     @extend_schema(request=SlotsSerializer, responses={200: ScheduleSerializer})
     def update(self, request, tournament_pk):
-        """Keep these tables and starts. Refused with `schedule_conflicts` and the list of conflicts
-        when a table, a player or a match's order wouldn't work; warnings don't stop it."""
+        """Keep these tables and starts in the working plan; nobody else sees them until the schedule
+        is published. Refused with `schedule_conflicts` and the list of conflicts when a table, a
+        player or a match's order wouldn't work; warnings don't stop it."""
         asked = SlotsSerializer(data=request.data)
         asked.is_valid(raise_exception=True)
         with transaction.atomic():
@@ -189,6 +322,95 @@ class ScheduleViewSet(viewsets.GenericViewSet):
             matches = {match.id: match for match in scheduling.plannable(tournament)}
             for pk, (table, at) in chosen.items():
                 match = matches[pk]
-                match.planned_table, match.scheduled_at = table, at
-                match.save(update_fields=["planned_table", "scheduled_at"])
+                match.draft_table, match.draft_at = table, at
+                match.save(update_fields=["draft_table", "draft_at"])
         return self.retrieve(request, tournament_pk)
+
+    @extend_schema(request=PublishNoteSerializer, responses={200: ScheduleVersionSerializer})
+    def publish(self, request, tournament_pk):
+        """Publish the working plan as the next version. Players and umpires of matches that move
+        table, or move by more than the notice threshold, are told; nobody else. Refused with
+        `schedule_conflicts` while the plan has conflicts, and `nothing_to_publish` without changes."""
+        asked = PublishNoteSerializer(data=request.data)
+        asked.is_valid(raise_exception=True)
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            version = publication.publish(tournament, request.user, asked.validated_data.get("note", ""))
+        return Response(ScheduleVersionSerializer(version).data)
+
+    @extend_schema(request=TableDelaySerializer, responses={200: DelayedSerializer})
+    def delay(self, request, tournament_pk):
+        """A table starts late or goes out of service: its published matches still to play move on by
+        the minutes given, and so does everything that then clashes with them. Published at once, as
+        a version of its own, with the same notices as publishing."""
+        asked = TableDelaySerializer(data=request.data)
+        asked.is_valid(raise_exception=True)
+        options = asked.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            table = {t.id: t for t in _tables(tournament)}.get(options["table_id"])
+            if table is None:
+                raise serializers.ValidationError({"table_id": "Choose a table in use at the venue."})
+            done = publication.delay(
+                tournament,
+                request.user,
+                table,
+                options["minutes"],
+                options["reason"],
+                options.get("note", ""),
+            )
+        return Response(DelayedSerializer(done).data)
+
+    @extend_schema(responses={200: ScheduleVersionSummarySerializer(many=True)})
+    def versions(self, request, tournament_pk):
+        """Every published version, latest first."""
+        tournament = self._tournament(request, tournament_pk)
+        found = tournament.schedule_versions.select_related("published_by", "delayed_table")
+        return Response(ScheduleVersionSummarySerializer(found, many=True).data)
+
+    @extend_schema(responses={200: ScheduleVersionSerializer})
+    def version(self, request, tournament_pk, number):
+        """One version: every match as published then, and what changed from the one before."""
+        tournament = self._tournament(request, tournament_pk)
+        found = get_object_or_404(
+            tournament.schedule_versions.select_related("published_by", "delayed_table"), number=number
+        )
+        return Response(ScheduleVersionSerializer(found).data)
+
+
+class ScheduleSessionViewSet(viewsets.GenericViewSet):
+    """The day's sessions, for the host's competition staff."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SessionSerializer
+
+    def _tournament(self, request, tournament_pk) -> Tournament:
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        require_staff(request.user, tournament)
+        return tournament
+
+    def list(self, request, tournament_pk):
+        tournament = self._tournament(request, tournament_pk)
+        return Response(SessionSerializer(scheduling.sessions(tournament), many=True).data)
+
+    def create(self, request, tournament_pk):
+        tournament = self._tournament(request, tournament_pk)
+        made = SessionSerializer(data=request.data, context={"tournament": tournament})
+        made.is_valid(raise_exception=True)
+        made.save(tournament=tournament)
+        return Response(made.data, status=201)
+
+    def partial_update(self, request, tournament_pk, pk):
+        tournament = self._tournament(request, tournament_pk)
+        session = get_object_or_404(tournament.schedule_sessions, pk=pk)
+        changed = SessionSerializer(
+            session, data=request.data, partial=True, context={"tournament": tournament}
+        )
+        changed.is_valid(raise_exception=True)
+        changed.save()
+        return Response(changed.data)
+
+    def destroy(self, request, tournament_pk, pk):
+        tournament = self._tournament(request, tournament_pk)
+        get_object_or_404(tournament.schedule_sessions, pk=pk).delete()
+        return Response(status=204)

@@ -27,6 +27,7 @@ from .access import (
     require_within_authority,
     roles_permissions,
 )
+from .committee import end_holdings_on_leaving
 from .emails import send_invitation_email
 from .member_fields import MAX_ACTIVE_FIELDS, entries, visible_fields, write_values
 from .models import (
@@ -87,12 +88,14 @@ def join(organization: Organization, user) -> Membership:
 
 
 def leave(organization: Organization, membership: Membership) -> None:
-    """End a membership, dropping its roles. Refuses to remove the last admin. Locks the organization."""
+    """End a membership, dropping its roles and committee positions. Refuses to remove the last admin.
+    Locks the organization."""
     lock_organization(organization)
     ensure_admin_remains(organization, membership)
     membership.status = Membership.Status.LEFT
     membership.save(update_fields=["status"])
     membership.roles.clear()
+    end_holdings_on_leaving(membership)
 
 
 class OrganizationViewSet(
@@ -572,8 +575,13 @@ class MemberViewSet(viewsets.GenericViewSet):
             current = set(member.roles.all())
             changed = current.symmetric_difference(wanted)
             require_within_authority(granted, roles_permissions(changed))
-            if any(role.is_admin for role in current - set(wanted)):
-                ensure_admin_remains(organization, member)
+            if any(role.is_admin for role in changed):
+                # REQ-045: one admin, changed only by nomination and acceptance (or a platform appointment).
+                raise ApiException(
+                    "admin_by_handover",
+                    "The admin changes only by nominating a successor, who accepts.",
+                    409,
+                )
             member.roles.set(wanted)
             member = self.get_member(organization, pk)  # fresh roles for the reply
         return Response(MemberSerializer(member).data)

@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, ClipboardList, Clock, KeyRound, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
+import { ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
@@ -15,6 +15,7 @@ import {
   leaveOrganization,
   listInvitations,
   listJoinRequests,
+  listMyAdminNominations,
   listMyInvitations,
   listMyJoinRequests,
   revokeInvitation,
@@ -38,6 +39,8 @@ export function ClubPage() {
   const { memberships, active } = useActiveMembership()
   const myInvitations = useQuery({ queryKey: clubKeys.myInvitations, queryFn: listMyInvitations })
   const invitationCount = myInvitations.data?.count ?? 0
+  const myNominations = useQuery({ queryKey: clubKeys.myAdminNominations, queryFn: listMyAdminNominations })
+  const nominationCount = myNominations.data?.count ?? 0
   const myRequests = useQuery({ queryKey: clubKeys.myJoinRequests, queryFn: listMyJoinRequests })
   const pendingRequests = myRequests.data?.results.filter((r) => r.status === "pending") ?? []
 
@@ -62,6 +65,15 @@ export function ClubPage() {
         >
           <Mail aria-hidden className="size-5 text-brand-blue" />
           You have {invitationCount} invitation{invitationCount > 1 && "s"} to join a club. Review
+        </Link>
+      )}
+      {nominationCount > 0 && (
+        <Link
+          to="/club/admin-nominations"
+          className="flex items-center gap-3 rounded-xl border border-brand-blue bg-surface-selected p-4 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <ShieldCheck aria-hidden className="size-5 text-brand-blue" />
+          You're nominated as a club admin. Review
         </Link>
       )}
       {myInvitations.isError && <FormAlert>{errorMessage(myInvitations.error, "We couldn't check for club invitations.")}</FormAlert>}
@@ -155,6 +167,9 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           )}
         </nav>
       )}
+      <AdminLink to="/club/committee" icon={<Landmark aria-hidden className="size-5 text-brand-blue" />}>
+        {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
+      </AdminLink>
       {!membership.managedOnly && <MyClubDetails membershipId={membership.id} />}
       {manageMembers && (
         <>

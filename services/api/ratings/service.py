@@ -7,8 +7,10 @@ there (`rebuild` with `since`); the same code with no `since` writes it from not
 the same numbers.
 
 Rated: completed singles and doubles matches that were played out, including the rubbers of team
-ties. Not rated: walkovers, retirements, rubbers that were not played, a tie as a whole, and anything
-outside competitions (casual games never get here).
+ties, and the mixed-doubles matches of Jumbles at an official tournament (one an official approved:
+regional, national or international) in the doubles ledger. Not rated: walkovers, retirements,
+rubbers that were not played, a tie as a whole, Jumbles at a club's own local tournament, and
+anything outside competitions (casual games never get here).
 """
 
 import hashlib
@@ -17,7 +19,7 @@ from dataclasses import dataclass
 from django.db import connection
 from django.db.models import Q
 
-from competitions.models import Event, Match, OfficialResult, RubberPlayer
+from competitions.models import Event, Match, OfficialResult, RubberPlayer, Tournament
 from outbox.models import Job
 
 from . import elo
@@ -41,9 +43,25 @@ class Subject:
     sides: dict[str, list]  # user ids on side a and side b
 
 
+def is_official(tournament: Tournament) -> bool:
+    """Approved by an official: a regional, national or international tournament they published."""
+    return (
+        tournament.scope != Tournament.Scope.LOCAL
+        and tournament.approval_status == Tournament.Approval.APPROVED
+    )
+
+
+def _official_jumbles() -> Q:
+    return Q(
+        rubber__isnull=True,
+        match__draw__event__kind=Event.Kind.JUMBLES,
+        match__draw__event__tournament__approval_status=Tournament.Approval.APPROVED,
+    ) & ~Q(match__draw__event__tournament__scope=Tournament.Scope.LOCAL)
+
+
 def subject_of(result: OfficialResult) -> Subject | None:
     """The discipline and players of the match or rubber the result belongs to. None for what no
-    ledger covers: a team tie as a whole."""
+    ledger covers: a team tie as a whole, and Jumbles outside an official tournament."""
     match = result.match
     if result.rubber_id:
         placed = list(result.rubber.players.all())
@@ -52,17 +70,24 @@ def subject_of(result: OfficialResult) -> Subject | None:
             "b": [p.user_id for p in placed if p.side == RubberPlayer.Side.B],
         }
         return Subject(result.rubber.kind, result.rubber_id, sides)
-    if match.draw.event.kind in (Event.Kind.TEAM, Event.Kind.JUMBLES):
-        return None  # a tie as a whole, and Jumbles, which no ledger covers
+    event = match.draw.event
+    if event.kind == Event.Kind.TEAM:
+        return None  # a tie as a whole
+    discipline = event.kind
+    if event.kind == Event.Kind.JUMBLES:
+        if not is_official(event.tournament):
+            return None
+        discipline = Discipline.DOUBLES  # each match is mixed doubles between two pairings
     sides = {
         "a": [place.user_id for place in match.entry_a.players.all()] if match.entry_a_id else [],
         "b": [place.user_id for place in match.entry_b.players.all()] if match.entry_b_id else [],
     }
-    return Subject(match.draw.event.kind, match.id, sides)
+    return Subject(discipline, match.id, sides)
 
 
 def _of_discipline(discipline: str) -> Q:
-    return Q(rubber__kind=discipline) | Q(rubber__isnull=True, match__draw__event__kind=discipline)
+    found = Q(rubber__kind=discipline) | Q(rubber__isnull=True, match__draw__event__kind=discipline)
+    return found | _official_jumbles() if discipline == Discipline.DOUBLES else found
 
 
 def _rated(discipline: str):
@@ -70,7 +95,7 @@ def _rated(discipline: str):
     return (
         OfficialResult.objects.filter(_of_discipline(discipline))
         .filter(current=True, voided_at__isnull=True, outcome=Match.Outcome.PLAYED)
-        .select_related("match__draw__event", "rubber")
+        .select_related("match__draw__event__tournament", "rubber")
         .prefetch_related("match__entry_a__players", "match__entry_b__players", "rubber__players")
     )
 
@@ -176,7 +201,7 @@ def project(result: OfficialResult) -> None:
     result's place. Doing it twice, or for the replaced and the replacing version in either order,
     gives the same ledger, because only the results that stand now are read."""
     result = (
-        OfficialResult.objects.select_related("match__draw__event", "rubber")
+        OfficialResult.objects.select_related("match__draw__event__tournament", "rubber")
         .prefetch_related("match__entry_a__players", "match__entry_b__players", "rubber__players")
         .get(pk=result.pk)
     )

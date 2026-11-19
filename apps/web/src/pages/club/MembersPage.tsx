@@ -12,6 +12,7 @@ import {
   getMemberValues,
   listMembers,
   listRoles,
+  nominateAdmin,
   removeMember,
   roleNames,
   saveMemberValues,
@@ -25,6 +26,7 @@ import {
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
+import { AdminPanel } from "@/components/clubs/AdminPanel"
 
 /** Members of the active organization, their roles and, for member managers, their custom field values (REQ-005).
  * Never contact details. */
@@ -54,6 +56,7 @@ function MemberList({ membership }: { membership: Membership }) {
   return (
     <>
       <p className="text-muted-foreground">{membership.organization.name}</p>
+      <AdminPanel membership={membership} />
       <Field label="Search members" type="search" value={term} onChange={(e) => setTerm(e.target.value)} hint="By display name" />
       {accessLost && <AccessLost />}
       {members.isPending && <p className="text-muted-foreground">Loading members…</p>}
@@ -79,6 +82,7 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
   const [editing, setEditing] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
+  const [confirmAdmin, setConfirmAdmin] = useState(false)
   const [selected, setSelected] = useState<string[]>(member.roles.map((r) => r.id))
   const name = member.display_name || "Unnamed player"
   const isSelf = member.id === membership.id
@@ -95,14 +99,22 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
     onSettled: refresh,
   })
   const remove = useMutation({ mutationFn: () => removeMember(orgId, member.id), onSettled: refresh })
+  const nominate = useMutation({
+    mutationFn: () => nominateAdmin(orgId, member.id),
+    onSuccess: () => setConfirmAdmin(false),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.admin(orgId) }),
+  })
+  const iAmAdmin = membership.roles.some((role) => role.key === "admin")
 
   // Offer only what the server would allow: roles whose permissions the actor holds can be toggled.
   const assignable = roles.filter((role) => role.key !== "member")
+  // The Admin role moves only by nomination (REQ-045), never in the role editor.
   const options = assignable.map((role) => ({
     value: role.id,
     label: role.name,
-    description: withinAuthority(membership, role.permissions) ? undefined : "Has permissions you don't hold",
-    disabled: !withinAuthority(membership, role.permissions),
+    description:
+      role.key === "admin" ? "Changes by nomination: use Make admin" : withinAuthority(membership, role.permissions) ? undefined : "Has permissions you don't hold",
+    disabled: role.key === "admin" || !withinAuthority(membership, role.permissions),
   }))
   const heldPermissions = roles.filter((role) => member.roles.some((r) => r.id === role.id)).flatMap((r) => r.permissions)
   const canRemove =
@@ -117,7 +129,7 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
         </span>
         <span className="text-sm text-muted-foreground">{roleNames(member.roles)}</span>
       </span>
-      {!editing && !confirmRemove && !showDetails && (
+      {!editing && !confirmRemove && !showDetails && !confirmAdmin && (
         <div className="flex gap-2">
           {can(membership, "members.manage") && (
             <Button variant="outline" aria-label={`Club details for ${name}`} onClick={() => setShowDetails(true)}>
@@ -135,6 +147,11 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
               }}
             >
               Roles
+            </Button>
+          )}
+          {iAmAdmin && !isSelf && (
+            <Button variant="outline" aria-label={`Make ${name} the admin`} onClick={() => setConfirmAdmin(true)}>
+              Make admin
             </Button>
           )}
           {canRemove && (
@@ -177,6 +194,21 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
 
       {/* Checked on every render: cached values must go as soon as the permission does. */}
       {showDetails && can(membership, "members.manage") && <MemberDetails orgId={orgId} member={member} name={name} onClose={() => setShowDetails(false)} />}
+
+      {confirmAdmin && (
+        <div className="flex w-full flex-wrap items-center gap-2">
+          <p className="flex-1 text-sm">
+            Nominate {name} as the club admin? Once they accept, they take over and you keep only your other roles. You can cancel until then.
+          </p>
+          {nominate.isError && <FormAlert>{errorMessage(nominate.error)}</FormAlert>}
+          <Button variant="outline" onClick={() => setConfirmAdmin(false)}>
+            Keep
+          </Button>
+          <Button disabled={nominate.isPending} onClick={() => nominate.mutate()}>
+            {nominate.isPending ? "Nominating…" : "Nominate"}
+          </Button>
+        </div>
+      )}
 
       {confirmRemove && (
         <div className="flex w-full flex-wrap items-center gap-2">

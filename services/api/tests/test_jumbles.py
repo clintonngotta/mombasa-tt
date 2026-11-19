@@ -7,7 +7,7 @@ import pytest
 from competitions import drawing, jumbles
 from competitions.models import Entry, Match
 
-from .helpers import logged_in
+from .helpers import logged_in, make_user
 from .test_draws import draw_url
 from .test_entries import enter
 from .test_reservations import person
@@ -20,10 +20,10 @@ MEN = ["Amani", "Baraka", "Chege", "Daudi"]
 WOMEN = ["Wanjiru", "Xenia", "Yasmin", "Zawadi"]
 
 
-def jumbles_event(staff, club, men=MEN, women=WOMEN, hall="Makadara Hall"):
-    tournament = make_tournament(staff, club, make_venue(staff, club, name=hall))
+def jumbles_event(staff, club, men=MEN, women=WOMEN, hall="Makadara Hall", scope="local", publisher=None):
+    tournament = make_tournament(staff, club, make_venue(staff, club, name=hall), scope=scope)
     tournament = add_event(staff, tournament, name="Jumbles", kind="jumbles", format="round_robin")
-    tournament = do(staff, tournament, "publish")
+    tournament = do(publisher or staff, tournament, "publish")
     event = tournament["events"][0]
     for name in men:
         enter(staff, tournament, event, player_ids=[str(person(name).id)], pool="men")
@@ -116,17 +116,21 @@ def test_uneven_pools_cannot_be_drawn_and_an_odd_pool_sits_one_pair_out(staff, c
             partners[man].add(woman)
 
 
-def test_standings_rank_each_player_by_the_points_they_scored(staff, club):
-    tournament, event = jumbles_event(staff, club)
+def played(staff, tournament, event) -> list[Match]:
+    """Draw, publish and start the event, every pairing checked in."""
     preview(staff, tournament, event)
     staff.post(draw_url(tournament, event, "publish"), {}, format="json")
     for entry in Entry.objects.filter(event_id=event["id"], status="accepted"):
         staff.post(url(tournament, event=event) + f"entries/{entry.id}/check-in/", {}, format="json")
     do(staff, tournament, "start")
     do(staff, tournament, "start", event=event)
+    return list(Match.objects.filter(draw__event_id=event["id"]).prefetch_related("entry_a__players"))
 
+
+def test_standings_rank_each_player_by_the_points_they_scored(staff, club):
+    tournament, event = jumbles_event(staff, club)
     star = person("Amani")
-    matches = list(Match.objects.filter(draw__event_id=event["id"]).prefetch_related("entry_a__players"))
+    matches = played(staff, tournament, event)
     expected = Counter()
     for match in matches:
         assert jumbles.checked_in(match.entry_a) and jumbles.checked_in(match.entry_b)
@@ -159,3 +163,38 @@ def test_standings_rank_each_player_by_the_points_they_scored(staff, club):
     winners = {row["entry"]["id"] for row in rows if row["rank"] == 1}
     assert amani["entry"]["id"] in winners
     assert {entry["id"] for entry in table["placements"][0]["entries"]} == winners
+
+
+def test_jumbles_counts_for_doubles_ratings_only_at_an_official_tournament(staff, club):
+    from ratings.models import Rating, RatingEvent
+
+    from .test_ratings import work
+
+    local, local_event = jumbles_event(staff, club)
+    for match in played(staff, local, local_event):
+        drawing.record_result(match, match.entry_a, games=[[11, 6], [11, 8], [11, 9]], actor=None)
+    work()
+    assert not RatingEvent.objects.exists()
+
+    club.country, club.region = "KE", "Mombasa"
+    club.save(update_fields=["country", "region"])
+    root = logged_in(make_user("root@example.com", is_superuser=True, is_staff=True))
+    regional, event = jumbles_event(
+        staff,
+        club,
+        ["Eli", "Fumo"],
+        ["Hawa", "Imani"],
+        hall="Tononoka Hall",
+        scope="regional",
+        publisher=root,
+    )
+    assert regional["approval_status"] == "approved"
+    first, *rest = played(staff, regional, event)
+    drawing.record_result(first, first.entry_a, games=[[11, 6], [11, 8], [11, 9]], actor=None)
+    work()
+    for place in first.entry_a.players.all():
+        assert Rating.objects.get(user_id=place.user_id, discipline="doubles").rating == 1016.0
+    for place in first.entry_b.players.all():
+        assert Rating.objects.get(user_id=place.user_id, discipline="doubles").rating == 984.0
+    assert not Rating.objects.filter(discipline="singles").exists()
+    assert RatingEvent.objects.filter(match=first).count() == 4

@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { ApiError, errorMessage } from "@/lib/api"
-import type { FieldValue, FieldValues, MemberFieldEntry } from "@/lib/clubs"
+import type { FieldValue, FieldValues, MemberField } from "@/lib/clubs"
+
+/** A field with its value: member fields (REQ-005) and committee fields (REQ-045) both have this shape. */
+type Entry = { field: Pick<MemberField, "id" | "label" | "kind" | "options" | "required" | "visibility">; value: FieldValue }
 
 // Inputs hold strings; yes/no fields hold "yes", "no" or "" (unanswered).
 type Draft = Record<string, string>
@@ -15,7 +18,7 @@ function toDraft(value: FieldValue): string {
   return String(value)
 }
 
-function fromDraft(entry: MemberFieldEntry, text: string): FieldValue {
+function fromDraft(entry: Entry, text: string): FieldValue {
   const trimmed = text.trim()
   if (trimmed === "") return null
   if (entry.field.kind === "boolean") return trimmed === "yes"
@@ -30,26 +33,29 @@ function fromDraft(entry: MemberFieldEntry, text: string): FieldValue {
 
 /**
  * Edits a member's custom field values (REQ-005). Used by staff for any member and by members for their
- * own member-visible fields; `entries` is whatever the server chose to show this viewer.
+ * own member-visible fields; `entries` is whatever the server chose to show this viewer. Also edits a
+ * committee position's values (REQ-045).
  */
-export function MemberFieldValuesForm({
+export function MemberFieldValuesForm<E extends Entry, R>({
   entries,
   save,
   onSaved,
   onCancel,
   markStaffOnly,
+  submitLabel = "Save details",
 }: {
-  entries: MemberFieldEntry[]
-  save: (values: FieldValues) => Promise<MemberFieldEntry[]>
-  onSaved?: (entries: MemberFieldEntry[]) => void
+  entries: E[]
+  save: (values: FieldValues) => Promise<R>
+  onSaved?: (saved: R) => void
   onCancel?: () => void
   /** Staff view: point out the fields the member can't see. */
   markStaffOnly?: boolean
+  submitLabel?: string
 }) {
   // Only what the person has typed since the last save; untouched fields follow the server's answers.
   const [draft, setDraft] = useState<Draft>({})
   const set = (id: string, text: string) => setDraft((current) => ({ ...current, [id]: text }))
-  const shown = (entry: MemberFieldEntry) => draft[entry.field.id] ?? toDraft(entry.value)
+  const shown = (entry: E) => draft[entry.field.id] ?? toDraft(entry.value)
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -128,7 +134,7 @@ export function MemberFieldValuesForm({
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save details"}
+          {mutation.isPending ? "Saving…" : submitLabel}
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>

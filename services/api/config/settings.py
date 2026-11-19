@@ -201,6 +201,8 @@ SPECTACULAR_SETTINGS = {
         "MatchStatusEnum": "competitions.models.Match.Status",
         "MatchStageEnum": "competitions.models.Match.Stage",
         "MatchOutcomeEnum": "competitions.models.Match.Outcome",
+        "ScheduleVersionKindEnum": "competitions.models.ScheduleVersion.Kind",
+        "DelayReasonEnum": "competitions.models.ScheduleVersion.Reason",
     },
 }
 
