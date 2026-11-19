@@ -748,3 +748,62 @@ class Award(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class LiveStream(models.Model):
+    """A link to watch a tournament, or one of its matches, on another site: YouTube, Facebook, TikTok and
+    the like (REQ-042). Coast TT only links: it neither hosts nor embeds the video. Links are https and
+    open in a new tab with their site shown; anyone who sees the tournament can report one."""
+
+    class Platform(models.TextChoices):
+        YOUTUBE = "youtube", "YouTube"
+        FACEBOOK = "facebook", "Facebook"
+        INSTAGRAM = "instagram", "Instagram"
+        TIKTOK = "tiktok", "TikTok"
+        TWITCH = "twitch", "Twitch"
+        X = "x", "X"
+        KICK = "kick", "Kick"
+        OTHER = "other", "Other site"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="streams")
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, null=True, blank=True, related_name="streams")
+    url = models.URLField(max_length=500)
+    platform = models.CharField(max_length=10, choices=Platform.choices)
+    title = models.CharField(max_length=80, blank=True)
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"{self.platform} {self.url}"
+
+
+class LiveStreamReport(models.Model):
+    """Somebody says a stream link is wrong. One report per person and link; reporting again updates it."""
+
+    class Reason(models.TextChoices):
+        BROKEN = "broken", "Doesn't work"
+        WRONG = "wrong", "Wrong match or event"
+        INAPPROPRIATE = "inappropriate", "Inappropriate or unsafe"
+        OTHER = "other", "Something else"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    stream = models.ForeignKey(LiveStream, on_delete=models.CASCADE, related_name="reports")
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    reason = models.CharField(max_length=14, choices=Reason.choices)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["stream", "reporter"], name="one_report_per_person_and_stream")
+        ]
+
+    def __str__(self):
+        return f"{self.reason} on {self.stream_id}"

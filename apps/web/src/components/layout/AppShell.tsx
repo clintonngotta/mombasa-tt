@@ -4,6 +4,7 @@ import { BatIcon } from "@/components/brand/BatIcon"
 import { cn } from "@/lib/utils"
 import { Wordmark } from "@/components/brand/Wordmark"
 import { OrganizationSwitcher } from "@/components/clubs/OrganizationSwitcher"
+import { UpdateBanner } from "@/components/layout/UpdateBanner"
 
 type NavItem = { to: string; label: string; icon: LucideIcon }
 
@@ -37,6 +38,7 @@ export function AppShell() {
         </header>
 
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
+          <UpdateBanner className="mb-6" />
           <Outlet />
         </main>
 

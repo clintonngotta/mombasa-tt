@@ -77,6 +77,23 @@ const done = <T>(request: IDBRequest<T>) =>
     request.onerror = () => reject(request.error)
   })
 
+/**
+ * Bring the database from `from` up to VERSION, inside the upgrade transaction (REQ-035): a step fails
+ * as a whole and leaves the old version in place. A release changes the layout only by adding a step
+ * here that carries every kept sheet and event across; it never deletes a store that may hold unsent
+ * actions.
+ */
+export function upgrade(db: IDBDatabase, from: number) {
+  if (from < 2) {
+    // Version 1 was only ever in development builds and its keys can't be read: start clean.
+    for (const name of Array.from(db.objectStoreNames)) db.deleteObjectStore(name)
+    // Sheets and events are keyed by account first: two accounts on one device never share a record.
+    db.createObjectStore("sheets", { keyPath: ["userId", "scorecardId"] })
+    db.createObjectStore("owners", { keyPath: "scorecardId" })
+    db.createObjectStore("events", { keyPath: ["userId", "scorecardId", "sequence"] })
+  }
+}
+
 export class Journal {
   private readonly db: IDBDatabase
 
@@ -94,14 +111,8 @@ export class Journal {
       } catch (error) {
         return reject(new JournalError("storage", error))
       }
-      request.onupgradeneeded = () => {
-        const db = request.result
-        // An older layout can't be read with these keys: start clean rather than write into it.
-        for (const name of Array.from(db.objectStoreNames)) db.deleteObjectStore(name)
-        // Sheets and events are keyed by account first: two accounts on one device never share a record.
-        db.createObjectStore("sheets", { keyPath: ["userId", "scorecardId"] })
-        db.createObjectStore("owners", { keyPath: "scorecardId" })
-        db.createObjectStore("events", { keyPath: ["userId", "scorecardId", "sequence"] })
+      request.onupgradeneeded = (change) => {
+        upgrade(request.result, change.oldVersion)
       }
       request.onsuccess = () => resolve(new Journal(request.result))
       request.onerror = () => reject(new JournalError("storage", request.error))
@@ -300,6 +311,27 @@ export class Journal {
       const sheets = (await done(tx.objectStore("sheets").getAll(Journal.ofUser(userId)))) as JournalSheet[]
       const acked = new Map(sheets.map((sheet) => [sheet.scorecardId, sheet.acked]))
       return events.filter((kept) => kept.conflict || kept.sequence > (acked.get(kept.scorecardId) ?? 0)).length
+    })
+  }
+
+  /**
+   * How many actions of any account on this device are not on the server. A new version of the app
+   * waits while this is above zero (REQ-035), whoever is signed in now.
+   */
+  unsentOnDevice(): Promise<number> {
+    return this.run(["sheets", "events"], "readonly", async (tx) => {
+      const events = (await done(tx.objectStore("events").getAll())) as JournalEvent[]
+      const sheets = (await done(tx.objectStore("sheets").getAll())) as JournalSheet[]
+      const acked = new Map(sheets.map((sheet) => [`${sheet.userId}\n${sheet.scorecardId}`, sheet.acked]))
+      return events.filter((kept) => kept.conflict || kept.sequence > (acked.get(`${kept.userId}\n${kept.scorecardId}`) ?? 0)).length
+    })
+  }
+
+  /** How many sheets a tab on this device is scoring now: it has renewed its claim lately. */
+  scoringNow(now = Date.now()): Promise<number> {
+    return this.run(["owners"], "readonly", async (tx) => {
+      const owners = (await done(tx.objectStore("owners").getAll())) as Owner[]
+      return owners.filter((owner) => now - owner.beat < OWNER_STALE_MS).length
     })
   }
 

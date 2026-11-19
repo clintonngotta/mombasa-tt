@@ -9957,6 +9957,183 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/streams/:
+    get:
+      operationId: tournaments_streams_list
+      description: |-
+        GET/POST /tournaments/{id}/streams/: the tournament's watch links (with ?match=, that match's
+        and the whole tournament's); staff add one for the tournament or a match.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LiveStream'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: tournaments_streams_create
+      description: |-
+        GET/POST /tournaments/{id}/streams/: the tournament's watch links (with ?match=, that match's
+        and the whole tournament's); staff add one for the tournament or a match.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiveStreamRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveStream'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/streams/{id}/:
+    patch:
+      operationId: tournaments_streams_partial_update
+      description: |-
+        PATCH/DELETE /tournaments/{id}/streams/{stream}/: staff change a link's address or title, or
+        remove it (with its reports).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLiveStreamRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveStream'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_streams_destroy
+      description: |-
+        PATCH/DELETE /tournaments/{id}/streams/{stream}/: staff change a link's address or title, or
+        remove it (with its reports).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/streams/{id}/report/:
+    post:
+      operationId: tournaments_streams_report_create
+      description: |-
+        POST /tournaments/{id}/streams/{stream}/report/: anyone who sees the tournament says what is
+        wrong with a link. The host's staff see how many reports it has and decide.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/tables/:
     get:
       operationId: tournaments_tables_list
@@ -13422,6 +13599,80 @@ components:
       - picks
       - submitted
       - submitted_at
+    LiveStream:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        match_id:
+          type: string
+          format: uuid
+          nullable: true
+        event_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        match_label:
+          type: string
+          nullable: true
+          readOnly: true
+          description: The match's two sides, as on the draw.
+        url:
+          type: string
+          maxLength: 500
+        domain:
+          type: string
+          readOnly: true
+        platform:
+          allOf:
+          - $ref: '#/components/schemas/StreamPlatformEnum'
+          readOnly: true
+        platform_label:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 80
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        report_count:
+          type: integer
+          nullable: true
+          readOnly: true
+          description: Reports so far; staff only, else null.
+      required:
+      - created_at
+      - domain
+      - event_id
+      - id
+      - match_id
+      - match_label
+      - platform
+      - platform_label
+      - report_count
+      - title
+      - url
+    LiveStreamRequest:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+          nullable: true
+        url:
+          type: string
+          minLength: 1
+          maxLength: 500
+        title:
+          type: string
+          maxLength: 80
+      required:
+      - url
     LogInRequest:
       type: object
       properties:
@@ -15737,6 +15988,20 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+    PatchedLiveStreamRequest:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+          nullable: true
+        url:
+          type: string
+          minLength: 1
+          maxLength: 500
+        title:
+          type: string
+          maxLength: 80
     PatchedMeetingRequest:
       type: object
       description: |-
@@ -17302,6 +17567,16 @@ components:
           maxItems: 30
       required:
       - positions
+    ReportRequest:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/StreamReportReasonEnum'
+        note:
+          type: string
+          maxLength: 200
+      required:
+      - reason
     Reservation:
       type: object
       description: 'A match on a table: the table and the people held until its result
@@ -18715,6 +18990,38 @@ components:
       required:
       - event
       - sequence
+    StreamPlatformEnum:
+      enum:
+      - youtube
+      - facebook
+      - instagram
+      - tiktok
+      - twitch
+      - x
+      - kick
+      - other
+      type: string
+      description: |-
+        * `youtube` - YouTube
+        * `facebook` - Facebook
+        * `instagram` - Instagram
+        * `tiktok` - TikTok
+        * `twitch` - Twitch
+        * `x` - X
+        * `kick` - Kick
+        * `other` - Other site
+    StreamReportReasonEnum:
+      enum:
+      - broken
+      - wrong
+      - inappropriate
+      - other
+      type: string
+      description: |-
+        * `broken` - Doesn't work
+        * `wrong` - Wrong match or event
+        * `inappropriate` - Inappropriate or unsafe
+        * `other` - Something else
     SubmitEventsRequest:
       type: object
       properties:

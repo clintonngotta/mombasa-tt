@@ -9,6 +9,8 @@ import { useMe } from "@/lib/session"
 import { drawKeys } from "@/lib/draws"
 import { configOf, confirmScorecard, namesOf, scoringKeys, winnersGames, winnersScore, type Names, type Scorecard } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
+import { UpdateBanner } from "@/components/layout/UpdateBanner"
+import { useAppUpdate } from "@/lib/pwa"
 
 const deckButton =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-4 text-base font-semibold text-white outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-brand-cyan disabled:opacity-40"
@@ -31,6 +33,8 @@ export function ScoringDeckRoute() {
 function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
   const deck = useDeck(id, userId)
   const { card, state } = deck
+  // Only an out-of-date app is offered an update here: a routine one waits until scoring is done.
+  const { outdated } = useAppUpdate()
   const back = card ? `/tournaments/${card.tournament_id}/events/${card.event_id}/matches/${card.match_id}` : "/play"
 
   return (
@@ -47,6 +51,7 @@ function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
       </header>
 
       <main className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-4 p-3">
+        {outdated && <UpdateBanner />}
         {!card && !deck.lost && !deck.failure && (
           <p role="status" className="flex items-center gap-2 text-white/80">
             <LoaderCircle aria-hidden className="size-5 animate-spin" /> Loading the match…

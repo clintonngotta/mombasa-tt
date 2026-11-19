@@ -3,6 +3,9 @@ import re
 import time
 import uuid
 
+from django.conf import settings
+from django.http import JsonResponse
+
 from .logging import request_id_var
 
 _VALID_ID = re.compile(r"^[A-Za-z0-9-]{8,64}$")
@@ -40,3 +43,30 @@ class RequestIdMiddleware:
             return response
         finally:
             request_id_var.reset(token)
+
+
+class ClientBuildMiddleware:
+    """Turns away a web app build older than MIN_CLIENT_BUILD (REQ-035) with 426 and code
+    "client_outdated", so a cached old version asks to update instead of failing in odd ways. A request
+    without the X-Client-Build header (scripts, the admin, a native client yet to come) is let through,
+    as is everything when MIN_CLIENT_BUILD is unset. Nothing is changed by a refused request: the app keeps
+    its queued scores and sends them once updated."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        oldest = settings.MIN_CLIENT_BUILD
+        build = request.headers.get("X-Client-Build", "")
+        if oldest and request.path.startswith("/api/") and build.isdigit() and int(build) < oldest:
+            return JsonResponse(
+                {
+                    "code": "client_outdated",
+                    "message": "This version of Coast TT is out of date. Update the app to carry on: "
+                    "anything waiting to be sent stays on your device.",
+                    "fields": {},
+                    "request_id": getattr(request, "request_id", None),
+                },
+                status=426,
+            )
+        return self.get_response(request)

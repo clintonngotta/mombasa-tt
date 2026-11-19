@@ -1,4 +1,5 @@
 import type { Schemas } from "@/lib/schema"
+import { APP_BUILD, markOutdated } from "@/lib/pwa"
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
 
@@ -54,7 +55,8 @@ export function apiOriginUrl(path: string) {
 // A FormData body is sent as a file upload; anything else as JSON.
 export async function api<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   const method = init.method ?? (init.body === undefined ? "GET" : "POST")
-  const headers: Record<string, string> = { Accept: "application/json", ...init.headers }
+  // The build lets the API turn away a version it no longer supports (REQ-035).
+  const headers: Record<string, string> = { Accept: "application/json", "X-Client-Build": APP_BUILD, ...init.headers }
   const upload = init.body instanceof FormData
   if (init.body !== undefined && !upload) headers["Content-Type"] = "application/json"
   if (method !== "GET") {
@@ -74,6 +76,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const data: unknown = isJson ? await res.json().catch(() => null) : null
   // A non-JSON reply means we reached something other than the API (proxy page, dev server).
   if (!isJson) throw new ApiError(502, null)
+  if (res.status === 426) markOutdated()
   if (!res.ok) throw new ApiError(res.status, data)
   return data as T
 }

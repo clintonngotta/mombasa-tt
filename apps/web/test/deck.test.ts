@@ -6,7 +6,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { IDBFactory, IDBKeyRange as FakeKeyRange } from "fake-indexeddb"
 import { Scoring, ScoringError, type ScoreEvent } from "../../../packages/scoring/src/index.ts"
-import { Journal, JournalError, OWNER_STALE_MS } from "../src/lib/deck/journal.ts"
+import { DB_NAME, Journal, JournalError, OWNER_STALE_MS, upgrade } from "../src/lib/deck/journal.ts"
 import { DeckStore, MAX_BATCH, type ConflictReport, type Envelope, type Reply, type Sheet, type Transport } from "../src/lib/deck/store.ts"
 
 // The journal uses the global IDBKeyRange, as a browser provides it.
@@ -502,6 +502,7 @@ test("two accounts on one device never touch each other's records, and logging o
   assert.equal(second.snapshot().sync, "saved")
   assert.equal(await journal.unsent("umpire"), 2, "still there for the first account")
   assert.equal(await journal.unsent("somebody-else"), 0)
+  assert.equal(await journal.unsentOnDevice(), 2, "an update waits for any account's unsent actions")
 
   await second.close()
   // The first account comes back: its two actions can't follow the stream any more, so they are kept
@@ -592,4 +593,43 @@ test("a conflict report waits for a connection", async () => {
   await new Promise((resolve) => setTimeout(resolve, 20))
   assert.equal(server.reports.length, 1)
   assert.equal(later.snapshot().conflictsReported, true)
+})
+
+test("a later version of the journal keeps every unsent action across the upgrade", async () => {
+  const device = new IDBFactory()
+  const server = new Server()
+  const deck = tab(device, server, "tab-1")
+  await deck.open()
+  server.online = false
+  await deck.act(START)
+  await deck.act(point("a"))
+  await deck.close()
+  const before = await Journal.open(device)
+  assert.equal(await before.unsentOnDevice(), 2)
+  before.close()
+
+  // A release that bumps the version runs every step from the version on the device: nothing from
+  // version 2 on is dropped.
+  await new Promise<void>((resolve, reject) => {
+    const request = device.open(DB_NAME, 3)
+    request.onupgradeneeded = (change) => upgrade(request.result, change.oldVersion)
+    request.onsuccess = () => {
+      request.result.close()
+      resolve()
+    }
+    request.onerror = () => reject(request.error)
+  })
+  const raw = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = device.open(DB_NAME)
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+  assert.equal(raw.version, 3)
+  const kept = await new Promise<unknown[]>((resolve, reject) => {
+    const read = raw.transaction("events").objectStore("events").getAll()
+    read.onsuccess = () => resolve(read.result)
+    read.onerror = () => reject(read.error)
+  })
+  raw.close()
+  assert.equal(kept.length, 2, "the pending actions are still there")
 })
