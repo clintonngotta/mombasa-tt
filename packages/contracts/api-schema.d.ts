@@ -300,6 +300,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /events/: the public listing of table tennis events, on Coast TT and elsewhere. */
+        get: operations["events_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["external_events_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["external_events_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/remove-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["external_events_remove_link_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Report an external event's live link. Once per person. */
+        post: operations["external_events_report_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description External events waiting for review, and reported links, for the platform's curators. */
+        get: operations["external_events_review_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/facilities/": {
         parameters: {
             query?: never;
@@ -2536,6 +2635,58 @@ export interface paths {
         head?: never;
         /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
         patch: operations["organizations_drills_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/external-events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A club's external event submissions, for its staff with announcements.manage. */
+        get: operations["organizations_external_events_list"];
+        put?: never;
+        /** @description A club's external event submissions, for its staff with announcements.manage. */
+        post: operations["organizations_external_events_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/external-events/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Change a submission: details go back for review; postponing or cancelling doesn't. */
+        patch: operations["organizations_external_events_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/external-events/{id}/live/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The organizer says it's on now (or no longer). */
+        post: operations["organizations_external_events_live_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/facility-takings/": {
@@ -5722,6 +5873,18 @@ export interface components {
             display_name: string;
         };
         /**
+         * @description * `singles` - Singles
+         *     * `doubles` - Doubles
+         *     * `team` - Team
+         *     * `juniors` - Juniors
+         *     * `veterans` - Veterans
+         *     * `women` - Women
+         *     * `open` - Open
+         *     * `para` - Para
+         * @enum {string}
+         */
+        CategoriesEnum: "singles" | "doubles" | "team" | "juniors" | "veterans" | "women" | "open" | "para";
+        /**
          * @description * `serve` - Serve
          *     * `receive` - Receive
          *     * `footwork` - Footwork
@@ -6569,6 +6732,59 @@ export interface components {
          * @enum {string}
          */
         ExperienceEnum: "new" | "casual" | "club" | "competitive";
+        /** @description An external event as its submitting club's staff and the curators see it. */
+        ExternalEvent: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            organizer: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone: string;
+            venue: string;
+            town: string;
+            country: string;
+            categories: components["schemas"]["CategoriesEnum"][];
+            entry_info: string;
+            info_url: string;
+            live_url: string;
+            readonly live_domain: string;
+            readonly marked_live: boolean;
+            status: components["schemas"]["ExternalEventStatusEnum"];
+            readonly review: components["schemas"]["ReviewEnum"];
+            readonly review_note: string;
+            readonly submitted_by_club: string;
+            readonly report_count: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description An external event as its submitting club's staff and the curators see it. */
+        ExternalEventRequest: {
+            name: string;
+            organizer: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone?: string;
+            venue?: string;
+            town: string;
+            country?: string;
+            categories?: components["schemas"]["CategoriesEnum"][];
+            entry_info?: string;
+            info_url?: string;
+            live_url?: string;
+            status?: components["schemas"]["ExternalEventStatusEnum"];
+        };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `postponed` - Postponed
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        ExternalEventStatusEnum: "scheduled" | "postponed" | "cancelled";
         /** @description A facility branch as players find it (REQ-044). */
         Facility: {
             /** Format: uuid */
@@ -6933,6 +7149,59 @@ export interface components {
             /** @description Player ids for each rubber of the template, in order. */
             picks: string[][] | null;
         };
+        /**
+         * @description * `broken` - Doesn't work
+         *     * `wrong` - Wrong event
+         *     * `inappropriate` - Inappropriate
+         *     * `other` - Other
+         * @enum {string}
+         */
+        LinkReportReasonEnum: "broken" | "wrong" | "inappropriate" | "other";
+        LinkReportRequest: {
+            reason: components["schemas"]["LinkReportReasonEnum"];
+        };
+        /** @description One entry of the public listing: a Coast TT tournament or an external event. */
+        ListedEvent: {
+            kind: components["schemas"]["ListedEventKindEnum"];
+            /** Format: uuid */
+            id: string;
+            name: string;
+            organizer: string;
+            /** Format: uuid */
+            host_id: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone: string;
+            venue: string;
+            town: string;
+            categories: string[];
+            status: components["schemas"]["ListedEventStatusEnum"];
+            /** @description External events: pending shows as awaiting review. */
+            review: string | null;
+            live: boolean;
+            info_url: string;
+            info_domain: string;
+            /** @description External events while live; a Coast TT event links to its page. */
+            live_url: string;
+            live_domain: string;
+            entry_info: string;
+        };
+        /**
+         * @description * `coast` - coast
+         *     * `external` - external
+         * @enum {string}
+         */
+        ListedEventKindEnum: "coast" | "external";
+        /**
+         * @description * `scheduled` - scheduled
+         *     * `postponed` - postponed
+         *     * `cancelled` - cancelled
+         *     * `completed` - completed
+         * @enum {string}
+         */
+        ListedEventStatusEnum: "scheduled" | "postponed" | "cancelled" | "completed";
         LiveStream: {
             /** Format: uuid */
             readonly id: string;
@@ -6967,6 +7236,9 @@ export interface components {
             organization: components["schemas"]["Organization"];
             authority: components["schemas"]["AuthorityEnum"];
             permissions: components["schemas"]["PermissionEnum"][];
+        };
+        MarkLiveRequest: {
+            live: boolean;
         };
         Match: {
             /** Format: uuid */
@@ -8324,6 +8596,24 @@ export interface components {
             /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
             tie_wins_needed?: number | null;
         };
+        /** @description An external event as its submitting club's staff and the curators see it. */
+        PatchedExternalEventRequest: {
+            name?: string;
+            organizer?: string;
+            /** Format: date */
+            starts_on?: string;
+            /** Format: date */
+            ends_on?: string;
+            timezone?: string;
+            venue?: string;
+            town?: string;
+            country?: string;
+            categories?: components["schemas"]["CategoriesEnum"][];
+            entry_info?: string;
+            info_url?: string;
+            live_url?: string;
+            status?: components["schemas"]["ExternalEventStatusEnum"];
+        };
         PatchedGuestWriteRequest: {
             display_name?: string;
         };
@@ -9199,6 +9489,16 @@ export interface components {
         };
         ReverseVisitRequest: {
             reason: string;
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `approved` - Approved
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        ReviewEnum: "pending" | "approved" | "rejected";
+        ReviewRequest: {
+            note?: string;
         };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         Role: {
@@ -10778,6 +11078,209 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    events_list: {
+        parameters: {
+            query?: {
+                category?: string;
+                /** @description Events still on from this day (calendar view) */
+                from?: string;
+                /** @description The host or submitting club's id */
+                host?: string;
+                /** @description Only the caller's clubs */
+                ours?: boolean;
+                /** @description Events starting by this day */
+                to?: string;
+                town?: string;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListedEvent"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_remove_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_report_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkReportRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_review_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"][];
                 };
             };
             /** @description Error envelope */
@@ -16119,6 +16622,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalEventRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedExternalEventRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_live_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkLiveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
                 };
             };
             /** @description Error envelope */

@@ -31,6 +31,9 @@ import { ActivitiesPage } from "@/pages/club/ActivitiesPage"
 import { ActivityPage } from "@/pages/club/ActivityPage"
 import { ClubSchedulePage } from "@/pages/club/ClubSchedulePage"
 import { SodaGamesPage } from "@/pages/play/SodaGamesPage"
+import { EventsPage } from "@/pages/events/EventsPage"
+import { ClubEventsPage } from "@/pages/events/ClubEventsPage"
+import { ReviewEventsPage } from "@/pages/events/ReviewEventsPage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
@@ -115,6 +118,8 @@ function App() {
           <Route element={<AppShell />}>
             {/* Domain screens land here as their Stitch references are implemented. */}
             <Route path="/home" element={null} />
+            {/* The events listing is public (REQ-042). */}
+            <Route path="/events" element={<EventsPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/play" element={<PlayPage />} />
               <Route path="/play/soda" element={<SodaGamesPage />} />
@@ -153,6 +158,8 @@ function App() {
               <Route path="/club/sessions" element={<ClubSessionsPage />} />
               <Route path="/club/sessions/:id" element={<ClubSessionPage />} />
               <Route path="/club/activities" element={<ActivitiesPage />} />
+              <Route path="/club/external-events" element={<ClubEventsPage />} />
+              <Route path="/events/review" element={<ReviewEventsPage />} />
               <Route path="/club/schedule" element={<ClubSchedulePage />} />
               <Route path="/activities/:orgId/:id" element={<ActivityPage />} />
               <Route path="/facilities" element={<FindFacilityPage />} />

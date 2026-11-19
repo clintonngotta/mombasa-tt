@@ -46,6 +46,7 @@ from competitions.models import (
     ScheduleVersion,
     Tournament,
 )
+from events.models import ExternalEvent, LinkReport
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
@@ -98,6 +99,16 @@ ACCESS: dict[str, dict[str, str]] = {
     "auth-password-reset-confirm": {"post": PUBLIC},
     "schema": {"get": PUBLIC},
     "geography-countries": {"get": PUBLIC},
+    # The events listing (REQ-042) is public; pending external events reach the submitting club only.
+    "events": {"get": PUBLIC},
+    "external-event-review": {"get": APPROVER},  # platform curators, see test_events_listing.py
+    "external-event-approve": {"post": APPROVER},
+    "external-event-reject": {"post": APPROVER},
+    "external-event-remove-link": {"post": APPROVER},
+    "external-event-report": {"post": SIGNED_IN},
+    "organization-external-events": {"get": STAFF, "post": STAFF},
+    "organization-external-event": {"patch": STAFF},
+    "organization-external-event-live": {"post": STAFF},
     "geography-country": {"get": PUBLIC},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
     "auth-me": {"get": OWNER},
@@ -503,6 +514,17 @@ BODIES = {
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
     ("organization-soda-policy", "put"): {"games_enabled": True, "stakes_enabled": False},
+    ("organization-external-events", "post"): {
+        "name": "Kilifi Open",
+        "organizer": "Kilifi TT",
+        "starts_on": "2027-03-01",
+        "ends_on": "2027-03-01",
+        "town": "Kilifi",
+    },
+    ("organization-external-event", "patch"): {"venue": "Kasarani"},
+    ("organization-external-event-live", "post"): {"live": True},
+    ("external-event-reject", "post"): {"note": "Duplicate"},
+    ("external-event-report", "post"): {"reason": "broken"},
     ("soda-game-counter", "post"): {"play_at": "2026-12-01T17:00:00Z"},
     ("soda-game-result", "post"): {"games": [[11, 5], [11, 5]]},
     ("soda-game-dispute", "post"): {"reason": "No"},
@@ -746,6 +768,17 @@ class World:
         self.club_session.tables.set([room_table])
         self.session_invitation = SessionInvitation.objects.create(
             session=self.club_session, user=self.baraka
+        )
+        # An external event Coast submitted, still waiting for a curator.
+        self.external = ExternalEvent.objects.create(
+            submitted_by_org=self.coast,
+            submitted_by=self.amina,
+            name="Nairobi Classic",
+            organizer="Nairobi TT",
+            starts_on=timezone.localdate() + timedelta(days=30),
+            ends_on=timezone.localdate() + timedelta(days=30),
+            town="Nairobi",
+            entry_info="MARK-EXTERNAL-PENDING",
         )
         # A soda game Baraka challenged Imani to, with a pledge only the two of them may see.
         self.soda = Challenge.objects.create(
@@ -1243,6 +1276,12 @@ class World:
             "organization-club-session": self.club_session.id,
             "organization-activity": self.activity.id,
             "soda-game-detail": self.soda.id,
+            "organization-external-event": self.external.id,
+            "organization-external-event-live": self.external.id,
+            "external-event-approve": self.external.id,
+            "external-event-reject": self.external.id,
+            "external-event-remove-link": self.external.id,
+            "external-event-report": self.external.id,
             "soda-game-accept": self.soda.id,
             "soda-game-counter": self.soda.id,
             "soda-game-decline": self.soda.id,
@@ -1378,6 +1417,12 @@ class World:
                     "id", "status", "challenger_shares", "challenged_shares"
                 )
             ),
+            "external_events": sorted(
+                ExternalEvent.objects.values_list(
+                    "name", "review", "status", "venue", "live_url", "marked_live"
+                )
+            ),
+            "link_reports": LinkReport.objects.count(),
             "soda_policies": sorted(
                 Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
             ),
@@ -1463,6 +1508,15 @@ def test_signed_out_callers_reach_only_public_routes(world):
 # The committee's template role also runs club activities.
 ALSO_STAFF = {
     "organization-facility-takings": {"grace"},
+    # ...and announcements, which include submitting external events.
+    **{
+        name: {"grace"}
+        for name in (
+            "organization-external-events",
+            "organization-external-event",
+            "organization-external-event-live",
+        )
+    },
     **{
         name: {"grace"}
         for name in (
@@ -1646,7 +1700,13 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-OBSERVATION": {"baraka"},
         "MARK-SESSION-NOTE": {"amina", "baraka"},
         "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
-        "MARK-SODA-MESSAGE": {"baraka"},  # the two players (Imani isn't a viewer here)
+        "MARK-SODA-MESSAGE": {"baraka"},
+        "MARK-EXTERNAL-PENDING": {
+            "amina",
+            "baraka",
+            "faith",
+            "grace",
+        },  # the submitting club, pre-review  # the two players (Imani isn't a viewer here)
         "MARK-SODA-STAKE": set(),  # stakes stay hidden from everyone while the policy gate is off
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
