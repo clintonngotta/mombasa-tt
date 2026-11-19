@@ -21,12 +21,21 @@ class Organization(models.Model):
         CLUB = "club"
         FACILITY = "facility"
         CLUB_FACILITY = "club_facility"
+        # The table tennis body of one catalogue region (REQ-045, REQ-048): it runs regional tournaments,
+        # meetings, the yearly agenda, articles to the region's clubs and sponsorships.
+        REGIONAL_BODY = "regional_body"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
     town = models.CharField(max_length=80)
     country = models.CharField(max_length=2, blank=True)
     region = models.CharField(max_length=100, blank=True)
+    # How to find it on the ground: the closest landmark and the way from the main road or stage.
+    directions = models.CharField(max_length=500, blank=True)
+    # What the club is about, shown to players looking for a club before they join.
+    description = models.TextField(max_length=2000, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.CLUB)
     # Dates of the organization's tournaments and activities are entered and shown in this timezone.
     timezone = models.CharField(max_length=64, default=DEFAULT_TIMEZONE)
@@ -37,9 +46,30 @@ class Organization(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                "country",
+                Lower("region"),
+                condition=models.Q(kind="regional_body"),
+                name="one_body_per_region",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(kind="regional_body") | (~models.Q(country="") & ~models.Q(region="")),
+                name="regional_body_has_region",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(latitude__isnull=True, longitude__isnull=True)
+                | models.Q(latitude__gte=-90, latitude__lte=90, longitude__gte=-180, longitude__lte=180),
+                name="organization_coordinates_valid",
+            ),
+        ]
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_body(self) -> bool:
+        return self.kind == self.Kind.REGIONAL_BODY
 
 
 class Role(models.Model):

@@ -149,6 +149,15 @@ class TrainingPlan(models.Model):
     period = models.CharField(max_length=8, choices=Period.choices, default=Period.CUSTOM)
     starts_on = models.DateField(null=True, blank=True)
     ends_on = models.DateField(null=True, blank=True)
+    # The coach who gave this plan to its owner (REQ-047). They read and edit it while they coach them;
+    # the owner keeps it, and its progress, whatever happens to the coaching.
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="plans_given",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )

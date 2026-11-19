@@ -1,11 +1,14 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
+import { CalendarClock, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
+import { PlaceDirections, PlaceFinderFields } from "@/components/forms/PlaceFinderFields"
+import { placeFinderBody, placeFinderErrors, placeFinderFrom } from "@/lib/place"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
+import { RegionFeed } from "@/components/region/RegionFeed"
 import { ApiError, errorMessage } from "@/lib/api"
 import {
   can,
@@ -88,6 +91,7 @@ export function ClubPage() {
       )}
 
       {active && <ActiveOrganization key={active.organization.id} membership={active} />}
+      {active && !active.managedOnly && active.organization.kind !== "regional_body" && <RegionFeed />}
 
       {pendingRequests.length > 0 && (
         <section aria-labelledby="my-requests-heading" className="flex flex-col gap-3">
@@ -129,6 +133,7 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
   const manageRoles = can(membership, "roles.manage")
   const manageCompetitions = can(membership, "competitions.manage")
   const manageFacilities = can(membership, "facilities.manage")
+  const manageTraining = can(membership, "training.manage")
   return (
     <>
       <OrganizationCard organization={membership.organization}>
@@ -137,9 +142,15 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           {membership.authority === "platform" ? "Platform super admin" : membership.authority === "country" ? "Country official" : membership.authority === "regional" ? "Regional official" : roleNames(membership.roles)}
         </span>
       </OrganizationCard>
+      <PlaceDirections place={membership.organization} className="-mt-2 px-1" />
       {manageRoles && <ClubLocation organization={membership.organization} />}
-      {(manageMembers || manageRoles || manageCompetitions || manageFacilities) && (
+      {(manageMembers || manageRoles || manageCompetitions || manageFacilities || manageTraining) && (
         <nav aria-label="Club administration" className="flex flex-col gap-2">
+          {(manageRoles || manageTraining) && (
+            <AdminLink to="/club/profile" icon={<Store aria-hidden className="size-5 text-brand-blue" />}>
+              Club profile and training hours
+            </AdminLink>
+          )}
           {manageCompetitions && (
             <AdminLink to="/club/tournaments" icon={<Trophy aria-hidden className="size-5 text-brand-blue" />}>
               Tournaments
@@ -167,9 +178,19 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           )}
         </nav>
       )}
+      {membership.organization.kind === "regional_body" && (
+        <AdminLink to="/region" icon={<Map aria-hidden className="size-5 text-brand-blue" />}>
+          Region: agenda, clubs, articles, meetings, sponsorships and approvals
+        </AdminLink>
+      )}
       <AdminLink to="/club/committee" icon={<Landmark aria-hidden className="size-5 text-brand-blue" />}>
         {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
       </AdminLink>
+      {!membership.managedOnly && (
+        <AdminLink to="/club/meetings" icon={<CalendarClock aria-hidden className="size-5 text-brand-blue" />}>
+          Meetings
+        </AdminLink>
+      )}
       {!membership.managedOnly && <MyClubDetails membershipId={membership.id} />}
       {manageMembers && (
         <>
@@ -189,9 +210,10 @@ function ClubLocation({ organization }: { organization: Organization }) {
   const [location, setLocation] = useState({
     country: organization.country, region: organization.region, city: organization.town,
   })
+  const [finder, setFinder] = useState(() => placeFinderFrom(organization))
   const save = useMutation({
     mutationFn: () => updateOrganizationLocation(organization.id, {
-      country: location.country, region: location.region, town: location.city,
+      country: location.country, region: location.region, town: location.city, ...placeFinderBody(finder),
     }),
     onSuccess: async () => {
       await Promise.all([
@@ -201,13 +223,14 @@ function ClubLocation({ organization }: { organization: Organization }) {
       setEditing(false)
     },
   })
-  const missing = locationErrors(location)
+  const missing = { ...locationErrors(location), ...placeFinderErrors(finder) }
   const fields = save.error instanceof ApiError ? save.error.fieldErrors() : {}
 
   if (!editing) {
     return (
       <Button type="button" variant="outline" className="self-start" onClick={() => {
         setLocation({ country: organization.country, region: organization.region, city: organization.town })
+        setFinder(placeFinderFrom(organization))
         setSubmitted(false)
         save.reset()
         setEditing(true)
@@ -224,6 +247,7 @@ function ClubLocation({ organization }: { organization: Organization }) {
       if (Object.keys(missing).length === 0) save.mutate()
     }}>
       <LocationFields value={location} onChange={setLocation} errors={submitted ? { ...fields, ...missing } : fields} cityLimit={80} />
+      <PlaceFinderFields value={finder} onChange={setFinder} errors={submitted ? { ...fields, ...missing } : fields} place={organization.kind === "facility" ? "facility" : "club"} />
       {save.isError && Object.keys(fields).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={save.isPending}>Save location</Button>

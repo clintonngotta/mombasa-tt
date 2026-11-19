@@ -174,6 +174,9 @@ class TrainingPlanSerializer(serializers.ModelSerializer):
     title = serializers.CharField(max_length=80, trim_whitespace=True)
     items = PlanItemSerializer(many=True, read_only=True)
     progress = serializers.SerializerMethodField()
+    coach_name = serializers.CharField(
+        source="coach.display_name", read_only=True, allow_null=True, default=None
+    )
 
     class Meta:
         model = TrainingPlan
@@ -186,11 +189,13 @@ class TrainingPlanSerializer(serializers.ModelSerializer):
             "starts_on",
             "ends_on",
             "organization",
+            "coach",
+            "coach_name",
             "items",
             "progress",
             "created_at",
         ]
-        read_only_fields = ["id", "organization", "items", "progress", "created_at"]
+        read_only_fields = ["id", "organization", "coach", "coach_name", "items", "progress", "created_at"]
 
     @extend_schema_field(ProgressSerializer)
     def get_progress(self, plan) -> dict:

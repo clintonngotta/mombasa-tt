@@ -71,7 +71,8 @@ def test_super_admin_runs_a_club_they_do_not_belong_to(staff, coast_club, venue)
     international = ready(staff, coast_club, venue, "international")
     do(staff, international, "approval/request")
     country = official("country@example.com", {"country": Country.objects.get(pk="KE")})
-    assert country.post(url(international, "publish"), {}, format="json").status_code == 403
+    # Officials hold no club permissions (OVERSIGHT), so a draft they can't approve isn't theirs to see.
+    assert country.post(url(international, "publish"), {}, format="json").status_code == 404
     assert do(root, international, "publish")["approval_status"] == "approved"
 
 
@@ -90,7 +91,7 @@ def test_each_tier_is_approved_by_its_officials_only(staff, coast_club, venue, k
     assert ids(outsider.get(QUEUE)) == []
     assert ids(staff.get(QUEUE)) == []
 
-    assert regional_official.post(url(national, "publish"), {}, format="json").status_code == 403
+    assert regional_official.post(url(national, "publish"), {}, format="json").status_code == 404
     assert outsider.post(url(regional, "publish"), {}, format="json").status_code == 404
     declined = do(country_official, regional, "approval/reject", reason="Clashes with the county open.")
     assert declined["approval_status"] == "rejected"
@@ -103,12 +104,36 @@ def test_an_official_cannot_move_a_tournament_into_their_own_tier(staff, coast_c
     do(staff, national, "approval/request")
 
     downgraded = regional_official.patch(url(national), {"scope": "regional"}, format="json")
-    assert downgraded.status_code == 403
+    assert downgraded.status_code == 404  # a national draft is not theirs to see
     # The host club chooses its own tier, and a change sends the request back.
     moved = staff.patch(url(national), {"scope": "regional"}, format="json")
     assert moved.status_code == 200 and moved.json()["approval_status"] == "not_requested"
-    # Now that it is in their tier, the regional official may change it again.
+    do(staff, national, "approval/request")
+    # Now that it is in their tier and waiting for them, the regional official may change the tier, and
+    # only the tier: the rest is the host club's.
+    assert regional_official.patch(url(national), {"name": "Renamed"}, format="json").status_code == 403
     assert regional_official.patch(url(national), {"scope": "local"}, format="json").status_code == 200
+
+
+def test_an_official_reads_a_club_but_does_not_run_it(staff, coast_club, venue, kenya):
+    """Narrowed authority (user decision, 2026-11-19): the club's page, members' view and tournaments,
+    but not its members, roles, settings or competitions."""
+    regional_official = official("regional@example.com", kenya, kenya["mombasa"])
+    assert regional_official.get(f"{ORGS}{coast_club.id}/committee/").status_code == 200
+    assert (
+        regional_official.patch(f"{ORGS}{coast_club.id}/", {"name": "Taken"}, format="json").status_code
+        == 403
+    )
+    assert regional_official.get(f"{ORGS}{coast_club.id}/roles/").status_code == 403
+    assert regional_official.get(f"{ORGS}{coast_club.id}/members/").status_code == 403
+    made = regional_official.post(
+        f"{ORGS}{coast_club.id}/tournaments/",
+        {"name": "Official Cup", "starts_on": "2026-12-05", "ends_on": "2026-12-05", "venue_id": venue["id"]},
+        format="json",
+    )
+    assert made.status_code == 403
+    managed = regional_official.get("/api/v1/me/managed-organizations/").json()
+    assert [(m["authority"], m["permissions"]) for m in managed] == [("regional", [])]
 
 
 def test_a_catalogue_country_takes_only_its_own_regions(admin, kenya):

@@ -10,5 +10,8 @@ export const DEV_ACCOUNTS: DevAccount[] = import.meta.env.DEV
       { role: "Player", email: import.meta.env.VITE_DEV_LOGIN_EMAIL ?? "player@mombasa-tt.test", password: DEV_PASSWORD },
       { role: "Umpire", email: "umpire@mombasa-tt.test", password: DEV_PASSWORD },
       { role: "Club admin", email: "admin@mombasa-tt.test", password: DEV_PASSWORD },
+      { role: "Coach", email: "coach@mombasa-tt.test", password: DEV_PASSWORD },
+      { role: "Facility", email: "facility@mombasa-tt.test", password: DEV_PASSWORD },
+      { role: "Regional officer", email: "regional@mombasa-tt.test", password: DEV_PASSWORD },
     ]
   : []

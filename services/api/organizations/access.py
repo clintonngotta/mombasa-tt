@@ -41,8 +41,17 @@ def membership_permissions(membership: Membership) -> frozenset[str]:
     return roles_permissions([*membership.roles.all(), *member_role, *position_roles(membership)])
 
 
+# What a country or regional official holds in a club of their jurisdiction by appointment alone: no club
+# permission. They read the club as a member does (`require_membership`), approve and publish its regional
+# or national tournaments (competitions.lifecycle.can_approve) and see its ranking; members, roles,
+# finances and running its competitions stay with the club (user decision, 2026-11-19).
+OVERSIGHT: frozenset[str] = frozenset()
+
+
 def effective_permissions(user, organization: Organization) -> frozenset[str]:
-    if is_platform_super_admin(user) or official_for(user, organization):
+    """The user's permissions here: everything for a platform super admin, otherwise what their own
+    active membership grants. An official's appointment adds nothing (see OVERSIGHT)."""
+    if is_platform_super_admin(user):
         return ALL_PERMISSIONS
     membership = (
         Membership.objects.active()
@@ -55,7 +64,8 @@ def effective_permissions(user, organization: Organization) -> frozenset[str]:
 
 
 def require_membership(user, organization: Organization) -> Membership | None:
-    """403 unless the user is an active member here. Returns the membership."""
+    """403 unless the user is an active member here, a platform super admin, or an official whose
+    jurisdiction covers it (they read what members read). Returns the membership."""
     if is_platform_super_admin(user) or official_for(user, organization):
         return None
     membership = Membership.objects.active().filter(organization=organization, user=user).first()

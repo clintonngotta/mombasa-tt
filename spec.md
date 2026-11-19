@@ -50,6 +50,8 @@ The PWA uses secure HttpOnly session cookies with CSRF protection. Revoke sessio
 
 **Organizations — Phase 1.** Register club, facility, or both. Creator becomes first admin. Players can join multiple organizations. Join requests are pending/approved/rejected; invited members explicitly accept. Public tournament entry is independent of host membership. Organization switching changes operational context, not the global player identity. Platform operator authority is separate from club roles.
 
+*Finding a club (user decision, 2026-11-19).* Signed-in players find clubs by name, country, region and city, and open a club's profile before joining: location and directions, its venues in use, a description, weekly training hours and its published tournaments that have not ended. Nothing else (members, roles, training plans, drills, finances) is shown until they join. Club staff with roles.manage edit the description; training.manage edits the training hours.
+
 ### REQ-005
 
 **Governance — Phase 1.** Editable admin/captain/assistant captain/committee/member templates plus custom role names and permission bundles. Permission domains: members, roles, competitions, results, assigned scoring, facilities, finances, announcements, training, welfare projects, club activities, and later media/billing. Users may hold multiple roles; effective grants are the union within that organization. Granting authority cannot exceed the acting user's delegable permissions. Keep one active admin. Enforce checks on API reads/writes, live events, files, and UI actions.
@@ -142,7 +144,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 ### REQ-025
 
-**Match analysis — Phase 3.** Player-owned private notes linked to a match, observations, improvement goals and timestamps. Only the owning player can read/edit through normal product APIs; club roles do not grant note access. No coach sharing in this phase. Casual and competitive match links supported. For official (umpire-confirmed) matches the player may add and edit only these private notes; the official sets, scores and result are read-only to them (user decision, 2026-10-03). Self-recorded matches are covered by REQ-037.
+**Match analysis — Phase 3.** Player-owned private notes linked to a match, observations, improvement goals and timestamps. Only the owning player can read/edit through normal product APIs; club roles do not grant note access. A coach the player has accepted sees the player's matches and writes their own notes for the player under REQ-047; the player's own notes stay theirs alone. Casual and competitive match links supported. For official (umpire-confirmed) matches the player may add and edit only these private notes; the official sets, scores and result are read-only to them (user decision, 2026-10-03). Self-recorded matches are covered by REQ-037.
 
 ### REQ-026
 
@@ -252,7 +254,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 *Committees.* The club admin, or anyone they delegate the governance permission to, sets the committee: positions (for example chair, secretary, treasurer, organizing secretary, youth officer) with names, order, optional term start and end, and custom fields per position or per holder (text, number, date, choice, as REQ-005 member fields). Each position is held by an active member and may grant a role, so a treasurer can get the finance permission. Past holders stay in the committee history. Members see the current committee; custom fields follow their own visibility.
 
-*Regional and national bodies.* Each region and the country has a governing body, an organization of kind `regional_body` or `national_body` tied to one catalogue region or country (TASK-093). A platform super admin creates the body and nominates its first admin; from then on it runs like a club: configurable positions, custom fields, roles and its own admin. Its members are its officials and committee, not players. Officials holding the approval permission in a region's body approve regional publication, and in the country's body national publication (REQ-007 scopes, TASK-094); the existing individual appointments migrate into these bodies.
+*Regional and national bodies.* Each region and the country has a governing body, an organization of kind `regional_body` or `national_body` tied to one catalogue region or country (TASK-093). A platform super admin creates the body and nominates its first admin; from then on it runs like a club: configurable positions, custom fields, roles and its own admin. Its members are its officials and committee, not players. Until TASK-107 is complete, the official appointed to a region sets up that region's body and becomes its first admin (REQ-048). Officials holding the approval permission in a region's body approve regional publication, and in the country's body national publication (REQ-007 scopes, TASK-094); the existing individual appointments migrate into these bodies.
 
 *Representatives.* A club in a region nominates one or more representatives (active members) to its regional body; a regional body nominates representatives of its regions to the national body. The receiving body sees nominations, accepts or declines, and can set a cap per club. A representative belongs to the body as a representative position with a term, can be replaced by the nominating club, and is removed automatically when they leave the club. A body sees a representative's display name and the club they represent, never their private profile details.
 
@@ -275,6 +277,33 @@ On availability/result changes, rank ready matches by planned start, then ready-
 *Order.* Placements are proposed in the usual order: the events in reverse programme order, so the first (main) event is presented last, and within each event third place, then runner-up, then the winner. Staff move any award up or down.
 
 *Ceremony.* A ceremony is a draft for staff until published; then everyone who sees the tournament sees the running order, and each recipient sees the award among their honours on their profile. On the day staff mark each award presented (again to undo); when every award is presented the ceremony is done.
+### REQ-047
+
+**Coaching — Phase 1 (user decision, 2026-11-19).** Any player can switch on a coach profile: headline, about, levels and skills they coach, an optional hourly rate (declared only, no payments), town and region, the clubs where they coach, weekly hours in their timezone, and whether they take new players. Signed-in players find coaches taking players by name, speciality, level or town.
+
+*Coaching.* A player asks a coach to coach them, or a coach invites a player; the other accepts or declines, and either ends it. While it is active the coach sees the trainee's matches (their own match log and official matches they played), the plans the coach gave them with progress, their ratings and the sessions between them. A coach gives a trainee a copy of one of their own plans, a club plan they can read, or a new plan; the trainee owns it and its progress, its sessions are checked against the trainee's calendar (REQ-027), and the coach edits it while the coaching lasts.
+
+*Bookings.* A player asks for a session (30 minutes to 3 hours, at most 90 days ahead) at a free time inside the coach's weekly hours, with a coach taking players or their own coach. The coach confirms or declines; either person cancels before it starts. Requested and confirmed sessions hold both people's time: they clash with each other's sessions, training sessions and scheduled matches.
+
+*Calendar.* A coach's week shows their sessions, their own training, sessions of plans they gave trainees, and the training plans and published tournaments of the clubs where they coach and are a member.
+
+*Coach's notes.* A coach writes notes on a trainee's matches. A note is read by the trainee and by the coach who wrote it while they still coach them; nobody else, not club staff, officials or platform staff through product APIs. Notes stay with the trainee when the coaching ends.
+
+### REQ-048
+
+**Regional officers and bodies — Phase 1 (user decision, 2026-11-19).** A regional body (REQ-045) works for the clubs of its region: the clubs and facilities in the same country and region.
+
+*Authority.* A country or regional official holds no club permission by appointment alone. In a club of their jurisdiction they read what members read (the club, its committee, its plans and tournaments), see its ranking, and approve and publish its regional or national tournaments once the host asks (they may then change only the tier). Members, roles, settings, finances and running competitions stay with the club. A platform super admin keeps every permission.
+
+*Clubs.* The body's members see the region's clubs with their member counts and upcoming tournaments.
+
+*Yearly agenda.* Governance staff of the body plan the year: dated items (tournament, meeting, event, deadline, other) with notes and, for a tournament, a link to a published tournament of the region. Members of the region's clubs read it, and see the coming dates on their club page.
+
+*Articles.* Announcement staff write articles (headline, summary, text) to every club of the region or chosen clubs, kept as drafts until published. A published article reaches the active members of the clubs it is for and the body's members; nobody else.
+
+*Meetings.* Any organization's governance staff call meetings (REQ-046 core): title, kind, start and end, place or online link, an ordered agenda, and invitees: the committee, all members, named people, or, for a body, the admins of the region's clubs. Invitees are fixed when the meeting is published; they answer attending or apologies, check in while it runs, and read the minutes staff record once it has started. A meeting is visible only to its invitees and the host's governance staff; a body never sees a club's meetings. Staff cancel a meeting with a reason before it starts. Approval and amendment of minutes, attachments and notifications remain TASK-109.
+
+*Sponsorships.* An organization's competition staff offer a published tournament that hasn't finished an amount (declared only, no payments) and/or goods with quantities, with conditions; one open offer per sponsor and tournament, never for its own. The host's competition staff accept or decline; the sponsor withdraws. Everyone who sees the tournament sees its accepted sponsors and what they give; offers and conditions are for the host's and the sponsor's staff.
 
 ## Competition rules: version `ITTF-2026-ch3`
 
@@ -325,6 +354,8 @@ House rules where the statutes leave the choice to the organizer:
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
 | Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038), FinancialYear, AnnualReport/ReportVersion (REQ-041) |
 | Ceremonies | Ceremony, Award (REQ-049) |
+| Coaching | CoachProfile, Coaching, Availability, Booking, MatchComment (REQ-047) |
+| Regions | AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship (REQ-048) |
 | Governance | Committee, Position, PositionHolder, Nomination, RepresentativeNomination, governing bodies (REQ-045); Meeting, AgendaItem, Attendance, Minutes, Decision, ActionItem (REQ-046) |
 | Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players. ExternalEvent listing and curation (REQ-042); platform scoped |
 | Development | PersonalMatch/PersonalGame (REQ-037), MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |

@@ -32,6 +32,16 @@ def add_table(staff, club, venue, label) -> dict:
     return response.json()
 
 
+def test_a_venue_carries_directions_and_coordinates(staff, club):
+    venue = make_venue(staff, club, directions="Opposite the Total station on Moi Avenue.")
+    assert venue["directions"] == "Opposite the Total station on Moi Avenue."
+    assert (venue["latitude"], venue["longitude"]) == (None, None)
+    pinned = staff.patch(venues_url(club, venue), {"latitude": -4.06, "longitude": 39.67}, format="json")
+    assert (pinned.json()["latitude"], pinned.json()["longitude"]) == (-4.06, 39.67)
+    half = staff.patch(venues_url(club, venue), {"longitude": None}, format="json")
+    assert half.status_code == 400 and "longitude" in half.json()["fields"]
+
+
 def test_staff_set_up_a_venue_and_its_tables(staff, club):
     venue = make_venue(staff, club, address="Makadara Road")
     assert venue["tables"] == [] and venue["active"] is True
