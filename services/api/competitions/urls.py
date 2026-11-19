@@ -2,6 +2,7 @@ from django.urls import path
 
 from .result_views import ResultViewSet
 from .schedule_views import ScheduleSessionViewSet, ScheduleViewSet
+from .streams import ReportStreamView, StreamsView, StreamView
 from .views import (
     DrawViewSet,
     EntryViewSet,
@@ -19,6 +20,13 @@ def action(viewset, name):
 # Mounted under /tournaments/.
 urlpatterns = [
     path("", TournamentViewSet.as_view({"get": "list"}), name="tournament-list"),
+    path("<uuid:tournament_pk>/streams/", StreamsView.as_view(), name="tournament-streams"),
+    path("<uuid:tournament_pk>/streams/<uuid:pk>/", StreamView.as_view(), name="tournament-stream"),
+    path(
+        "<uuid:tournament_pk>/streams/<uuid:pk>/report/",
+        ReportStreamView.as_view(),
+        name="tournament-stream-report",
+    ),
     path(
         "awaiting-approval/",
         TournamentViewSet.as_view({"get": "awaiting_approval"}),

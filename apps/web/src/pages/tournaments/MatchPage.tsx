@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { CoachNotes } from "@/components/coaching/CoachNotes"
+import { WatchLinks } from "@/components/streams/WatchLinks"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
@@ -11,7 +12,8 @@ import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
-import { eventTabPath, firstTab, getTournament, tieSummary, tournamentKeys, type TournamentEvent } from "@/lib/tournaments"
+import { canManageTournament, eventTabPath, firstTab, getTournament, tieSummary, tournamentKeys, type TournamentEvent } from "@/lib/tournaments"
+import { useMemberships } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
 
 /**
@@ -27,6 +29,8 @@ export function MatchPage() {
   const failed = tournament.error ?? match.error
   const missing = (failed instanceof ApiError && failed.status === 404) || (!!t && !event)
   const m = match.data
+  const { results: memberships } = useMemberships()
+  const staff = !!t && canManageTournament(memberships, t)
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
@@ -37,6 +41,7 @@ export function MatchPage() {
       {missing && <FormAlert>This match doesn't exist. The draw may have been published again since you opened it.</FormAlert>}
       {failed && !missing && <FormAlert>{errorMessage(failed, "We couldn't load this match.")}</FormAlert>}
       {t && event && m && m.b && <Details match={m} second={m.b} event={event} tournamentId={id} timeZone={t.timezone} />}
+      {t && m && <WatchLinks tournament={t} staff={staff} matchId={matchId} live={t.status === "in_progress" && m.status === "scheduled" && !!m.b} />}
       {m && (m.a.entry?.mine || m.b?.entry?.mine) && <CoachNotes kind="official" matchId={matchId} />}
       {t && event && m && !m.b && (
         <p className="rounded-xl border bg-card p-4">
