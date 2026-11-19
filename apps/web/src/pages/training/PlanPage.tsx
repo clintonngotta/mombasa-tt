@@ -14,6 +14,7 @@ import { SkillChips } from "@/pages/training/DrillDetailPage"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatDayRange, formatInstant, fromZonedInput } from "@/lib/dates"
 import { can, useActiveMembership } from "@/lib/clubs"
+import { traineePlanApi } from "@/lib/coaching"
 import { cn } from "@/lib/utils"
 import {
   clubPlanApi,
@@ -43,6 +44,13 @@ export function PlanPage() {
   const { id = "" } = useParams()
   const api = useMemo(() => personalPlanApi(id), [id])
   return <PlanScreen api={api} back="/training" backLabel="Training" editable personal />
+}
+
+/** A plan a coach gave one of their trainees (REQ-047): the coach builds it, the trainee ticks it off. */
+export function TraineePlanPage() {
+  const { coachingId = "", id = "" } = useParams()
+  const api = useMemo(() => traineePlanApi(coachingId, id), [coachingId, id])
+  return <PlanScreen api={api} back={`/coaching/trainees/${coachingId}`} backLabel="Trainee" editable personal />
 }
 
 /** A club's plan: members read it, training staff build it. */
@@ -104,6 +112,7 @@ function PlanView({ plan, api, back, editable, personal }: { plan: TrainingPlan;
           {done} of {total} done
         </p>
         {plan.goal && <p>{plan.goal}</p>}
+        {plan.coach_name && <p className="text-sm font-semibold text-brand-blue">From coach {plan.coach_name}</p>}
       </div>
       <Goal plan={plan} api={api} editable={editable} />
       {editable && (plan.goal_skills?.length ?? 0) > 0 && <Recommendations plan={plan} api={api} />}

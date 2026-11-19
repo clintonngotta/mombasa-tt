@@ -281,6 +281,135 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/coaches/:
+    get:
+      operationId: coaches_list
+      description: 'GET /coaches/: coaches taking players, filtered by name, town,
+        region or a skill they teach.'
+      parameters:
+      - in: query
+        name: level
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: region
+        schema:
+          type: string
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Name, headline or town
+      - in: query
+        name: skill
+        schema:
+          type: string
+      tags:
+      - coaches
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCoachProfileList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/coaches/{id}/:
+    get:
+      operationId: coaches_retrieve
+      description: |-
+        GET /coaches/{user id}/: a coach's profile. Their trainees still see it after they stop taking
+        new players.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - coaches
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/coaches/{id}/slots/:
+    get:
+      operationId: coaches_slots_list
+      description: 'GET /coaches/{user id}/slots/: free start times for a session
+        in the next days.'
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+        description: 1 to 28, default 14
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: First day, in the coach's timezone; today by default
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: minutes
+        schema:
+          type: integer
+        description: Session length, 30 to 180, default 60
+      tags:
+      - coaches
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Slot'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/drills/:
     get:
       operationId: drills_list
@@ -539,6 +668,539 @@ paths:
       responses:
         '204':
           description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/bookings/:
+    get:
+      operationId: me_bookings_list
+      description: |-
+        GET /me/bookings/: sessions booked with or by the caller, upcoming by default. POST asks a coach
+        for a session at a free time.
+      parameters:
+      - in: query
+        name: past
+        schema:
+          type: boolean
+        description: Sessions that have ended, newest first
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_bookings_create
+      description: |-
+        GET /me/bookings/: sessions booked with or by the caller, upcoming by default. POST asks a coach
+        for a session at a free time.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequestRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/bookings/{id}/cancel/:
+    post:
+      operationId: me_bookings_cancel_create
+      description: |-
+        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
+        person cancels a booking that hasn't started.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/bookings/{id}/confirm/:
+    post:
+      operationId: me_bookings_confirm_create
+      description: |-
+        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
+        person cancels a booking that hasn't started.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/bookings/{id}/decline/:
+    post:
+      operationId: me_bookings_decline_create
+      description: |-
+        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
+        person cancels a booking that hasn't started.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coach-availability/:
+    get:
+      operationId: me_coach_availability_list
+      description: 'GET/PUT /me/coach-availability/: the coach''s weekly windows;
+        PUT replaces them all.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Availability'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: me_coach_availability_update
+      description: 'GET/PUT /me/coach-availability/: the coach''s weekly windows;
+        PUT replaces them all.'
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityListRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Availability'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coach-calendar/:
+    get:
+      operationId: me_coach_calendar_list
+      description: |-
+        GET /me/coach-calendar/?from=&to=: the coach's bookings, their own sessions, sessions of plans they
+        gave trainees, and the training timetable and tournaments of the clubs where they coach. At most 62
+        days; this week by default.
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CalendarEntry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coach-comments/{id}/:
+    patch:
+      operationId: me_coach_comments_partial_update
+      description: |-
+        PATCH/DELETE /me/coach-comments/{id}/: the coach changes or removes a comment they wrote, while
+        they still coach the trainee.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCommentRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_coach_comments_destroy
+      description: |-
+        PATCH/DELETE /me/coach-comments/{id}/: the coach changes or removes a comment they wrote, while
+        they still coach the trainee.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coach-notes/:
+    get:
+      operationId: me_coach_notes_list
+      description: |-
+        GET /me/coach-notes/: what coaches wrote about the caller's matches, oldest first. Filter by one
+        match with `personal_match` or `match`.
+      parameters:
+      - in: query
+        name: match
+        schema:
+          type: string
+      - in: query
+        name: personal_match
+        schema:
+          type: string
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coach-profile/:
+    get:
+      operationId: me_coach_profile_retrieve
+      description: 'GET/PUT /me/coach-profile/: the caller''s coach profile; PUT switches
+        it on or changes it.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: me_coach_profile_update
+      description: 'GET/PUT /me/coach-profile/: the caller''s coach profile; PUT switches
+        it on or changes it.'
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoachProfileRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coachings/:
+    get:
+      operationId: me_coachings_list
+      description: |-
+        GET /me/coachings/: coachings on either side, open ones first. POST asks a coach to coach you, or,
+        as a coach, invites a player.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Coaching'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_coachings_create
+      description: |-
+        GET /me/coachings/: coachings on either side, open ones first. POST asks a coach to coach you, or,
+        as a coach, invites a player.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoachingRequestRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coaching'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coachings/{id}/accept/:
+    post:
+      operationId: me_coachings_accept_create
+      description: POST /me/coachings/{id}/{accept|decline|end}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coaching'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coachings/{id}/decline/:
+    post:
+      operationId: me_coachings_decline_create
+      description: POST /me/coachings/{id}/{accept|decline|end}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coaching'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coachings/{id}/end/:
+    post:
+      operationId: me_coachings_end_create
+      description: POST /me/coachings/{id}/{accept|decline|end}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coaching'
+          description: ''
         4XX:
           description: Error envelope
           content:
@@ -1453,6 +2115,375 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMyScorecardList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/:
+    post:
+      operationId: me_trainees_plans_items_create
+      description: Items of a plan the coach gave the trainee. Sessions are checked
+        against the trainee's calendar.
+      parameters:
+      - in: path
+        name: coaching_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanItemRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/{id}/:
+    patch:
+      operationId: me_trainees_plans_items_partial_update
+      description: Items of a plan the coach gave the trainee. Sessions are checked
+        against the trainee's calendar.
+      parameters:
+      - in: path
+        name: coaching_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanItemRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_trainees_plans_items_destroy
+      description: Items of a plan the coach gave the trainee. Sessions are checked
+        against the trainee's calendar.
+      parameters:
+      - in: path
+        name: coaching_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/trainees/{id}/:
+    get:
+      operationId: me_trainees_retrieve
+      description: 'GET /me/trainees/{coaching id}/: a trainee''s progress, for their
+        coach.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trainee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/trainees/{id}/comments/:
+    post:
+      operationId: me_trainees_comments_create
+      description: |-
+        POST /me/trainees/{coaching id}/comments/: comment on one of the trainee's matches. Only the
+        trainee and you read it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentInputRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/trainees/{id}/plans/:
+    post:
+      operationId: me_trainees_plans_create
+      description: |-
+        POST /me/trainees/{coaching id}/plans/: give the trainee a plan, copied from one of yours or a
+        club plan you can read, or a new empty one. The trainee owns it; its sessions go in their calendar.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignPlanRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/trainees/{id}/plans/{plan_pk}/:
+    get:
+      operationId: me_trainees_plans_retrieve
+      description: 'PATCH/DELETE /me/trainees/{coaching id}/plans/{plan id}/: a plan
+        the coach gave the trainee.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: me_trainees_plans_partial_update
+      description: 'PATCH/DELETE /me/trainees/{coaching id}/plans/{plan id}/: a plan
+        the coach gave the trainee.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTrainingPlanRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_trainees_plans_destroy
+      description: 'PATCH/DELETE /me/trainees/{coaching id}/plans/{plan id}/: a plan
+        the coach gave the trainee.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/trainees/{id}/plans/{plan_pk}/recommendations/:
+    get:
+      operationId: me_trainees_plans_recommendations_list
+      description: |-
+        GET /me/trainees/{coaching id}/plans/{plan id}/recommendations/: drills from the coach's library
+        for the plan's goal skills.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DrillRecommendation'
           description: ''
         4XX:
           description: Error envelope
@@ -7193,6 +8224,18 @@ components:
           nullable: true
       required:
       - membership_id
+    AssignPlanRequest:
+      type: object
+      description: Give the trainee a copy of one of your plans or of a club plan
+        you can read, or a new empty plan.
+      properties:
+        source_plan_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
     AssignUmpireRequest:
       type: object
       description: '`user_id` null takes the match back from its umpire. `rubber_id`
@@ -7303,6 +8346,56 @@ components:
           type: boolean
       required:
       - enabled
+    Availability:
+      type: object
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        venue:
+          type: string
+          maxLength: 120
+      required:
+      - ends
+      - starts
+      - venue
+      - weekday
+    AvailabilityListRequest:
+      type: object
+      properties:
+        windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailabilityRequest'
+      required:
+      - windows
+    AvailabilityRequest:
+      type: object
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        venue:
+          type: string
+          maxLength: 120
+      required:
+      - ends
+      - starts
+      - weekday
     AvatarUploadRequest:
       type: object
       properties:
@@ -7392,6 +8485,158 @@ components:
       - playing
       - since
       - suggested_match_id
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        coach:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          readOnly: true
+        trainee:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ends_at:
+          type: string
+          format: date-time
+          readOnly: true
+        venue:
+          type: string
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatusEnum'
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - coach
+      - created_at
+      - ends_at
+      - id
+      - note
+      - reason
+      - role
+      - starts_at
+      - status
+      - trainee
+      - venue
+    BookingReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 300
+    BookingRequestRequest:
+      type: object
+      properties:
+        coach_id:
+          type: string
+          format: uuid
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        venue:
+          type: string
+          maxLength: 120
+        note:
+          type: string
+          maxLength: 300
+      required:
+      - coach_id
+      - ends_at
+      - starts_at
+    BookingStatusEnum:
+      enum:
+      - requested
+      - confirmed
+      - declined
+      - cancelled
+      type: string
+      description: |-
+        * `requested` - Requested
+        * `confirmed` - Confirmed
+        * `declined` - Declined
+        * `cancelled` - Cancelled
+    CalendarEntry:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/CalendarEntryKindEnum'
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        detail:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        starts_on:
+          type: string
+          format: date
+          nullable: true
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+        link:
+          type: string
+      required:
+      - detail
+      - ends_at
+      - ends_on
+      - id
+      - kind
+      - link
+      - starts_at
+      - starts_on
+      - status
+      - title
+    CalendarEntryKindEnum:
+      enum:
+      - booking
+      - session
+      - trainee_session
+      - club_session
+      - tournament
+      type: string
+      description: |-
+        * `booking` - booking
+        * `session` - session
+        * `trainee_session` - trainee_session
+        * `club_session` - club_session
+        * `tournament` - tournament
     Candidate:
       type: object
       properties:
@@ -7508,6 +8753,308 @@ components:
       - rated_members
       - total_points
       - town
+    ClubRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        town:
+          type: string
+      required:
+      - id
+      - name
+      - town
+    ClubRefRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        town:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - name
+      - town
+    CoachLevelEnum:
+      enum:
+      - beginner
+      - intermediate
+      - advanced
+      type: string
+      description: |-
+        * `beginner` - Beginner
+        * `intermediate` - Intermediate
+        * `advanced` - Advanced
+    CoachProfile:
+      type: object
+      description: A coach as players see them. `organizations` are the clubs where
+        they coach.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          readOnly: true
+        headline:
+          type: string
+          maxLength: 120
+        bio:
+          type: string
+          maxLength: 2000
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoachLevelEnum'
+          maxItems: 3
+        specialties:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+          maxItems: 15
+        rate_minor:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        currency:
+          type: string
+          maxLength: 3
+        region:
+          type: string
+          maxLength: 100
+        town:
+          type: string
+          maxLength: 80
+        timezone:
+          type: string
+          maxLength: 64
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubRef'
+          readOnly: true
+        accepting:
+          type: boolean
+        availability:
+          type: array
+          items:
+            $ref: '#/components/schemas/Availability'
+          readOnly: true
+      required:
+      - accepting
+      - availability
+      - bio
+      - currency
+      - headline
+      - id
+      - levels
+      - organizations
+      - rate_minor
+      - region
+      - specialties
+      - timezone
+      - town
+      - user
+    CoachProfileRequest:
+      type: object
+      description: A coach as players see them. `organizations` are the clubs where
+        they coach.
+      properties:
+        headline:
+          type: string
+          minLength: 1
+          maxLength: 120
+        bio:
+          type: string
+          maxLength: 2000
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoachLevelEnum'
+          maxItems: 3
+        specialties:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+          maxItems: 15
+        rate_minor:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 3
+        region:
+          type: string
+          maxLength: 100
+        town:
+          type: string
+          maxLength: 80
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        organization_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 10
+        accepting:
+          type: boolean
+      required:
+      - headline
+    Coaching:
+      type: object
+      description: 'A coaching from the caller''s side: `role` is "coach" when they
+        coach the other person.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        coach:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          readOnly: true
+        trainee:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CoachingStatusEnum'
+          readOnly: true
+          default: requested
+        awaiting_me:
+          type: boolean
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - awaiting_me
+      - coach
+      - created_at
+      - ended_at
+      - id
+      - message
+      - role
+      - started_at
+      - status
+      - trainee
+    CoachingRequestRequest:
+      type: object
+      description: Ask a coach to coach you (`coach_id`), or, as a coach, invite a
+        player (`trainee_id`).
+      properties:
+        coach_id:
+          type: string
+          format: uuid
+        trainee_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+          maxLength: 300
+    CoachingStatusEnum:
+      enum:
+      - requested
+      - active
+      - declined
+      - ended
+      type: string
+      description: |-
+        * `requested` - Requested
+        * `active` - Active
+        * `declined` - Declined
+        * `ended` - Ended
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        coach:
+          allOf:
+          - $ref: '#/components/schemas/PersonRef'
+          readOnly: true
+        personal_match:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        match:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        body:
+          type: string
+          maxLength: 2000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - coach
+      - created_at
+      - id
+      - match
+      - personal_match
+      - updated_at
+    CommentInputRequest:
+      type: object
+      properties:
+        personal_match:
+          type: string
+          format: uuid
+        match:
+          type: string
+          format: uuid
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+      - body
     Committee:
       type: object
       properties:
@@ -8017,7 +9564,7 @@ components:
           - $ref: '#/components/schemas/BlankEnum'
         level:
           oneOf:
-          - $ref: '#/components/schemas/DrillLevelEnum'
+          - $ref: '#/components/schemas/CoachLevelEnum'
           - $ref: '#/components/schemas/BlankEnum'
         coaching_points:
           type: string
@@ -8075,16 +9622,6 @@ components:
       - title
       - updated_at
       - video_url
-    DrillLevelEnum:
-      enum:
-      - beginner
-      - intermediate
-      - advanced
-      type: string
-      description: |-
-        * `beginner` - Beginner
-        * `intermediate` - Intermediate
-        * `advanced` - Advanced
     DrillRecommendation:
       type: object
       description: A drill suggested for a plan's goal, with the goal skills it teaches.
@@ -8132,7 +9669,7 @@ components:
           - $ref: '#/components/schemas/BlankEnum'
         level:
           oneOf:
-          - $ref: '#/components/schemas/DrillLevelEnum'
+          - $ref: '#/components/schemas/CoachLevelEnum'
           - $ref: '#/components/schemas/BlankEnum'
         coaching_points:
           type: string
@@ -10280,6 +11817,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Candidate'
+    PaginatedCoachProfileList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoachProfile'
     PaginatedDirectoryPlayerList:
       type: object
       required:
@@ -10772,6 +12334,13 @@ components:
       - id
       - position
       - started_on
+    PatchedCommentRequest:
+      type: object
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
     PatchedCommitteeFieldRequest:
       type: object
       description: A committee field definition. `applies_to` and the type are fixed
@@ -10830,7 +12399,7 @@ components:
           - $ref: '#/components/schemas/BlankEnum'
         level:
           oneOf:
-          - $ref: '#/components/schemas/DrillLevelEnum'
+          - $ref: '#/components/schemas/CoachLevelEnum'
           - $ref: '#/components/schemas/BlankEnum'
         coaching_points:
           type: string
@@ -11350,6 +12919,29 @@ components:
           format: uuid
         display_name:
           type: string
+      required:
+      - display_name
+      - id
+    PersonRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
+    PersonRefRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          minLength: 1
       required:
       - display_name
       - id
@@ -13477,6 +15069,21 @@ components:
         * `reading_spin` - Reading spin
         * `fitness` - Fitness
         * `flexibility` - Flexibility
+    Slot:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        venue:
+          type: string
+      required:
+      - ends_at
+      - starts_at
+      - venue
     SlotEnum:
       enum:
       - a1
@@ -13981,6 +15588,101 @@ components:
         * `in_progress` - In Progress
         * `completed` - Completed
         * `cancelled` - Cancelled
+    Trainee:
+      type: object
+      description: |-
+        What a coach sees of a trainee: the plans they gave them with progress, recent matches, ratings
+        and sessions booked between them.
+      properties:
+        coaching:
+          $ref: '#/components/schemas/Coaching'
+        plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingPlan'
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraineeMatch'
+        ratings:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraineeRating'
+        bookings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+        record:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+      - bookings
+      - coaching
+      - matches
+      - plans
+      - ratings
+      - record
+    TraineeMatch:
+      type: object
+      description: One of the trainee's matches as their coach sees it, with the coach's
+        comments on it.
+      properties:
+        kind:
+          $ref: '#/components/schemas/TraineeMatchKindEnum'
+        id:
+          type: string
+          format: uuid
+        played_on:
+          type: string
+          format: date
+          nullable: true
+        title:
+          type: string
+        opponent:
+          type: string
+        result:
+          type: string
+        score:
+          type: string
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+      required:
+      - comments
+      - id
+      - kind
+      - opponent
+      - played_on
+      - result
+      - score
+      - title
+    TraineeMatchKindEnum:
+      enum:
+      - personal
+      - official
+      type: string
+      description: |-
+        * `personal` - personal
+        * `official` - official
+    TraineeRating:
+      type: object
+      properties:
+        discipline:
+          type: string
+        rating:
+          type: number
+          format: double
+        played:
+          type: integer
+        won:
+          type: integer
+      required:
+      - discipline
+      - played
+      - rating
+      - won
     TrainingPlan:
       type: object
       properties:
@@ -14013,6 +15715,15 @@ components:
           format: uuid
           readOnly: true
           nullable: true
+        coach:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        coach_name:
+          type: string
+          readOnly: true
+          nullable: true
         items:
           type: array
           items:
@@ -14027,6 +15738,8 @@ components:
           format: date-time
           readOnly: true
       required:
+      - coach
+      - coach_name
       - created_at
       - ends_on
       - goal

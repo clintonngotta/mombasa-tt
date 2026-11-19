@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "attachments",
     "competitions",
     "facilities",
+    "coaching",
     "matchlog",
     "profiles",
     "organizations",
@@ -184,6 +185,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "MembershipStatusEnum": "organizations.models.Membership.Status",
         "SkillEnum": "training.models.Skill",
+        "CoachLevelEnum": "coaching.models.Level",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
         "MatchResultEnum": "matchlog.models.MatchResult",
         "InvitationStatusEnum": "organizations.models.Invitation.Status",
