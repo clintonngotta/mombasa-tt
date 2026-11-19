@@ -162,6 +162,7 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 - [ ] **TASK-108** — Representatives: clubs nominate reps to their regional body and regions to the national body, accept or decline, per-club cap, terms, replacement and removal on leaving. Depends: TASK-107. REQ-045 / EVAL-045. Done: cap, removal and privacy tests.
 - [ ] **TASK-109** — Meetings: schedule, invitees, agenda with attachments, publish and revise with notices, RSVP, check-in while in progress and secretary attendance, minutes with decisions, action items and next meeting, approval and amendments, my action items. Depends: TASK-106, TASK-033, TASK-016. REQ-046 / EVAL-046. Done: check-in window, minutes immutability and visibility tests; screens browser-checked.
 - [ ] **TASK-110** — Non-competition events at every level on REQ-039 activities: audiences of members, invited reps, named people or open to all, optional public, RSVP and check-in attendance. Depends: TASK-108, TASK-073. REQ-046, REQ-039 / EVAL-046. Done: audience visibility tests.
+- [x] **TASK-113** — Award ceremonies: placement awards from completed events, the organizers' own awards with prize and presenter, presentation order, publication, presenting on the day and players' honours. Depends: TASK-021, TASK-029. REQ-049, REQ-018 / EVAL-049. Done 2026-11-19: `Ceremony` and `Award` in competitions (`competitions/ceremony.py`): `/tournaments/{id}/ceremony/` (get, put, generate, publish, reorder, awards, awards/{id}, awards/{id}/present) and `/me/honours/`. tests/test_ceremony.py and the routes in tests/test_privacy_matrix.py. Screens: award ceremony page (plan, order, publish, present; running order for everyone), the ceremony link on the tournament page, Honours on the profile. Open: a third-place match, team events' placings by team, linking a sponsor's prize to an accepted sponsorship (REQ-048) and the winners announcement and cards of TASK-032.
 
 ## Traceability index
 
@@ -215,3 +216,4 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-044](spec.md#req-044) | [EVAL-044](test.md#eval-044) | TASK-101, TASK-102, TASK-103, TASK-104 |
 | [REQ-045](spec.md#req-045) | [EVAL-045](test.md#eval-045) | TASK-105, TASK-106, TASK-107, TASK-108 |
 | [REQ-046](spec.md#req-046) | [EVAL-046](test.md#eval-046) | TASK-109, TASK-110 |
+| [REQ-049](spec.md#req-049) | [EVAL-049](test.md#eval-049) | TASK-113 |

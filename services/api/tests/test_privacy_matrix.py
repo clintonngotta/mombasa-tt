@@ -25,6 +25,8 @@ from rest_framework import serializers
 from attachments.models import Attachment
 from competitions import drawing, ties
 from competitions.models import (
+    Award,
+    Ceremony,
     DrawVersion,
     Entry,
     EntryPlayer,
@@ -118,6 +120,15 @@ ACCESS: dict[str, dict[str, str]] = {
     "training-plan-items": {"post": OWNER},  # someone else's plan id is a 404, see test_training
     "training-plan-item": {"patch": OWNER, "delete": OWNER},
     # A club's drills: members read them, training staff change them.
+    # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
+    "tournament-ceremony": {"get": STAFF, "put": STAFF},
+    "tournament-ceremony-generate": {"post": STAFF},
+    "tournament-ceremony-publish": {"post": STAFF},
+    "tournament-ceremony-reorder": {"post": STAFF},
+    "tournament-ceremony-awards": {"post": STAFF},
+    "tournament-ceremony-award": {"patch": STAFF, "delete": STAFF},
+    "tournament-ceremony-award-present": {"post": STAFF},
+    "me-honours": {"get": OWNER},
     "organization-drills": {"get": MEMBER, "post": STAFF},
     "organization-drill": {"patch": STAFF, "delete": STAFF},
     # The drill library: the standard drills, your own and your clubs'. Another club's drill is a 404.
@@ -267,6 +278,12 @@ CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 BODIES = {
+    ("tournament-ceremony", "put"): {"location": "Main hall"},
+    ("tournament-ceremony-awards", "post"): {"title": "Fair play"},
+    ("tournament-ceremony-award", "patch"): {"prize": "Trophy"},
+    ("tournament-ceremony-reorder", "post"): lambda: {
+        "awards": [str(pk) for pk in Award.objects.order_by("-order").values_list("id", flat=True)]
+    },
     ("tournament-schedule", "put"): {"slots": []},
     ("tournament-schedule-check", "post"): {"slots": []},
     ("tournament-schedule-delay", "post"): {"table_id": SPARE_TABLE, "minutes": 20, "reason": "late_start"},
@@ -678,6 +695,13 @@ class World:
         ):
             MemberFieldValue.objects.create(membership=self.faith_membership, field=which, value=value)
 
+        # A draft award ceremony of the published cup, with Baraka named for one award.
+        ceremony = Ceremony.objects.create(tournament=self.published, location="MARK-CEREMONY-PLACE")
+        self.award = Award.objects.create(
+            ceremony=ceremony, title="MARK-AWARD-DRAFT", recipient=self.baraka, order=1
+        )
+        self.award_to_present = Award.objects.create(ceremony=ceremony, title="Best umpire", order=2)
+
         self.viewers = {
             "amina": self.amina,
             "baraka": self.baraka,
@@ -704,6 +728,8 @@ class World:
             "my-drill-detail": self.baraka_drill.id,
             "training-plan-detail": self.baraka_plan.id,
             "training-plan-item": self.baraka_item.id,
+            "tournament-ceremony-award": self.award.id,
+            "tournament-ceremony-award-present": self.award_to_present.id,
             "organization-drill": self.club_drill.id,
             "drill-library-detail": self.club_drill.id,
             "training-plan-recommendations": self.baraka_plan.id,
@@ -781,6 +807,9 @@ class World:
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
+        if name.startswith("tournament-ceremony"):
+            found["tournament_pk"] = self.published.id
+            return found
         if "table_pk" in names:
             found["table_pk"] = self.table.id
         if name.startswith("tournament-schedule"):
@@ -853,6 +882,8 @@ class World:
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
+            "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
+            "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
             "tables": sorted(Table.objects.values_list("label", "active")),
             "tournaments": sorted(Tournament.objects.values_list("name", "status", "cancel_reason")),
             "events": sorted(Event.objects.values_list("name", "status", "capacity", "cancel_reason")),
@@ -1075,6 +1106,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-DRILL": {"baraka"},
         "MARK-BARAKA-PLAN": {"baraka"},
         "MARK-BARAKA-ITEM": {"baraka"},
+        "MARK-AWARD-DRAFT": {"amina"},  # a draft ceremony isn't anyone's honour yet
+        "MARK-CEREMONY-PLACE": {"amina"},
         "MARK-CLUB-DRILL": {"amina", "baraka", "faith", "grace"},
         "MARK-CLUB-PLAN": {"amina", "baraka", "faith", "grace"},
         "MARK-CLUB-ITEM": {"amina", "baraka", "faith", "grace"},

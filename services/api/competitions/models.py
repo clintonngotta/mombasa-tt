@@ -684,3 +684,67 @@ class ScheduleVersion(models.Model):
 
     def __str__(self):
         return f"{self.tournament_id} v{self.number}"
+
+
+class Ceremony(models.Model):
+    """A tournament's award ceremony (REQ-018, REQ-049): when and where it is held and the awards it
+    gives, in the order they are presented. A draft is for the host's competition staff; once published
+    everyone who sees the tournament sees it."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft"
+        PUBLISHED = "published"
+        DONE = "done"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.OneToOneField(Tournament, on_delete=models.CASCADE, related_name="ceremony")
+    starts_at = models.DateTimeField(null=True, blank=True)
+    location = models.CharField(max_length=200, blank=True)
+    host = models.CharField(max_length=120, blank=True)  # the master of ceremonies
+    notes = models.CharField(max_length=1000, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Ceremony of {self.tournament_id}"
+
+
+class Award(models.Model):
+    """One award of a ceremony: a place in an event, taken from its results, or an award the organizers
+    give (best player, fair play, a sponsor's prize). Who receives it is the entry that placed, a player,
+    or a name for someone without an account."""
+
+    class Kind(models.TextChoices):
+        PLACEMENT = "placement"
+        SPECIAL = "special"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ceremony = models.ForeignKey(Ceremony, on_delete=models.CASCADE, related_name="awards")
+    order = models.PositiveSmallIntegerField(default=0)
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.SPECIAL)
+    title = models.CharField(max_length=120)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    place = models.PositiveSmallIntegerField(null=True, blank=True)
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="awards"
+    )
+    recipient_name = models.CharField(max_length=120, blank=True)
+    prize = models.CharField(max_length=200, blank=True)  # medal, trophy, cash or goods
+    presenter = models.CharField(max_length=120, blank=True)  # who hands it over
+    presented_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(kind="special")
+                | models.Q(event__isnull=False, place__isnull=False, entry__isnull=False),
+                name="placement_award_has_place",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title

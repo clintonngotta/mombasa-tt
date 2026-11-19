@@ -30,6 +30,7 @@ import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
 import { AdminNominationsPage } from "@/pages/club/AdminNominationsPage"
 import { MembersPage } from "@/pages/club/MembersPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
+import { CeremonyPage } from "@/pages/tournaments/CeremonyPage"
 import { ClubPlanPage, PlanPage } from "@/pages/training/PlanPage"
 import { DrillDetailPage } from "@/pages/training/DrillDetailPage"
 import { DrillEditPage } from "@/pages/training/DrillEditPage"
@@ -107,6 +108,7 @@ function App() {
               <Route path="/tournaments/:id/events/:eventId/schedule" element={<EventPage tab="schedule" />} />
               <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
               <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
+              <Route path="/tournaments/:id/ceremony" element={<CeremonyPage />} />
               <Route path="/club/tournaments" element={<HostedTournamentsPage />} />
               <Route path="/club/tournaments/new" element={<TournamentFormPage />} />
               <Route path="/club/venues" element={<VenuesPage />} />
