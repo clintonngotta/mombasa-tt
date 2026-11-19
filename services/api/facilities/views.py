@@ -1,14 +1,20 @@
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
+
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from activities.models import Activity
+from competitions.models import Tournament
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
 from organizations.access import (
@@ -19,10 +25,12 @@ from organizations.access import (
 )
 from organizations.models import Organization
 from organizations.permissions import Permission
+from training.models import ClubSession
 
 from . import profile
 from .models import MAX_ACTIVE_TABLES, MAX_ACTIVE_VENUES, Closure, OpeningHour, Table, TrainingHour, Venue
 from .serializers import (
+    BranchScheduleItemSerializer,
     FacilityProfileSerializer,
     FacilitySerializer,
     TableSerializer,
@@ -246,3 +254,58 @@ class FacilityViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
+    @extend_schema(responses={200: BranchScheduleItemSerializer(many=True)})
+    @action(detail=True)
+    def schedule(self, request, pk=None):
+        """What the branch has coming up, in date order: training slots any player may join, the
+        facility's public activities, and tournaments held here."""
+        venue = self.get_object()
+        now = timezone.now()
+        items = []
+        sessions = ClubSession.objects.filter(
+            tables__venue=venue,
+            open_to_players=True,
+            status=ClubSession.Status.SCHEDULED,
+            ends_at__gt=now,
+        ).distinct()
+        for session in sessions:
+            items.append(
+                {
+                    "kind": "training",
+                    "id": session.id,
+                    "title": session.title,
+                    "starts_at": session.starts_at,
+                    "ends_at": session.ends_at,
+                }
+            )
+        activities = Activity.objects.filter(
+            organization=venue.organization, public=True, status=Activity.Status.PUBLISHED, ends_at__gt=now
+        )
+        for activity in activities:
+            items.append(
+                {
+                    "kind": "activity",
+                    "id": activity.id,
+                    "title": activity.title,
+                    "starts_at": activity.starts_at,
+                    "ends_at": activity.ends_at,
+                }
+            )
+        shown = [Tournament.Status.PUBLISHED, Tournament.Status.IN_PROGRESS]
+        for tournament in Tournament.objects.filter(venue=venue, status__in=shown):
+            zone = ZoneInfo(tournament.timezone)
+            ends = datetime.combine(tournament.ends_on + timedelta(days=1), time.min, tzinfo=zone)
+            if ends <= now:
+                continue
+            items.append(
+                {
+                    "kind": "tournament",
+                    "id": tournament.id,
+                    "title": tournament.name,
+                    "starts_at": datetime.combine(tournament.starts_on, time.min, tzinfo=zone),
+                    "ends_at": ends,
+                }
+            )
+        items.sort(key=lambda item: item["starts_at"])
+        return Response(BranchScheduleItemSerializer(items, many=True).data)

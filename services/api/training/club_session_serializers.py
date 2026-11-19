@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from facilities.models import Table
+from organizations.models import Membership
 
 from .models import ClubSession, SessionInvitation
 from .serializers import LONGEST_SESSION
@@ -25,6 +26,16 @@ class ClubSessionSerializer(serializers.ModelSerializer):
     plan_id = serializers.UUIDField(required=False, allow_null=True)
     invited = serializers.IntegerField(read_only=True)
     accepted = serializers.IntegerField(read_only=True)
+    coach_id = serializers.UUIDField(required=False, allow_null=True)
+    coach_name = serializers.CharField(source="coach.display_name", read_only=True, default=None)
+    fee_minor = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=10_000_000)
+    repeat_weeks = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=12,
+        write_only=True,
+        help_text="On creation: make this many weekly sessions at the same time (a series).",
+    )
 
     class Meta:
         model = ClubSession
@@ -38,12 +49,20 @@ class ClubSessionSerializer(serializers.ModelSerializer):
             "starts_at",
             "ends_at",
             "capacity",
+            "coach_id",
+            "coach_name",
+            "level",
+            "fee_minor",
+            "fee_currency",
+            "open_to_players",
+            "series",
+            "repeat_weeks",
             "status",
             "invited",
             "accepted",
             "created_at",
         ]
-        read_only_fields = ["id", "status", "created_at"]
+        read_only_fields = ["id", "status", "series", "created_at"]
         extra_kwargs = {"capacity": {"min_value": 1, "max_value": 500}}
 
     def __init__(self, *args, **kwargs):
@@ -57,7 +76,24 @@ class ClubSessionSerializer(serializers.ModelSerializer):
     def validate_table_ids(self, tables):
         if not tables:
             raise serializers.ValidationError("Choose at least one table.")
+        organization = self.context["organization"]
+        # A facility keeps its match tables for play and tournaments; training uses training tables.
+        if organization.kind in ("facility", "club_facility") and any(t.kind != "training" for t in tables):
+            raise serializers.ValidationError("Choose training tables: match tables are kept for play.")
         return tables
+
+    def validate_coach_id(self, coach_id):
+        if coach_id is None:
+            return None
+        organization = self.context["organization"]
+        if not Membership.objects.active().filter(organization=organization, user_id=coach_id).exists():
+            raise serializers.ValidationError("Choose a coach among the organization's members.")
+        return coach_id
+
+    def validate_fee_currency(self, value):
+        if not (len(value) == 3 and value.isalpha() and value.isupper()):
+            raise serializers.ValidationError("Use a three-letter currency code.")
+        return value
 
     def validate_plan_id(self, plan_id):
         if plan_id and not self.context["organization"].training_plans.filter(pk=plan_id).exists():
@@ -136,3 +172,48 @@ class MySessionInvitationSerializer(serializers.ModelSerializer):
         model = SessionInvitation
         fields = ["id", "status", "responded_at", "attended", "session"]
         read_only_fields = fields
+
+
+class OpenSessionSerializer(serializers.ModelSerializer):
+    """A training slot any signed-in player may join (REQ-044, TASK-103)."""
+
+    organization_id = serializers.UUIDField(read_only=True)
+    organization_name = serializers.CharField(source="organization.name", read_only=True)
+    tables = SessionTableSerializer(many=True, read_only=True)
+    coach_name = serializers.CharField(source="coach.display_name", read_only=True, default=None)
+    places_left = serializers.SerializerMethodField()
+    joined = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClubSession
+        fields = [
+            "id",
+            "organization_id",
+            "organization_name",
+            "title",
+            "notes",
+            "tables",
+            "starts_at",
+            "ends_at",
+            "coach_name",
+            "level",
+            "fee_minor",
+            "fee_currency",
+            "capacity",
+            "places_left",
+            "joined",
+            "status",
+        ]
+        read_only_fields = fields
+
+    def _accepted(self, session):
+        return [i for i in session.invitations.all() if i.status == SessionInvitation.Status.ACCEPTED]
+
+    def get_places_left(self, session) -> int | None:
+        if session.capacity is None:
+            return None
+        return max(session.capacity - len(self._accepted(session)), 0)
+
+    def get_joined(self, session) -> bool:
+        user = self.context["request"].user
+        return any(i.user_id == user.pk for i in self._accepted(session))

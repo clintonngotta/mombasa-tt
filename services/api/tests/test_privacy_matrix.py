@@ -186,6 +186,11 @@ ACCESS: dict[str, dict[str, str]] = {
     # The facility finder (REQ-044): published branch profiles only; see test_facilities.py.
     "facility-list": {"get": SIGNED_IN},
     "facility-detail": {"get": SIGNED_IN},
+    "facility-schedule": {"get": SIGNED_IN},
+    # Facility training slots any player may join (REQ-044); see test_facility_training.py.
+    "open-session-list": {"get": SIGNED_IN},
+    "open-session-join": {"post": SIGNED_IN},
+    "open-session-leave": {"post": SIGNED_IN},
     "coach": {"get": SIGNED_IN},
     "coach-slots": {"get": SIGNED_IN},
     "my-coach-profile": {"get": OWNER, "put": OWNER},
@@ -1164,6 +1169,9 @@ class World:
             "organization-venue-pass": self.day_pass.id,
             "organization-venue-visit-reverse": self.walk_in.id,
             "facility-detail": self.venue.id,
+            "facility-schedule": self.venue.id,
+            "open-session-join": self.club_session.id,
+            "open-session-leave": self.club_session.id,
             "tournament-detail": self.deletable.id,
             "tournament-publish": self.spare_draft.id,
             "tournament-request-approval": self.regional_draft.id,

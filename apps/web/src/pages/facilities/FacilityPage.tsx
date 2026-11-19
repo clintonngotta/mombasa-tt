@@ -5,6 +5,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { OpenBadge } from "@/components/facilities/OpenBadge"
+import { BranchSchedule, BranchTraining } from "@/components/facilities/BranchTraining"
 import { errorMessage } from "@/lib/api"
 import { WEEKDAYS } from "@/lib/coaching"
 import { formatMoney } from "@/lib/coaching"
@@ -81,6 +82,9 @@ export function FacilityPage() {
               </>
             )}
           </section>
+
+          <BranchSchedule venueId={f.id} timeZone={f.timezone} />
+          <BranchTraining venueId={f.id} timeZone={f.timezone} />
 
           {f.passes.length > 0 && (
             <section aria-labelledby="prices-heading" className="flex flex-col gap-2">

@@ -1,4 +1,8 @@
-"""Club sessions (REQ-027, TASK-044): staff schedule, invite and take attendance; members answer."""
+"""Club sessions (REQ-027, TASK-044): staff schedule, invite and take attendance; members answer.
+Facility training slots (REQ-044, TASK-103) are club sessions open to any player."""
+
+import uuid
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -8,6 +12,7 @@ from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -23,6 +28,7 @@ from .club_session_serializers import (
     ClubSessionSerializer,
     InviteSerializer,
     MySessionInvitationSerializer,
+    OpenSessionSerializer,
     SessionInvitationSerializer,
 )
 from .models import ClubSession, SessionInvitation
@@ -32,10 +38,14 @@ ACCEPTED = Q(invitations__status=SessionInvitation.Status.ACCEPTED)
 
 
 def with_counts(queryset):
-    return queryset.annotate(
-        invited=Count("invitations", distinct=True),
-        accepted=Count("invitations", filter=ACCEPTED, distinct=True),
-    ).prefetch_related("tables__venue")
+    return (
+        queryset.annotate(
+            invited=Count("invitations", distinct=True),
+            accepted=Count("invitations", filter=ACCEPTED, distinct=True),
+        )
+        .prefetch_related("tables__venue")
+        .select_related("coach")
+    )
 
 
 class ClubSessionViewSet(
@@ -81,14 +91,25 @@ class ClubSessionViewSet(
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = dict(serializer.validated_data)
         tables = data.pop("tables")
-        club_sessions.ensure_tables_free(tables, data["starts_at"], data["ends_at"])
-        session = ClubSession.objects.create(
-            organization=self.organization(), created_by=request.user, **data
-        )
-        session.tables.set(tables)
-        return Response(self._fresh(session), status=status.HTTP_201_CREATED)
+        weeks = data.pop("repeat_weeks", 1)
+        series = uuid.uuid4() if weeks > 1 else None
+        first = None
+        # Every week's tables are checked and taken in one transaction: one clash keeps the whole series out.
+        for week in range(weeks):
+            shift = timedelta(weeks=week)
+            starts, ends = data["starts_at"] + shift, data["ends_at"] + shift
+            club_sessions.ensure_tables_free(tables, starts, ends)
+            session = ClubSession.objects.create(
+                organization=self.organization(),
+                created_by=request.user,
+                series=series,
+                **{**data, "starts_at": starts, "ends_at": ends},
+            )
+            session.tables.set(tables)
+            first = first or session
+        return Response(self._fresh(first), status=status.HTTP_201_CREATED)
 
     @transaction.atomic
     def partial_update(self, request, *args, **kwargs):
@@ -98,6 +119,7 @@ class ClubSessionViewSet(
         serializer = self.get_serializer(session, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        data.pop("repeat_weeks", None)
         tables = data.pop("tables", None)
         moving = tables is not None or any(
             key in data and data[key] != getattr(session, key) for key in ("starts_at", "ends_at")
@@ -237,3 +259,56 @@ class MySessionInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet)
     def decline(self, request, *args, **kwargs):
         """Decline, or withdraw an acceptance: your time is free again."""
         return self._answer(club_sessions.decline(self.get_object()))
+
+
+class OpenSessionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """Training slots any signed-in player may join (REQ-044): coming up, not cancelled. Joining goes
+    through the same check as accepting an invitation: the player's calendar and the places left."""
+
+    serializer_class = OpenSessionSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return ClubSession.objects.none()
+        sessions = (
+            ClubSession.objects.filter(open_to_players=True, status=ClubSession.Status.SCHEDULED)
+            .select_related("organization", "coach")
+            .prefetch_related("tables__venue", "invitations")
+        )
+        if self.action == "list":
+            sessions = sessions.filter(ends_at__gt=timezone.now())
+            if venue := self.request.query_params.get("venue"):
+                try:
+                    sessions = sessions.filter(tables__venue_id=uuid.UUID(venue)).distinct()
+                except ValueError as error:
+                    raise ValidationError({"venue": "Choose a branch."}) from error
+        return sessions.order_by("starts_at", "id")
+
+    @extend_schema(parameters=[OpenApiParameter("venue", str, description="Only this branch")])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    def _reply(self, session):
+        return Response(self.get_serializer(self.get_queryset().get(pk=session.pk)).data)
+
+    @extend_schema(request=None, responses={200: OpenSessionSerializer})
+    @action(detail=True, methods=["post"])
+    def join(self, request, *args, **kwargs):
+        """Join: holds this time in your calendar. Refused when you already have something on or it's
+        full. Joining twice changes nothing."""
+        session = self.get_object()
+        invitation, _ = SessionInvitation.objects.get_or_create(session=session, user=request.user)
+        club_sessions.accept(invitation)
+        return self._reply(session)
+
+    @extend_schema(request=None, responses={200: OpenSessionSerializer})
+    @action(detail=True, methods=["post"])
+    def leave(self, request, *args, **kwargs):
+        """Leave: your time is free again."""
+        session = self.get_object()
+        invitation = SessionInvitation.objects.filter(session=session, user=request.user).first()
+        if invitation is not None:
+            club_sessions.decline(invitation)
+        return self._reply(session)

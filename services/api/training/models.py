@@ -245,6 +245,21 @@ class ClubSession(models.Model):
     ends_at = models.DateTimeField()
     # Most members who may accept; empty means no limit beyond the invitations sent.
     capacity = models.PositiveIntegerField(null=True, blank=True)
+    # A facility's training slot (REQ-044, TASK-103): who coaches it, for what level, what it costs at
+    # the door, and whether any player may join (not only those invited). Sessions created together
+    # as a weekly series share `series`.
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    level = models.CharField(
+        max_length=12,
+        blank=True,
+        choices=[("beginner", "Beginner"), ("intermediate", "Intermediate"), ("advanced", "Advanced")],
+    )
+    fee_minor = models.PositiveIntegerField(null=True, blank=True)
+    fee_currency = models.CharField(max_length=3, default="KES")
+    open_to_players = models.BooleanField(default=False)
+    series = models.UUIDField(null=True, blank=True, db_index=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"

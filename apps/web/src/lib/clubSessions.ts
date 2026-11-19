@@ -42,3 +42,18 @@ export function clashesOf(error: unknown): CalendarConflict[] {
 }
 
 export const INVITATION_STATUS: Record<SessionInvitation["status"], string> = { invited: "Invited", accepted: "Coming", declined: "Not coming" }
+
+export type OpenSession = Schemas["OpenSession"]
+export type BranchScheduleItem = Schemas["BranchScheduleItem"]
+
+export const openSessionKeys = {
+  all: ["open-sessions"] as const,
+  venue: (venueId: string) => ["open-sessions", venueId] as const,
+  branchSchedule: (venueId: string) => ["open-sessions", "schedule", venueId] as const,
+}
+/** Training slots any player may join at a branch (REQ-044). */
+export const listOpenSessions = (venueId: string) => api<Schemas["PaginatedOpenSessionList"]>(`/open-sessions/?venue=${encodeURIComponent(venueId)}&page_size=50`)
+export const joinOpenSession = (id: string) => api<OpenSession>(`/open-sessions/${id}/join/`, { body: {} })
+export const leaveOpenSession = (id: string) => api<OpenSession>(`/open-sessions/${id}/leave/`, { body: {} })
+export const branchSchedule = (venueId: string) => api<BranchScheduleItem[]>(`/facilities/${venueId}/schedule/`)
+export const LEVEL_LABEL: Record<string, string> = { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" }
