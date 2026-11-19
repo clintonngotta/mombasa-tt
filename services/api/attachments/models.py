@@ -48,6 +48,7 @@ class Attachment(models.Model):
 
     class Purpose(models.TextChoices):
         AVATAR = "avatar"
+        RECEIPT = "receipt"  # an expense's receipt (REQ-024), for finance staff only
 
     EXTENSIONS = {"image/webp": ".webp"}
 

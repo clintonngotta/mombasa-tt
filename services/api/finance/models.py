@@ -185,3 +185,35 @@ class CampaignMember(models.Model):
 
     def __str__(self):
         return f"{self.member_id} in {self.campaign_id}"
+
+
+class Expense(models.Model):
+    """Money spent, on a campaign's purpose or the organization's general running (REQ-024). Kept for
+    good: a mistake is reversed with a reason. The receipt is private to finance staff."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="expenses"
+    )
+    campaign = models.ForeignKey(
+        Campaign, on_delete=models.PROTECT, null=True, blank=True, related_name="expenses"
+    )
+    description = models.CharField(max_length=200)
+    amount_minor = models.PositiveIntegerField()
+    currency = models.CharField(max_length=3, default="KES")
+    spent_on = models.DateField()
+    receipt = models.ForeignKey(
+        "attachments.Attachment", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    recorded_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reversed_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    reversal_reason = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["-spent_on", "-created_at"]
+        constraints = [models.CheckConstraint(condition=Q(amount_minor__gt=0), name="expense_positive")]
+
+    def __str__(self):
+        return f"{self.description} {self.amount_minor} {self.currency}"
