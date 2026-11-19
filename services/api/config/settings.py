@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "regions",
     "reservations",
     "scoring",
+    "soda",
     "training",
 ]
 
@@ -194,6 +195,7 @@ SPECTACULAR_SETTINGS = {
         "SkillEnum": "training.models.Skill",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",
+        "SodaChallengeStatusEnum": "soda.models.Challenge.Status",
         "ScheduleKindEnum": "activities.serializers.SCHEDULE_KINDS",
         "ActivityStatusEnum": "activities.models.Activity.Status",
         "SessionInvitationStatusEnum": "training.models.SessionInvitation.Status",
@@ -256,6 +258,8 @@ REDIS_URL = os.environ.get("REDIS_URL", "")
 # The oldest web app build (its APP_BUILD number, e.g. 202611191200) the API still serves (REQ-035).
 # Raise it only when a change breaks older cached apps; 0 serves every build.
 MIN_CLIENT_BUILD = int(os.environ.get("MIN_CLIENT_BUILD", "0") or 0)
+# Soda game stakes (REQ-040) stay off until the legal and policy sign-off is recorded (TASK-078).
+SODA_STAKES_ENABLED = os.environ.get("SODA_STAKES_ENABLED", "").lower() in ("1", "true", "yes")
 
 CELERY_BROKER_URL = REDIS_URL or "memory://"
 CELERY_TASK_IGNORE_RESULT = True

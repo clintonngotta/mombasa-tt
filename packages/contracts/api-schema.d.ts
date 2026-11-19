@@ -1364,6 +1364,214 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/soda-games/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        get: operations["me_soda_games_list"];
+        put?: never;
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        post: operations["me_soda_games_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        get: operations["me_soda_games_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The challenged player accepts, matching the stake or not; or the challenger takes the time
+         *     the challenged player proposed.
+         */
+        post: operations["me_soda_games_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        post: operations["me_soda_games_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/counter/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The challenged player proposes another time. */
+        post: operations["me_soda_games_counter_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        post: operations["me_soda_games_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/dispute/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Disagree with the recorded games: nothing is owed until it's recorded again and confirmed. */
+        post: operations["me_soda_games_dispute_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/result/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record the games. The other player then confirms or disputes. */
+        post: operations["me_soda_games_result_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/settle/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The winner marks the pledge honoured. No money passes through Coast TT. */
+        post: operations["me_soda_games_settle_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/share/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Let club members see this challenge and its result. Shown only when both players share. */
+        post: operations["me_soda_games_share_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The challenger withdraws before the challenge is accepted. */
+        post: operations["me_soda_games_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Whether soda games and stakes are available to the signed-in player. */
+        get: operations["me_soda_settings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/": {
         parameters: {
             query?: never;
@@ -2980,6 +3188,41 @@ export interface paths {
         /** @description The same schedule as an .ics file, to add to a phone's calendar. */
         get: operations["organizations_schedule.ics_retrieve"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/soda-games/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Soda games of the club's members that both players chose to share: names, time and result only. */
+        get: operations["organizations_soda_games_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/soda-policy/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description An organization's switches for its members' soda games. Changing them needs roles.manage. */
+        get: operations["organizations_soda_policy_retrieve"];
+        /** @description An organization's switches for its members' soda games. Changing them needs roles.manage. */
+        put: operations["organizations_soda_policy_update"];
         post?: never;
         delete?: never;
         options?: never;
@@ -5025,6 +5268,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptRequest: {
+            /** @default false */
+            match_stake: boolean;
+        };
         AcceptedEvent: {
             /** Format: uuid */
             readonly id: string;
@@ -5516,6 +5763,62 @@ export interface components {
          * @enum {string}
          */
         CeremonyStatusEnum: "draft" | "published" | "done";
+        /**
+         * @description A challenge as one of its two players sees it. Stake fields appear only while stakes are
+         *     available to these players; anyone else never gets a challenge from this serializer.
+         */
+        Challenge: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly challenger: components["schemas"]["SodaPlayer"];
+            readonly challenged: components["schemas"]["SodaPlayer"];
+            format: components["schemas"]["SinglesOrDoublesEnum"];
+            challenger_partner: string;
+            challenged_partner: string;
+            /** Format: date-time */
+            play_at: string | null;
+            /** Format: date-time */
+            readonly proposed_at: string | null;
+            place: string;
+            best_of: number;
+            message: string;
+            stake_minor: number | null;
+            stake_currency: string;
+            stake_note: string;
+            readonly challenged_staked: boolean;
+            readonly status: components["schemas"]["SodaChallengeStatusEnum"];
+            readonly challenger_shares: boolean;
+            readonly challenged_shares: boolean;
+            readonly result: {
+                [key: string]: unknown;
+            } | null;
+            readonly outcome: {
+                [key: string]: unknown;
+            };
+            /** @description challenger or challenged: which side the viewer is */
+            readonly mine: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description A challenge as one of its two players sees it. Stake fields appear only while stakes are
+         *     available to these players; anyone else never gets a challenge from this serializer.
+         */
+        ChallengeRequest: {
+            /** Format: uuid */
+            challenged_id: string;
+            format?: components["schemas"]["SinglesOrDoublesEnum"];
+            challenger_partner?: string;
+            challenged_partner?: string;
+            /** Format: date-time */
+            play_at?: string | null;
+            place?: string;
+            best_of?: number;
+            message?: string;
+            stake_minor?: number | null;
+            stake_currency?: string;
+            stake_note?: string;
+        };
         Change: {
             /** Format: uuid */
             match_id: string;
@@ -5888,6 +6191,10 @@ export interface components {
             device_label: string;
             events: components["schemas"]["ConflictEventRequest"][];
         };
+        CounterRequest: {
+            /** Format: date-time */
+            play_at: string;
+        };
         CountryCatalogue: {
             /** @description Use this catalogue as the source of location choices for this country. */
             catalogue_only: boolean;
@@ -5962,6 +6269,9 @@ export interface components {
             table_id: string;
             overrides?: components["schemas"]["OverridesEnum"][];
             reason?: string;
+        };
+        DisputeRequest: {
+            reason: string;
         };
         /** @description One version of an event's draw: who sits where, and every match with its sides. */
         Draw: {
@@ -7129,6 +7439,11 @@ export interface components {
             readonly attended: boolean | null;
             readonly session: components["schemas"]["MySession"];
         };
+        MySodaSettings: {
+            /** @description Whether stake fields apply for this player. */
+            stakes_available: boolean;
+            games_enabled: boolean;
+        };
         /** @description The player's own visit or pass at a facility: never anybody else's, never a walk-in name. */
         MyVisit: {
             /** Format: uuid */
@@ -7377,6 +7692,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Candidate"][];
+        };
+        PaginatedChallengeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Challenge"][];
         };
         PaginatedClubActivityList: {
             /** @example 123 */
@@ -8430,6 +8760,16 @@ export interface components {
          * @enum {string}
          */
         PlayerRatingsResultEnum: "all" | "won" | "lost";
+        Policy: {
+            games_enabled: boolean;
+            stakes_enabled: boolean;
+            /** @description False while the platform's stake policy gate is off. */
+            readonly stakes_available: boolean;
+        };
+        PolicyRequest: {
+            games_enabled: boolean;
+            stakes_enabled: boolean;
+        };
         /**
          * @description * `men` - Men
          *     * `women` - Women
@@ -8694,6 +9034,10 @@ export interface components {
             scheduled_at: string | null;
             /** @description It doesn't fit in the tournament's days. */
             beyond_last_day: boolean;
+        };
+        RecordRequest: {
+            /** @description Per game, [challenger's points, challenged's points]. */
+            games: number[][];
         };
         RecordVisitRequest: {
             /** Format: uuid */
@@ -9224,6 +9568,26 @@ export interface components {
         SessionTableRequest: {
             label: string;
         };
+        ShareRequest: {
+            share: boolean;
+        };
+        /**
+         * @description What club members see of a challenge both players chose to share: who, when, the result. Never a
+         *     stake.
+         */
+        SharedChallenge: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly challenger: components["schemas"]["SodaPlayer"];
+            readonly challenged: components["schemas"]["SodaPlayer"];
+            readonly format: components["schemas"]["SinglesOrDoublesEnum"];
+            /** Format: date-time */
+            readonly play_at: string | null;
+            readonly status: components["schemas"]["SodaChallengeStatusEnum"];
+            readonly games: number[][] | null;
+            readonly state: string;
+            readonly winner_id: string | null;
+        };
         /** @description Which match a sheet is for, as the organizers' scoring page shows it. */
         SheetContext: {
             /** Format: uuid */
@@ -9302,6 +9666,26 @@ export interface components {
         };
         SlotsRequest: {
             slots: components["schemas"]["SlotRequest"][];
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `countered` - Countered
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `withdrawn` - Withdrawn
+         *     * `played` - Played
+         * @enum {string}
+         */
+        SodaChallengeStatusEnum: "pending" | "countered" | "accepted" | "declined" | "withdrawn" | "played";
+        SodaPlayer: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        SodaPlayerRequest: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
         };
         /** @description An accepted sponsorship as everyone who sees the tournament sees it. */
         Sponsor: {
@@ -12802,6 +13186,429 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MySessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedChallengeList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChallengeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AcceptRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_counter_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CounterRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_dispute_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisputeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_result_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_settle_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_share_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySodaSettings"];
                 };
             };
             /** @description Error envelope */
@@ -16757,6 +17564,100 @@ export interface operations {
                 };
                 content: {
                     "text/calendar": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_soda_games_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedChallenge"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_soda_policy_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_soda_policy_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PolicyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
                 };
             };
             /** @description Error envelope */

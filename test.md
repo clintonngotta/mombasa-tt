@@ -201,6 +201,21 @@ The privacy matrix covers every new route. Notification records come with TASK-0
 
 **Soda games — integration/UI.** Setup: players A, B and C in one club, club admin D, and a club with stakes disabled; policy gate off, then on. Steps: with the gate off, confirm stake fields are hidden and A can challenge B; with the gate on, A challenges B with a KES 100 stake, B accepts without staking, A loses, both confirm; repeat with B matching the stake and B losing; dispute a result; try staking from C on A–B; try challenging in the disabled club; check Elo, standings, table reservations and C/D views. Pass: only the loser who pledged owes the stake; no amount is owed while disputed; C cannot stake or see stakes; disabled club blocks stakes; no money movement or payment record is created; ratings, standings and reservations are unchanged; result visibility follows both players' choice. Evidence: API tests and UI screenshots.
 
+*Built in TASK-076 and TASK-077 (2026-11-19).* `tests/test_soda.py` checks the following:
+- **Gate off:** stakes are refused and absent from responses, and A can still challenge B.
+- **Gate on:**
+  - A pledges KES 100, B plays without staking, A loses and both confirm: A owes, and only the winner may mark it settled.
+  - B matches the stake and loses: B owes.
+  - Only A staked and A wins: nobody owes.
+- A disputed result owes nothing until it is recorded again and confirmed, and a confirmed result can't be overwritten.
+- C and club admin D can't see, answer or stake on A–B. Club members see it only once both share it, never with the stake.
+- Answers belong to the right player, including counter-times.
+- A stranger can't be challenged unless listed in the directory.
+- The club's switches block stakes, then soda games.
+- Ratings, rating events, reservations, official results, matches and door visits are unchanged.
+
+The privacy matrix covers every new route and keeps the challenge to its two players, with the stake hidden from everyone while the gate is off. UI screenshots are still to take.
+
 ### EVAL-042
 
 **Events calendar and live links — integration/UI.** Setup: published Coast TT tournaments from our club and another club, one external event submitted by our club staff, one submitted with an http live link, and a cancelled event. Steps: view the listing as the public, a member of the submitting club and a curator; approve and reject submissions; move the clock into an event's live window; mark an external event live; report and remove a link. Pass: unreviewed external events are visible only to the submitting club's members with "awaiting review"; http links are rejected; live events show the badge and correct link (tournament page/broadcast for internal, stream URL for external); external events never gain draws, entries or ratings; filters and the "our club" view are correct; cancelled events show their status. Evidence: API tests and screenshots of list, calendar and live states.

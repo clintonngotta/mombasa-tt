@@ -88,6 +88,7 @@ Document a deployment-specific environment file outside source control and reada
 | `VITE_API_BASE_URL` | Build time, public: the API base the web app calls. Leave unset (`/api/v1`) when Caddy serves the app and API on one origin; set the full HTTPS URL (e.g. `https://api.example.com/api/v1`) for split hosting. Staging builds point at the staging API, production at production. Never put server tokens here; Expo public URL added only with later native app |
 | `APP_BUILD` | Build time, public: the web release's number, `YYYYMMDDHHMM` (CI sets it; a local build uses the build time). The service worker version and the `X-Client-Build` header carry it |
 | `MIN_CLIENT_BUILD` | Server: the oldest `APP_BUILD` the API still serves (default 0, every build). An older cached app gets 426 `client_outdated` and asks to update; its queued scores stay on the device and the new version sends them. Raise only for a change that breaks older apps, after the new web release is live |
+| `SODA_STAKES_ENABLED` | Server: allow soda game stakes (default off). **Leave off in production until the legal and policy sign-off (Kenyan betting and gaming law, age 18+, limits) is recorded in intent.md (TASK-078).** While off, stake fields are refused and hidden, and soda games run without stakes. Clubs can still switch stakes or soda games off for their members |
 | `APP_IMAGE`, `WEB_IMAGE` | Immutable release tag/digest, including previous release in history |
 | Later relay/billing secrets | Provision only when those phases are enabled |
 

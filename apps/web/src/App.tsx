@@ -30,6 +30,7 @@ import { MyVisitsPage } from "@/pages/profile/MyVisitsPage"
 import { ActivitiesPage } from "@/pages/club/ActivitiesPage"
 import { ActivityPage } from "@/pages/club/ActivityPage"
 import { ClubSchedulePage } from "@/pages/club/ClubSchedulePage"
+import { SodaGamesPage } from "@/pages/play/SodaGamesPage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
@@ -116,6 +117,7 @@ function App() {
             <Route path="/home" element={null} />
             <Route element={<RequireAuth />}>
               <Route path="/play" element={<PlayPage />} />
+              <Route path="/play/soda" element={<SodaGamesPage />} />
               <Route path="/tournaments/:id" element={<TournamentPage />} />
               <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
               <Route path="/tournaments/:id/scoring" element={<ScoringOverviewPage />} />

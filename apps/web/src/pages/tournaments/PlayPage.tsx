@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { NotebookPen, Search, Timer, Trophy, Warehouse } from "lucide-react"
+import { CupSoda, NotebookPen, Search, Timer, Trophy, Warehouse } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FormAlert } from "@/components/forms/Field"
@@ -105,6 +105,7 @@ export function PlayPage() {
 
       <NavCard to="/rankings" icon={Trophy} title="Rankings" description="Singles and doubles ratings from tournament matches" />
       <NavCard to="/facilities" icon={Warehouse} title="Find a place to play" description="Halls with tables: hours, open now and what a visit includes" />
+      <NavCard to="/play/soda" icon={CupSoda} title="Soda games" description="Challenge a friend to a friendly match: unrated, no booking" />
       <NavCard to="/quick-score" icon={Timer} title="Quick Score" description="Score a casual game on this phone: no rating, no booking" />
       <NavCard to="/matches" icon={NotebookPen} title="Your match log" description="Matches you recorded yourself, with your progress" />
     </div>
