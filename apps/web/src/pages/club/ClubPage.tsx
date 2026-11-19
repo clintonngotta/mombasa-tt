@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, ClipboardList, Clock, KeyRound, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
+import { ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
@@ -167,6 +167,9 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           )}
         </nav>
       )}
+      <AdminLink to="/club/committee" icon={<Landmark aria-hidden className="size-5 text-brand-blue" />}>
+        {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
+      </AdminLink>
       {!membership.managedOnly && <MyClubDetails membershipId={membership.id} />}
       {manageMembers && (
         <>

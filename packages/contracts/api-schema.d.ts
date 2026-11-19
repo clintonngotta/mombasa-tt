@@ -719,6 +719,232 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/committee/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/committee/: the current committee, for any member. */
+        get: operations["organizations_committee_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/candidates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Active members who can hold a position, for governance staff choosing a holder. */
+        get: operations["organizations_committee_candidates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET (every definition, retired ones too) and POST committee fields, for governance staff. */
+        get: operations["organizations_committee_fields_list"];
+        put?: never;
+        /** @description GET (every definition, retired ones too) and POST committee fields, for governance staff. */
+        post: operations["organizations_committee_fields_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["organizations_committee_fields_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_committee_fields_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_committee_fields_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Past holders of every position, newest first, for any member: display names and dates only. */
+        get: operations["organizations_committee_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/: add a position at the end of the committee. */
+        post: operations["organizations_committee_positions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description PATCH /committee/positions/{id}/: rename, set the term or change the granted role. */
+        patch: operations["organizations_committee_positions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/holder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+         *     the current holder's time, as stepping down.
+         */
+        put: operations["organizations_committee_positions_holder_update"];
+        post?: never;
+        /**
+         * @description PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+         *     the current holder's time, as stepping down.
+         */
+        delete: operations["organizations_committee_positions_holder_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/{id}/retire/: remove a position; its holders stay in the history. */
+        post: operations["organizations_committee_positions_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/values/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description PATCH /committee/positions/{id}/values/: custom field values of the position and its holder. */
+        patch: operations["organizations_committee_positions_values_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/reorder/: every active position's id, in the order to show them. */
+        post: operations["organizations_committee_positions_reorder_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/invitations/": {
         parameters: {
             query?: never;
@@ -2555,6 +2781,12 @@ export interface components {
          * @enum {string}
          */
         AdmissionEnum: "open" | "closed";
+        /**
+         * @description * `position` - Position
+         *     * `holder` - Holder
+         * @enum {string}
+         */
+        AppliesToEnum: "position" | "holder";
         AppointRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -2568,6 +2800,12 @@ export interface components {
          * @enum {string}
          */
         ApprovalStatusEnum: "not_requested" | "pending" | "approved" | "rejected";
+        AssignHolderRequest: {
+            /** Format: uuid */
+            membership_id: string;
+            /** Format: date */
+            started_on?: string | null;
+        };
         /** @description `user_id` null takes the match back from its umpire. `rubber_id` names the rubber of a tie. */
         AssignUmpireRequest: {
             /** Format: uuid */
@@ -2674,6 +2912,11 @@ export interface components {
             /** @description Why a free table has no match. */
             idle_reason: string;
         };
+        Candidate: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
         Change: {
             /** Format: uuid */
             match_id: string;
@@ -2706,6 +2949,36 @@ export interface components {
              */
             total_points: number;
             rated_members: number;
+        };
+        Committee: {
+            can_manage: boolean;
+            positions: components["schemas"]["Position"][];
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        CommitteeField: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options: string[];
+            required: boolean;
+            visibility: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to: components["schemas"]["AppliesToEnum"];
+            /** Format: date-time */
+            readonly retired_at: string | null;
+        };
+        CommitteeFieldEntry: {
+            readonly field: components["schemas"]["CommitteeField"];
+            readonly value: (string | number | boolean) | null;
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        CommitteeFieldRequest: {
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to?: components["schemas"]["AppliesToEnum"];
         };
         /**
          * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
@@ -2865,6 +3138,14 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        /**
+         * @description * `replaced` - Replaced
+         *     * `stepped_down` - Stepped Down
+         *     * `left` - Left
+         *     * `position_retired` - Position Retired
+         * @enum {string}
+         */
+        EndReasonEnum: "replaced" | "stepped_down" | "left" | "position_retired";
         /**
          * @description * `not_started` - Not Started
          *     * `in_progress` - In Progress
@@ -3107,6 +3388,17 @@ export interface components {
          * @enum {string}
          */
         HandEnum: "right" | "left";
+        /** @description Who holds a position: display name only. */
+        Holder: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            membership_id: string;
+            display_name: string;
+            /** Format: date */
+            started_on: string;
+            values: components["schemas"]["CommitteeFieldEntry"][];
+        };
         /** @description Staff view of an invitation they sent. */
         Invitation: {
             /** Format: uuid */
@@ -3649,6 +3941,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["AdminHandover"][];
         };
+        PaginatedCandidateList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Candidate"][];
+        };
         PaginatedDirectoryPlayerList: {
             /** @example 123 */
             count: number;
@@ -3829,6 +4136,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["Organization"][];
         };
+        PaginatedPastHolderList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["PastHolder"][];
+        };
         PaginatedPersonalMatchList: {
             /** @example 123 */
             count: number;
@@ -3863,6 +4185,26 @@ export interface components {
             uid: string;
             token: string;
             password: string;
+        };
+        PastHolder: {
+            /** Format: uuid */
+            id: string;
+            position: string;
+            display_name: string;
+            /** Format: date */
+            started_on: string;
+            /** Format: date */
+            ended_on: string;
+            end_reason: components["schemas"]["EndReasonEnum"];
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        PatchedCommitteeFieldRequest: {
+            label?: string;
+            kind?: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to?: components["schemas"]["AppliesToEnum"];
         };
         PatchedEventRequest: {
             name?: string;
@@ -3917,6 +4259,15 @@ export interface components {
             venue?: string;
             notes?: string;
             games?: components["schemas"]["GameRequest"][];
+        };
+        PatchedPositionInputRequest: {
+            name?: string;
+            /** Format: date */
+            term_start?: string | null;
+            /** Format: date */
+            term_end?: string | null;
+            /** Format: uuid */
+            grants_role?: string | null;
         };
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         PatchedProfileRequest: {
@@ -4102,6 +4453,29 @@ export interface components {
          * @enum {string}
          */
         PoolEnum: "men" | "women";
+        Position: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            order: number;
+            /** Format: date */
+            term_start: string | null;
+            /** Format: date */
+            term_end: string | null;
+            /** @description Shown to governance staff only. */
+            grants_role: components["schemas"]["RoleRef"] | null;
+            holder: components["schemas"]["Holder"] | null;
+            values: components["schemas"]["CommitteeFieldEntry"][];
+        };
+        PositionInputRequest: {
+            name: string;
+            /** Format: date */
+            term_start?: string | null;
+            /** Format: date */
+            term_end?: string | null;
+            /** Format: uuid */
+            grants_role?: string | null;
+        };
         Problem: {
             /** Format: uuid */
             match_id: string;
@@ -4346,6 +4720,9 @@ export interface components {
             /** @default KES */
             currency: string;
         };
+        ReorderRequest: {
+            positions: string[];
+        };
         /** @description A match on a table: the table and the people held until its result is official. */
         Reservation: {
             /** Format: uuid */
@@ -4465,6 +4842,11 @@ export interface components {
          * @enum {string}
          */
         RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "member";
+        RoleRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         RoleRequest: {
             name: string;
@@ -6516,6 +6898,504 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_candidates_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Display name */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCandidateList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitteeFieldRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCommitteeFieldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_history_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPastHolderList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPositionInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_holder_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignHolderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_holder_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_values_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldValuesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_reorder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
                 };
             };
             /** @description Error envelope */

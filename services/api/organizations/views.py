@@ -27,6 +27,7 @@ from .access import (
     require_within_authority,
     roles_permissions,
 )
+from .committee import end_holdings_on_leaving
 from .emails import send_invitation_email
 from .member_fields import MAX_ACTIVE_FIELDS, entries, visible_fields, write_values
 from .models import (
@@ -87,12 +88,14 @@ def join(organization: Organization, user) -> Membership:
 
 
 def leave(organization: Organization, membership: Membership) -> None:
-    """End a membership, dropping its roles. Refuses to remove the last admin. Locks the organization."""
+    """End a membership, dropping its roles and committee positions. Refuses to remove the last admin.
+    Locks the organization."""
     lock_organization(organization)
     ensure_admin_remains(organization, membership)
     membership.status = Membership.Status.LEFT
     membership.save(update_fields=["status"])
     membership.roles.clear()
+    end_holdings_on_leaving(membership)
 
 
 class OrganizationViewSet(

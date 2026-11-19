@@ -43,12 +43,16 @@ from facilities.models import Table, Venue
 from matchlog.models import PersonalMatch
 from organizations.models import (
     AdminHandover,
+    CommitteeField,
+    CommitteeFieldValue,
+    CommitteePosition,
     Invitation,
     JoinRequest,
     MemberField,
     MemberFieldValue,
     Membership,
     Organization,
+    PositionHolder,
     Role,
     seed_roles,
 )
@@ -120,6 +124,20 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-admin-nomination-list": {"get": OWNER},
     "me-admin-nomination-accept": {"post": OWNER},
     "me-admin-nomination-decline": {"post": OWNER},
+    # REQ-045 committees: members see the committee and its history; governance staff change it.
+    "organization-committee": {"get": MEMBER},
+    "organization-committee-history": {"get": MEMBER},
+    "organization-committee-candidates": {"get": STAFF},
+    "organization-committee-positions": {"post": STAFF},
+    "organization-committee-positions-reorder": {"post": STAFF},
+    "organization-committee-position": {"patch": STAFF},
+    "organization-committee-position-retire": {"post": STAFF},
+    "organization-committee-position-holder": {"put": STAFF, "delete": STAFF},
+    "organization-committee-position-values": {"patch": STAFF},
+    "organization-committee-fields": {"get": STAFF, "post": STAFF},
+    "organization-committee-field": {"patch": STAFF},
+    "organization-committee-field-retire": {"post": STAFF},
+    "organization-committee-field-restore": {"post": STAFF},
     "organization-members": {"get": STAFF},
     "organization-member-roles": {"put": STAFF},
     "organization-member-remove": {"post": STAFF},
@@ -243,6 +261,21 @@ BODIES = {
     ("organization-member-roles", "put"): {"roles": []},
     ("organization-admin-nominate", "post"): {"membership_id": FAITH_MEMBERSHIP},
     ("organization-admin-appoint", "post"): {"membership_id": FAITH_MEMBERSHIP, "reason": "Test"},
+    ("organization-committee-positions", "post"): {"name": "Youth officer"},
+    # Every active position, read when the call is made (the create above adds one).
+    ("organization-committee-positions-reorder", "post"): lambda: {
+        "positions": [
+            str(pk)
+            for pk in CommitteePosition.objects.filter(
+                organization__name="Coast Spinners", retired_at__isnull=True
+            ).values_list("id", flat=True)
+        ]
+    },
+    ("organization-committee-position", "patch"): {"name": "Renamed seat"},
+    ("organization-committee-position-holder", "put"): {"membership_id": FAITH_MEMBERSHIP},
+    ("organization-committee-position-values", "patch"): {"values": {}},
+    ("organization-committee-fields", "post"): {"label": "Term notes", "kind": "text"},
+    ("organization-committee-field", "patch"): {"label": "Renamed committee field"},
     ("personal-match-detail", "patch"): {"label": "Changed"},
     ("me-membership-fields", "patch"): {"values": {}},
     ("organization-member-fields", "patch"): {"values": {}},
@@ -405,6 +438,38 @@ class World:
         self.retired_field = field(
             "MARK-FIELD-RETIRED", visibility=MemberField.Visibility.MEMBER, retired_at=timezone.now()
         )
+        # The committee (REQ-045): Faith holds a seat that grants a staff-only role; Grace held it before.
+        # One committee field members see and one for governance staff, each with a value on the seat.
+        self.position = CommitteePosition.objects.create(
+            organization=self.coast, name="MARK-POSITION", grants_role=self.custom_role
+        )
+        self.vacant_position = CommitteePosition.objects.create(
+            organization=self.coast, name="Vacant seat", order=1
+        )
+        self.retiring_position = CommitteePosition.objects.create(
+            organization=self.coast, name="Retiring seat", order=2
+        )
+        grace_membership = Membership.objects.get(organization=self.coast, user=self.grace)
+        PositionHolder.objects.create(
+            position=self.position,
+            membership=grace_membership,
+            started_on="2025-01-01",
+            ended_on="2025-12-31",
+            ended_at=timezone.now(),
+            end_reason=PositionHolder.EndReason.REPLACED,
+        )
+        PositionHolder.objects.create(
+            position=self.position, membership=self.faith_membership, started_on="2026-01-01"
+        )
+        for label, visibility in (("MARK-CFIELD-MEMBER", "member"), ("MARK-CFIELD-STAFF", "staff")):
+            made = CommitteeField.objects.create(
+                organization=self.coast, label=label, kind="text", visibility=visibility
+            )
+            CommitteeFieldValue.objects.create(
+                field=made, position=self.position, value=label.replace("CFIELD", "CVALUE")
+            )
+        self.committee_field = made
+
         # A venue with a table in use and one switched off; a second venue switched off.
         self.venue = Venue.objects.create(organization=self.coast, name="Makadara Hall", town="Mombasa")
         self.table = Table.objects.create(venue=self.venue, label="Table 1")
@@ -591,6 +656,13 @@ class World:
             # Faith's, because the staff checks remove Baraka before they reach this route.
             "organization-member-fields": self.faith_membership.id,
             "organization-member-field": self.staff_field.id,
+            "organization-committee-position": self.position.id,
+            "organization-committee-position-values": self.position.id,
+            "organization-committee-position-holder": self.vacant_position.id,
+            "organization-committee-position-retire": self.retiring_position.id,
+            "organization-committee-field": self.committee_field.id,
+            "organization-committee-field-retire": self.committee_field.id,
+            "organization-committee-field-restore": self.committee_field.id,
             "organization-member-field-retire": self.staff_field.id,
             "organization-member-field-restore": self.staff_field.id,
             "organization-join-request-approve": self.join_request.id,
@@ -708,6 +780,14 @@ class World:
                 MemberField.objects.values_list("label", "visibility", "required", "retired_at")
             ),
             "member_field_values": sorted(MemberFieldValue.objects.values_list("field__label", "value")),
+            "committee_positions": sorted(
+                CommitteePosition.objects.values_list("name", "order", "retired_at", "grants_role")
+            ),
+            "committee_holders": sorted(
+                PositionHolder.objects.values_list("position__name", "membership_id", "ended_at")
+            ),
+            "committee_fields": sorted(CommitteeField.objects.values_list("label", "retired_at")),
+            "committee_values": sorted(CommitteeFieldValue.objects.values_list("field__label", "value")),
             "venues": sorted(Venue.objects.values_list("name", "town", "active")),
             "tables": sorted(Table.objects.values_list("label", "active")),
             "tournaments": sorted(Tournament.objects.values_list("name", "status", "cancel_reason")),
@@ -740,7 +820,8 @@ def world(db):
 
 
 def call(client, method: str, name: str, url: str):
-    return getattr(client, method)(url, BODIES.get((name, method), {}), format="json")
+    body = BODIES.get((name, method), {})
+    return getattr(client, method)(url, body() if callable(body) else body, format="json")
 
 
 def test_every_route_has_a_decision_about_who_may_call_it():
@@ -930,7 +1011,13 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         # shows the crawl really reads the pages where a leak would appear.
         "MARK-FAITH-STYLE": set(world.viewers),
         str(world.faith_avatar.id): set(world.viewers),
-        "Tea committee": {"amina"},  # role names are for staff
+        "Tea committee": {"amina"},  # role names are for staff, also as what a committee seat grants
+        # The committee and its history are for members; staff-only committee fields for governance staff.
+        "MARK-POSITION": {"amina", "baraka", "faith", "grace"},
+        "MARK-CFIELD-MEMBER": {"amina", "baraka", "faith", "grace"},
+        "MARK-CVALUE-MEMBER": {"amina", "baraka", "faith", "grace"},
+        "MARK-CFIELD-STAFF": {"amina"},
+        "MARK-CVALUE-STAFF": {"amina"},
         # Custom member fields: members see the member-visible definition and their own value under it;
         # staff-only and retired definitions are for staff; a retired value is served to nobody.
         "MARK-FIELD-MEMBER": {"amina", "baraka", "faith", "grace"},

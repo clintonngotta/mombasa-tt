@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from . import handover, views
+from . import committee, handover, views
 
 router = SimpleRouter()
 router.register("", views.OrganizationViewSet, basename="organization")
@@ -103,6 +103,71 @@ urlpatterns = [
         "<uuid:organization_pk>/admin/appoint/",
         handover.AppointAdminView.as_view(),
         name="organization-admin-appoint",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/",
+        committee.CommitteeView.as_view(),
+        name="organization-committee",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/history/",
+        committee.CommitteeHistoryView.as_view(),
+        name="organization-committee-history",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/candidates/",
+        committee.CommitteeCandidatesView.as_view(),
+        name="organization-committee-candidates",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/positions/",
+        committee.PositionsView.as_view(),
+        name="organization-committee-positions",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/positions/reorder/",
+        committee.ReorderPositionsView.as_view(),
+        name="organization-committee-positions-reorder",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/positions/<uuid:pk>/",
+        committee.PositionView.as_view(),
+        name="organization-committee-position",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/positions/<uuid:pk>/retire/",
+        committee.RetirePositionView.as_view(),
+        name="organization-committee-position-retire",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/positions/<uuid:pk>/holder/",
+        committee.PositionHolderView.as_view(),
+        name="organization-committee-position-holder",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/positions/<uuid:pk>/values/",
+        committee.PositionValuesView.as_view(),
+        name="organization-committee-position-values",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/fields/",
+        committee.CommitteeFieldsView.as_view(),
+        name="organization-committee-fields",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/fields/<uuid:pk>/",
+        committee.CommitteeFieldView.as_view(),
+        name="organization-committee-field",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/fields/<uuid:pk>/retire/",
+        committee.CommitteeFieldRetireView.as_view(),
+        name="organization-committee-field-retire",
+    ),
+    path(
+        "<uuid:organization_pk>/committee/fields/<uuid:pk>/restore/",
+        committee.CommitteeFieldRestoreView.as_view(),
+        name="organization-committee-field-restore",
     ),
     *router.urls,
 ]

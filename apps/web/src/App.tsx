@@ -29,6 +29,7 @@ import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
 import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
 import { AdminNominationsPage } from "@/pages/club/AdminNominationsPage"
 import { MembersPage } from "@/pages/club/MembersPage"
+import { CommitteePage } from "@/pages/club/CommitteePage"
 import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
 import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
@@ -113,6 +114,7 @@ function App() {
               <Route path="/club/invitations" element={<InvitationsInboxPage />} />
               <Route path="/club/admin-nominations" element={<AdminNominationsPage />} />
               <Route path="/club/members" element={<MembersPage />} />
+              <Route path="/club/committee" element={<CommitteePage />} />
               <Route path="/club/roles" element={<RolesPage />} />
               <Route path="/club/roles/new" element={<RoleEditPage />} />
               <Route path="/club/roles/:id" element={<RoleEditPage />} />

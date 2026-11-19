@@ -1343,6 +1343,552 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/:
+    get:
+      operationId: organizations_committee_retrieve
+      description: 'GET /organizations/{id}/committee/: the current committee, for
+        any member.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/candidates/:
+    get:
+      operationId: organizations_committee_candidates_list
+      description: Active members who can hold a position, for governance staff choosing
+        a holder.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Display name
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCandidateList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/:
+    get:
+      operationId: organizations_committee_fields_list
+      description: GET (every definition, retired ones too) and POST committee fields,
+        for governance staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_committee_fields_create
+      description: GET (every definition, retired ones too) and POST committee fields,
+        for governance staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitteeFieldRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/{id}/:
+    patch:
+      operationId: organizations_committee_fields_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCommitteeFieldRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/{id}/restore/:
+    post:
+      operationId: organizations_committee_fields_restore_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/{id}/retire/:
+    post:
+      operationId: organizations_committee_fields_retire_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/history/:
+    get:
+      operationId: organizations_committee_history_list
+      description: 'Past holders of every position, newest first, for any member:
+        display names and dates only.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPastHolderList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/:
+    post:
+      operationId: organizations_committee_positions_create
+      description: 'POST /committee/positions/: add a position at the end of the committee.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PositionInputRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/:
+    patch:
+      operationId: organizations_committee_positions_partial_update
+      description: 'PATCH /committee/positions/{id}/: rename, set the term or change
+        the granted role.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPositionInputRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/holder/:
+    put:
+      operationId: organizations_committee_positions_holder_update
+      description: |-
+        PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+        the current holder's time, as stepping down.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignHolderRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_committee_positions_holder_destroy
+      description: |-
+        PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+        the current holder's time, as stepping down.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/retire/:
+    post:
+      operationId: organizations_committee_positions_retire_create
+      description: 'POST /committee/positions/{id}/retire/: remove a position; its
+        holders stay in the history.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/values/:
+    patch:
+      operationId: organizations_committee_positions_values_partial_update
+      description: 'PATCH /committee/positions/{id}/values/: custom field values of
+        the position and its holder.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMemberFieldValuesRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/reorder/:
+    post:
+      operationId: organizations_committee_positions_reorder_create
+      description: 'POST /committee/positions/reorder/: every active position''s id,
+        in the order to show them.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/invitations/:
     get:
       operationId: organizations_invitations_list
@@ -5401,6 +5947,14 @@ components:
       description: |-
         * `open` - Open
         * `closed` - Closed
+    AppliesToEnum:
+      enum:
+      - position
+      - holder
+      type: string
+      description: |-
+        * `position` - Position
+        * `holder` - Holder
     AppointRequest:
       type: object
       properties:
@@ -5426,6 +5980,18 @@ components:
         * `pending` - Pending
         * `approved` - Approved
         * `rejected` - Rejected
+    AssignHolderRequest:
+      type: object
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+        started_on:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - membership_id
     AssignUmpireRequest:
       type: object
       description: '`user_id` null takes the match back from its umpire. `rubber_id`
@@ -5625,6 +6191,17 @@ components:
       - playing
       - since
       - suggested_match_id
+    Candidate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
     Change:
       type: object
       properties:
@@ -5704,6 +6281,102 @@ components:
       - rated_members
       - total_points
       - town
+    Committee:
+      type: object
+      properties:
+        can_manage:
+          type: boolean
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Position'
+      required:
+      - can_manage
+      - positions
+    CommitteeField:
+      type: object
+      description: A committee field definition. `applies_to` and the type are fixed
+        once created.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+        applies_to:
+          $ref: '#/components/schemas/AppliesToEnum'
+        retired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - applies_to
+      - id
+      - kind
+      - label
+      - options
+      - required
+      - retired_at
+      - visibility
+    CommitteeFieldEntry:
+      type: object
+      properties:
+        field:
+          allOf:
+          - $ref: '#/components/schemas/CommitteeField'
+          readOnly: true
+        value:
+          oneOf:
+          - type: string
+          - type: number
+          - type: boolean
+          nullable: true
+          readOnly: true
+      required:
+      - field
+      - value
+    CommitteeFieldRequest:
+      type: object
+      description: A committee field definition. `applies_to` and the type are fixed
+        once created.
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+        applies_to:
+          $ref: '#/components/schemas/AppliesToEnum'
+      required:
+      - kind
+      - label
     ConfirmRequest:
       type: object
       description: |-
@@ -6080,6 +6753,18 @@ components:
           minLength: 1
       required:
       - email
+    EndReasonEnum:
+      enum:
+      - replaced
+      - stepped_down
+      - left
+      - position_retired
+      type: string
+      description: |-
+        * `replaced` - Replaced
+        * `stepped_down` - Stepped Down
+        * `left` - Left
+        * `position_retired` - Position Retired
     EnginePhaseEnum:
       enum:
       - not_started
@@ -6686,6 +7371,31 @@ components:
       description: |-
         * `right` - Right
         * `left` - Left
+    Holder:
+      type: object
+      description: 'Who holds a position: display name only.'
+      properties:
+        id:
+          type: string
+          format: uuid
+        membership_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        started_on:
+          type: string
+          format: date
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommitteeFieldEntry'
+      required:
+      - display_name
+      - id
+      - membership_id
+      - started_on
+      - values
     Invitation:
       type: object
       description: Staff view of an invitation they sent.
@@ -8047,6 +8757,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AdminHandover'
+    PaginatedCandidateList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Candidate'
     PaginatedDirectoryPlayerList:
       type: object
       required:
@@ -8347,6 +9082,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Organization'
+    PaginatedPastHolderList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PastHolder'
     PaginatedPersonalMatchList:
       type: object
       required:
@@ -8414,6 +9174,55 @@ components:
       - password
       - token
       - uid
+    PastHolder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        position:
+          type: string
+        display_name:
+          type: string
+        started_on:
+          type: string
+          format: date
+        ended_on:
+          type: string
+          format: date
+        end_reason:
+          $ref: '#/components/schemas/EndReasonEnum'
+      required:
+      - display_name
+      - end_reason
+      - ended_on
+      - id
+      - position
+      - started_on
+    PatchedCommitteeFieldRequest:
+      type: object
+      description: A committee field definition. `applies_to` and the type are fixed
+        once created.
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+        applies_to:
+          $ref: '#/components/schemas/AppliesToEnum'
     PatchedEventRequest:
       type: object
       properties:
@@ -8553,6 +9362,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GameRequest'
+    PatchedPositionInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        grants_role:
+          type: string
+          format: uuid
+          nullable: true
     PatchedProfileRequest:
       type: object
       description: The owner's own view of their profile. `display_name` is written
@@ -8999,6 +9827,67 @@ components:
       description: |-
         * `men` - Men
         * `women` - Women
+    Position:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        order:
+          type: integer
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        grants_role:
+          allOf:
+          - $ref: '#/components/schemas/RoleRef'
+          nullable: true
+          description: Shown to governance staff only.
+        holder:
+          allOf:
+          - $ref: '#/components/schemas/Holder'
+          nullable: true
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommitteeFieldEntry'
+      required:
+      - grants_role
+      - holder
+      - id
+      - name
+      - order
+      - term_end
+      - term_start
+      - values
+    PositionInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        grants_role:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - name
     Problem:
       type: object
       properties:
@@ -9542,6 +10431,17 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    ReorderRequest:
+      type: object
+      properties:
+        positions:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 30
+      required:
+      - positions
     Reservation:
       type: object
       description: 'A match on a table: the table and the people held until its result
@@ -9819,6 +10719,17 @@ components:
         * `assistant_captain` - Assistant Captain
         * `committee` - Committee
         * `member` - Member
+    RoleRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     RoleRequest:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
