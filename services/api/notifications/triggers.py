@@ -125,3 +125,50 @@ def external_event_reviewed(event) -> None:
         link="/club/external-events",
         organization=event.submitted_by_org,
     )
+
+
+def activity_news(activity, what: str) -> None:
+    """Publishing, a change of time or place, and cancelling reach the activity's audience only."""
+    from organizations.models import Membership
+
+    if activity.audience == "selected":
+        audience = set(activity.invitees.values_list("pk", flat=True))
+    else:
+        audience = set(
+            Membership.objects.active()
+            .filter(organization=activity.organization)
+            .values_list("user_id", flat=True)
+        )
+    titles = {
+        "published": f"New: {activity.title}",
+        "changed": f"Changed: {activity.title}",
+        "cancelled": f"Cancelled: {activity.title}",
+    }
+    body = activity.cancel_reason if what == "cancelled" else activity.place
+    version = what if what != "changed" else f"changed:{activity.starts_at.isoformat()}:{activity.place}"
+    notify(
+        audience,
+        Category.ACTIVITY,
+        titles[what],
+        body=body,
+        subject=f"activity:{activity.id}",
+        version=version[:80],
+        link=f"/activities/{activity.organization_id}/{activity.id}",
+        organization=activity.organization,
+    )
+
+
+def booking_news(booking) -> None:
+    words = {"approved": "approved", "rejected": "not approved", "cancelled": "cancelled"}
+    if booking.status not in words:
+        return
+    notify(
+        [booking.requester_id],
+        Category.BOOKING,
+        f"Your booking at {booking.venue.name} is {words[booking.status]}",
+        body=booking.reason,
+        subject=f"booking:{booking.id}",
+        version=booking.status,
+        link="/profile/bookings",
+        organization=booking.venue.organization,
+    )

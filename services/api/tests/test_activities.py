@@ -235,3 +235,24 @@ def test_the_schedule_merges_activities_tournaments_and_training_in_order(office
     outsider = logged_in(make_user("e@example.com"))
     assert outsider.get(f"{ORGS}{club.id}/schedule/").status_code == 403
     assert outsider.get(f"{ORGS}{club.id}/schedule.ics").status_code == 403
+
+
+def test_the_audience_alone_hears_of_publish_changes_and_cancellation(officer, club, members):
+    from notifications.models import Notification
+
+    picked = create(officer, club, audience="selected", invitee_ids=[str(members["A"].id)])
+    assert not Notification.objects.exists()  # a draft tells nobody
+    officer.post(url(club, picked, "publish/"), {}, format="json")
+    officer.patch(url(club, picked), {"description": "Bring a jacket"}, format="json")  # not news
+    officer.patch(url(club, picked), {"place": "Fort Jesus gate"}, format="json")
+    officer.patch(url(club, picked), {"place": "Fort Jesus gate"}, format="json")  # same again
+    officer.post(url(club, picked, "cancel/"), {"reason": "Rain"}, format="json")
+    got = Notification.objects.filter(recipient=members["A"]).order_by("created_at")
+    assert [n.title for n in got] == ["New: Night out", "Changed: Night out", "Cancelled: Night out"]
+    assert [n.superseded for n in got] == [True, True, False]
+    assert got.last().body == "Rain"
+    assert not Notification.objects.exclude(recipient=members["A"]).exists()
+    # All-member activities reach every active member.
+    everyone = create(officer, club, title="Fun day")
+    officer.post(url(club, everyone, "publish/"), {}, format="json")
+    assert Notification.objects.filter(title="New: Fun day").count() == 6  # A-D, the officer, the admin

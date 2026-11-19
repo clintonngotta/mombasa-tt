@@ -118,7 +118,12 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
   - **Club schedule** at `/club/schedule`, members only. Visible activities, published tournaments and club training sessions in date order, upcoming or past, filtered by kind, with an `.ics` export.
 
   Notifications on publish, change and cancel come with TASK-073 and TASK-033.
-- [ ] **TASK-073** — Implement activity and club schedule mobile/web views, RSVP controls and publish/change/cancel notifications. Depends: TASK-072, TASK-033. REQ-039 / EVAL-039. Done: audience-only notifications and schedule screenshots recorded; cost notes never imply payment.
+- [x] **TASK-073** — Implement activity and club schedule mobile/web views, RSVP controls and publish/change/cancel notifications. Depends: TASK-072, TASK-033. REQ-039 / EVAL-039. Done: audience-only notifications and schedule screenshots recorded; cost notes never imply payment. Implemented 2026-11-19:
+  - **Screens** came with TASK-072: `/club/activities`, `/club/schedule` and the activity page with RSVP controls and attendees.
+  - **Notifications** reach the activity's audience only (all active members, or the invitees) when it is published, when its time or place changes (versioned, so a repeat edit says nothing), and when it is cancelled (with the reason). Each new one supersedes the last.
+  - Cost notes stay text and never show a paid status.
+
+  Schedule screenshots are still to take.
 - [x] **TASK-076** — Implement soda game challenges: create/accept (with or without matching stake)/counter-time/decline/withdraw, pledge records, two-player result confirmation and disputes, settled marking, organization disable switches, and the stake policy feature flag. Depends: TASK-013, TASK-031. REQ-040 / EVAL-040. Done: stake visibility, no-rating impact and dispute tests pass with the flag off and on. Implemented 2026-11-19 (`soda` app):
   - **Challenges.** A player challenges a club mate or a directory player (singles or doubles, a time or "next time we meet", place, best of, message, an optional pledge as an amount or a thing). The challenged player accepts with or without matching the stake, counters, or declines; the challenger may withdraw.
   - **Results.** Either player records the games, the other confirms or disputes, and a re-record clears a dispute. Only a confirmed result shows the outcome, and only a loser who pledged owes. The winner marks the pledge settled; nothing moves money.

@@ -215,7 +215,9 @@ The privacy matrix covers every route. Push and real-device evidence wait for TA
 - A public activity is visible to an outsider who still can't answer.
 - The schedule merges activities, a club session and a published tournament in order, filters by kind, exports a valid `.ics` without drafts, and is refused to non-members.
 
-The privacy matrix covers every new route. Notification records come with TASK-073.
+The privacy matrix covers every new route.
+
+*Notifications built in TASK-073 (2026-11-19).* A selected-members activity notifies only its invitee. Nobody hears of a draft, a description edit or a repeated change. Publishing, a place change and the cancellation each notify once, each superseding the last, and the cancellation carries its reason. An all-members activity reaches every active member.
 
 ### EVAL-040
 
