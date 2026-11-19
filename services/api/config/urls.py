@@ -47,6 +47,7 @@ api_v1 = [
     path("organizations/", include("organizations.urls")),
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
     path("organizations/<uuid:organization_pk>/", include("activities.urls")),
+    path("organizations/<uuid:organization_pk>/", include("finance.urls")),
     path("organizations/<uuid:organization_pk>/", include(soda_club_urls)),
     path("organizations/<uuid:organization_pk>/", include(notification_club_urls)),
     path("organizations/<uuid:organization_pk>/", include(event_club_urls)),

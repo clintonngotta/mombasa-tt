@@ -177,6 +177,11 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
               Door takings
             </AdminLink>
           )}
+          {seeFinances && (
+            <AdminLink to="/club/finance" icon={<Banknote aria-hidden className="size-5 text-brand-blue" />}>
+              Finances: charges, payments and balances
+            </AdminLink>
+          )}
           {(manageMembers || manageRoles) && (
             <AdminLink to="/club/members" icon={<Users aria-hidden className="size-5 text-brand-blue" />}>
               Members and their roles
@@ -207,6 +212,11 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
       <AdminLink to="/club/committee" icon={<Landmark aria-hidden className="size-5 text-brand-blue" />}>
         {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
       </AdminLink>
+      {!membership.managedOnly && (
+        <AdminLink to="/club/my-payments" icon={<Banknote aria-hidden className="size-5 text-brand-blue" />}>
+          My payments
+        </AdminLink>
+      )}
       {!membership.managedOnly && (
         <AdminLink to="/club/schedule" icon={<CalendarDays aria-hidden className="size-5 text-brand-blue" />}>
           Club schedule: activities, tournaments and training

@@ -49,6 +49,7 @@ from competitions.models import (
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
+from finance.models import Allocation, Charge, Payment
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
@@ -157,6 +158,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "notification-read-all": {"post": OWNER},
     "my-notification-preferences": {"get": OWNER, "put": OWNER},
     "organization-announcements": {"post": STAFF},
+    # The manual ledger (REQ-022): finance staff record and read; a member reads their own.
+    "organization-charges": {"get": STAFF, "post": STAFF},
+    "organization-charge-waive": {"post": STAFF},
+    "organization-payments": {"get": STAFF, "post": STAFF},
+    "organization-payment-allocate": {"post": STAFF},
+    "organization-payment-reverse": {"post": STAFF},
+    "organization-balances": {"get": STAFF},
+    "organization-my-finances": {"get": MEMBER},
     "soda-game-list": {"get": OWNER, "post": OWNER},
     "soda-game-detail": {"get": OWNER},
     "soda-game-accept": {"post": OWNER},
@@ -534,6 +543,24 @@ BODIES = {
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
     ("organization-soda-policy", "put"): {"games_enabled": True, "stakes_enabled": False},
     ("organization-announcements", "post"): {"title": "Hall closed", "audience": "members"},
+    ("organization-charges", "post"): lambda: {
+        "member_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
+        "purpose": "Kit fund",
+        "amount_minor": 5000,
+    },
+    ("organization-charge-waive", "post"): {"reason": "Honorary member"},
+    ("organization-payments", "post"): lambda: {
+        "payer_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
+        "amount_minor": 1000,
+        "method": "cash",
+        "received_on": "2026-11-19",
+        "request_key": str(uuid.uuid4()),
+    },
+    ("organization-payment-allocate", "post"): lambda: {
+        "charge_id": str(Charge.objects.get(purpose="Ball fund").id),
+        "amount_minor": 100,
+    },
+    ("organization-payment-reverse", "post"): {"reason": "Recorded twice"},
     ("my-notification-preferences", "put"): {"preferences": [{"category": "soda", "enabled": False}]},
     ("organization-external-events", "post"): {
         "name": "Kilifi Open",
@@ -802,6 +829,27 @@ class World:
             town="Nairobi",
             entry_info="MARK-EXTERNAL-PENDING",
         )
+        # Faith owes an event fee and the ball fund, and paid twice; one payment to reverse.
+        self.charge = Charge.objects.create(
+            organization=self.coast, member=self.faith, purpose="MARK-CHARGE", amount_minor=100000
+        )
+        Charge.objects.create(
+            organization=self.coast, member=self.faith, purpose="Ball fund", amount_minor=5000
+        )
+
+        def payment(reference):
+            return Payment.objects.create(
+                organization=self.coast,
+                payer=self.faith,
+                amount_minor=50000,
+                method="cash",
+                reference=reference,
+                received_on=timezone.localdate(),
+                request_key=uuid.uuid4(),
+            )
+
+        self.payment = payment("MARK-PAYMENT-REF")
+        self.payment_to_reverse = payment("Second")
         # An alert in Baraka's inbox.
         self.alert = Notification.objects.create(
             recipient=self.baraka, category="announcement", title="MARK-ALERT", subject="matrix:1"
@@ -1326,6 +1374,9 @@ class World:
             "organization-activity": self.activity.id,
             "soda-game-detail": self.soda.id,
             "notification-read": self.alert.id,
+            "organization-charge-waive": self.charge.id,
+            "organization-payment-allocate": self.payment.id,
+            "organization-payment-reverse": self.payment_to_reverse.id,
             "organization-external-event": self.external.id,
             "organization-external-event-live": self.external.id,
             "external-event-approve": self.external.id,
@@ -1479,6 +1530,11 @@ class World:
                 for r, t, a in Notification.objects.values_list("recipient_id", "title", "read_at")
             ),
             "alert_preferences": sorted(Preference.objects.values_list("user_id", "category")),
+            "charges": sorted((c.purpose, c.amount_minor, c.waived_at is None) for c in Charge.objects.all()),
+            "payments": sorted(
+                (p.reference, p.amount_minor, p.reversed_at is None) for p in Payment.objects.all()
+            ),
+            "allocations": Allocation.objects.count(),
             "soda_policies": sorted(
                 Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
             ),
@@ -1564,6 +1620,17 @@ def test_signed_out_callers_reach_only_public_routes(world):
 # The committee's template role also runs club activities.
 ALSO_STAFF = {
     "organization-facility-takings": {"grace"},
+    **{
+        name: {"grace"}
+        for name in [
+            "organization-charges",
+            "organization-charge-waive",
+            "organization-payments",
+            "organization-payment-allocate",
+            "organization-payment-reverse",
+            "organization-balances",
+        ]
+    },
     # ...and announcements, which include submitting external events.
     **{
         name: {"grace"}
@@ -1759,6 +1826,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
         "MARK-SODA-MESSAGE": {"baraka"},
         "MARK-ALERT": {"baraka"},
+        "MARK-CHARGE": {"amina", "faith", "grace"},  # the member and finance staff
+        "MARK-PAYMENT-REF": {"amina", "faith", "grace"},
         "MARK-EXTERNAL-PENDING": {
             "amina",
             "baraka",

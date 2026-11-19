@@ -2927,6 +2927,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/finance/balances/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every member's outstanding balance and unmatched credit, per currency. */
+        get: operations["organizations_finance_balances_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/charges/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_finance_charges_list"];
+        put?: never;
+        post: operations["organizations_finance_charges_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/charges/{id}/waive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_finance_charges_waive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/payments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_finance_payments_list"];
+        put?: never;
+        /** @description Record money received. Repeating a request (same request_key) returns the first record. */
+        post: operations["organizations_finance_payments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/payments/{id}/allocate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_finance_payments_allocate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/payments/{id}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_finance_payments_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/guest-claims/": {
         parameters: {
             query?: never;
@@ -3454,6 +3552,23 @@ export interface paths {
         get?: never;
         /** @description Replace a member's roles. Each role added or removed must be within the actor's authority. */
         put: operations["organizations_members_roles_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/my-finances/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What the signed-in member owes and paid the organization. Nobody else's records. */
+        get: operations["organizations_my_finances_retrieve"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -5803,6 +5918,11 @@ export interface components {
             /** Format: uuid */
             tournament?: string | null;
         };
+        AllocateRequest: {
+            /** Format: uuid */
+            charge_id: string;
+            amount_minor: number;
+        };
         /**
          * @description * `members` - members
          *     * `event` - event
@@ -6022,6 +6142,14 @@ export interface components {
             recipient_name?: string;
             prize?: string;
             presenter?: string;
+        };
+        Balance: {
+            /** Format: uuid */
+            member_id: string;
+            member_name: string;
+            currency: string;
+            owed_minor: number;
+            credit_minor: number;
         };
         /**
          * @description * `3` - 3
@@ -6250,6 +6378,46 @@ export interface components {
             after: components["schemas"]["Place"];
             /** @description Its players and umpire are told. */
             notify: boolean;
+        };
+        Charge: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            member_id: string;
+            readonly member_name: string;
+            kind: components["schemas"]["ChargeKindEnum"];
+            purpose: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            due_on: string | null;
+            readonly paid_minor: number;
+            readonly outstanding_minor: number;
+            readonly status: string;
+            readonly waive_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `event_fee` - Event fee
+         *     * `booking` - Booking
+         *     * `due` - Due
+         *     * `visit` - Facility visit
+         *     * `other` - Other
+         * @enum {string}
+         */
+        ChargeKindEnum: "event_fee" | "booking" | "due" | "visit" | "other";
+        ChargeRequest: {
+            /** Format: uuid */
+            member_id: string;
+            kind?: components["schemas"]["ChargeKindEnum"];
+            purpose: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            due_on?: string | null;
         };
         Checked: {
             conflicts: components["schemas"]["Problem"][];
@@ -7111,6 +7279,9 @@ export interface components {
             readonly passes: components["schemas"]["Pass"][];
             readonly bookable_tables: components["schemas"]["Table"][];
         };
+        FinanceReasonRequest: {
+            reason: string;
+        };
         /**
          * @description * `W` - W
          *     * `L` - L
@@ -7836,14 +8007,6 @@ export interface components {
          * @enum {string}
          */
         MembershipStatusEnum: "active" | "left";
-        /**
-         * @description * `cash` - Cash
-         *     * `mpesa` - M-Pesa
-         *     * `other` - Other
-         *     * `pass` - Covered by a pass
-         * @enum {string}
-         */
-        MethodEnum: "cash" | "mpesa" | "other" | "pass";
         MinutesRequest: {
             minutes: string;
         };
@@ -7897,6 +8060,11 @@ export interface components {
             readonly mine: boolean;
             readonly event: components["schemas"]["EntryEvent"];
             readonly tournament: components["schemas"]["EntryTournament"];
+        };
+        MyFinances: {
+            charges: components["schemas"]["Charge"][];
+            payments: components["schemas"]["Payment"][];
+            balances: components["schemas"]["Balance"][];
         };
         /** @description An invitation to the signed-in player: who they were entered as, and where. */
         MyGuestInvitation: {
@@ -8005,7 +8173,7 @@ export interface components {
             readonly benefits: string[];
             readonly amount_minor: number;
             readonly currency: string;
-            readonly method: components["schemas"]["MethodEnum"];
+            readonly method: components["schemas"]["VisitMethodEnum"];
             /** Format: date */
             readonly visited_on: string;
             /** Format: date */
@@ -9171,6 +9339,52 @@ export interface components {
             depth: components["schemas"]["DepthEnum"];
             note?: string;
         };
+        Payment: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            payer_id: string;
+            readonly payer_name: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            readonly allocated_minor: number;
+            readonly credit_minor: number;
+            readonly reversed: boolean;
+            readonly reversal_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `cash` - Cash
+         *     * `mpesa` - M-Pesa
+         *     * `bank` - Bank transfer
+         *     * `other` - Other
+         * @enum {string}
+         */
+        PaymentMethodEnum: "cash" | "mpesa" | "bank" | "other";
+        PaymentRequest: {
+            /** Format: uuid */
+            payer_id: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            /**
+             * Format: uuid
+             * @description A new id per payment recorded; sending it again records nothing new.
+             */
+            request_key: string;
+        };
         /**
          * @description * `day` - Day
          *     * `week` - Week
@@ -9733,7 +9947,7 @@ export interface components {
             /** Format: uuid */
             player_id?: string | null;
             walk_in_name?: string;
-            method: components["schemas"]["MethodEnum"];
+            method: components["schemas"]["VisitMethodEnum"];
             reference?: string;
         };
         RefusedEvent: {
@@ -10623,7 +10837,7 @@ export interface components {
             currency: string;
             amount_minor: number;
             visits: number;
-            method: components["schemas"]["MethodEnum"];
+            method: components["schemas"]["VisitMethodEnum"];
         };
         TakingsPass: {
             currency: string;
@@ -10998,7 +11212,7 @@ export interface components {
             readonly walk_in_name: string;
             readonly amount_minor: number;
             readonly currency: string;
-            readonly method: components["schemas"]["MethodEnum"];
+            readonly method: components["schemas"]["VisitMethodEnum"];
             readonly reference: string;
             /** Format: date */
             readonly visited_on: string;
@@ -11012,6 +11226,14 @@ export interface components {
             readonly reversed_at: string | null;
             readonly reversal_reason: string;
         };
+        /**
+         * @description * `cash` - Cash
+         *     * `mpesa` - M-Pesa
+         *     * `other` - Other
+         *     * `pass` - Covered by a pass
+         * @enum {string}
+         */
+        VisitMethodEnum: "cash" | "mpesa" | "other" | "pass";
         /**
          * @description * `left` - left
          *     * `center` - center
@@ -17712,6 +17934,280 @@ export interface operations {
             };
         };
     };
+    organizations_finance_balances_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Balance"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_charges_list: {
+        parameters: {
+            query?: {
+                /** @description Only this member's */
+                member?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Charge"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_charges_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChargeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Charge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_charges_waive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Charge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_allocate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllocateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_guest_claims_list: {
         parameters: {
             query?: {
@@ -18884,6 +19380,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Member"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_my_finances_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyFinances"];
                 };
             };
             /** @description Error envelope */
