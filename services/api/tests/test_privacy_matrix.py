@@ -14,6 +14,7 @@ One named world, then every route of the API is exercised against it:
 
 import importlib
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from django.apps import apps
@@ -34,17 +35,24 @@ from competitions.models import (
     OfficialResult,
     Resolution,
     Rubber,
+    ScheduleSession,
+    ScheduleVersion,
     Tournament,
 )
 from facilities.models import Table, Venue
 from matchlog.models import PersonalMatch
 from organizations.models import (
+    AdminHandover,
+    CommitteeField,
+    CommitteeFieldValue,
+    CommitteePosition,
     Invitation,
     JoinRequest,
     MemberField,
     MemberFieldValue,
     Membership,
     Organization,
+    PositionHolder,
     Role,
     seed_roles,
 )
@@ -131,6 +139,28 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-invitation-revoke": {"post": STAFF},
     "organization-roles": {"get": STAFF, "post": STAFF},
     "organization-role": {"patch": STAFF, "delete": STAFF},
+    # REQ-045: members see who the admin is; only the admin nominates or cancels; the nominee answers.
+    "organization-admin": {"get": MEMBER},
+    "organization-admin-nominate": {"post": STAFF},
+    "organization-admin-cancel": {"post": STAFF},
+    "organization-admin-appoint": {"post": APPROVER},  # platform super admins only, see test_admin_handover
+    "me-admin-nomination-list": {"get": OWNER},
+    "me-admin-nomination-accept": {"post": OWNER},
+    "me-admin-nomination-decline": {"post": OWNER},
+    # REQ-045 committees: members see the committee and its history; governance staff change it.
+    "organization-committee": {"get": MEMBER},
+    "organization-committee-history": {"get": MEMBER},
+    "organization-committee-candidates": {"get": STAFF},
+    "organization-committee-positions": {"post": STAFF},
+    "organization-committee-positions-reorder": {"post": STAFF},
+    "organization-committee-position": {"patch": STAFF},
+    "organization-committee-position-retire": {"post": STAFF},
+    "organization-committee-position-holder": {"put": STAFF, "delete": STAFF},
+    "organization-committee-position-values": {"patch": STAFF},
+    "organization-committee-fields": {"get": STAFF, "post": STAFF},
+    "organization-committee-field": {"patch": STAFF},
+    "organization-committee-field-retire": {"post": STAFF},
+    "organization-committee-field-restore": {"post": STAFF},
     "organization-members": {"get": STAFF},
     "organization-member-roles": {"put": STAFF},
     "organization-member-remove": {"post": STAFF},
@@ -152,6 +182,12 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-schedule": {"get": STAFF, "put": STAFF},
     "tournament-schedule-recommend": {"post": STAFF},
     "tournament-schedule-check": {"post": STAFF},
+    "tournament-schedule-publish": {"post": STAFF},
+    "tournament-schedule-delay": {"post": STAFF},
+    "tournament-schedule-versions": {"get": STAFF},
+    "tournament-schedule-version": {"get": STAFF},
+    "tournament-schedule-sessions": {"get": STAFF, "post": STAFF},
+    "tournament-schedule-session": {"patch": STAFF, "delete": STAFF},
     # Lists only the drafts the caller may approve; see test_authority.
     "tournament-awaiting-approval": {"get": SIGNED_IN},
     "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
@@ -224,6 +260,7 @@ ACCESS: dict[str, dict[str, str]] = {
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
+FAITH_MEMBERSHIP = "00000000-0000-4000-8000-0000000000fa"  # Faith, for the admin nomination bodies
 # Entries with known ids, so a result can name its winner.
 ENTERED_WINNER = "00000000-0000-4000-8000-0000000000b1"
 CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
@@ -232,11 +269,36 @@ CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 BODIES = {
     ("tournament-schedule", "put"): {"slots": []},
     ("tournament-schedule-check", "post"): {"slots": []},
+    ("tournament-schedule-delay", "post"): {"table_id": SPARE_TABLE, "minutes": 20, "reason": "late_start"},
+    ("tournament-schedule-sessions", "post"): {
+        "day": "2026-12-05",
+        "starts": "09:00",
+        "ends": "13:00",
+        "table_ids": [SPARE_TABLE],
+    },
+    ("tournament-schedule-session", "patch"): {"name": "Morning"},
     ("organization-detail", "patch"): {"country": "KE", "region": "Mombasa", "town": "Mombasa"},
     ("organization-invitations", "post"): {"email": "newcomer@example.com"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
     ("organization-member-roles", "put"): {"roles": []},
+    ("organization-admin-nominate", "post"): {"membership_id": FAITH_MEMBERSHIP},
+    ("organization-admin-appoint", "post"): {"membership_id": FAITH_MEMBERSHIP, "reason": "Test"},
+    ("organization-committee-positions", "post"): {"name": "Youth officer"},
+    # Every active position, read when the call is made (the create above adds one).
+    ("organization-committee-positions-reorder", "post"): lambda: {
+        "positions": [
+            str(pk)
+            for pk in CommitteePosition.objects.filter(
+                organization__name="Coast Spinners", retired_at__isnull=True
+            ).values_list("id", flat=True)
+        ]
+    },
+    ("organization-committee-position", "patch"): {"name": "Renamed seat"},
+    ("organization-committee-position-holder", "put"): {"membership_id": FAITH_MEMBERSHIP},
+    ("organization-committee-position-values", "patch"): {"values": {}},
+    ("organization-committee-fields", "post"): {"label": "Term notes", "kind": "text"},
+    ("organization-committee-field", "patch"): {"label": "Renamed committee field"},
     ("personal-match-detail", "patch"): {"label": "Changed"},
     ("me-membership-fields", "patch"): {"values": {}},
     ("organization-member-fields", "patch"): {"values": {}},
@@ -351,7 +413,12 @@ class World:
             self.coast.roles.get(key=RoleKey.COMMITTEE)
         )
         Membership.objects.create(organization=self.coast, user=self.hamisi, status=Membership.Status.LEFT)
-        self.faith_membership = Membership.objects.create(organization=self.coast, user=self.faith)
+        self.faith_membership = Membership.objects.create(
+            id=FAITH_MEMBERSHIP, organization=self.coast, user=self.faith
+        )
+        self.nomination = AdminHandover.objects.create(
+            organization=self.coast, from_user=self.amina, to_user=self.baraka, created_by=self.amina
+        )
         self.custom_role = Role.objects.create(organization=self.coast, name="Tea committee")
 
         # Baraka is not in the directory: nothing of his profile is for anyone else.
@@ -419,6 +486,38 @@ class World:
             plan=self.club_plan, kind=PlanItem.Kind.CHECKLIST, title="MARK-CLUB-ITEM"
         )
         self.spare_club_plan = TrainingPlan.objects.create(organization=self.coast, title="Spare club plan")
+        # The committee (REQ-045): Faith holds a seat that grants a staff-only role; Grace held it before.
+        # One committee field members see and one for governance staff, each with a value on the seat.
+        self.position = CommitteePosition.objects.create(
+            organization=self.coast, name="MARK-POSITION", grants_role=self.custom_role
+        )
+        self.vacant_position = CommitteePosition.objects.create(
+            organization=self.coast, name="Vacant seat", order=1
+        )
+        self.retiring_position = CommitteePosition.objects.create(
+            organization=self.coast, name="Retiring seat", order=2
+        )
+        grace_membership = Membership.objects.get(organization=self.coast, user=self.grace)
+        PositionHolder.objects.create(
+            position=self.position,
+            membership=grace_membership,
+            started_on="2025-01-01",
+            ended_on="2025-12-31",
+            ended_at=timezone.now(),
+            end_reason=PositionHolder.EndReason.REPLACED,
+        )
+        PositionHolder.objects.create(
+            position=self.position, membership=self.faith_membership, started_on="2026-01-01"
+        )
+        for label, visibility in (("MARK-CFIELD-MEMBER", "member"), ("MARK-CFIELD-STAFF", "staff")):
+            made = CommitteeField.objects.create(
+                organization=self.coast, label=label, kind="text", visibility=visibility
+            )
+            CommitteeFieldValue.objects.create(
+                field=made, position=self.position, value=label.replace("CFIELD", "CVALUE")
+            )
+        self.committee_field = made
+
         # A venue with a table in use and one switched off; a second venue switched off.
         self.venue = Venue.objects.create(organization=self.coast, name="Makadara Hall", town="Mombasa")
         self.table = Table.objects.create(venue=self.venue, label="Table 1")
@@ -548,6 +647,16 @@ class World:
         first = next(e for e in (self.decided.entry_a, self.decided.entry_b) if str(e.id) != CORRECTED_WINNER)
         drawing.record_result(self.decided, first, outcome="walkover")
         self.question_cup, self.in_question = under_way("Question Cup", ("q1", "q2"))
+        # A day schedule with a session, a published version and a working plan still to publish.
+        self.planned_cup, planned = under_way("Planned Cup", ("s1", "s2"))
+        Match.objects.filter(pk=planned.pk).update(
+            draft_table=self.spare_table, draft_at=datetime(2026, 12, 5, 7, 0, tzinfo=UTC)
+        )
+        self.session = ScheduleSession.objects.create(
+            tournament=self.planned_cup, day="2026-12-05", starts="09:00", ends="21:00"
+        )
+        self.session.tables.add(self.spare_table)
+        ScheduleVersion.objects.create(tournament=self.planned_cup, number=1, kind="published")
         self.resolution = Resolution.objects.create(
             event=self.question_cup.event,
             match=self.in_question,
@@ -586,6 +695,8 @@ class World:
             "attachment-link": self.baraka_avatar.id,
             "attachment-content": self.baraka_avatar.id,
             "personal-match-detail": self.match.id,
+            "me-admin-nomination-accept": self.nomination.id,
+            "me-admin-nomination-decline": self.nomination.id,
             "me-invitation-accept": self.invitation.id,
             "me-invitation-decline": self.invitation.id,
             "me-membership-leave": self.baraka_membership.id,
@@ -602,6 +713,13 @@ class World:
             # Faith's, because the staff checks remove Baraka before they reach this route.
             "organization-member-fields": self.faith_membership.id,
             "organization-member-field": self.staff_field.id,
+            "organization-committee-position": self.position.id,
+            "organization-committee-position-values": self.position.id,
+            "organization-committee-position-holder": self.vacant_position.id,
+            "organization-committee-position-retire": self.retiring_position.id,
+            "organization-committee-field": self.committee_field.id,
+            "organization-committee-field-retire": self.committee_field.id,
+            "organization-committee-field-restore": self.committee_field.id,
             "organization-member-field-retire": self.staff_field.id,
             "organization-member-field-restore": self.staff_field.id,
             "organization-join-request-approve": self.join_request.id,
@@ -651,6 +769,7 @@ class World:
             "organization-detail": self.coast.id,
             "player-detail": self.baraka.id,
             "player-ratings": self.baraka.id,
+            "tournament-schedule-session": self.session.id,
         }
         found = {}
         if "code" in names:
@@ -664,6 +783,11 @@ class World:
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
+        if name.startswith("tournament-schedule"):
+            found["tournament_pk"] = self.planned_cup.id
+            if "number" in names:
+                found["number"] = 1
+            return found
         whole = ("tournament-tables", "tournament-reservations")
         if name.startswith(("tournament-scoring", "tournament-dispatch")) or name in whole:
             found["tournament_pk"] = self.scored_cup.id
@@ -708,6 +832,7 @@ class World:
             "member_roles": sorted(Membership.roles.through.objects.values_list("membership_id", "role_id")),
             "roles": sorted(Role.objects.values_list("organization__name", "name", "permissions")),
             "invitations": sorted(Invitation.objects.values_list("email", "status")),
+            "admin_handovers": sorted(AdminHandover.objects.values_list("to_user__email", "status")),
             "join_requests": sorted(JoinRequest.objects.values_list("user__email", "status")),
             "matches": sorted(PersonalMatch.objects.values_list("id", "label", "notes")),
             "avatars": sorted(PlayerProfile.objects.values_list("user__email", "avatar_id")),
@@ -715,6 +840,14 @@ class World:
                 MemberField.objects.values_list("label", "visibility", "required", "retired_at")
             ),
             "member_field_values": sorted(MemberFieldValue.objects.values_list("field__label", "value")),
+            "committee_positions": sorted(
+                CommitteePosition.objects.values_list("name", "order", "retired_at", "grants_role")
+            ),
+            "committee_holders": sorted(
+                PositionHolder.objects.values_list("position__name", "membership_id", "ended_at")
+            ),
+            "committee_fields": sorted(CommitteeField.objects.values_list("label", "retired_at")),
+            "committee_values": sorted(CommitteeFieldValue.objects.values_list("field__label", "value")),
             "venues": sorted(Venue.objects.values_list("name", "town", "active")),
             "equipment": sorted(Equipment.objects.values_list("user__email", "blade")),
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
@@ -739,6 +872,9 @@ class World:
             "lineups": Lineup.objects.count(),
             "rubbers": Rubber.objects.count(),
             "draws": sorted(DrawVersion.objects.values_list("event__name", "version", "status", "rng_seed")),
+            "plans": sorted(Match.objects.values_list("id", "draft_at", "scheduled_at")),
+            "schedule_versions": ScheduleVersion.objects.count(),
+            "sessions": sorted(ScheduleSession.objects.values_list("id", "name")),
         }
 
 
@@ -748,7 +884,8 @@ def world(db):
 
 
 def call(client, method: str, name: str, url: str):
-    return getattr(client, method)(url, BODIES.get((name, method), {}), format="json")
+    body = BODIES.get((name, method), {})
+    return getattr(client, method)(url, body() if callable(body) else body, format="json")
 
 
 def test_every_route_has_a_decision_about_who_may_call_it():
@@ -945,7 +1082,13 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         # shows the crawl really reads the pages where a leak would appear.
         "MARK-FAITH-STYLE": set(world.viewers),
         str(world.faith_avatar.id): set(world.viewers),
-        "Tea committee": {"amina"},  # role names are for staff
+        "Tea committee": {"amina"},  # role names are for staff, also as what a committee seat grants
+        # The committee and its history are for members; staff-only committee fields for governance staff.
+        "MARK-POSITION": {"amina", "baraka", "faith", "grace"},
+        "MARK-CFIELD-MEMBER": {"amina", "baraka", "faith", "grace"},
+        "MARK-CVALUE-MEMBER": {"amina", "baraka", "faith", "grace"},
+        "MARK-CFIELD-STAFF": {"amina"},
+        "MARK-CVALUE-STAFF": {"amina"},
         # Custom member fields: members see the member-visible definition and their own value under it;
         # staff-only and retired definitions are for staff; a retired value is served to nobody.
         "MARK-FIELD-MEMBER": {"amina", "baraka", "faith", "grace"},
@@ -1008,6 +1151,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "scope",
         "approval_status",
         "registration_fee",
+        "schedule_notice_minutes",
         "status",
         "published_at",
         "started_at",

@@ -405,6 +405,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/admin-nominations/:
+    get:
+      operationId: me_admin_nominations_list
+      description: Open nominations naming the signed-in player as an organization's
+        next admin.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAdminHandoverList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/admin-nominations/{id}/accept/:
+    post:
+      operationId: me_admin_nominations_accept_create
+      description: Open nominations naming the signed-in player as an organization's
+        next admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this admin handover.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/admin-nominations/{id}/decline/:
+    post:
+      operationId: me_admin_nominations_decline_create
+      description: Open nominations naming the signed-in player as an organization's
+        next admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this admin handover.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/avatar/:
     put:
       operationId: me_avatar_update
@@ -1780,6 +1875,674 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/:
+    get:
+      operationId: organizations_admin_retrieve
+      description: 'GET /organizations/{id}/admin/: any member sees who the admin
+        is.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAdmin'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/appoint/:
+    post:
+      operationId: organizations_admin_appoint_create
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/cancel/:
+    post:
+      operationId: organizations_admin_cancel_create
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/nominate/:
+    post:
+      operationId: organizations_admin_nominate_create
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NominateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/:
+    get:
+      operationId: organizations_committee_retrieve
+      description: 'GET /organizations/{id}/committee/: the current committee, for
+        any member.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/candidates/:
+    get:
+      operationId: organizations_committee_candidates_list
+      description: Active members who can hold a position, for governance staff choosing
+        a holder.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Display name
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCandidateList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/:
+    get:
+      operationId: organizations_committee_fields_list
+      description: GET (every definition, retired ones too) and POST committee fields,
+        for governance staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_committee_fields_create
+      description: GET (every definition, retired ones too) and POST committee fields,
+        for governance staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitteeFieldRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/{id}/:
+    patch:
+      operationId: organizations_committee_fields_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCommitteeFieldRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/{id}/restore/:
+    post:
+      operationId: organizations_committee_fields_restore_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/fields/{id}/retire/:
+    post:
+      operationId: organizations_committee_fields_retire_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitteeField'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/history/:
+    get:
+      operationId: organizations_committee_history_list
+      description: 'Past holders of every position, newest first, for any member:
+        display names and dates only.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPastHolderList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/:
+    post:
+      operationId: organizations_committee_positions_create
+      description: 'POST /committee/positions/: add a position at the end of the committee.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PositionInputRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/:
+    patch:
+      operationId: organizations_committee_positions_partial_update
+      description: 'PATCH /committee/positions/{id}/: rename, set the term or change
+        the granted role.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPositionInputRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/holder/:
+    put:
+      operationId: organizations_committee_positions_holder_update
+      description: |-
+        PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+        the current holder's time, as stepping down.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignHolderRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_committee_positions_holder_destroy
+      description: |-
+        PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+        the current holder's time, as stepping down.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/retire/:
+    post:
+      operationId: organizations_committee_positions_retire_create
+      description: 'POST /committee/positions/{id}/retire/: remove a position; its
+        holders stay in the history.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/{id}/values/:
+    patch:
+      operationId: organizations_committee_positions_values_partial_update
+      description: 'PATCH /committee/positions/{id}/values/: custom field values of
+        the position and its holder.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMemberFieldValuesRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/committee/positions/reorder/:
+    post:
+      operationId: organizations_committee_positions_reorder_create
+      description: 'POST /committee/positions/reorder/: every active position''s id,
+        in the order to show them.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committee'
           description: ''
         4XX:
           description: Error envelope
@@ -5693,8 +6456,9 @@ paths:
     put:
       operationId: tournaments_schedule_update
       description: |-
-        Keep these tables and starts. Refused with `schedule_conflicts` and the list of conflicts
-        when a table, a player or a match's order wouldn't work; warnings don't stop it.
+        Keep these tables and starts in the working plan; nobody else sees them until the schedule
+        is published. Refused with `schedule_conflicts` and the list of conflicts when a table, a
+        player or a match's order wouldn't work; warnings don't stop it.
       parameters:
       - in: path
         name: tournament_pk
@@ -5760,6 +6524,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/delay/:
+    post:
+      operationId: tournaments_schedule_delay_create
+      description: |-
+        A table starts late or goes out of service: its published matches still to play move on by
+        the minutes given, and so does everything that then clashes with them. Published at once, as
+        a version of its own, with the same notices as publishing.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableDelayRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delayed'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/publish/:
+    post:
+      operationId: tournaments_schedule_publish_create
+      description: |-
+        Publish the working plan as the next version. Players and umpires of matches that move
+        table, or move by more than the notice threshold, are told; nobody else. Refused with
+        `schedule_conflicts` while the plan has conflicts, and `nothing_to_publish` without changes.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishNoteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleVersion'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/schedule/recommend/:
     post:
       operationId: tournaments_schedule_recommend_create
@@ -5789,6 +6626,201 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Recommendation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/sessions/:
+    get:
+      operationId: tournaments_schedule_sessions_list
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: tournaments_schedule_sessions_create
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/sessions/{id}/:
+    patch:
+      operationId: tournaments_schedule_sessions_partial_update
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSessionRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_schedule_sessions_destroy
+      description: The day's sessions, for the host's competition staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/versions/:
+    get:
+      operationId: tournaments_schedule_versions_list
+      description: Every published version, latest first.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduleVersionSummary'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/versions/{number}/:
+    get:
+      operationId: tournaments_schedule_versions_retrieve
+      description: 'One version: every match as published then, and what changed from
+        the one before.'
+      parameters:
+      - in: path
+        name: number
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleVersion'
           description: ''
         4XX:
           description: Error envelope
@@ -6037,6 +7069,77 @@ components:
           nullable: true
       required:
       - phase
+    AdminHandover:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          $ref: '#/components/schemas/OrganizationRef'
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/AdminHandoverKindEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AdminHandoverStatusEnum'
+          readOnly: true
+          default: pending
+        from_user:
+          allOf:
+          - $ref: '#/components/schemas/Person'
+          nullable: true
+        to_user:
+          $ref: '#/components/schemas/Person'
+        created_by:
+          allOf:
+          - $ref: '#/components/schemas/Person'
+          nullable: true
+        reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - decided_at
+      - from_user
+      - id
+      - kind
+      - organization
+      - reason
+      - status
+      - to_user
+    AdminHandoverKindEnum:
+      enum:
+      - nomination
+      - appointment
+      type: string
+      description: |-
+        * `nomination` - Nomination
+        * `appointment` - Appointment
+    AdminHandoverStatusEnum:
+      enum:
+      - pending
+      - accepted
+      - declined
+      - cancelled
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `accepted` - Accepted
+        * `declined` - Declined
+        * `cancelled` - Cancelled
     AdmissionEnum:
       enum:
       - open
@@ -6045,6 +7148,27 @@ components:
       description: |-
         * `open` - Open
         * `closed` - Closed
+    AppliesToEnum:
+      enum:
+      - position
+      - holder
+      type: string
+      description: |-
+        * `position` - Position
+        * `holder` - Holder
+    AppointRequest:
+      type: object
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - membership_id
+      - reason
     ApprovalStatusEnum:
       enum:
       - not_requested
@@ -6057,6 +7181,18 @@ components:
         * `pending` - Pending
         * `approved` - Approved
         * `rejected` - Rejected
+    AssignHolderRequest:
+      type: object
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+        started_on:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - membership_id
     AssignUmpireRequest:
       type: object
       description: '`user_id` null takes the match back from its umpire. `rubber_id`
@@ -6256,6 +7392,17 @@ components:
       - playing
       - since
       - suggested_match_id
+    Candidate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
     CategoryEnum:
       enum:
       - serve
@@ -6282,6 +7429,30 @@ components:
         * `warm_up` - Warm Up
         * `off_table` - Off Table
         * `cool_down` - Cool Down
+    Change:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        title:
+          type: string
+        before:
+          $ref: '#/components/schemas/Place'
+        after:
+          $ref: '#/components/schemas/Place'
+        notify:
+          type: boolean
+          description: Its players and umpire are told.
+      required:
+      - after
+      - before
+      - label
+      - match_id
+      - notify
+      - title
     Checked:
       type: object
       properties:
@@ -6337,6 +7508,102 @@ components:
       - rated_members
       - total_points
       - town
+    Committee:
+      type: object
+      properties:
+        can_manage:
+          type: boolean
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Position'
+      required:
+      - can_manage
+      - positions
+    CommitteeField:
+      type: object
+      description: A committee field definition. `applies_to` and the type are fixed
+        once created.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+        applies_to:
+          $ref: '#/components/schemas/AppliesToEnum'
+        retired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - applies_to
+      - id
+      - kind
+      - label
+      - options
+      - required
+      - retired_at
+      - visibility
+    CommitteeFieldEntry:
+      type: object
+      properties:
+        field:
+          allOf:
+          - $ref: '#/components/schemas/CommitteeField'
+          readOnly: true
+        value:
+          oneOf:
+          - type: string
+          - type: number
+          - type: boolean
+          nullable: true
+          readOnly: true
+      required:
+      - field
+      - value
+    CommitteeFieldRequest:
+      type: object
+      description: A committee field definition. `applies_to` and the type are fixed
+        once created.
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+        applies_to:
+          $ref: '#/components/schemas/AppliesToEnum'
+      required:
+      - kind
+      - label
     ConfirmRequest:
       type: object
       description: |-
@@ -6467,6 +7734,34 @@ components:
       required:
       - players
       - title
+    DelayReasonEnum:
+      enum:
+      - late_start
+      - out_of_service
+      - other
+      type: string
+      description: |-
+        * `late_start` - Late start
+        * `out_of_service` - Table out of service
+        * `other` - Other
+    Delayed:
+      type: object
+      properties:
+        version:
+          $ref: '#/components/schemas/ScheduleVersion'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+          description: What the published schedule still has wrong.
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+      required:
+      - conflicts
+      - version
+      - warnings
     DepthEnum:
       enum:
       - short
@@ -6872,6 +8167,18 @@ components:
           minLength: 1
       required:
       - email
+    EndReasonEnum:
+      enum:
+      - replaced
+      - stepped_down
+      - left
+      - position_retired
+      type: string
+      description: |-
+        * `replaced` - Replaced
+        * `stepped_down` - Stepped Down
+        * `left` - Left
+        * `position_retired` - Position Retired
     EnginePhaseEnum:
       enum:
       - not_started
@@ -7529,6 +8836,31 @@ components:
       description: |-
         * `you` - you
         * `partner` - partner
+    Holder:
+      type: object
+      description: 'Who holds a position: display name only.'
+      properties:
+        id:
+          type: string
+          format: uuid
+        membership_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        started_on:
+          type: string
+          format: date
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommitteeFieldEntry'
+      required:
+      - display_name
+      - id
+      - membership_id
+      - started_on
+      - values
     Invitation:
       type: object
       description: Staff view of an invitation they sent.
@@ -8589,6 +9921,14 @@ components:
       - table
       - tournament_id
       - tournament_name
+    NominateRequest:
+      type: object
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+      required:
+      - membership_id
     NullEnum:
       enum:
       - null
@@ -8765,6 +10105,39 @@ components:
       - region
       - timezone
       - town
+    OrganizationAdmin:
+      type: object
+      description: Who the admin is and any open nomination; the history only for
+        those who manage roles.
+      properties:
+        admin:
+          allOf:
+          - $ref: '#/components/schemas/Person'
+          nullable: true
+        pending:
+          allOf:
+          - $ref: '#/components/schemas/AdminHandover'
+          nullable: true
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminHandover'
+          nullable: true
+      required:
+      - admin
+      - history
+      - pending
+    OrganizationRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     OrganizationRequest:
       type: object
       properties:
@@ -8824,6 +10197,56 @@ components:
       description: |-
         * `check_in` - check_in
         * `rest` - rest
+    PaginatedAdminHandoverList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminHandover'
+    PaginatedCandidateList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Candidate'
     PaginatedDirectoryPlayerList:
       type: object
       required:
@@ -9174,6 +10597,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Organization'
+    PaginatedPastHolderList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PastHolder'
     PaginatedPersonalMatchList:
       type: object
       required:
@@ -9266,6 +10714,55 @@ components:
       - password
       - token
       - uid
+    PastHolder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        position:
+          type: string
+        display_name:
+          type: string
+        started_on:
+          type: string
+          format: date
+        ended_on:
+          type: string
+          format: date
+        end_reason:
+          $ref: '#/components/schemas/EndReasonEnum'
+      required:
+      - display_name
+      - end_reason
+      - ended_on
+      - id
+      - position
+      - started_on
+    PatchedCommitteeFieldRequest:
+      type: object
+      description: A committee field definition. `applies_to` and the type are fixed
+        once created.
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/MemberFieldKindEnum'
+        options:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 30
+        required:
+          type: boolean
+        visibility:
+          $ref: '#/components/schemas/MemberFieldVisibilityEnum'
+        applies_to:
+          $ref: '#/components/schemas/AppliesToEnum'
     PatchedDrillRequest:
       type: object
       description: A drill. Instructions are required; everything else is optional.
@@ -9495,6 +10992,25 @@ components:
           items:
             $ref: '#/components/schemas/ActivityRequest'
           maxItems: 20
+    PatchedPositionInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        grants_role:
+          type: string
+          format: uuid
+          nullable: true
     PatchedProfileRequest:
       type: object
       description: The owner's own view of their profile. `display_name` is written
@@ -9552,6 +11068,33 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PermissionEnum'
+    PatchedSessionRequest:
+      type: object
+      description: A block of one day's play. No events means every event.
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        day:
+          type: string
+          format: date
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: At least one.
+        event_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
     PatchedTableRequest:
       type: object
       properties:
@@ -9593,6 +11136,12 @@ components:
           $ref: '#/components/schemas/TournamentScopeEnum'
         registration_fee:
           $ref: '#/components/schemas/RegistrationFeeRequest'
+        schedule_notice_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
     PatchedTrainingPlanRequest:
       type: object
       properties:
@@ -9704,6 +11253,7 @@ components:
       - training.manage
       - welfare.manage
       - activities.manage
+      - governance.manage
       type: string
       description: |-
         * `members.manage` - Invite members, decide join requests and remove members
@@ -9718,6 +11268,7 @@ components:
         * `training.manage` - Plan training sessions and coaching groups
         * `welfare.manage` - Run welfare projects
         * `activities.manage` - Plan club activities such as nights out
+        * `governance.manage` - Set the committee, nominate representatives and run meetings
     PermissionInfo:
       type: object
       properties:
@@ -9728,6 +11279,17 @@ components:
       required:
       - code
       - label
+    Person:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
     PersonalMatch:
       type: object
       properties:
@@ -9838,6 +11400,20 @@ components:
         * `off_table` - Off the table
         * `match_play` - Match play
         * `cool_down` - Cool-down
+    Place:
+      type: object
+      properties:
+        table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - scheduled_at
+      - table
     Placement:
       type: object
       properties:
@@ -10075,6 +11651,67 @@ components:
       description: |-
         * `men` - Men
         * `women` - Women
+    Position:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        order:
+          type: integer
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        grants_role:
+          allOf:
+          - $ref: '#/components/schemas/RoleRef'
+          nullable: true
+          description: Shown to governance staff only.
+        holder:
+          allOf:
+          - $ref: '#/components/schemas/Holder'
+          nullable: true
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommitteeFieldEntry'
+      required:
+      - grants_role
+      - holder
+      - id
+      - name
+      - order
+      - term_end
+      - term_start
+      - values
+    PositionInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        grants_role:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - name
     Problem:
       type: object
       properties:
@@ -10184,6 +11821,12 @@ components:
         * `on_table` - on_table
         * `being_scored` - being_scored
         * `not_started` - not_started
+    PublishNoteRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 300
     PublishedDetailsEnum:
       enum:
       - hand
@@ -10533,6 +12176,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecommendedSlot'
+          description: A match no session can hold has neither table nor start.
         conflicts:
           type: array
           items:
@@ -10621,6 +12265,17 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    ReorderRequest:
+      type: object
+      properties:
+        positions:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 30
+      required:
+      - positions
     Reservation:
       type: object
       description: 'A match on a table: the table and the people held until its result
@@ -10898,6 +12553,17 @@ components:
         * `assistant_captain` - Assistant Captain
         * `committee` - Committee
         * `member` - Member
+    RoleRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     RoleRequest:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
@@ -11011,6 +12677,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ScheduleTable'
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
         rows:
           type: array
           items:
@@ -11023,9 +12693,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Problem'
+        published_version:
+          type: integer
+          nullable: true
+          description: The latest version's number.
+        notice_minutes:
+          type: integer
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
       required:
       - conflicts
+      - notice_minutes
+      - published_version
       - rows
+      - sessions
       - tables
       - warnings
     ScheduleRow:
@@ -11052,19 +12733,37 @@ components:
           type: string
           format: uuid
           nullable: true
+          description: In the working plan.
         scheduled_at:
           type: string
           format: date-time
           nullable: true
+          description: In the working plan.
+        published_table_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: As everybody sees it.
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: As everybody sees it.
+        unpublished:
+          type: boolean
+          description: The working plan differs from what is published.
       required:
       - event
       - event_id
       - label
       - match_id
       - minutes
+      - published_at
+      - published_table_id
       - scheduled_at
       - table_id
       - title
+      - unpublished
     ScheduleTable:
       type: object
       properties:
@@ -11076,6 +12775,150 @@ components:
       required:
       - id
       - label
+    ScheduleVersion:
+      type: object
+      properties:
+        number:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleVersionKindEnum'
+          readOnly: true
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/DelayReasonEnum'
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        delayed_table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          readOnly: true
+          nullable: true
+        delay_minutes:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_by_name:
+          type: string
+          readOnly: true
+          default: ''
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+        change_count:
+          type: integer
+          readOnly: true
+        notify_count:
+          type: integer
+          description: Matches whose people are told.
+          readOnly: true
+        notified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        notified_count:
+          type: integer
+          readOnly: true
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Change'
+          readOnly: true
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionSlot'
+          readOnly: true
+      required:
+      - change_count
+      - changes
+      - delay_minutes
+      - delayed_table
+      - kind
+      - note
+      - notified_at
+      - notified_count
+      - notify_count
+      - number
+      - published_at
+      - published_by_name
+      - reason
+      - slots
+    ScheduleVersionKindEnum:
+      enum:
+      - published
+      - delay
+      type: string
+      description: |-
+        * `published` - Published
+        * `delay` - Delay
+    ScheduleVersionSummary:
+      type: object
+      properties:
+        number:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleVersionKindEnum'
+          readOnly: true
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/DelayReasonEnum'
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        delayed_table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          readOnly: true
+          nullable: true
+        delay_minutes:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_by_name:
+          type: string
+          readOnly: true
+          default: ''
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+        change_count:
+          type: integer
+          readOnly: true
+        notify_count:
+          type: integer
+          description: Matches whose people are told.
+          readOnly: true
+        notified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        notified_count:
+          type: integer
+          readOnly: true
+      required:
+      - change_count
+      - delay_minutes
+      - delayed_table
+      - kind
+      - note
+      - notified_at
+      - notified_count
+      - notify_count
+      - number
+      - published_at
+      - published_by_name
+      - reason
     ScoreConflict:
       type: object
       description: A device's unaccepted events beside what the server holds at the
@@ -11389,6 +13232,77 @@ components:
       - event
       - id
       - sequence
+    Session:
+      type: object
+      description: A block of one day's play. No events means every event.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        day:
+          type: string
+          format: date
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: At least one.
+        event_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - day
+      - ends
+      - event_ids
+      - id
+      - name
+      - starts
+      - table_ids
+    SessionRequest:
+      type: object
+      description: A block of one day's play. No events means every event.
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        day:
+          type: string
+          format: date
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: At least one.
+        event_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - day
+      - ends
+      - starts
+      - table_ids
     SheetContext:
       type: object
       description: Which match a sheet is for, as the organizers' scoring page shows
@@ -11696,6 +13610,25 @@ components:
       - id
       - label
       - position
+    TableDelayRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 300
+        table_id:
+          type: string
+          format: uuid
+        minutes:
+          type: integer
+          maximum: 480
+          minimum: 1
+        reason:
+          $ref: '#/components/schemas/DelayReasonEnum'
+      required:
+      - minutes
+      - reason
+      - table_id
     TableRequest:
       type: object
       properties:
@@ -11859,6 +13792,12 @@ components:
           readOnly: true
         registration_fee:
           $ref: '#/components/schemas/RegistrationFee'
+        schedule_notice_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
         status:
           allOf:
           - $ref: '#/components/schemas/TournamentStatusEnum'
@@ -11904,6 +13843,7 @@ components:
       - organization
       - published_at
       - registration_fee
+      - schedule_notice_minutes
       - scope
       - started_at
       - starts_on
@@ -11942,6 +13882,12 @@ components:
           $ref: '#/components/schemas/TournamentScopeEnum'
         registration_fee:
           $ref: '#/components/schemas/RegistrationFeeRequest'
+        schedule_notice_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+          description: A published match moved by more than this, or to another table,
+            is news for its people.
       required:
       - ends_on
       - name
@@ -12206,6 +14152,30 @@ components:
       - id
       - name
       - town
+    VersionSlot:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        title:
+          type: string
+        table:
+          allOf:
+          - $ref: '#/components/schemas/ScheduleTable'
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - label
+      - match_id
+      - scheduled_at
+      - table
+      - title
     XEnum:
       enum:
       - left

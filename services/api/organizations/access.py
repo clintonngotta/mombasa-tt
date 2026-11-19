@@ -17,13 +17,28 @@ from .models import Membership, OfficialAppointment, Organization, Role
 from .permissions import ALL_PERMISSIONS, RoleKey
 
 
+def position_roles(membership: Membership) -> list[Role]:
+    """Roles granted by the committee positions the membership currently holds (REQ-045). Admin is never
+    granted this way: the organization has one admin, changed only by handover."""
+    return list(
+        Role.objects.filter(
+            organization=membership.organization_id,
+            committee_positions__retired_at__isnull=True,
+            committee_positions__holders__membership=membership,
+            committee_positions__holders__ended_at__isnull=True,
+        )
+        .exclude(key=RoleKey.ADMIN)
+        .distinct()
+    )
+
+
 def membership_permissions(membership: Membership) -> frozenset[str]:
-    """Effective permissions of an active membership: its roles plus the organization's Member role.
-    Uses prefetched `roles` and `organization.roles` when present."""
+    """Effective permissions of an active membership: its roles, the roles its committee positions grant,
+    and the organization's Member role. Uses prefetched `roles` and `organization.roles` when present."""
     if membership.status != Membership.Status.ACTIVE:
         return frozenset()
     member_role = [role for role in membership.organization.roles.all() if role.is_member]
-    return roles_permissions([*membership.roles.all(), *member_role])
+    return roles_permissions([*membership.roles.all(), *member_role, *position_roles(membership)])
 
 
 def effective_permissions(user, organization: Organization) -> frozenset[str]:
@@ -100,7 +115,7 @@ def ensure_admin_remains(organization: Organization, losing: Membership) -> None
     if losing.roles.filter(key=RoleKey.ADMIN).exists() and not others.exists():
         raise ApiException(
             "last_admin",
-            "An organization needs at least one admin. Make someone else an admin first.",
+            "An organization needs its admin. Nominate a successor, who accepts, before leaving.",
             409,
         )
 

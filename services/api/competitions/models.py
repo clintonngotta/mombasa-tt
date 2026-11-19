@@ -71,6 +71,9 @@ class Tournament(models.Model):
     )
     # The organizers let ready matches go to free tables by themselves, in queue order (REQ-014).
     auto_dispatch = models.BooleanField(default=False)
+    # A published match moved by more than this many minutes, or to another table, is news for its
+    # players and umpire (REQ-043).
+    schedule_notice_minutes = models.PositiveSmallIntegerField(default=15)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -426,6 +429,10 @@ class Match(models.Model):
     planned_table = models.ForeignKey(
         Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
+    # The organizers' working plan (TASK-081): edited freely, and copied into `planned_table` and
+    # `scheduled_at`, which everybody else sees, only when they publish the schedule.
+    draft_table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    draft_at = models.DateTimeField(null=True, blank=True)
     # When it was sent to its table; empty while it isn't on one (REQ-014).
     dispatched_at = models.DateTimeField(null=True, blank=True)
     # When both its sides became known: how long it has waited orders the ready queue (REQ-014).
@@ -607,3 +614,73 @@ class Resolution(models.Model):
 
     def __str__(self):
         return f"Resolution for side {self.side} of {self.match_id}"
+
+
+class ScheduleSession(models.Model):
+    """A block of one day's play (REQ-043): its hours, the tables in use and the events it is for. No
+    events chosen means every event. The recommended schedule fills sessions, earliest first."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="schedule_sessions")
+    name = models.CharField(max_length=80, blank=True)
+    day = models.DateField()
+    starts = models.TimeField()
+    ends = models.TimeField()
+    tables = models.ManyToManyField(Table, related_name="+")
+    events = models.ManyToManyField(Event, blank=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["day", "starts", "created_at", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(ends__gt=models.F("starts")), name="session_ends_after_start"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.day} {self.starts}-{self.ends}"
+
+
+class ScheduleVersion(models.Model):
+    """One publication of the day schedule (REQ-043): every planned match as it stood, and what changed
+    from the version before. Versions are never edited; a later change is a later version."""
+
+    class Kind(models.TextChoices):
+        PUBLISHED = "published"  # the organizers published their plan
+        DELAY = "delay"  # a table started late or went out of service
+
+    class Reason(models.TextChoices):
+        LATE_START = "late_start", "Late start"
+        OUT_OF_SERVICE = "out_of_service", "Table out of service"
+        OTHER = "other", "Other"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="schedule_versions")
+    number = models.PositiveIntegerField()
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    reason = models.CharField(max_length=14, choices=Reason.choices, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+    delayed_table = models.ForeignKey(
+        Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    delay_minutes = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Every match still to play as published: match id, label, title, table id and label, start.
+    slots = models.JSONField(default=list)
+    # The matches whose table or start changed: before and after, and whether its people are told.
+    changes = models.JSONField(default=list)
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    published_at = models.DateTimeField(auto_now_add=True)
+    notified_at = models.DateTimeField(null=True, blank=True)
+    notified_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-number"]
+        constraints = [
+            models.UniqueConstraint(fields=["tournament", "number"], name="one_schedule_version_number")
+        ]
+
+    def __str__(self):
+        return f"{self.tournament_id} v{self.number}"

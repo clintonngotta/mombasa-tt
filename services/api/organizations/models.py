@@ -237,6 +237,49 @@ class Invitation(models.Model):
         return self.status == self.Status.PENDING and self.expires_at > timezone.now()
 
 
+class AdminHandover(models.Model):
+    """Who is an organization's one admin, and how that changed (REQ-045). The admin nominates a member,
+    who must accept; a platform super admin can appoint one directly with a reason. Every row is kept."""
+
+    class Kind(models.TextChoices):
+        NOMINATION = "nomination"
+        APPOINTMENT = "appointment"
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        ACCEPTED = "accepted"
+        DECLINED = "declined"
+        CANCELLED = "cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="admin_handovers")
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.NOMINATION)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    reason = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization"],
+                condition=models.Q(status="pending"),
+                name="org_one_pending_admin_handover",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.organization_id}: {self.from_user_id} -> {self.to_user_id} ({self.status})"
+
+
 class MemberField(models.Model):
     """A custom detail an organization keeps about its members (REQ-005), e.g. a membership number or
     shirt size. Member-visible fields are shown to, and filled in by, the member they describe; staff-only
@@ -300,3 +343,151 @@ class MemberFieldValue(models.Model):
 
     def __str__(self):
         return f"{self.field_id} for {self.membership_id}"
+
+
+class CommitteeField(models.Model):
+    """A custom detail an organization keeps about its committee (REQ-045): per position (e.g. the
+    portfolio it covers) or per holder (e.g. the date they were elected). Member-visible fields are shown
+    to every member with the committee; staff-only ones only to holders of governance.manage. Retired,
+    never deleted, so recorded values survive."""
+
+    class AppliesTo(models.TextChoices):
+        POSITION = "position"
+        HOLDER = "holder"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="committee_fields")
+    label = models.CharField(max_length=80)
+    kind = models.CharField(max_length=10, choices=MemberField.Kind.choices)
+    options = ArrayField(models.CharField(max_length=60), default=list, blank=True)  # CHOICE only
+    required = models.BooleanField(default=False)
+    visibility = models.CharField(
+        max_length=10, choices=MemberField.Visibility.choices, default=MemberField.Visibility.STAFF
+    )
+    applies_to = models.CharField(max_length=10, choices=AppliesTo.choices, default=AppliesTo.POSITION)
+    created_at = models.DateTimeField(auto_now_add=True)
+    retired_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "label"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("label"),
+                "organization",
+                condition=models.Q(retired_at__isnull=True),
+                name="org_committee_field_label_unique",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.label} ({self.organization_id})"
+
+
+class CommitteePosition(models.Model):
+    """A seat on an organization's committee (REQ-045), such as chair or treasurer, held by at most one
+    active member at a time. Holding it may grant a role, so the treasurer gets the finance permission
+    while they hold the seat. Retired positions keep their history."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="committee_positions"
+    )
+    name = models.CharField(max_length=80)
+    order = models.PositiveIntegerField(default=0)
+    term_start = models.DateField(null=True, blank=True)
+    term_end = models.DateField(null=True, blank=True)
+    grants_role = models.ForeignKey(
+        Role, on_delete=models.SET_NULL, null=True, blank=True, related_name="committee_positions"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    retired_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "organization",
+                condition=models.Q(retired_at__isnull=True),
+                name="org_committee_position_name_unique",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.organization_id})"
+
+
+class PositionHolder(models.Model):
+    """Someone's time in a committee position. The current holder has no `ended_at`; past holders stay
+    as the committee history."""
+
+    class EndReason(models.TextChoices):
+        REPLACED = "replaced"
+        STEPPED_DOWN = "stepped_down"
+        LEFT = "left"  # they left the organization
+        POSITION_RETIRED = "position_retired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    position = models.ForeignKey(CommitteePosition, on_delete=models.CASCADE, related_name="holders")
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="committee_holdings")
+    started_on = models.DateField()
+    ended_on = models.DateField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    end_reason = models.CharField(max_length=20, choices=EndReason.choices, blank=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-started_on", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["position"],
+                condition=models.Q(ended_at__isnull=True),
+                name="committee_position_one_holder",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.membership_id} as {self.position_id}"
+
+
+class CommitteeFieldValue(models.Model):
+    """A value for one committee field: on a position, or on one holder's time in it."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    field = models.ForeignKey(CommitteeField, on_delete=models.CASCADE, related_name="values")
+    position = models.ForeignKey(
+        CommitteePosition, on_delete=models.CASCADE, null=True, blank=True, related_name="field_values"
+    )
+    holder = models.ForeignKey(
+        PositionHolder, on_delete=models.CASCADE, null=True, blank=True, related_name="field_values"
+    )
+    value = models.JSONField()
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(position__isnull=False, holder__isnull=True)
+                | models.Q(position__isnull=True, holder__isnull=False),
+                name="committee_value_one_owner",
+            ),
+            models.UniqueConstraint(
+                fields=["field", "position"],
+                condition=models.Q(position__isnull=False),
+                name="committee_value_position_unique",
+            ),
+            models.UniqueConstraint(
+                fields=["field", "holder"],
+                condition=models.Q(holder__isnull=False),
+                name="committee_value_holder_unique",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.field_id} for {self.position_id or self.holder_id}"

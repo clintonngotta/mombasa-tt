@@ -11,6 +11,8 @@ export type Membership = Schemas["Membership"] & { authority?: Management["autho
 export type JoinRequest = Schemas["JoinRequest"]
 export type Invitation = Schemas["Invitation"]
 export type MyInvitation = Schemas["MyInvitation"]
+export type AdminHandover = Schemas["AdminHandover"]
+export type OrganizationAdmin = Schemas["OrganizationAdmin"]
 export type MyJoinRequest = Schemas["MyJoinRequest"]
 export type JoinDecision = "approve" | "reject"
 // The timezone is left to the server default (Africa/Nairobi) when registering.
@@ -25,6 +27,12 @@ export type MemberFieldInput = Schemas["PatchedMemberFieldRequest"]
 export type MemberFieldEntry = Schemas["MemberFieldEntry"]
 export type FieldValue = MemberFieldEntry["value"]
 export type FieldValues = Record<string, FieldValue>
+export type Committee = Schemas["Committee"]
+export type CommitteePosition = Schemas["Position"]
+export type CommitteeField = Schemas["CommitteeField"]
+export type CommitteeFieldInput = Schemas["PatchedCommitteeFieldRequest"]
+export type PositionInput = Schemas["PatchedPositionInputRequest"]
+export type PastHolder = Schemas["PastHolder"]
 
 /** Whether the membership's effective permissions include any of `perms` (REQ-005). The server checks
  * every request; this only decides which actions the app offers. */
@@ -60,6 +68,8 @@ export const clubKeys = {
   management: ["clubs", "management"] as const,
   myInvitations: ["clubs", "my-invitations"] as const,
   myJoinRequests: ["clubs", "my-join-requests"] as const,
+  myAdminNominations: ["clubs", "my-admin-nominations"] as const,
+  admin: (orgId: string) => ["clubs", orgId, "admin"] as const,
   joinRequests: (orgId: string) => ["clubs", orgId, "join-requests"] as const,
   invitations: (orgId: string) => ["clubs", orgId, "invitations"] as const,
   roles: (orgId: string) => ["clubs", orgId, "roles"] as const,
@@ -69,6 +79,10 @@ export const clubKeys = {
   memberFields: (orgId: string) => ["clubs", orgId, "member-fields"] as const,
   /** Staff view of one member's custom field values. */
   memberValues: (orgId: string, membershipId: string) => ["clubs", orgId, "member-values", membershipId] as const,
+  committee: (orgId: string) => ["clubs", orgId, "committee"] as const,
+  committeeHistory: (orgId: string) => ["clubs", orgId, "committee", "history"] as const,
+  committeeFields: (orgId: string) => ["clubs", orgId, "committee", "fields"] as const,
+  committeeCandidates: (orgId: string, term: string) => ["clubs", orgId, "committee", "candidates", term] as const,
   /** The player's own member-visible values. */
   myFieldValues: (membershipId: string) => ["clubs", "my-fields", membershipId] as const,
 }
@@ -90,6 +104,15 @@ export const declineInvitation = (id: string) => api<MyInvitation>(`/me/invitati
 export const createOrganization = (input: OrganizationInput) => api<Organization>("/organizations/", { body: input })
 export const updateOrganizationLocation = (id: string, input: Schemas["PatchedOrganizationLocationRequest"]) =>
   api<Organization>(`/organizations/${id}/`, { method: "PATCH", body: input })
+
+// One admin per organization, handed over by nomination (REQ-045).
+export const getOrganizationAdmin = (orgId: string) => api<OrganizationAdmin>(`${orgPath(orgId)}/admin/`)
+export const nominateAdmin = (orgId: string, membershipId: string) =>
+  api<AdminHandover>(`${orgPath(orgId)}/admin/nominate/`, { body: { membership_id: membershipId } })
+export const cancelAdminNomination = (orgId: string) => api<AdminHandover>(`${orgPath(orgId)}/admin/cancel/`, { body: {} })
+export const listMyAdminNominations = () => api<Schemas["PaginatedAdminHandoverList"]>("/me/admin-nominations/")
+export const answerAdminNomination = (id: string, accept: boolean) =>
+  api<AdminHandover>(`/me/admin-nominations/${id}/${accept ? "accept" : "decline"}/`, { body: {} })
 
 export const listJoinRequests = (orgId: string) => api<Schemas["PaginatedJoinRequestList"]>(`${orgPath(orgId)}/join-requests/`)
 export const decideJoinRequest = (orgId: string, id: string, outcome: JoinDecision) =>
@@ -133,6 +156,36 @@ export const saveMemberValues = (orgId: string, membershipId: string, values: Fi
 export const getMyFieldValues = (membershipId: string) => api<MemberFieldEntry[]>(`/me/memberships/${membershipId}/fields/`)
 export const saveMyFieldValues = (membershipId: string, values: FieldValues) =>
   api<MemberFieldEntry[]>(`/me/memberships/${membershipId}/fields/`, { method: "PATCH", body: { values } })
+
+// Committees (REQ-045). Every member reads the committee and its history; governance staff change it, and
+// each change answers with the whole committee.
+const committeePath = (orgId: string) => `${orgPath(orgId)}/committee`
+export const getCommittee = (orgId: string) => api<Committee>(`${committeePath(orgId)}/`)
+export const listCommitteeHistory = (orgId: string) => api<Schemas["PaginatedPastHolderList"]>(`${committeePath(orgId)}/history/?page_size=50`)
+export const listCommitteeCandidates = (orgId: string, term: string) =>
+  api<Schemas["PaginatedCandidateList"]>(`${committeePath(orgId)}/candidates/?search=${encodeURIComponent(term)}`)
+export const createPosition = (orgId: string, body: Schemas["PositionInputRequest"]) =>
+  api<Committee>(`${committeePath(orgId)}/positions/`, { body })
+export const updatePosition = (orgId: string, id: string, body: PositionInput) =>
+  api<Committee>(`${committeePath(orgId)}/positions/${id}/`, { method: "PATCH", body })
+export const reorderPositions = (orgId: string, positions: string[]) =>
+  api<Committee>(`${committeePath(orgId)}/positions/reorder/`, { body: { positions } })
+export const retirePosition = (orgId: string, id: string) => api<Committee>(`${committeePath(orgId)}/positions/${id}/retire/`, { body: {} })
+export const assignHolder = (orgId: string, id: string, membershipId: string, startedOn?: string) =>
+  api<Committee>(`${committeePath(orgId)}/positions/${id}/holder/`, {
+    method: "PUT",
+    body: { membership_id: membershipId, ...(startedOn ? { started_on: startedOn } : {}) },
+  })
+export const endHolder = (orgId: string, id: string) => api<Committee>(`${committeePath(orgId)}/positions/${id}/holder/`, { method: "DELETE" })
+export const savePositionValues = (orgId: string, id: string, values: FieldValues) =>
+  api<Committee>(`${committeePath(orgId)}/positions/${id}/values/`, { method: "PATCH", body: { values } })
+export const listCommitteeFields = (orgId: string) => api<CommitteeField[]>(`${committeePath(orgId)}/fields/`)
+export const createCommitteeField = (orgId: string, body: Schemas["CommitteeFieldRequest"]) =>
+  api<CommitteeField>(`${committeePath(orgId)}/fields/`, { body })
+export const updateCommitteeField = (orgId: string, id: string, body: CommitteeFieldInput) =>
+  api<CommitteeField>(`${committeePath(orgId)}/fields/${id}/`, { method: "PATCH", body })
+export const setCommitteeFieldRetired = (orgId: string, id: string, retired: boolean) =>
+  api<CommitteeField>(`${committeePath(orgId)}/fields/${id}/${retired ? "retire" : "restore"}/`, { body: {} })
 
 /**
  * The signed-in player's active memberships. Disabled for signed-out visitors, and `results` is empty

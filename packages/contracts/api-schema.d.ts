@@ -278,6 +278,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/admin-nominations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        get: operations["me_admin_nominations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/admin-nominations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        post: operations["me_admin_nominations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/admin-nominations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        post: operations["me_admin_nominations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/avatar/": {
         parameters: {
             query?: never;
@@ -803,6 +854,297 @@ export interface paths {
         put?: never;
         /** @description Search, view and register organizations (REQ-004). */
         post: operations["organizations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/admin/: any member sees who the admin is. */
+        get: operations["organizations_admin_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/appoint/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_appoint_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/nominate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_nominate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/committee/: the current committee, for any member. */
+        get: operations["organizations_committee_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/candidates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Active members who can hold a position, for governance staff choosing a holder. */
+        get: operations["organizations_committee_candidates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET (every definition, retired ones too) and POST committee fields, for governance staff. */
+        get: operations["organizations_committee_fields_list"];
+        put?: never;
+        /** @description GET (every definition, retired ones too) and POST committee fields, for governance staff. */
+        post: operations["organizations_committee_fields_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["organizations_committee_fields_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_committee_fields_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_committee_fields_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Past holders of every position, newest first, for any member: display names and dates only. */
+        get: operations["organizations_committee_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/: add a position at the end of the committee. */
+        post: operations["organizations_committee_positions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description PATCH /committee/positions/{id}/: rename, set the term or change the granted role. */
+        patch: operations["organizations_committee_positions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/holder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+         *     the current holder's time, as stepping down.
+         */
+        put: operations["organizations_committee_positions_holder_update"];
+        post?: never;
+        /**
+         * @description PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+         *     the current holder's time, as stepping down.
+         */
+        delete: operations["organizations_committee_positions_holder_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/{id}/retire/: remove a position; its holders stay in the history. */
+        post: operations["organizations_committee_positions_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/values/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description PATCH /committee/positions/{id}/values/: custom field values of the position and its holder. */
+        patch: operations["organizations_committee_positions_values_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/reorder/: every active position's id, in the order to show them. */
+        post: operations["organizations_committee_positions_reorder_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2480,8 +2822,9 @@ export interface paths {
          */
         get: operations["tournaments_schedule_retrieve"];
         /**
-         * @description Keep these tables and starts. Refused with `schedule_conflicts` and the list of conflicts
-         *     when a table, a player or a match's order wouldn't work; warnings don't stop it.
+         * @description Keep these tables and starts in the working plan; nobody else sees them until the schedule
+         *     is published. Refused with `schedule_conflicts` and the list of conflicts when a table, a
+         *     player or a match's order wouldn't work; warnings don't stop it.
          */
         put: operations["tournaments_schedule_update"];
         post?: never;
@@ -2508,6 +2851,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/schedule/delay/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description A table starts late or goes out of service: its published matches still to play move on by
+         *     the minutes given, and so does everything that then clashes with them. Published at once, as
+         *     a version of its own, with the same notices as publishing.
+         */
+        post: operations["tournaments_schedule_delay_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Publish the working plan as the next version. Players and umpires of matches that move
+         *     table, or move by more than the notice threshold, are told; nobody else. Refused with
+         *     `schedule_conflicts` while the plan has conflicts, and `nothing_to_publish` without changes.
+         */
+        post: operations["tournaments_schedule_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/schedule/recommend/": {
         parameters: {
             query?: never;
@@ -2523,6 +2908,76 @@ export interface paths {
          *     and keep it with PUT.
          */
         post: operations["tournaments_schedule_recommend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The day's sessions, for the host's competition staff. */
+        get: operations["tournaments_schedule_sessions_list"];
+        put?: never;
+        /** @description The day's sessions, for the host's competition staff. */
+        post: operations["tournaments_schedule_sessions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/sessions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description The day's sessions, for the host's competition staff. */
+        delete: operations["tournaments_schedule_sessions_destroy"];
+        options?: never;
+        head?: never;
+        /** @description The day's sessions, for the host's competition staff. */
+        patch: operations["tournaments_schedule_sessions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/versions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every published version, latest first. */
+        get: operations["tournaments_schedule_versions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/versions/{number}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One version: every match as published then, and what changed from the one before. */
+        get: operations["tournaments_schedule_versions_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2658,12 +3113,53 @@ export interface components {
             /** Format: uuid */
             drill?: string | null;
         };
+        AdminHandover: {
+            /** Format: uuid */
+            readonly id: string;
+            organization: components["schemas"]["OrganizationRef"];
+            readonly kind: components["schemas"]["AdminHandoverKindEnum"];
+            /** @default pending */
+            readonly status: components["schemas"]["AdminHandoverStatusEnum"];
+            from_user: components["schemas"]["Person"] | null;
+            to_user: components["schemas"]["Person"];
+            created_by: components["schemas"]["Person"] | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+        };
+        /**
+         * @description * `nomination` - Nomination
+         *     * `appointment` - Appointment
+         * @enum {string}
+         */
+        AdminHandoverKindEnum: "nomination" | "appointment";
+        /**
+         * @description * `pending` - Pending
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        AdminHandoverStatusEnum: "pending" | "accepted" | "declined" | "cancelled";
         /**
          * @description * `open` - Open
          *     * `closed` - Closed
          * @enum {string}
          */
         AdmissionEnum: "open" | "closed";
+        /**
+         * @description * `position` - Position
+         *     * `holder` - Holder
+         * @enum {string}
+         */
+        AppliesToEnum: "position" | "holder";
+        AppointRequest: {
+            /** Format: uuid */
+            membership_id: string;
+            reason: string;
+        };
         /**
          * @description * `not_requested` - Not requested
          *     * `pending` - Pending
@@ -2672,6 +3168,12 @@ export interface components {
          * @enum {string}
          */
         ApprovalStatusEnum: "not_requested" | "pending" | "approved" | "rejected";
+        AssignHolderRequest: {
+            /** Format: uuid */
+            membership_id: string;
+            /** Format: date */
+            started_on?: string | null;
+        };
         /** @description `user_id` null takes the match back from its umpire. `rubber_id` names the rubber of a tie. */
         AssignUmpireRequest: {
             /** Format: uuid */
@@ -2778,6 +3280,11 @@ export interface components {
             /** @description Why a free table has no match. */
             idle_reason: string;
         };
+        Candidate: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
         /**
          * @description * `serve` - Serve
          *     * `receive` - Receive
@@ -2793,6 +3300,16 @@ export interface components {
          * @enum {string}
          */
         CategoryEnum: "serve" | "receive" | "footwork" | "topspin" | "block" | "short_game" | "multiball" | "match_play" | "warm_up" | "off_table" | "cool_down";
+        Change: {
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            title: string;
+            before: components["schemas"]["Place"];
+            after: components["schemas"]["Place"];
+            /** @description Its players and umpire are told. */
+            notify: boolean;
+        };
         Checked: {
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
@@ -2815,6 +3332,36 @@ export interface components {
              */
             total_points: number;
             rated_members: number;
+        };
+        Committee: {
+            can_manage: boolean;
+            positions: components["schemas"]["Position"][];
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        CommitteeField: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options: string[];
+            required: boolean;
+            visibility: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to: components["schemas"]["AppliesToEnum"];
+            /** Format: date-time */
+            readonly retired_at: string | null;
+        };
+        CommitteeFieldEntry: {
+            readonly field: components["schemas"]["CommitteeField"];
+            readonly value: (string | number | boolean) | null;
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        CommitteeFieldRequest: {
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to?: components["schemas"]["AppliesToEnum"];
         };
         /**
          * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
@@ -2873,6 +3420,19 @@ export interface components {
         DeckSide: {
             title: string;
             players: components["schemas"]["DeckPlayer"][];
+        };
+        /**
+         * @description * `late_start` - Late start
+         *     * `out_of_service` - Table out of service
+         *     * `other` - Other
+         * @enum {string}
+         */
+        DelayReasonEnum: "late_start" | "out_of_service" | "other";
+        Delayed: {
+            version: components["schemas"]["ScheduleVersion"];
+            /** @description What the published schedule still has wrong. */
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
         };
         /**
          * @description * `short` - short
@@ -3020,6 +3580,14 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        /**
+         * @description * `replaced` - Replaced
+         *     * `stepped_down` - Stepped Down
+         *     * `left` - Left
+         *     * `position_retired` - Position Retired
+         * @enum {string}
+         */
+        EndReasonEnum: "replaced" | "stepped_down" | "left" | "position_retired";
         /**
          * @description * `not_started` - Not Started
          *     * `in_progress` - In Progress
@@ -3287,6 +3855,17 @@ export interface components {
          * @enum {string}
          */
         HitterEnum: "you" | "partner";
+        /** @description Who holds a position: display name only. */
+        Holder: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            membership_id: string;
+            display_name: string;
+            /** Format: date */
+            started_on: string;
+            values: components["schemas"]["CommitteeFieldEntry"][];
+        };
         /** @description Staff view of an invitation they sent. */
         Invitation: {
             /** Format: uuid */
@@ -3715,6 +4294,10 @@ export interface components {
             readonly confirmed_at: string | null;
             readonly device: components["schemas"]["Device"];
         };
+        NominateRequest: {
+            /** Format: uuid */
+            membership_id: string;
+        };
         /** @enum {unknown} */
         NullEnum: null;
         /** @description One version of the official result of a match, or of one rubber of a tie. */
@@ -3777,6 +4360,17 @@ export interface components {
             kind: components["schemas"]["KindEnum"];
             timezone: string;
         };
+        /** @description Who the admin is and any open nomination; the history only for those who manage roles. */
+        OrganizationAdmin: {
+            admin: components["schemas"]["Person"] | null;
+            pending: components["schemas"]["AdminHandover"] | null;
+            history: components["schemas"]["AdminHandover"][] | null;
+        };
+        OrganizationRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         OrganizationRequest: {
             name: string;
             town: string;
@@ -3799,6 +4393,36 @@ export interface components {
          * @enum {string}
          */
         OverridesEnum: "check_in" | "rest";
+        PaginatedAdminHandoverList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["AdminHandover"][];
+        };
+        PaginatedCandidateList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Candidate"][];
+        };
         PaginatedDirectoryPlayerList: {
             /** @example 123 */
             count: number;
@@ -4009,6 +4633,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["Organization"][];
         };
+        PaginatedPastHolderList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["PastHolder"][];
+        };
         PaginatedPersonalMatchList: {
             /** @example 123 */
             count: number;
@@ -4058,6 +4697,26 @@ export interface components {
             uid: string;
             token: string;
             password: string;
+        };
+        PastHolder: {
+            /** Format: uuid */
+            id: string;
+            position: string;
+            display_name: string;
+            /** Format: date */
+            started_on: string;
+            /** Format: date */
+            ended_on: string;
+            end_reason: components["schemas"]["EndReasonEnum"];
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        PatchedCommitteeFieldRequest: {
+            label?: string;
+            kind?: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to?: components["schemas"]["AppliesToEnum"];
         };
         /** @description A drill. Instructions are required; everything else is optional. */
         PatchedDrillRequest: {
@@ -4143,6 +4802,15 @@ export interface components {
             completed?: boolean;
             activities?: components["schemas"]["ActivityRequest"][];
         };
+        PatchedPositionInputRequest: {
+            name?: string;
+            /** Format: date */
+            term_start?: string | null;
+            /** Format: date */
+            term_end?: string | null;
+            /** Format: uuid */
+            grants_role?: string | null;
+        };
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         PatchedProfileRequest: {
             display_name?: string;
@@ -4162,6 +4830,19 @@ export interface components {
         PatchedRoleRequest: {
             name?: string;
             permissions?: components["schemas"]["PermissionEnum"][];
+        };
+        /** @description A block of one day's play. No events means every event. */
+        PatchedSessionRequest: {
+            name?: string;
+            /** Format: date */
+            day?: string;
+            /** Format: time */
+            starts?: string;
+            /** Format: time */
+            ends?: string;
+            /** @description At least one. */
+            table_ids?: string[];
+            event_ids?: string[];
         };
         PatchedTableRequest: {
             label?: string;
@@ -4183,6 +4864,8 @@ export interface components {
             timezone?: string;
             scope?: components["schemas"]["TournamentScopeEnum"];
             registration_fee?: components["schemas"]["RegistrationFeeRequest"];
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            schedule_notice_minutes?: number;
         };
         PatchedTrainingPlanRequest: {
             title?: string;
@@ -4238,12 +4921,18 @@ export interface components {
          *     * `training.manage` - Plan training sessions and coaching groups
          *     * `welfare.manage` - Run welfare projects
          *     * `activities.manage` - Plan club activities such as nights out
+         *     * `governance.manage` - Set the committee, nominate representatives and run meetings
          * @enum {string}
          */
-        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage";
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage";
         PermissionInfo: {
             code: components["schemas"]["PermissionEnum"];
             label: string;
+        };
+        Person: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
         };
         PersonalMatch: {
             /** Format: uuid */
@@ -4285,6 +4974,11 @@ export interface components {
          * @enum {string}
          */
         PhaseEnum: "warm_up" | "on_table" | "off_table" | "match_play" | "cool_down";
+        Place: {
+            table: components["schemas"]["ScheduleTable"] | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+        };
         Placement: {
             label: string;
             entries: components["schemas"]["DrawEntry"][];
@@ -4383,6 +5077,29 @@ export interface components {
          * @enum {string}
          */
         PoolEnum: "men" | "women";
+        Position: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            order: number;
+            /** Format: date */
+            term_start: string | null;
+            /** Format: date */
+            term_end: string | null;
+            /** @description Shown to governance staff only. */
+            grants_role: components["schemas"]["RoleRef"] | null;
+            holder: components["schemas"]["Holder"] | null;
+            values: components["schemas"]["CommitteeFieldEntry"][];
+        };
+        PositionInputRequest: {
+            name: string;
+            /** Format: date */
+            term_start?: string | null;
+            /** Format: date */
+            term_end?: string | null;
+            /** Format: uuid */
+            grants_role?: string | null;
+        };
         Problem: {
             /** Format: uuid */
             match_id: string;
@@ -4419,6 +5136,9 @@ export interface components {
          * @enum {string}
          */
         ProgressEnum: "decided" | "on_table" | "being_scored" | "not_started";
+        PublishNoteRequest: {
+            note?: string;
+        };
         /**
          * @description * `hand` - Hand
          *     * `grip` - Grip
@@ -4594,6 +5314,7 @@ export interface components {
             table_ids?: string[];
         };
         Recommendation: {
+            /** @description A match no session can hold has neither table nor start. */
             slots: components["schemas"]["RecommendedSlot"][];
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
@@ -4626,6 +5347,9 @@ export interface components {
             amount_minor: number;
             /** @default KES */
             currency: string;
+        };
+        ReorderRequest: {
+            positions: string[];
         };
         /** @description A match on a table: the table and the people held until its result is official. */
         Reservation: {
@@ -4746,6 +5470,11 @@ export interface components {
          * @enum {string}
          */
         RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "member";
+        RoleRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         RoleRequest: {
             name: string;
@@ -4789,9 +5518,14 @@ export interface components {
         RubberStatusEnum: "scheduled" | "completed" | "not_played";
         Schedule: {
             tables: components["schemas"]["ScheduleTable"][];
+            sessions: components["schemas"]["Session"][];
             rows: components["schemas"]["ScheduleRow"][];
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
+            /** @description The latest version's number. */
+            published_version: number | null;
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            notice_minutes: number;
         };
         ScheduleRow: {
             /** Format: uuid */
@@ -4805,15 +5539,77 @@ export interface components {
             title: string;
             /** @description The estimated length, from the event's best-of. */
             minutes: number;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description In the working plan.
+             */
             table_id: string | null;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description In the working plan.
+             */
             scheduled_at: string | null;
+            /**
+             * Format: uuid
+             * @description As everybody sees it.
+             */
+            published_table_id: string | null;
+            /**
+             * Format: date-time
+             * @description As everybody sees it.
+             */
+            published_at: string | null;
+            /** @description The working plan differs from what is published. */
+            unpublished: boolean;
         };
         ScheduleTable: {
             /** Format: uuid */
             id: string;
             label: string;
+        };
+        ScheduleVersion: {
+            readonly number: number;
+            readonly kind: components["schemas"]["ScheduleVersionKindEnum"];
+            readonly reason: components["schemas"]["DelayReasonEnum"];
+            readonly note: string;
+            readonly delayed_table: components["schemas"]["ScheduleTable"] | null;
+            readonly delay_minutes: number | null;
+            /** @default  */
+            readonly published_by_name: string;
+            /** Format: date-time */
+            readonly published_at: string;
+            readonly change_count: number;
+            /** @description Matches whose people are told. */
+            readonly notify_count: number;
+            /** Format: date-time */
+            readonly notified_at: string | null;
+            readonly notified_count: number;
+            readonly changes: components["schemas"]["Change"][];
+            readonly slots: components["schemas"]["VersionSlot"][];
+        };
+        /**
+         * @description * `published` - Published
+         *     * `delay` - Delay
+         * @enum {string}
+         */
+        ScheduleVersionKindEnum: "published" | "delay";
+        ScheduleVersionSummary: {
+            readonly number: number;
+            readonly kind: components["schemas"]["ScheduleVersionKindEnum"];
+            readonly reason: components["schemas"]["DelayReasonEnum"];
+            readonly note: string;
+            readonly delayed_table: components["schemas"]["ScheduleTable"] | null;
+            readonly delay_minutes: number | null;
+            /** @default  */
+            readonly published_by_name: string;
+            /** Format: date-time */
+            readonly published_at: string;
+            readonly change_count: number;
+            /** @description Matches whose people are told. */
+            readonly notify_count: number;
+            /** Format: date-time */
+            readonly notified_at: string | null;
+            readonly notified_count: number;
         };
         /** @description A device's unaccepted events beside what the server holds at the same places. */
         ScoreConflict: {
@@ -4934,6 +5730,34 @@ export interface components {
             device_time?: string | null;
             /** @description The server revision the device had seen when it sent this. If the server holds less than that, its stream is not the one the device built on, and the event is refused. */
             expected_revision?: number;
+        };
+        /** @description A block of one day's play. No events means every event. */
+        Session: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            /** Format: date */
+            day: string;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            /** @description At least one. */
+            table_ids: string[];
+            event_ids: string[];
+        };
+        /** @description A block of one day's play. No events means every event. */
+        SessionRequest: {
+            name?: string;
+            /** Format: date */
+            day: string;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            /** @description At least one. */
+            table_ids: string[];
+            event_ids?: string[];
         };
         /** @description Which match a sheet is for, as the organizers' scoring page shows it. */
         SheetContext: {
@@ -5071,6 +5895,13 @@ export interface components {
             readonly position: number;
             active: boolean;
         };
+        TableDelayRequest: {
+            note?: string;
+            /** Format: uuid */
+            table_id: string;
+            minutes: number;
+            reason: components["schemas"]["DelayReasonEnum"];
+        };
         TableRequest: {
             label: string;
             active?: boolean;
@@ -5140,6 +5971,8 @@ export interface components {
             scope: components["schemas"]["TournamentScopeEnum"];
             readonly approval_status: components["schemas"]["ApprovalStatusEnum"];
             registration_fee: components["schemas"]["RegistrationFee"];
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            schedule_notice_minutes: number;
             readonly status: components["schemas"]["TournamentStatusEnum"];
             /** Format: date-time */
             readonly published_at: string | null;
@@ -5168,6 +6001,8 @@ export interface components {
             timezone?: string;
             scope?: components["schemas"]["TournamentScopeEnum"];
             registration_fee?: components["schemas"]["RegistrationFeeRequest"];
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            schedule_notice_minutes?: number;
         };
         /**
          * @description * `local` - Local
@@ -5268,6 +6103,15 @@ export interface components {
             readonly name: string;
             readonly town: string;
             readonly address: string;
+        };
+        VersionSlot: {
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            title: string;
+            table: components["schemas"]["ScheduleTable"] | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
         };
         /**
          * @description * `left` - left
@@ -5739,6 +6583,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CountryCatalogue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAdminHandoverList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this admin handover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this admin handover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
                 };
             };
             /** @description Error envelope */
@@ -7208,6 +8147,632 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationAdmin"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_appoint_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_nominate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NominateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_candidates_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Display name */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCandidateList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitteeFieldRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCommitteeFieldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_history_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPastHolderList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPositionInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_holder_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignHolderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_holder_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_values_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldValuesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_reorder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
                 };
             };
             /** @description Error envelope */
@@ -10663,6 +12228,74 @@ export interface operations {
             };
         };
     };
+    tournaments_schedule_delay_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableDelayRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Delayed"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleVersion"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_schedule_recommend_create: {
         parameters: {
             query?: never;
@@ -10684,6 +12317,196 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Recommendation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSessionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_versions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleVersionSummary"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_versions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                number: number;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleVersion"];
                 };
             };
             /** @description Error envelope */

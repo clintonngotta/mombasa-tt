@@ -21,6 +21,7 @@ class Permission(models.TextChoices):
     TRAINING_MANAGE = "training.manage", "Plan training sessions and coaching groups"
     WELFARE_MANAGE = "welfare.manage", "Run welfare projects"
     ACTIVITIES_MANAGE = "activities.manage", "Plan club activities such as nights out"
+    GOVERNANCE_MANAGE = "governance.manage", "Set the committee, nominate representatives and run meetings"
 
 
 ALL_PERMISSIONS: frozenset[str] = frozenset(Permission.values)

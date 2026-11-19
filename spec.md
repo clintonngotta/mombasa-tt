@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-043 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-046 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -106,7 +106,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 ### REQ-016
 
-**Ratings — Phase 1.** Separate global singles/doubles Elo. Start 1000, K32, divisor 400. Expected score = 1/(1+10^((opponent-rating)/400)); delta = 32 × (actual−expected). For doubles compare pair averages; each partner receives its side's delta. Keep precision, round only for display. Rate normal completed competitive individual matches, including team rubbers; exclude casuals, walkovers, retirements/abandoned matches, unplayed rubbers and aggregate ties. Keep immutable rating-event order based on first official server acceptance plus stable ID; correction replay preserves that order. Expose before/after values, recent form, match count and win rate with explicit filters. Rank labels identify singles/doubles and platform/club scope; provisional processing is visible.
+**Ratings — Phase 1.** Separate global singles/doubles Elo. Start 1000, K32, divisor 400. Expected score = 1/(1+10^((opponent-rating)/400)); delta = 32 × (actual−expected). For doubles compare pair averages; each partner receives its side's delta. Keep precision, round only for display. Rate normal completed competitive individual matches, including team rubbers; exclude casuals, walkovers, retirements/abandoned matches, unplayed rubbers and aggregate ties. Jumbles matches are rated in the doubles ledger only at an official tournament (regional, national or international, approved by an official); a club's local Jumbles is unrated (owner decision, 2026-11-18). Keep immutable rating-event order based on first official server acceptance plus stable ID; correction replay preserves that order. Expose before/after values, recent form, match count and win rate with explicit filters. Rank labels identify singles/doubles and platform/club scope; provisional processing is visible.
 
 ### REQ-017
 
@@ -232,6 +232,40 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 *Results announcements.* Staff generate a results announcement for a session, round, day, event or the whole tournament. The generator builds a draft only from official results: each match with both sides in the same first/second order as the match card (REQ-002 left/right), games won and per-game scores (e.g. "3-1 (11-7, 9-11, 11-5, 11-8)"), W/O, ret. and DQ marked, winners and podium/placements (REQ-018), group standings where applicable, and outstanding matches listed as pending. It never invents commentary, shot descriptions or rating values not yet projected. Staff edit the draft text, preview it as a plain-text post (for WhatsApp and social media) and a branded image card, and publish it to the tournament news feed (members or public according to the tournament's publication state), with optional notification (REQ-019) and copy/share actions. Publishing freezes the version; a later result correction marks the post outdated and offers an amended version that keeps the original visible.
 
+### REQ-044
+
+**Facility operations — Phase 1 profile and door fees, Phase 2 ledger links (user decision, 2026-11-19).** A table tennis facility, for example a hall that rents its tables and charges KES 200 a day to come in, registers as a facility organization (REQ-004, kind `facility` or `club_facility`). Its staff run the facility in Coast TT:
+
+*Profile and branches.* Each branch is a venue (REQ-007) with its own location (country, region and city from the catalogue, street address, optional map pin), working hours per weekday with closures and holidays (shared with REQ-021), number of tables split into match and training tables (REQ-014 table identities), facility rules, amenities, and contact phone. The facility describes what a paying visitor gets (for example table time, ball and racket hire, changing rooms, coaching corner) per price. Signed-in players find facilities by location and see the published profile, hours, open now/closed, prices, rules and benefits; facilities choose whether the profile is public.
+
+*Entry fees and passes.* Staff set prices per branch as `{amount_minor,currency}`: a day pass (entry fee) and optional longer passes (week, month, sessions bundle) with their benefits. At the door staff record a visit: who (a Coast TT player or a walk-in name), which pass, amount, method (cash, M-Pesa or other external, with reference) and recorder; a walk-in name is stored only for the facility. A player can open their own pass and visit history and show an active pass at the door. Recording collection never implies online payment: no payment processing until a separate decision, and amounts are never invented. Reversal with reason keeps the original (REQ-022). Staff see daily and monthly takings per branch, method and pass type; members see only their own records. In Phase 2 visits and passes post to the REQ-022 ledger and REQ-024 expenses so facility accounts reconcile.
+
+*Training and events.* Staff publish recurring training schedules (day, hours, tables, coach, level, capacity, fee) that players can see and join; joining uses REQ-027 and table reservations use REQ-014, so a training slot never double-books a table needed by a tournament or booking. Staff post events such as anniversaries, open days and socials as REQ-039 activities, which a facility may mark public, and host tournaments as any organization does (REQ-007). Everything the facility publishes appears in its schedule in date order.
+
+*Authority.* Facility admins and staff with the new facility permission manage profile, prices, visits and schedules; the takings view needs the finance permission. A facility cannot see a visitor's data beyond their own records with it.
+
+### REQ-045
+
+**Governance structure — Phase 1 (user decision, 2026-11-19).** Clubs, regions and the country each have a committee whose positions and fields are configurable, and clubs send representatives up to their region.
+
+*Club admin.* Each club has exactly one nominated club admin, who holds every club permission (the REQ-005 Admin role) and is the authority over the club's settings, roles, committee and nominations; other members edit only what the club admin delegates through roles. The creator is the first club admin. The club admin nominates a successor, who must accept; the handover is audited and the previous admin keeps only the roles they still hold. If the club admin leaves or is unreachable, a platform super admin can appoint one on request, with a recorded reason. A club never has zero or two club admins.
+
+*Committees.* The club admin, or anyone they delegate the governance permission to, sets the committee: positions (for example chair, secretary, treasurer, organizing secretary, youth officer) with names, order, optional term start and end, and custom fields per position or per holder (text, number, date, choice, as REQ-005 member fields). Each position is held by an active member and may grant a role, so a treasurer can get the finance permission. Past holders stay in the committee history. Members see the current committee; custom fields follow their own visibility.
+
+*Regional and national bodies.* Each region and the country has a governing body, an organization of kind `regional_body` or `national_body` tied to one catalogue region or country (TASK-093). A platform super admin creates the body and nominates its first admin; from then on it runs like a club: configurable positions, custom fields, roles and its own admin. Its members are its officials and committee, not players. Officials holding the approval permission in a region's body approve regional publication, and in the country's body national publication (REQ-007 scopes, TASK-094); the existing individual appointments migrate into these bodies.
+
+*Representatives.* A club in a region nominates one or more representatives (active members) to its regional body; a regional body nominates representatives of its regions to the national body. The receiving body sees nominations, accepts or declines, and can set a cap per club. A representative belongs to the body as a representative position with a term, can be replaced by the nominating club, and is removed automatically when they leave the club. A body sees a representative's display name and the club they represent, never their private profile details.
+
+### REQ-046
+
+**Meetings and non-competition events — Phase 1 (user decision, 2026-11-19).** A club, regional body or national body schedules meetings and events that are not competitions.
+
+*Meetings.* A meeting has title, kind (committee, general, representatives, special), start and end in the host's timezone, venue or online link, invitees (committee, representatives, all members, or named people) and an agenda of ordered items, each with an optional presenter and attachment (REQ-020 private files). The agenda is shared with invitees when the meeting is published and can be revised before it starts; invitees are notified of publication, changes and cancellation (REQ-019) and RSVP. When the meeting starts, invitees check themselves in as present while it is in progress, or the secretary marks them present, late, apologies or absent; the attendance record is kept with time. Afterwards, staff may record minutes: decisions per agenda item, action items (description, owner, due date, open or done) and the next meeting date, which can create the next meeting as a draft. Minutes are a draft until approved by someone with the governance permission; approved minutes are read-only to invitees and corrected only by an amendment that keeps the original. Action-item owners see their open items across bodies. Tournament planning is a typical agenda item, and an item can link to a tournament.
+
+*Events that are not competitions.* Any level hosts events such as workshops, coaching clinics, anniversaries, award nights and open days, built on REQ-039 activities. The audience is the host's members, invited representatives (for a body, the reps of chosen or all clubs), named people, or open to all signed-in players; an open event may also be public. Capacity, RSVP and waitlist follow REQ-039. Check-in at the start marks attendance the same way as meetings.
+
+*Privacy.* Meetings and minutes are visible only to invitees and the host's governance staff; a body never sees a club's internal meetings. Attendance lists show display names only.
+
 ## Competition rules: version `ITTF-2026-ch3`
 
 Source: ITTF Statutes 2026, Chapter 3, Regulations for International Competitions ([ITTF statutes](https://www.ittf.com/statutes/)). Transcribed 2026-11-17 for TASK-019 from a copy of the 2026 chapter; the transcription and the fixtures in test.md still need the owner's review against the ITTF original before TASK-003 is closed. A draw stores the rules version it was made under (`services/api/competitions/rules.py`). The scoring clauses (Laws of Table Tennis 2.11–2.13 and time-outs) were added on 2026-11-18 for TASK-023 from the same copy and await the same review; the incident clauses are added by TASK-083.
@@ -277,9 +311,10 @@ House rules where the statutes leave the choice to the organizer:
 | Identity | User, Player, Session, Invitation; global |
 | Organization | Organization, Membership, Role, PermissionGrant, FieldDefinition/Value; tenant scoped |
 | Competition | Tournament, Event, Entry, Pair, TeamRoster, Tie/Rubber, Group, DrawVersion, Match, ResultRevision |
-| Operations | Venue, Table, Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent, ScheduleSession/ScheduleVersion, CheckIn, MatchCall, MatchIncident (timeout, card, suspension, expedite), RefereeDecision, ResultsAnnouncement/AnnouncementVersion (REQ-043) |
+| Operations | Venue, Table, VenueHours, FacilityPrice, FacilityVisit, Pass (REQ-044), Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent, ScheduleSession/ScheduleVersion, CheckIn, MatchCall, MatchIncident (timeout, card, suspension, expedite), RefereeDecision, ResultsAnnouncement/AnnouncementVersion (REQ-043) |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
 | Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038), FinancialYear, AnnualReport/ReportVersion (REQ-041) |
+| Governance | Committee, Position, PositionHolder, Nomination, RepresentativeNomination, governing bodies (REQ-045); Meeting, AgendaItem, Attendance, Minutes, Decision, ActionItem (REQ-046) |
 | Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players. ExternalEvent listing and curation (REQ-042); platform scoped |
 | Development | PersonalMatch/PersonalGame (REQ-037), MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |
 | Media later | RecordingSession/Segment, TimeMapping, Marker, Clip, ProcessingJob, Publication, Destination |
