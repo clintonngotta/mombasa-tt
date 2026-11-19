@@ -22,6 +22,7 @@ class Charge(models.Model):
         BOOKING = "booking", "Booking"
         DUE = "due", "Due"
         VISIT = "visit", "Facility visit"
+        WELFARE = "welfare", "Welfare contribution"
         OTHER = "other", "Other"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -201,6 +202,9 @@ class Expense(models.Model):
     campaign = models.ForeignKey(
         Campaign, on_delete=models.PROTECT, null=True, blank=True, related_name="expenses"
     )
+    welfare_project = models.ForeignKey(
+        "finance.WelfareProject", on_delete=models.PROTECT, null=True, blank=True, related_name="expenses"
+    )
     description = models.CharField(max_length=200)
     amount_minor = models.PositiveIntegerField()
     currency = models.CharField(max_length=3, default="KES")
@@ -220,3 +224,58 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"{self.description} {self.amount_minor} {self.currency}"
+
+
+class WelfareProject(models.Model):
+    """A shared cause the club's members give to (REQ-038): supporting a sick or bereaved member, say.
+    Giving is voluntary: the suggested amount never makes anyone owe. What the beneficiary's
+    circumstances are is sensitive; staff write only what was agreed, and the beneficiary can have the
+    project hidden."""
+
+    class Audience(models.TextChoices):
+        ALL = "all", "All active members"
+        SELECTED = "selected", "Selected members"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="welfare_projects"
+    )
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    beneficiary = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    suggested_minor = models.PositiveIntegerField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default="KES")
+    target_minor = models.PositiveIntegerField(null=True, blank=True)
+    deadline = models.DateField(null=True, blank=True)
+    audience = models.CharField(max_length=8, choices=Audience.choices, default=Audience.ALL)
+    audience_members = models.ManyToManyField(USER, blank=True, related_name="+")
+    # The club may show who gave; each contributor can still stay anonymous in that list.
+    show_contributors = models.BooleanField(default=False)
+    hidden_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class WelfareContribution(models.Model):
+    """One gift to a project: in the ledger as a payment matched in full to a paid welfare charge."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(WelfareProject, on_delete=models.PROTECT, related_name="contributions")
+    contributor = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="+")
+    payment = models.OneToOneField(Payment, on_delete=models.PROTECT, related_name="welfare")
+    charge = models.OneToOneField(Charge, on_delete=models.PROTECT, related_name="welfare")
+    anonymous = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.contributor_id} to {self.project_id}"

@@ -389,6 +389,17 @@ The privacy matrix covers every route, including the receipt upload.
 
 **Welfare projects — integration.** Setup: club with treasurer, members A–E, A is the beneficiary; project "Support A" suggests KES 50 (5000 minor units) per member with target KES 200. Steps: record cash contributions from B, C and D (D anonymous), one partial and one reversed; record a visit-gift expense larger than the remaining balance; view as treasurer, as B, as E (no contribution), as A after asking staff to hide the project, and through notifications and public pages; close the project. Pass: totals and remaining/deficit reconcile with REQ-024 arithmetic; non-contributors show no overdue status unless the project was made a REQ-023 due; members see totals and their own amount only, D appears anonymous in any contributor list; hidden project disappears from member views; no beneficiary circumstances appear in notifications or public pages; closed project is read-only. Evidence: ledger arithmetic table and access assertions.
 
+*Built in TASK-074 (2026-11-19).* `tests/test_welfare.py` checks the following:
+- Gifts from B, C (less than suggested) and D (anonymous), plus one reversed, total 12000. A 15000 visit gift leaves a −3000 deficit.
+- Nobody owes or is overdue, and welfare money stays out of the general purpose totals.
+- B sees the totals, target and their own gift; E sees no status; neither sees the gift list. With the contributor list on, D shows only as "Anonymous", while staff still see every giver.
+- The opening alert reaches the audience but not the beneficiary, with neither the title nor the circumstances.
+- Outsiders can't see the project. Once the beneficiary hides it, it disappears for A, B and E, while staff still see it.
+- A closed project refuses gifts, spending and edits.
+- A selected audience is honoured, setup needs the welfare permission, and a repeated gift request records one gift.
+
+The privacy matrix covers every route.
+
 ### EVAL-041
 
 **Annual financial report — integration.** Setup: club year ending 31 December with operations dues, a welfare project, event fees, categorised expenses, one reversal and one waiver. Steps: generate draft; compare to ledger; publish; view as member, as non-member and publicly (off, then on); record a correction dated in the reported year; publish an amendment; export PDF/CSV. Pass: totals reconcile exactly with ledger for the period, deficits negative; members see aggregates only, no individual balances, payers or receipts; non-members see nothing unless public; published snapshot unchanged by later corrections; amendment lists changes and keeps original. Evidence: arithmetic table, access assertions, exported files.

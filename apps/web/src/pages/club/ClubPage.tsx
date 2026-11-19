@@ -213,6 +213,11 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
         {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
       </AdminLink>
       {!membership.managedOnly && (
+        <AdminLink to="/club/welfare" icon={<Users aria-hidden className="size-5 text-brand-blue" />}>
+          Welfare projects
+        </AdminLink>
+      )}
+      {!membership.managedOnly && (
         <AdminLink to="/club/my-payments" icon={<Banknote aria-hidden className="size-5 text-brand-blue" />}>
           My payments
         </AdminLink>

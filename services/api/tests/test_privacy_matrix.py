@@ -49,7 +49,17 @@ from competitions.models import (
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
-from finance.models import Allocation, Campaign, CampaignMember, Charge, Expense, Payment
+from finance import welfare
+from finance.models import (
+    Allocation,
+    Campaign,
+    CampaignMember,
+    Charge,
+    Expense,
+    Payment,
+    WelfareContribution,
+    WelfareProject,
+)
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
@@ -176,6 +186,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-expense-receipt": {"put": STAFF},
     "organization-finance-summary": {"get": STAFF},
     "organization-finance-purposes": {"get": MEMBER},
+    # REQ-038 welfare: the audience sees totals and its own gift; welfare and finance staff run it.
+    "organization-welfare-projects": {"get": MEMBER, "post": STAFF},
+    "organization-welfare-project": {"get": MEMBER, "patch": STAFF},
+    "organization-welfare-project-hide": {"post": STAFF},
+    "organization-welfare-project-close": {"post": STAFF},
+    "organization-welfare-contributions": {"get": STAFF, "post": STAFF},
+    "organization-welfare-contribution-reverse": {"post": STAFF},
+    "organization-welfare-expenses": {"get": STAFF, "post": STAFF},
     "organization-my-finances": {"get": MEMBER},
     "soda-game-list": {"get": OWNER, "post": OWNER},
     "soda-game-detail": {"get": OWNER},
@@ -588,6 +606,21 @@ BODIES = {
         "spent_on": timezone.localdate().isoformat(),
     },
     ("organization-expense-reverse", "post"): {"reason": "Entered twice"},
+    ("organization-welfare-projects", "post"): {"title": "Support the juniors' trip"},
+    ("organization-welfare-project", "patch"): {"show_contributors": True},
+    ("organization-welfare-contributions", "post"): lambda: {
+        "contributor_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
+        "amount_minor": 5000,
+        "method": "cash",
+        "received_on": timezone.localdate().isoformat(),
+        "request_key": str(uuid.uuid4()),
+    },
+    ("organization-welfare-contribution-reverse", "post"): {"reason": "Wrong member"},
+    ("organization-welfare-expenses", "post"): lambda: {
+        "description": "Visit gift",
+        "amount_minor": 3000,
+        "spent_on": timezone.localdate().isoformat(),
+    },
     ("organization-expense-receipt", "put"): lambda: {"file": image_upload("PNG", (64, 64), "slip.png")},
     ("organization-campaign-terms", "post"): lambda: {
         "member_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
@@ -895,6 +928,29 @@ class World:
             amount_minor=2000,
             spent_on=timezone.localdate(),
             receipt=self.receipt,
+        )
+
+        # A welfare project with one anonymous gift from Faith; two more to hide and to close.
+        def project(title, **extra):
+            return WelfareProject.objects.create(
+                organization=self.coast, title=title, suggested_minor=5000, **extra
+            )
+
+        self.welfare = project("MARK-WELFARE", description="MARK-WELFARE-DESC")
+        self.welfare_to_hide = project("Hide me")
+        self.welfare_to_close = project("Close me")
+        self.welfare_contribution = welfare.contribute(
+            self.welfare,
+            self.amina,
+            timezone.localdate(),
+            contributor=self.faith,
+            anonymous=True,
+            request_key=uuid.uuid4(),
+            amount_minor=5000,
+            currency="KES",
+            method="mpesa",
+            reference="MARK-WELFARE-REF",
+            received_on=timezone.localdate(),
         )
         self.expense_to_reverse = Expense.objects.create(
             organization=self.coast, description="Old nets", amount_minor=1000, spent_on=timezone.localdate()
@@ -1447,6 +1503,12 @@ class World:
             "organization-campaign-remind": self.campaign.id,
             "organization-expense-reverse": self.expense_to_reverse.id,
             "organization-expense-receipt": self.expense.id,
+            "organization-welfare-project": self.welfare.id,
+            "organization-welfare-project-hide": self.welfare_to_hide.id,
+            "organization-welfare-project-close": self.welfare_to_close.id,
+            "organization-welfare-contributions": self.welfare.id,
+            "organization-welfare-contribution-reverse": self.welfare.id,
+            "organization-welfare-expenses": self.welfare.id,
             "organization-external-event": self.external.id,
             "organization-external-event-live": self.external.id,
             "external-event-approve": self.external.id,
@@ -1483,6 +1545,8 @@ class World:
             found["venue_pk"] = self.venue.id
         if "session_pk" in names:
             found["session_pk"] = self.club_session.id
+        if "contribution_pk" in names:
+            found["contribution_pk"] = self.welfare_contribution.id
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
@@ -1609,6 +1673,11 @@ class World:
                 (c.title, c.amount_minor, c.closed_at is None) for c in Campaign.objects.all()
             ),
             "campaign_terms": sorted(CampaignMember.objects.values_list("amount_minor", "waived")),
+            "welfare_projects": sorted(
+                (w.title, w.show_contributors, w.hidden_at is None, w.closed_at is None)
+                for w in WelfareProject.objects.all()
+            ),
+            "welfare_gifts": WelfareContribution.objects.count(),
             "expenses": sorted(
                 (e.description, e.amount_minor, e.reversed_at is None, str(e.receipt_id))
                 for e in Expense.objects.all()
@@ -1718,6 +1787,13 @@ ALSO_STAFF = {
             "organization-expense-reverse",
             "organization-expense-receipt",
             "organization-finance-summary",
+            "organization-welfare-projects",
+            "organization-welfare-project",
+            "organization-welfare-project-hide",
+            "organization-welfare-project-close",
+            "organization-welfare-contributions",
+            "organization-welfare-contribution-reverse",
+            "organization-welfare-expenses",
         ]
     },
     # ...and announcements, which include submitting external events.
@@ -1918,6 +1994,9 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         # Members see each campaign's totals and spending (REQ-024); receipts stay with finance staff.
         "MARK-CAMPAIGN": {"amina", "baraka", "faith", "grace"},
         "MARK-EXPENSE": {"amina", "baraka", "faith", "grace"},
+        "MARK-WELFARE": {"amina", "baraka", "faith", "grace"},  # the project's audience
+        "MARK-WELFARE-DESC": {"amina", "baraka", "faith", "grace"},
+        "MARK-WELFARE-REF": {"amina", "faith", "grace"},  # the giver's own payment, and staff
         str(world.receipt.id): {"amina", "grace"},
         "MARK-CHARGE": {"amina", "faith", "grace"},  # the member and finance staff
         "MARK-PAYMENT-REF": {"amina", "faith", "grace"},

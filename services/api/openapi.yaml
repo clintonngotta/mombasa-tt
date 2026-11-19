@@ -10468,6 +10468,414 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/:
+    get:
+      operationId: organizations_welfare_projects_list
+      description: Welfare projects (REQ-038). Members see those meant for them; welfare
+        and finance staff see all.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_welfare_projects_create
+      description: Set up a project. Its audience hears that it opened, never what
+        it is about.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WelfareProjectRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/:
+    get:
+      operationId: organizations_welfare_projects_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_welfare_projects_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWelfareUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/close/:
+    post:
+      operationId: organizations_welfare_projects_close_create
+      description: 'Close the project: its totals and records stay, read-only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/contributions/:
+    get:
+      operationId: organizations_welfare_projects_contributions_list
+      description: 'Every gift with its giver, anonymous ones included: welfare and
+        finance staff only.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WelfareContribution'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_welfare_projects_contributions_create
+      description: Record a gift received outside Coast TT. Sending the same request_key
+        again records nothing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WelfareContributionRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareContribution'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareContribution'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/contributions/{contribution_pk}/reverse/:
+    post:
+      operationId: organizations_welfare_projects_contributions_reverse_create
+      parameters:
+      - in: path
+        name: contribution_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareContribution'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/expenses/:
+    get:
+      operationId: organizations_welfare_projects_expenses_list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expense'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_welfare_projects_expenses_create
+      description: 'Record spending, a visit gift say. It may exceed what was given:
+        the deficit shows.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/hide/:
+    post:
+      operationId: organizations_welfare_projects_hide_create
+      description: |-
+        Hide the project from members: the beneficiary may ask for it themselves. Staff still see
+        it, and its ledger stays.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{id}/:
     get:
       operationId: organizations_retrieve
@@ -15232,7 +15640,7 @@ components:
           format: date
           nullable: true
         audience:
-          $ref: '#/components/schemas/CampaignAudienceEnum'
+          $ref: '#/components/schemas/FinanceAudienceEnum'
         terms:
           type: array
           items:
@@ -15268,14 +15676,6 @@ components:
       - starts_on
       - terms
       - title
-    CampaignAudienceEnum:
-      enum:
-      - all
-      - selected
-      type: string
-      description: |-
-        * `all` - All active members
-        * `selected` - Selected members
     CampaignDues:
       type: object
       properties:
@@ -15325,7 +15725,7 @@ components:
           format: date
           nullable: true
         audience:
-          $ref: '#/components/schemas/CampaignAudienceEnum'
+          $ref: '#/components/schemas/FinanceAudienceEnum'
         member_ids:
           type: array
           items:
@@ -15774,6 +16174,7 @@ components:
       - booking
       - due
       - visit
+      - welfare
       - other
       type: string
       description: |-
@@ -15781,6 +16182,7 @@ components:
         * `booking` - Booking
         * `due` - Due
         * `visit` - Facility visit
+        * `welfare` - Welfare contribution
         * `other` - Other
     ChargeRequest:
       type: object
@@ -16816,6 +17218,17 @@ components:
       required:
       - events
       - id
+    Contributor:
+      type: object
+      properties:
+        name:
+          type: string
+          description: '"Anonymous" for those who asked'
+        amount_minor:
+          type: integer
+      required:
+      - amount_minor
+      - name
     CounterRequest:
       type: object
       properties:
@@ -18279,6 +18692,14 @@ components:
       - timezone
       - town
       - training_tables
+    FinanceAudienceEnum:
+      enum:
+      - all
+      - selected
+      type: string
+      description: |-
+        * `all` - All active members
+        * `selected` - Selected members
     FinanceReasonRequest:
       type: object
       properties:
@@ -23072,6 +23493,29 @@ components:
             * `public` - Public
         active:
           type: boolean
+    PatchedWelfareUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        suggested_minor:
+          type: integer
+          minimum: 1
+          nullable: true
+        target_minor:
+          type: integer
+          minimum: 1
+          nullable: true
+        deadline:
+          type: string
+          format: date
+          nullable: true
+        show_contributors:
+          type: boolean
     PatternStep:
       type: object
       description: One shot of a drill on the virtual table; see Drill.pattern.
@@ -27857,6 +28301,233 @@ components:
         * `mpesa` - M-Pesa
         * `other` - Other
         * `pass` - Covered by a pass
+    WelfareContribution:
+      type: object
+      description: A gift as finance and welfare staff see it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contributor_id:
+          type: string
+          format: uuid
+        contributor_name:
+          type: string
+          readOnly: true
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+        method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        reference:
+          type: string
+          default: ''
+          maxLength: 60
+        received_on:
+          type: string
+          format: date
+        anonymous:
+          type: boolean
+          default: false
+        reversed:
+          type: boolean
+          readOnly: true
+      required:
+      - amount_minor
+      - anonymous
+      - contributor_id
+      - contributor_name
+      - currency
+      - id
+      - method
+      - received_on
+      - reference
+      - reversed
+    WelfareContributionRequest:
+      type: object
+      description: A gift as finance and welfare staff see it.
+      properties:
+        contributor_id:
+          type: string
+          format: uuid
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        reference:
+          type: string
+          default: ''
+          maxLength: 60
+        received_on:
+          type: string
+          format: date
+        request_key:
+          type: string
+          format: uuid
+          writeOnly: true
+        anonymous:
+          type: boolean
+          default: false
+      required:
+      - amount_minor
+      - contributor_id
+      - method
+      - received_on
+      - request_key
+    WelfareProject:
+      type: object
+      description: |-
+        A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
+        and a contributor list only when the club shows one.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+        beneficiary_id:
+          type: string
+          format: uuid
+          nullable: true
+        beneficiary_name:
+          type: string
+          nullable: true
+          readOnly: true
+        suggested_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+          nullable: true
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+        target_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 1
+          nullable: true
+        deadline:
+          type: string
+          format: date
+          nullable: true
+        audience:
+          $ref: '#/components/schemas/FinanceAudienceEnum'
+        show_contributors:
+          type: boolean
+        hidden:
+          type: boolean
+          readOnly: true
+        closed:
+          type: boolean
+          readOnly: true
+        received_minor:
+          type: integer
+          readOnly: true
+        spent_minor:
+          type: integer
+          readOnly: true
+        remaining_minor:
+          type: integer
+          readOnly: true
+        my_contribution_minor:
+          type: integer
+          readOnly: true
+        contributors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contributor'
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - audience
+      - beneficiary_id
+      - beneficiary_name
+      - closed
+      - contributors
+      - created_at
+      - currency
+      - deadline
+      - description
+      - hidden
+      - id
+      - my_contribution_minor
+      - received_minor
+      - remaining_minor
+      - show_contributors
+      - spent_minor
+      - suggested_minor
+      - target_minor
+      - title
+    WelfareProjectRequest:
+      type: object
+      description: |-
+        A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
+        and a contributor list only when the club shows one.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        beneficiary_id:
+          type: string
+          format: uuid
+          nullable: true
+        suggested_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+          nullable: true
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        target_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 1
+          nullable: true
+        deadline:
+          type: string
+          format: date
+          nullable: true
+        audience:
+          $ref: '#/components/schemas/FinanceAudienceEnum'
+        member_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: The members a selected-audience project is for.
+        show_contributors:
+          type: boolean
+      required:
+      - title
     XEnum:
       enum:
       - left

@@ -4290,6 +4290,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Welfare projects (REQ-038). Members see those meant for them; welfare and finance staff see all. */
+        get: operations["organizations_welfare_projects_list"];
+        put?: never;
+        /** @description Set up a project. Its audience hears that it opened, never what it is about. */
+        post: operations["organizations_welfare_projects_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_welfare_projects_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["organizations_welfare_projects_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Close the project: its totals and records stay, read-only. */
+        post: operations["organizations_welfare_projects_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/contributions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every gift with its giver, anonymous ones included: welfare and finance staff only. */
+        get: operations["organizations_welfare_projects_contributions_list"];
+        put?: never;
+        /** @description Record a gift received outside Coast TT. Sending the same request_key again records nothing. */
+        post: operations["organizations_welfare_projects_contributions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/contributions/{contribution_pk}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_welfare_projects_contributions_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/expenses/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_welfare_projects_expenses_list"];
+        put?: never;
+        /** @description Record spending, a visit gift say. It may exceed what was given: the deficit shows. */
+        post: operations["organizations_welfare_projects_expenses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/hide/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hide the project from members: the beneficiary may ask for it themselves. Staff still see
+         *     it, and its ledger stays.
+         */
+        post: operations["organizations_welfare_projects_hide_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{id}/": {
         parameters: {
             query?: never;
@@ -6483,7 +6605,7 @@ export interface components {
             starts_on: string;
             /** Format: date */
             ends_on: string | null;
-            audience: components["schemas"]["CampaignAudienceEnum"];
+            audience: components["schemas"]["FinanceAudienceEnum"];
             readonly terms: components["schemas"]["CampaignTerm"][];
             readonly closed: boolean;
             /** Format: date */
@@ -6492,12 +6614,6 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
-        /**
-         * @description * `all` - All active members
-         *     * `selected` - Selected members
-         * @enum {string}
-         */
-        CampaignAudienceEnum: "all" | "selected";
         CampaignDues: {
             /** @description Dues per status. */
             counts: {
@@ -6518,7 +6634,7 @@ export interface components {
             starts_on: string;
             /** Format: date */
             ends_on?: string | null;
-            audience?: components["schemas"]["CampaignAudienceEnum"];
+            audience?: components["schemas"]["FinanceAudienceEnum"];
             /** @description The members a selected-audience campaign bills. */
             member_ids?: string[];
         };
@@ -6693,10 +6809,11 @@ export interface components {
          *     * `booking` - Booking
          *     * `due` - Due
          *     * `visit` - Facility visit
+         *     * `welfare` - Welfare contribution
          *     * `other` - Other
          * @enum {string}
          */
-        ChargeKindEnum: "event_fee" | "booking" | "due" | "visit" | "other";
+        ChargeKindEnum: "event_fee" | "booking" | "due" | "visit" | "welfare" | "other";
         ChargeRequest: {
             /**
              * Format: uuid
@@ -7072,6 +7189,11 @@ export interface components {
             /** @default  */
             device_label: string;
             events: components["schemas"]["ConflictEventRequest"][];
+        };
+        Contributor: {
+            /** @description "Anonymous" for those who asked */
+            name: string;
+            amount_minor: number;
         };
         CounterRequest: {
             /** Format: date-time */
@@ -7601,6 +7723,12 @@ export interface components {
             readonly passes: components["schemas"]["Pass"][];
             readonly bookable_tables: components["schemas"]["Table"][];
         };
+        /**
+         * @description * `all` - All active members
+         *     * `selected` - Selected members
+         * @enum {string}
+         */
+        FinanceAudienceEnum: "all" | "selected";
         FinanceReasonRequest: {
             reason: string;
         };
@@ -9666,6 +9794,15 @@ export interface components {
             profile?: components["schemas"]["ProfileEnum"];
             active?: boolean;
         };
+        PatchedWelfareUpdateRequest: {
+            title?: string;
+            description?: string;
+            suggested_minor?: number | null;
+            target_minor?: number | null;
+            /** Format: date */
+            deadline?: string | null;
+            show_contributors?: boolean;
+        };
         /** @description One shot of a drill on the virtual table; see Drill.pattern. */
         PatternStep: {
             hitter: components["schemas"]["HitterEnum"];
@@ -11623,6 +11760,92 @@ export interface components {
          * @enum {string}
          */
         VisitMethodEnum: "cash" | "mpesa" | "other" | "pass";
+        /** @description A gift as finance and welfare staff see it. */
+        WelfareContribution: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            contributor_id: string;
+            readonly contributor_name: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            /** @default false */
+            anonymous: boolean;
+            readonly reversed: boolean;
+        };
+        /** @description A gift as finance and welfare staff see it. */
+        WelfareContributionRequest: {
+            /** Format: uuid */
+            contributor_id: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            /** Format: uuid */
+            request_key: string;
+            /** @default false */
+            anonymous: boolean;
+        };
+        /**
+         * @description A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
+         *     and a contributor list only when the club shows one.
+         */
+        WelfareProject: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            description: string;
+            /** Format: uuid */
+            beneficiary_id: string | null;
+            readonly beneficiary_name: string | null;
+            suggested_minor: number | null;
+            /** @default KES */
+            currency: string;
+            target_minor: number | null;
+            /** Format: date */
+            deadline: string | null;
+            audience: components["schemas"]["FinanceAudienceEnum"];
+            show_contributors: boolean;
+            readonly hidden: boolean;
+            readonly closed: boolean;
+            readonly received_minor: number;
+            readonly spent_minor: number;
+            readonly remaining_minor: number;
+            readonly my_contribution_minor: number;
+            readonly contributors: components["schemas"]["Contributor"][] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
+         *     and a contributor list only when the club shows one.
+         */
+        WelfareProjectRequest: {
+            title: string;
+            description?: string;
+            /** Format: uuid */
+            beneficiary_id?: string | null;
+            suggested_minor?: number | null;
+            /** @default KES */
+            currency: string;
+            target_minor?: number | null;
+            /** Format: date */
+            deadline?: string | null;
+            audience?: components["schemas"]["FinanceAudienceEnum"];
+            /** @description The members a selected-audience project is for. */
+            member_ids?: string[];
+            show_contributors?: boolean;
+        };
         /**
          * @description * `left` - left
          *     * `center` - center
@@ -21558,6 +21781,374 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Visit"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WelfareProjectRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedWelfareUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_contributions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_contributions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WelfareContributionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_contributions_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contribution_pk: string;
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_expenses_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_expenses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_hide_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
                 };
             };
             /** @description Error envelope */
