@@ -1549,6 +1549,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/honours/:
+    get:
+      operationId: me_honours_list
+      description: 'GET /me/honours/: awards you received at published ceremonies,
+        newest first.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Honour'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/invitations/:
     get:
       operationId: me_invitations_list
@@ -7112,6 +7136,311 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/:
+    get:
+      operationId: tournaments_ceremony_retrieve
+      description: |-
+        GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+        draft for the host's competition staff. PUT sets when, where and who hosts it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: tournaments_ceremony_update
+      description: |-
+        GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+        draft for the host's competition staff. PUT sets when, where and who hosts it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CeremonyRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/awards/:
+    post:
+      operationId: tournaments_ceremony_awards_create
+      description: 'POST /tournaments/{id}/ceremony/awards/: an award of the organizers''
+        own, added last.'
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/:
+    patch:
+      operationId: tournaments_ceremony_awards_partial_update
+      description: |-
+        PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+        special award's recipient; remove it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAwardRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_ceremony_awards_destroy
+      description: |-
+        PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+        special award's recipient; remove it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/present/:
+    post:
+      operationId: tournaments_ceremony_awards_present_create
+      description: |-
+        POST /tournaments/{id}/ceremony/awards/{award}/present/: mark it handed over (again to undo). When
+        every award is presented the ceremony is done.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/generate/:
+    post:
+      operationId: tournaments_ceremony_generate_create
+      description: |-
+        POST /tournaments/{id}/ceremony/generate/: the placement awards of the completed events, third to
+        first and the main event last; awards already presented and the organizers' own are kept.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/publish/:
+    post:
+      operationId: tournaments_ceremony_publish_create
+      description: 'POST /tournaments/{id}/ceremony/publish/: show the ceremony with
+        everyone who sees the tournament.'
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/reorder/:
+    post:
+      operationId: tournaments_ceremony_reorder_create
+      description: POST /tournaments/{id}/ceremony/reorder/ with every award id in
+        the order they are presented.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardOrderRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/corrections/:
     get:
       operationId: tournaments_corrections_list
@@ -10044,6 +10373,108 @@ components:
           description: JPEG, PNG or WebP, up to 5 MB
       required:
       - file
+    Award:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/AwardKindEnum'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        event:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        event_name:
+          type: string
+          readOnly: true
+          nullable: true
+        place:
+          type: integer
+          readOnly: true
+          nullable: true
+        receives:
+          type: string
+          readOnly: true
+        recipient_name:
+          type: string
+          maxLength: 120
+        prize:
+          type: string
+          maxLength: 200
+        presenter:
+          type: string
+          maxLength: 120
+        presented_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - event
+      - event_name
+      - id
+      - kind
+      - order
+      - place
+      - presented_at
+      - presenter
+      - prize
+      - receives
+      - recipient_name
+      - title
+    AwardKindEnum:
+      enum:
+      - placement
+      - special
+      type: string
+      description: |-
+        * `placement` - Placement
+        * `special` - Special
+    AwardOrderRequest:
+      type: object
+      properties:
+        awards:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 200
+      required:
+      - awards
+    AwardRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        recipient_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        recipient_name:
+          type: string
+          maxLength: 120
+        prize:
+          type: string
+          maxLength: 200
+        presenter:
+          type: string
+          maxLength: 120
+      required:
+      - title
     BestOfEnum:
       enum:
       - 3
@@ -10322,6 +10753,75 @@ components:
         * `warm_up` - Warm Up
         * `off_table` - Off Table
         * `cool_down` - Cool Down
+    Ceremony:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        location:
+          type: string
+          maxLength: 200
+        host:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 1000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CeremonyStatusEnum'
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        awards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Award'
+          readOnly: true
+      required:
+      - awards
+      - host
+      - id
+      - location
+      - notes
+      - published_at
+      - starts_at
+      - status
+    CeremonyRequest:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        location:
+          type: string
+          maxLength: 200
+        host:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 1000
+    CeremonyStatusEnum:
+      enum:
+      - draft
+      - published
+      - done
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `done` - Done
     Change:
       type: object
       properties:
@@ -12127,6 +12627,36 @@ components:
       - membership_id
       - started_on
       - values
+    Honour:
+      type: object
+      description: An award a player received at a published ceremony.
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        place:
+          type: integer
+          nullable: true
+        prize:
+          type: string
+        tournament:
+          type: string
+          format: uuid
+        tournament_name:
+          type: string
+        held_on:
+          type: string
+          format: date
+      required:
+      - held_on
+      - id
+      - place
+      - prize
+      - title
+      - tournament
+      - tournament_name
     InKind:
       type: object
       properties:
@@ -14465,6 +14995,27 @@ components:
             format: uuid
           writeOnly: true
           maxItems: 200
+    PatchedAwardRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        recipient_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        recipient_name:
+          type: string
+          maxLength: 120
+        prize:
+          type: string
+          maxLength: 200
+        presenter:
+          type: string
+          maxLength: 120
     PatchedCommentRequest:
       type: object
       properties:

@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('competitions', '0016_schedule_versions'),
+        ('competitions', '0017_ceremony_award'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
