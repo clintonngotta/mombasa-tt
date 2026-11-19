@@ -16,6 +16,7 @@ import { formatInstant } from "@/lib/dates"
 import { drawKeys, getDraw, getStandings, type Draw, type Standings } from "@/lib/draws"
 import { canManageTournament, eventSummary, eventTabPath, getTournament, tournamentKeys, type EventTab, type Tournament, type TournamentEvent } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
+import { useLiveTournament } from "@/lib/live"
 
 const TABS: { tab: EventTab; label: string; icon: LucideIcon }[] = [
   { tab: "brackets", label: "Brackets", icon: Network },
@@ -30,6 +31,7 @@ const TABS: { tab: EventTab; label: string; icon: LucideIcon }[] = [
  */
 export function EventPage({ tab }: { tab: EventTab }) {
   const { id = "", eventId = "" } = useParams()
+  useLiveTournament(id)
   const { results: memberships } = useMemberships()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const t = tournament.data
