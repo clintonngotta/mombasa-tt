@@ -32,6 +32,8 @@ class Organization(models.Model):
     region = models.CharField(max_length=100, blank=True)
     # How to find it on the ground: the closest landmark and the way from the main road or stage.
     directions = models.CharField(max_length=500, blank=True)
+    # What the club is about, shown to players looking for a club before they join.
+    description = models.TextField(max_length=2000, blank=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.CLUB)

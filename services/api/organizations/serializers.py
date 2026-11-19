@@ -16,6 +16,10 @@ from .models import Invitation, JoinRequest, MemberField, Membership, Organizati
 from .permissions import Permission
 
 
+def description_field():
+    return serializers.CharField(max_length=2000, allow_blank=True, required=False, trim_whitespace=True)
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=120, trim_whitespace=True)
     town = serializers.CharField(max_length=80, trim_whitespace=True)
@@ -24,11 +28,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
     directions = directions_field()
     latitude = coordinate_field(90)
     longitude = coordinate_field(180)
+    description = description_field()
 
     class Meta:
         model = Organization
         fields = ["id", "name", "town", "country", "region", "directions", "latitude", "longitude"]
-        fields += ["kind", "timezone"]
+        fields += ["description", "kind", "timezone"]
 
     def validate_kind(self, value):
         """A regional body is set up by its region's official (POST /regional-bodies/), never by picking
@@ -51,14 +56,17 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 
 class OrganizationLocationSerializer(serializers.ModelSerializer):
+    """The club's settings that roles.manage edits: where it is and what it is about."""
+
     country = CountryField(max_length=2)
+    description = description_field()
     directions = directions_field()
     latitude = coordinate_field(90)
     longitude = coordinate_field(180)
 
     class Meta:
         model = Organization
-        fields = ["country", "region", "town", "directions", "latitude", "longitude"]
+        fields = ["country", "region", "town", "directions", "latitude", "longitude", "description"]
         extra_kwargs = {"region": {"allow_blank": False, "required": True}}
 
     def validate(self, attrs):

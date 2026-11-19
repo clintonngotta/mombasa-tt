@@ -186,6 +186,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-training-plan-item": {"patch": STAFF, "delete": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
+    # What a player sees before joining: location, description, training hours and coming tournaments.
+    "organization-profile": {"get": SIGNED_IN},
+    "organization-training-hours": {"get": SIGNED_IN, "put": STAFF},
     "organization-permissions": {"get": SIGNED_IN},
     "organization-join-requests": {"get": STAFF, "post": SIGNED_IN},  # anyone may ask to join
     "organization-join-request-approve": {"post": STAFF},
@@ -349,6 +352,7 @@ BODIES = {
     },
     ("tournament-schedule-session", "patch"): {"name": "Morning"},
     ("organization-detail", "patch"): {"country": "KE", "region": "Mombasa", "town": "Mombasa"},
+    ("organization-training-hours", "put"): {"hours": [{"weekday": 1, "starts": "18:00", "ends": "20:00"}]},
     ("organization-invitations", "post"): {"email": "newcomer@example.com"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
@@ -957,6 +961,7 @@ class World:
             "scorecard-conflicts": self.scorecard.id,
             "tournament-scoring-conflict-resolve": self.conflict.id,
             "organization-detail": self.coast.id,
+            "organization-profile": self.coast.id,
             "player-detail": self.baraka.id,
             "player-ratings": self.baraka.id,
             "tournament-schedule-session": self.session.id,
@@ -1357,8 +1362,29 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "directions",
         "latitude",
         "longitude",
+        "description",
         "kind",
         "timezone",
+    }
+    profile = viewer.get(f"/api/v1/organizations/{world.coast.id}/profile/").json()
+    assert set(profile) == {
+        "id",
+        "name",
+        "kind",
+        "country",
+        "region",
+        "town",
+        "directions",
+        "latitude",
+        "longitude",
+        "description",
+        "timezone",
+        "venues",
+        "training_hours",
+        "upcoming_tournaments",
+    }
+    assert {"id", "name", "starts_on", "ends_on", "scope", "status", "venue_name"} >= {
+        key for tournament in profile["upcoming_tournaments"] for key in tournament
     }
     cup = viewer.get(f"/api/v1/tournaments/{world.published.id}/").json()
     assert set(cup) == {

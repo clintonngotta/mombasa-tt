@@ -6,6 +6,7 @@ from rest_framework import status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 from organizations.access import (
@@ -17,8 +18,8 @@ from organizations.access import (
 from organizations.models import Organization
 from organizations.permissions import Permission
 
-from .models import MAX_ACTIVE_TABLES, MAX_ACTIVE_VENUES, Table, Venue
-from .serializers import TableSerializer, VenueSerializer
+from .models import MAX_ACTIVE_TABLES, MAX_ACTIVE_VENUES, Table, TrainingHour, Venue
+from .serializers import TableSerializer, TrainingHourListSerializer, TrainingHourSerializer, VenueSerializer
 
 MANAGE = Permission.FACILITIES_MANAGE
 
@@ -139,3 +140,33 @@ class VenueViewSet(viewsets.GenericViewSet):
                 f"A venue can have {MAX_ACTIVE_TABLES} tables in use. Switch one off first.",
                 409,
             )
+
+
+class TrainingHoursView(APIView):
+    """The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+    holders of training.manage replace the whole list."""
+
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def _reply(organization: Organization) -> Response:
+        hours = organization.training_hours.select_related("venue")
+        return Response(TrainingHourSerializer(hours, many=True, context={"organization": organization}).data)
+
+    @extend_schema(responses={200: TrainingHourSerializer(many=True)})
+    def get(self, request, organization_pk):
+        return self._reply(get_object_or_404(Organization, pk=organization_pk))
+
+    @extend_schema(request=TrainingHourListSerializer, responses={200: TrainingHourSerializer(many=True)})
+    def put(self, request, organization_pk):
+        organization = get_object_or_404(Organization, pk=organization_pk)
+        with transaction.atomic():
+            lock_organization(organization)
+            require_permission(request.user, organization, Permission.TRAINING_MANAGE)
+            serializer = TrainingHourListSerializer(data=request.data, context={"organization": organization})
+            serializer.is_valid(raise_exception=True)
+            organization.training_hours.all().delete()
+            TrainingHour.objects.bulk_create(
+                TrainingHour(organization=organization, **hour) for hour in serializer.validated_data["hours"]
+            )
+        return self._reply(organization)

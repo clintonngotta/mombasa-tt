@@ -90,6 +90,8 @@ Hand-worked from the clauses in spec.md, not taken from the code under test. The
 
 **Organizations — integration.** Setup: P1 with A/B memberships, pending membership and public event at C. Steps: create organization, request/approve join, switch context, enter C event without joining C. Pass: creator is admin; membership status and switching are correct; entering public event does not fabricate membership. Outsider cannot approve self. Evidence: API and ownership assertions.
 
+*Finding a club.* Setup: clubs in two Kenyan regions and a facility, a club with a description, venues (one switched off), training hours and tournaments in every status. Steps: an outsider lists clubs by region, city, name and kind, opens the profile, and calls the club's members, venues, plans and drills; a member, a training coach and an outsider set training hours, including bad times and another club's venue. Pass: filters combine; the profile shows the venue in use, the hours in day order and only published or running tournaments not yet ended; everything else answers 403 or 404; only training.manage saves hours and a refused list changes nothing. Evidence: tests/test_club_discovery.py, routes in tests/test_privacy_matrix.py.
+
 ### EVAL-005
 
 **Roles and custom fields — integration with concurrency.** Setup: admin/captain/member, custom committee role, staff-only field. Steps: exercise each permission through API and live subscriptions, attempt wider grant, inspect fields, concurrently remove the two remaining admins. Pass: grant boundaries and field visibility hold; at least one admin remains; cross-tenant role IDs cannot be used. Evidence: access matrix and transaction results.

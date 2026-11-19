@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarClock, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Trophy, Users } from "lucide-react"
+import { CalendarClock, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
@@ -133,6 +133,7 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
   const manageRoles = can(membership, "roles.manage")
   const manageCompetitions = can(membership, "competitions.manage")
   const manageFacilities = can(membership, "facilities.manage")
+  const manageTraining = can(membership, "training.manage")
   return (
     <>
       <OrganizationCard organization={membership.organization}>
@@ -143,8 +144,13 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
       </OrganizationCard>
       <PlaceDirections place={membership.organization} className="-mt-2 px-1" />
       {manageRoles && <ClubLocation organization={membership.organization} />}
-      {(manageMembers || manageRoles || manageCompetitions || manageFacilities) && (
+      {(manageMembers || manageRoles || manageCompetitions || manageFacilities || manageTraining) && (
         <nav aria-label="Club administration" className="flex flex-col gap-2">
+          {(manageRoles || manageTraining) && (
+            <AdminLink to="/club/profile" icon={<Store aria-hidden className="size-5 text-brand-blue" />}>
+              Club profile and training hours
+            </AdminLink>
+          )}
           {manageCompetitions && (
             <AdminLink to="/club/tournaments" icon={<Trophy aria-hidden className="size-5 text-brand-blue" />}>
               Tournaments

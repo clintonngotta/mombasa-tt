@@ -1,13 +1,14 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from . import committee, handover, views
+from . import committee, handover, profile, views
 
 router = SimpleRouter()
 router.register("", views.OrganizationViewSet, basename="organization")
 
 join_request_views = views.JoinRequestViewSet
 urlpatterns = [
+    path("<uuid:pk>/profile/", profile.ClubProfileView.as_view(), name="organization-profile"),
     path(
         "<uuid:organization_pk>/join-requests/",
         join_request_views.as_view({"get": "list", "post": "create"}),

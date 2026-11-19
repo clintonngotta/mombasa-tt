@@ -2327,6 +2327,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/training-hours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+         *     holders of training.manage replace the whole list.
+         */
+        get: operations["organizations_training_hours_list"];
+        /**
+         * @description The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+         *     holders of training.manage replace the whole list.
+         */
+        put: operations["organizations_training_hours_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/training-plans/": {
         parameters: {
             query?: never;
@@ -2528,6 +2552,23 @@ export interface paths {
         head?: never;
         /** @description Search, view and register organizations (REQ-004). */
         patch: operations["organizations_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{id}/profile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/profile/: any signed-in player, member or not. */
+        get: operations["organizations_profile_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/permissions/": {
@@ -4381,6 +4422,25 @@ export interface components {
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
         };
+        ClubProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly kind: components["schemas"]["KindEnum"];
+            readonly country: string;
+            readonly region: string;
+            readonly town: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            readonly description: string;
+            readonly timezone: string;
+            readonly venues: components["schemas"]["VenueSummary"][];
+            readonly training_hours: components["schemas"]["TrainingHour"][];
+            readonly upcoming_tournaments: components["schemas"]["UpcomingTournament"][];
+        };
         ClubRanking: {
             discipline: components["schemas"]["SinglesOrDoublesEnum"];
             processing: boolean;
@@ -5640,6 +5700,7 @@ export interface components {
             latitude: number | null;
             /** Format: double */
             longitude: number | null;
+            description: string;
             kind: components["schemas"]["KindEnum"];
             timezone: string;
         };
@@ -5664,6 +5725,7 @@ export interface components {
             latitude?: number | null;
             /** Format: double */
             longitude?: number | null;
+            description?: string;
             kind?: components["schemas"]["KindEnum"];
             timezone?: string;
         };
@@ -6113,6 +6175,7 @@ export interface components {
                 [key: string]: (string | number | boolean) | null;
             };
         };
+        /** @description The club's settings that roles.manage edits: where it is and what it is about. */
         PatchedOrganizationLocationRequest: {
             country?: string;
             region?: string;
@@ -6122,6 +6185,7 @@ export interface components {
             latitude?: number | null;
             /** Format: double */
             longitude?: number | null;
+            description?: string;
         };
         PatchedPersonalMatchRequest: {
             /** Format: date */
@@ -7513,6 +7577,34 @@ export interface components {
             played: number;
             won: number;
         };
+        /** @description A weekly training time. `venue` is one of the organization's venues in use, or none. */
+        TrainingHour: {
+            /** Format: uuid */
+            readonly id: string;
+            weekday: number;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            label: string;
+            /** Format: uuid */
+            venue: string | null;
+            readonly venue_name: string;
+        };
+        TrainingHourListRequest: {
+            hours: components["schemas"]["TrainingHourRequest"][];
+        };
+        /** @description A weekly training time. `venue` is one of the organization's venues in use, or none. */
+        TrainingHourRequest: {
+            weekday: number;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            label?: string;
+            /** Format: uuid */
+            venue?: string | null;
+        };
         TrainingPlan: {
             /** Format: uuid */
             readonly id: string;
@@ -7562,6 +7654,18 @@ export interface components {
             readonly ends_at: string | null;
             /** Format: date-time */
             readonly completed_at: string | null;
+        };
+        UpcomingTournament: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: date */
+            readonly starts_on: string;
+            /** Format: date */
+            readonly ends_on: string;
+            readonly scope: components["schemas"]["TournamentScopeEnum"];
+            readonly status: components["schemas"]["TournamentStatusEnum"];
+            readonly venue_name: string;
         };
         User: {
             /** Format: uuid */
@@ -10692,11 +10796,19 @@ export interface operations {
     organizations_list: {
         parameters: {
             query?: {
+                /** @description City or town, any letter case */
+                city?: string;
+                /** @description Country code, e.g. KE */
+                country?: string;
+                /** @description Only these kinds */
+                kind?: ("club" | "club_facility" | "facility" | "regional_body")[];
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                /** @description Name or town */
+                /** @description Region, any letter case */
+                region?: string;
+                /** @description Name, town or region */
                 search?: string;
             };
             header?: never;
@@ -13059,6 +13171,70 @@ export interface operations {
             };
         };
     };
+    organizations_training_hours_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingHour"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_hours_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrainingHourListRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingHour"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_training_plans_list: {
         parameters: {
             query?: {
@@ -13586,6 +13762,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_profile_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubProfile"];
                 };
             };
             /** @description Error envelope */

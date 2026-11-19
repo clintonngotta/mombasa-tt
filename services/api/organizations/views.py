@@ -109,18 +109,37 @@ class OrganizationViewSet(
     pagination_class = StandardPagination
     queryset = Organization.objects.all()
 
-    @extend_schema(parameters=[OpenApiParameter("search", str, description="Name or town")])
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("search", str, description="Name, town or region"),
+            OpenApiParameter("country", str, description="Country code, e.g. KE"),
+            OpenApiParameter("region", str, description="Region, any letter case"),
+            OpenApiParameter("city", str, description="City or town, any letter case"),
+            OpenApiParameter(
+                "kind", str, many=True, enum=Organization.Kind.values, description="Only these kinds"
+            ),
+        ]
+    )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     def filter_queryset(self, queryset):
         if self.action != "list":
             return queryset
+        params = self.request.query_params
         term = search_term(self.request)
         if term:
             queryset = queryset.filter(
                 Q(name__icontains=term) | Q(town__icontains=term) | Q(region__icontains=term)
             )
+        if country := params.get("country", "").strip().upper():
+            queryset = queryset.filter(country=country)
+        if region := params.get("region", "").strip():
+            queryset = queryset.filter(region__iexact=region)
+        if city := params.get("city", "").strip():
+            queryset = queryset.filter(town__iexact=city)
+        if kinds := [kind for kind in params.getlist("kind") if kind in Organization.Kind.values]:
+            queryset = queryset.filter(kind__in=kinds)
         return queryset
 
     @extend_schema(request=OrganizationLocationSerializer, responses={200: OrganizationSerializer})
