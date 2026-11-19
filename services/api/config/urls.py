@@ -8,6 +8,7 @@ from competitions.urls import me_urlpatterns as my_entries
 from competitions.urls import organization_urlpatterns as organization_tournaments
 from core import views as core_views
 from core.catalogue import CountryCatalogueView, CountryOptionsView
+from facilities.urls import finder_urls
 from guests.urls import club_urlpatterns as club_guests
 from guests.urls import me_urlpatterns as my_guest_claims
 from profiles.views import PlayerDetailView, PlayerDirectoryView
@@ -46,6 +47,7 @@ api_v1 = [
     path("tournaments/", include("reservations.urls")),
     path("tournaments/", include(sponsorships)),
     path("", include(library_urls)),
+    path("", include(finder_urls)),
     path("players/", PlayerDirectoryView.as_view(), name="player-directory"),
     path("players/<uuid:pk>/", PlayerDetailView.as_view(), name="player-detail"),
     path("players/<uuid:pk>/ratings/", PlayerRatingsView.as_view(), name="player-ratings"),

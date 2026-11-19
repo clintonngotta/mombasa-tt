@@ -45,7 +45,7 @@ from competitions.models import (
     ScheduleVersion,
     Tournament,
 )
-from facilities.models import Table, Venue
+from facilities.models import OpeningHour, Table, Venue
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
@@ -181,6 +181,9 @@ ACCESS: dict[str, dict[str, str]] = {
     # Coaching (REQ-047): coaches are found by any player; coachings, bookings, the trainees a coach
     # sees and the coach's notes belong to the two people involved. Another's id is a 404.
     "coaches": {"get": SIGNED_IN},
+    # The facility finder (REQ-044): published branch profiles only; see test_facilities.py.
+    "facility-list": {"get": SIGNED_IN},
+    "facility-detail": {"get": SIGNED_IN},
     "coach": {"get": SIGNED_IN},
     "coach-slots": {"get": SIGNED_IN},
     "my-coach-profile": {"get": OWNER, "put": OWNER},
@@ -275,6 +278,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-venue": {"patch": STAFF},
     "organization-venue-tables": {"post": STAFF},
     "organization-venue-table": {"patch": STAFF},
+    "organization-venue-hours": {"put": STAFF},
     # Tournaments: published ones are for every signed-in player (signed-out pages come with TASK-035);
     # drafts and every change are for the host's competition staff.
     "organization-tournaments": {"get": STAFF, "post": STAFF},
@@ -463,6 +467,10 @@ BODIES = {
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
+    ("organization-venue-hours", "put"): {
+        "hours": [{"weekday": 0, "opens": "08:00", "closes": "20:00"}],
+        "closures": [],
+    },
     ("organization-tournaments", "post"): {
         "name": "New cup",
         "starts_on": "2027-01-09",
@@ -1066,6 +1074,8 @@ class World:
             "organization-venue": self.venue.id,
             "organization-venue-tables": self.venue.id,
             "organization-venue-table": self.venue.id,
+            "organization-venue-hours": self.venue.id,
+            "facility-detail": self.venue.id,
             "tournament-detail": self.deletable.id,
             "tournament-publish": self.spare_draft.id,
             "tournament-request-approval": self.regional_draft.id,
@@ -1209,7 +1219,8 @@ class World:
             ),
             "committee_fields": sorted(CommitteeField.objects.values_list("label", "retired_at")),
             "committee_values": sorted(CommitteeFieldValue.objects.values_list("field__label", "value")),
-            "venues": sorted(Venue.objects.values_list("name", "town", "active")),
+            "venues": sorted(Venue.objects.values_list("name", "town", "active", "profile")),
+            "opening_hours": sorted(OpeningHour.objects.values_list("venue__name", "weekday", "opens")),
             "equipment": sorted(Equipment.objects.values_list("user__email", "blade")),
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),

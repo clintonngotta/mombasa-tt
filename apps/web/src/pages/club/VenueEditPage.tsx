@@ -10,7 +10,9 @@ import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
 import { can, useActiveMembership } from "@/lib/clubs"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
-import { addTable, createVenue, listVenues, updateTable, updateVenue, venueKeys, type Venue, type VenueTable } from "@/lib/venues"
+import { addTable, createVenue, listVenues, runsFacility, updateTable, updateVenue, venueKeys, type Venue, type VenueTable } from "@/lib/venues"
+import { BranchProfile, OpeningHours } from "@/components/facilities/BranchSettings"
+import { DEFAULT_TIME_ZONE } from "@/lib/dates"
 
 /** Add a venue, or edit one and set up its tables (REQ-007). */
 export function VenueEditPage() {
@@ -21,6 +23,7 @@ export function VenueEditPage() {
   const venues = useQuery({ queryKey: venueKeys.list(orgId), queryFn: () => listVenues(orgId), enabled: allowed && !!id })
   const accessLost = useAdminAccessLost(venues.error)
   const venue = id && allowed && !accessLost ? venues.data?.find((v) => v.id === id) : undefined
+  const facility = runsFacility(active?.organization.kind)
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">
@@ -32,7 +35,9 @@ export function VenueEditPage() {
       {active && allowed && !accessLost && (!id || venue) && (
         <>
           <VenueForm key={venue?.id ?? "new"} orgId={orgId} venue={venue} />
-          {venue && <Tables orgId={orgId} venue={venue} />}
+          {venue && <Tables orgId={orgId} venue={venue} facility={facility} />}
+          {venue && facility && <BranchProfile key={`profile-${venue.id}`} orgId={orgId} venue={venue} />}
+          {venue && facility && <OpeningHours key={`hours-${venue.id}`} orgId={orgId} venue={venue} timeZone={active?.organization.timezone ?? DEFAULT_TIME_ZONE} />}
         </>
       )}
     </div>
@@ -123,7 +128,7 @@ function VenueForm({ orgId, venue }: { orgId: string; venue?: Venue }) {
   )
 }
 
-function Tables({ orgId, venue }: { orgId: string; venue: Venue }) {
+function Tables({ orgId, venue, facility }: { orgId: string; venue: Venue; facility: boolean }) {
   const saved = useVenueSaved(orgId)
   const [label, setLabel] = useState("")
   const add = useMutation({
@@ -135,6 +140,10 @@ function Tables({ orgId, venue }: { orgId: string; venue: Venue }) {
   })
   const toggle = useMutation({
     mutationFn: (table: VenueTable) => updateTable(orgId, venue.id, table.id, { active: !table.active }),
+    onSuccess: saved,
+  })
+  const switchKind = useMutation({
+    mutationFn: (table: VenueTable) => updateTable(orgId, venue.id, table.id, { kind: table.kind === "training" ? "match" : "training" }),
     onSuccess: saved,
   })
 
@@ -156,13 +165,20 @@ function Tables({ orgId, venue }: { orgId: string; venue: Venue }) {
       </p>
       {venue.tables.length === 0 && <p className="text-muted-foreground">No tables yet.</p>}
       {toggle.isError && <FormAlert>{errorMessage(toggle.error)}</FormAlert>}
+      {switchKind.isError && <FormAlert>{errorMessage(switchKind.error)}</FormAlert>}
       <ul className="flex flex-col gap-2">
         {venue.tables.map((table) => (
           <li key={table.id} className={ROW}>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="font-semibold break-words">{table.label}</span>
               {!table.active && <span className="text-sm text-muted-foreground">Not in use</span>}
+              {facility && table.active && <span className="text-sm text-muted-foreground">{table.kind === "training" ? "Training table" : "Match table"}</span>}
             </span>
+            {facility && table.active && (
+              <Button variant="ghost" aria-label={`Make ${table.label} a ${table.kind === "training" ? "match" : "training"} table`} disabled={switchKind.isPending && switchKind.variables?.id === table.id} onClick={() => switchKind.mutate(table)}>
+                {table.kind === "training" ? "Use for matches" : "Use for training"}
+              </Button>
+            )}
             <Button
               variant="outline"
               aria-label={`${table.active ? "Stop using" : "Use"} ${table.label}`}
