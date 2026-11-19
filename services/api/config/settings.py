@@ -64,6 +64,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "core.middleware.RequestIdMiddleware",
+    "core.middleware.ClientBuildMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -242,6 +243,10 @@ LOGGING = {
 # developing: without it the outbox is polled by `manage.py work_outbox` and WebSocket messages reach
 # only pages served by the same process. Keep it on a private network (deployment.md).
 REDIS_URL = os.environ.get("REDIS_URL", "")
+
+# The oldest web app build (its APP_BUILD number, e.g. 202611191200) the API still serves (REQ-035).
+# Raise it only when a change breaks older cached apps; 0 serves every build.
+MIN_CLIENT_BUILD = int(os.environ.get("MIN_CLIENT_BUILD", "0") or 0)
 
 CELERY_BROKER_URL = REDIS_URL or "memory://"
 CELERY_TASK_IGNORE_RESULT = True
