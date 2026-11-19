@@ -212,6 +212,8 @@ SPECTACULAR_SETTINGS = {
         "MatchOutcomeEnum": "competitions.models.Match.Outcome",
         "ScheduleVersionKindEnum": "competitions.models.ScheduleVersion.Kind",
         "DelayReasonEnum": "competitions.models.ScheduleVersion.Reason",
+        "StreamPlatformEnum": "competitions.models.LiveStream.Platform",
+        "StreamReportReasonEnum": "competitions.models.LiveStreamReport.Reason",
     },
 }
 

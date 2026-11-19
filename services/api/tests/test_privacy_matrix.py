@@ -34,6 +34,8 @@ from competitions.models import (
     Event,
     LifecycleEntry,
     Lineup,
+    LiveStream,
+    LiveStreamReport,
     Match,
     OfficialResult,
     Resolution,
@@ -156,6 +158,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-sponsorships": {"get": STAFF, "post": STAFF},
     "organization-sponsorship-withdraw": {"post": STAFF},
     "tournament-sponsors": {"get": SIGNED_IN},
+    # Watch links (REQ-042): seen and reported by everyone who sees the tournament; staff manage them.
+    "tournament-streams": {"get": SIGNED_IN, "post": STAFF},
+    "tournament-stream": {"patch": STAFF, "delete": STAFF},
+    "tournament-stream-report": {"post": SIGNED_IN},
     "tournament-sponsorships": {"get": STAFF},
     "tournament-sponsorship-accept": {"post": STAFF},
     "tournament-sponsorship-decline": {"post": STAFF},
@@ -358,6 +364,9 @@ BODIES = {
     ("organization-meeting-minutes", "post"): {"minutes": "Agreed the budget."},
     ("organization-meeting-answer", "post"): {"answer": "attending"},
     ("organization-sponsorships", "post"): {"tournament_id": NYALI_CUP, "amount_minor": 100000},
+    ("tournament-streams", "post"): {"url": "https://www.youtube.com/live/coast-open"},
+    ("tournament-stream", "patch"): {"title": "Table 1"},
+    ("tournament-stream-report", "post"): {"reason": "broken"},
     ("tournament-schedule", "put"): {"slots": []},
     ("tournament-schedule-check", "post"): {"slots": []},
     ("tournament-schedule-delay", "post"): {"table_id": SPARE_TABLE, "minutes": 20, "reason": "late_start"},
@@ -864,6 +873,9 @@ class World:
         self.offer_to_accept = Sponsorship.objects.create(
             sponsor=self.nyali, tournament=self.published, amount_minor=100000
         )
+        self.stream = LiveStream.objects.create(
+            tournament=self.published, url="https://fb.watch/coast", platform=LiveStream.Platform.FACEBOOK
+        )
         self.offer_to_decline = Sponsorship.objects.create(
             sponsor=self.body, tournament=self.published, amount_minor=1
         )
@@ -908,6 +920,8 @@ class World:
             "organization-sponsorship-withdraw": self.offer.id,
             "tournament-sponsorship-accept": self.offer_to_accept.id,
             "tournament-sponsorship-decline": self.offer_to_decline.id,
+            "tournament-stream": self.stream.id,
+            "tournament-stream-report": self.stream.id,
             "coach": self.kito.id,
             "coach-slots": self.kito.id,
             "my-coach-comment": self.coach_note.id,
@@ -1006,7 +1020,7 @@ class World:
             return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
             found["organization_pk"] = self.body.id
-        if name.startswith("tournament-sponsor"):
+        if name.startswith(("tournament-sponsor", "tournament-stream")):
             found["tournament_pk"] = self.published.id
             return found
         if "coaching_pk" in names:
@@ -1092,6 +1106,8 @@ class World:
                 MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at")
             ),
             "sponsorships": sorted(Sponsorship.objects.values_list("amount_minor", "status")),
+            "streams": sorted(LiveStream.objects.values_list("url", "title")),
+            "stream_reports": sorted(LiveStreamReport.objects.values_list("reporter__email", "reason")),
             "coach_profiles": sorted(
                 CoachProfile.objects.values_list("user__email", "headline", "accepting")
             ),
