@@ -1615,6 +1615,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/facility-visits/:
+    get:
+      operationId: me_facility_visits_list
+      description: The signed-in player's own visits and passes at facilities, newest
+        first.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyVisitList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/goals/:
     put:
       operationId: me_goals_update
@@ -4986,6 +5021,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/facility-takings/:
+    get:
+      operationId: organizations_facility_takings_list
+      description: What the facility's branches collected in a month (REQ-044), for
+        those who see its finances.
+      parameters:
+      - in: query
+        name: month
+        schema:
+          type: string
+        description: YYYY-MM; this month by default
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: venue
+        schema:
+          type: string
+        description: Only this branch
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Takings'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/guest-claims/:
     get:
       operationId: organizations_guest_claims_list
@@ -7357,6 +7433,299 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Venue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{venue_pk}/passes/:
+    get:
+      operationId: organizations_venues_passes_list
+      description: A branch's prices, for its facility staff. Players see the ones
+        in use on the branch profile.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: venue_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pass'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_venues_passes_create
+      description: A branch's prices, for its facility staff. Players see the ones
+        in use on the branch profile.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: venue_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PassRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pass'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{venue_pk}/passes/{id}/:
+    patch:
+      operationId: organizations_venues_passes_partial_update
+      description: A branch's prices, for its facility staff. Players see the ones
+        in use on the branch profile.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: venue_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPassRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pass'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/:
+    get:
+      operationId: organizations_venues_visits_list
+      description: 'The door screen of a branch: the day''s visits, recording one,
+        and reversing a mistake.'
+      parameters:
+      - in: query
+        name: day
+        schema:
+          type: string
+          format: date
+        description: The branch's local day; today by default
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: venue_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Visit'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_venues_visits_create
+      description: 'The door screen of a branch: the day''s visits, recording one,
+        and reversing a mistake.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: venue_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordVisitRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/{id}/reverse/:
+    post:
+      operationId: organizations_venues_visits_reverse_create
+      description: Reverse a visit recorded by mistake. The original stays, marked
+        reversed with the reason.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: venue_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseVisitRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/active-pass/:
+    get:
+      operationId: organizations_venues_visits_active_pass_retrieve
+      description: 'The pass this player holds here that covers today, if any: shown
+        at the door.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: player
+        schema:
+          type: string
+        description: The player's id
+      - in: path
+        name: venue_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
           description: ''
         4XX:
           description: Error envelope
@@ -13912,6 +14281,11 @@ components:
           - $ref: '#/components/schemas/Closure'
           nullable: true
           readOnly: true
+        passes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pass'
+          readOnly: true
       required:
       - address
       - amenities
@@ -13928,6 +14302,7 @@ components:
       - opening_hours
       - organization_id
       - organization_name
+      - passes
       - phone
       - region
       - rules
@@ -15546,6 +15921,18 @@ components:
       description: |-
         * `active` - Active
         * `left` - Left
+    MethodEnum:
+      enum:
+      - cash
+      - mpesa
+      - other
+      - pass
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `mpesa` - M-Pesa
+        * `other` - Other
+        * `pass` - Covered by a pass
     MinutesRequest:
       type: object
       properties:
@@ -15974,6 +16361,80 @@ components:
       - responded_at
       - session
       - status
+    MyVisit:
+      type: object
+      description: 'The player''s own visit or pass at a facility: never anybody else''s,
+        never a walk-in name.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        facility_name:
+          type: string
+          readOnly: true
+        venue_id:
+          type: string
+          format: uuid
+          readOnly: true
+        venue_name:
+          type: string
+          readOnly: true
+        pass_name:
+          type: string
+          readOnly: true
+        pass_kind:
+          type: string
+          readOnly: true
+        sessions:
+          type: integer
+          readOnly: true
+          nullable: true
+        benefits:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        amount_minor:
+          type: integer
+          readOnly: true
+        currency:
+          type: string
+          readOnly: true
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          readOnly: true
+        visited_on:
+          type: string
+          format: date
+          readOnly: true
+        valid_until:
+          type: string
+          format: date
+          readOnly: true
+        on_pass:
+          type: boolean
+          readOnly: true
+        reversed:
+          type: boolean
+          readOnly: true
+      required:
+      - amount_minor
+      - benefits
+      - currency
+      - facility_name
+      - id
+      - method
+      - on_pass
+      - pass_kind
+      - pass_name
+      - reversed
+      - sessions
+      - valid_until
+      - venue_id
+      - venue_name
+      - visited_on
     NominateRequest:
       type: object
       properties:
@@ -16964,6 +17425,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MySessionInvitation'
+    PaginatedMyVisitList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyVisit'
     PaginatedOrganizationList:
       type: object
       required:
@@ -17089,6 +17575,109 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TrainingPlan'
+    Pass:
+      type: object
+      description: 'A price at a branch (REQ-044): amounts are integer minor units
+        with their currency.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/PassKindEnum'
+        amount_minor:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        sessions:
+          type: integer
+          maximum: 100
+          minimum: 2
+          nullable: true
+        valid_days:
+          type: integer
+          maximum: 366
+          minimum: 1
+          nullable: true
+        benefits:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 12
+        active:
+          type: boolean
+      required:
+      - active
+      - amount_minor
+      - benefits
+      - currency
+      - id
+      - kind
+      - name
+      - sessions
+      - valid_days
+    PassKindEnum:
+      enum:
+      - day
+      - week
+      - month
+      - sessions
+      type: string
+      description: |-
+        * `day` - Day pass
+        * `week` - Week pass
+        * `month` - Month pass
+        * `sessions` - Sessions bundle
+    PassRequest:
+      type: object
+      description: 'A price at a branch (REQ-044): amounts are integer minor units
+        with their currency.'
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/PassKindEnum'
+        amount_minor:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+        currency:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z]{3}$
+        sessions:
+          type: integer
+          maximum: 100
+          minimum: 2
+          nullable: true
+        valid_days:
+          type: integer
+          maximum: 366
+          minimum: 1
+          nullable: true
+        benefits:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+          maxItems: 12
+        active:
+          type: boolean
+      required:
+      - amount_minor
+      - kind
+      - name
     PasswordResetConfirmRequest:
       type: object
       properties:
@@ -17529,6 +18118,44 @@ components:
         description:
           type: string
           maxLength: 2000
+    PatchedPassRequest:
+      type: object
+      description: 'A price at a branch (REQ-044): amounts are integer minor units
+        with their currency.'
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        kind:
+          $ref: '#/components/schemas/PassKindEnum'
+        amount_minor:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+        currency:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z]{3}$
+        sessions:
+          type: integer
+          maximum: 100
+          minimum: 2
+          nullable: true
+        valid_days:
+          type: integer
+          maximum: 366
+          minimum: 1
+          nullable: true
+        benefits:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+          maxItems: 12
+        active:
+          type: boolean
     PatchedPersonalMatchRequest:
       type: object
       properties:
@@ -18944,6 +19571,27 @@ components:
       - match_id
       - scheduled_at
       - table_id
+    RecordVisitRequest:
+      type: object
+      properties:
+        pass_id:
+          type: string
+          format: uuid
+          nullable: true
+        player_id:
+          type: string
+          format: uuid
+          nullable: true
+        walk_in_name:
+          type: string
+          maxLength: 80
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        reference:
+          type: string
+          maxLength: 60
+      required:
+      - method
     RefusedEvent:
       type: object
       properties:
@@ -19322,6 +19970,15 @@ components:
           nullable: true
       required:
       - winner_entry_id
+    ReverseVisitRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     Role:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
@@ -20746,6 +21403,131 @@ components:
           default: false
       required:
       - device_id
+    Takings:
+      type: object
+      description: A month's takings, reversed visits left out; each total is per
+        currency.
+      properties:
+        month:
+          type: string
+          description: YYYY-MM, in the organization's timezone
+        total:
+          type: array
+          items:
+            $ref: '#/components/schemas/TakingsRow'
+        by_day:
+          type: array
+          items:
+            $ref: '#/components/schemas/TakingsDay'
+        by_branch:
+          type: array
+          items:
+            $ref: '#/components/schemas/TakingsBranch'
+        by_method:
+          type: array
+          items:
+            $ref: '#/components/schemas/TakingsMethod'
+        by_pass:
+          type: array
+          items:
+            $ref: '#/components/schemas/TakingsPass'
+        reversed:
+          type: integer
+          description: Visits reversed that month, not counted above
+      required:
+      - by_branch
+      - by_day
+      - by_method
+      - by_pass
+      - month
+      - reversed
+      - total
+    TakingsBranch:
+      type: object
+      properties:
+        currency:
+          type: string
+        amount_minor:
+          type: integer
+        visits:
+          type: integer
+        venue_id:
+          type: string
+          format: uuid
+        venue_name:
+          type: string
+      required:
+      - amount_minor
+      - currency
+      - venue_id
+      - venue_name
+      - visits
+    TakingsDay:
+      type: object
+      properties:
+        currency:
+          type: string
+        amount_minor:
+          type: integer
+        visits:
+          type: integer
+        day:
+          type: string
+          format: date
+      required:
+      - amount_minor
+      - currency
+      - day
+      - visits
+    TakingsMethod:
+      type: object
+      properties:
+        currency:
+          type: string
+        amount_minor:
+          type: integer
+        visits:
+          type: integer
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+      required:
+      - amount_minor
+      - currency
+      - method
+      - visits
+    TakingsPass:
+      type: object
+      properties:
+        currency:
+          type: string
+        amount_minor:
+          type: integer
+        visits:
+          type: integer
+        pass_id:
+          type: string
+          format: uuid
+        pass_name:
+          type: string
+      required:
+      - amount_minor
+      - currency
+      - pass_id
+      - pass_name
+      - visits
+    TakingsRow:
+      type: object
+      properties:
+        currency:
+          type: string
+        amount_minor:
+          type: integer
+        visits:
+          type: integer
+      required:
+      - amount_minor
+      - currency
+      - visits
     Tie:
       type: object
       description: 'A team tie (REQ-011): its format, each team''s lineup and, once
@@ -21668,6 +22450,88 @@ components:
       - scheduled_at
       - table
       - title
+    Visit:
+      type: object
+      description: A door visit as the facility's staff see it, walk-in names included.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        pass_name:
+          type: string
+          readOnly: true
+        pass_kind:
+          type: string
+          readOnly: true
+        player_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        player_name:
+          type: string
+          readOnly: true
+        walk_in_name:
+          type: string
+          readOnly: true
+        amount_minor:
+          type: integer
+          readOnly: true
+        currency:
+          type: string
+          readOnly: true
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          readOnly: true
+        reference:
+          type: string
+          readOnly: true
+        visited_on:
+          type: string
+          format: date
+          readOnly: true
+        valid_until:
+          type: string
+          format: date
+          readOnly: true
+        recorded_by_name:
+          type: string
+          readOnly: true
+        recorded_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reversed:
+          type: boolean
+          readOnly: true
+        reversed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        reversal_reason:
+          type: string
+          readOnly: true
+      required:
+      - amount_minor
+      - currency
+      - id
+      - method
+      - pass_kind
+      - pass_name
+      - player_id
+      - player_name
+      - recorded_at
+      - recorded_by_name
+      - reference
+      - reversal_reason
+      - reversed
+      - reversed_at
+      - valid_until
+      - visited_on
+      - walk_in_name
     XEnum:
       enum:
       - left

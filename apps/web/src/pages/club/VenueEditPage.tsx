@@ -12,6 +12,7 @@ import { can, useActiveMembership } from "@/lib/clubs"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { addTable, createVenue, listVenues, runsFacility, updateTable, updateVenue, venueKeys, type Venue, type VenueTable } from "@/lib/venues"
 import { BranchProfile, OpeningHours } from "@/components/facilities/BranchSettings"
+import { Prices } from "@/components/facilities/Prices"
 import { DEFAULT_TIME_ZONE } from "@/lib/dates"
 
 /** Add a venue, or edit one and set up its tables (REQ-007). */
@@ -36,6 +37,7 @@ export function VenueEditPage() {
         <>
           <VenueForm key={venue?.id ?? "new"} orgId={orgId} venue={venue} />
           {venue && <Tables orgId={orgId} venue={venue} facility={facility} />}
+          {venue && facility && venue.active && <Prices orgId={orgId} venue={venue} />}
           {venue && facility && <BranchProfile key={`profile-${venue.id}`} orgId={orgId} venue={venue} />}
           {venue && facility && <OpeningHours key={`hours-${venue.id}`} orgId={orgId} venue={venue} timeZone={active?.organization.timezone ?? DEFAULT_TIME_ZONE} />}
         </>
