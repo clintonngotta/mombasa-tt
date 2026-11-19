@@ -300,6 +300,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/facilities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The facility finder (REQ-044): branches of facility organizations whose profile the caller may
+         *     see, by place and by whether they are open now in the facility's own timezone.
+         */
+        get: operations["facilities_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/facilities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The facility finder (REQ-044): branches of facility organizations whose profile the caller may
+         *     see, by place and by whether they are open now in the facility's own timezone.
+         */
+        get: operations["facilities_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geography/countries/": {
         parameters: {
             query?: never;
@@ -2903,6 +2943,23 @@ export interface paths {
         patch: operations["organizations_venues_partial_update"];
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/hours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Replace the venue's weekly opening hours and its closures together. */
+        put: operations["organizations_venues_hours_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/venues/{id}/tables/": {
         parameters: {
             query?: never;
@@ -5089,6 +5146,20 @@ export interface components {
         ClaimNoteRequest: {
             note: string;
         };
+        Closure: {
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            reason: string;
+        };
+        ClosureRequest: {
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            reason?: string;
+        };
         ClubProfile: {
             /** Format: uuid */
             readonly id: string;
@@ -5712,6 +5783,56 @@ export interface components {
          * @enum {string}
          */
         ExperienceEnum: "new" | "casual" | "club" | "competitive";
+        /** @description A facility branch as players find it (REQ-044). */
+        Facility: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly country: string;
+            readonly region: string;
+            readonly town: string;
+            readonly address: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            readonly amenities: string[];
+            readonly open_now: boolean;
+            readonly match_tables: number;
+            readonly training_tables: number;
+        };
+        /** @description The whole published profile of one branch: hours, closures coming up, rules and contact. */
+        FacilityProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly country: string;
+            readonly region: string;
+            readonly town: string;
+            readonly address: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            readonly amenities: string[];
+            readonly open_now: boolean;
+            readonly match_tables: number;
+            readonly training_tables: number;
+            readonly phone: string;
+            readonly rules: string;
+            readonly timezone: string;
+            readonly opening_hours: components["schemas"]["OpeningHour"][];
+            readonly closures: components["schemas"]["Closure"][];
+            readonly closed_today: components["schemas"]["Closure"] | null;
+        };
         /**
          * @description * `W` - W
          *     * `L` - L
@@ -6590,6 +6711,20 @@ export interface components {
             points: number[];
             history: components["schemas"]["AssignmentStep"][];
         };
+        OpeningHour: {
+            weekday: number;
+            /** Format: time */
+            opens: string;
+            /** Format: time */
+            closes: string;
+        };
+        OpeningHourRequest: {
+            weekday: number;
+            /** Format: time */
+            opens: string;
+            /** Format: time */
+            closes: string;
+        };
         OptionalReasonRequest: {
             reason?: string;
         };
@@ -6779,6 +6914,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Entry"][];
+        };
+        PaginatedFacilityList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Facility"][];
         };
         PaginatedGuestClaimList: {
             /** @example 123 */
@@ -7329,6 +7479,7 @@ export interface components {
         };
         PatchedTableRequest: {
             label?: string;
+            kind?: components["schemas"]["TableKindEnum"];
             active?: boolean;
         };
         /**
@@ -7360,9 +7511,11 @@ export interface components {
             /** Format: date */
             ends_on?: string | null;
         };
-        /** @description A venue with its tables in playing order. */
+        /** @description A venue with its tables in playing order, and its branch profile (REQ-044). */
         PatchedVenueRequest: {
             name?: string;
+            country?: string;
+            region?: string;
             town?: string;
             address?: string;
             directions?: string;
@@ -7370,6 +7523,17 @@ export interface components {
             latitude?: number | null;
             /** Format: double */
             longitude?: number | null;
+            phone?: string;
+            rules?: string;
+            amenities?: string[];
+            /**
+             * @description Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+             *
+             *     * `hidden` - Hidden
+             *     * `members` - Members only
+             *     * `public` - Public
+             */
+            profile?: components["schemas"]["ProfileEnum"];
             active?: boolean;
         };
         /** @description One shot of a drill on the virtual table; see Drill.pattern. */
@@ -7652,6 +7816,13 @@ export interface components {
             readonly goals: components["schemas"]["GoalsEnum"][];
             readonly onboarding_completed: boolean;
         };
+        /**
+         * @description * `hidden` - Hidden
+         *     * `members` - Members only
+         *     * `public` - Public
+         * @enum {string}
+         */
+        ProfileEnum: "hidden" | "members" | "public";
         Progress: {
             done: number;
             total: number;
@@ -8538,6 +8709,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             label: string;
+            kind: components["schemas"]["TableKindEnum"];
             readonly position: number;
             active: boolean;
         };
@@ -8548,8 +8720,15 @@ export interface components {
             minutes: number;
             reason: components["schemas"]["DelayReasonEnum"];
         };
+        /**
+         * @description * `match` - Match
+         *     * `training` - Training
+         * @enum {string}
+         */
+        TableKindEnum: "match" | "training";
         TableRequest: {
             label: string;
+            kind?: components["schemas"]["TableKindEnum"];
             active?: boolean;
         };
         /** @description One of the tournament's tables and whether a match holds it right now. */
@@ -8828,11 +9007,13 @@ export interface components {
             /** Format: date-time */
             readonly date_joined: string;
         };
-        /** @description A venue with its tables in playing order. */
+        /** @description A venue with its tables in playing order, and its branch profile (REQ-044). */
         Venue: {
             /** Format: uuid */
             readonly id: string;
             name: string;
+            country: string;
+            region: string;
             town: string;
             address: string;
             directions: string;
@@ -8840,12 +9021,32 @@ export interface components {
             latitude: number | null;
             /** Format: double */
             longitude: number | null;
+            phone: string;
+            rules: string;
+            amenities: string[];
+            /**
+             * @description Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+             *
+             *     * `hidden` - Hidden
+             *     * `members` - Members only
+             *     * `public` - Public
+             */
+            profile: components["schemas"]["ProfileEnum"];
             active: boolean;
             readonly tables: components["schemas"]["Table"][];
+            readonly opening_hours: components["schemas"]["OpeningHour"][];
+            readonly closures: components["schemas"]["Closure"][];
         };
-        /** @description A venue with its tables in playing order. */
+        /** @description The whole weekly timetable and list of closures, replaced together. */
+        VenueHoursRequest: {
+            hours: components["schemas"]["OpeningHourRequest"][];
+            closures: components["schemas"]["ClosureRequest"][];
+        };
+        /** @description A venue with its tables in playing order, and its branch profile (REQ-044). */
         VenueRequest: {
             name: string;
+            country?: string;
+            region?: string;
             town: string;
             address?: string;
             directions?: string;
@@ -8853,6 +9054,17 @@ export interface components {
             latitude?: number | null;
             /** Format: double */
             longitude?: number | null;
+            phone?: string;
+            rules?: string;
+            amenities?: string[];
+            /**
+             * @description Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+             *
+             *     * `hidden` - Hidden
+             *     * `members` - Members only
+             *     * `public` - Public
+             */
+            profile?: components["schemas"]["ProfileEnum"];
             active?: boolean;
         };
         /** @description What anyone who can see a tournament sees of its venue, including how to find it. */
@@ -9401,6 +9613,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    facilities_list: {
+        parameters: {
+            query?: {
+                /** @description City or town, any letter case */
+                city?: string;
+                /** @description Country code, e.g. KE */
+                country?: string;
+                /** @description Only branches open at this moment */
+                open_now?: boolean;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Region, any letter case */
+                region?: string;
+                /** @description Branch, facility or town */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFacilityList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    facilities_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this venue. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacilityProfile"];
                 };
             };
             /** @description Error envelope */
@@ -15745,6 +16031,41 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["PatchedVenueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_hours_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VenueHoursRequest"];
             };
         };
         responses: {

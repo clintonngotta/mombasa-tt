@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.functions import Lower
 
@@ -8,6 +9,9 @@ from organizations.models import Organization
 MAX_ACTIVE_VENUES = 20
 MAX_ACTIVE_TABLES = 60
 MAX_TRAINING_HOURS = 42
+MAX_OPENING_HOURS = 28  # four opening blocks a day
+MAX_CLOSURES = 60
+MAX_AMENITIES = 20
 
 
 class Venue(models.Model):
@@ -24,6 +28,20 @@ class Venue(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     active = models.BooleanField(default=True)
+    # A facility branch's profile (REQ-044). `town` is the city; country and region come from the
+    # catalogue like an organization's.
+    country = models.CharField(max_length=2, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    rules = models.TextField(max_length=2000, blank=True)
+    amenities = ArrayField(models.CharField(max_length=60), default=list, blank=True)
+    profile = models.CharField(
+        max_length=8,
+        choices=[("hidden", "Hidden"), ("members", "Members only"), ("public", "Public")],
+        default="hidden",
+        help_text="Who finds this branch in the facility finder: nobody, the organization's members, "
+        "or every signed-in player.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -52,6 +70,10 @@ class Table(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     venue = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name="tables")
     label = models.CharField(max_length=40)
+    # A facility splits its tables: match tables for play and tournaments, training tables for coaching.
+    kind = models.CharField(
+        max_length=8, choices=[("match", "Match"), ("training", "Training")], default="match"
+    )
     position = models.PositiveSmallIntegerField(default=0)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -92,3 +114,47 @@ class TrainingHour(models.Model):
 
     def __str__(self):
         return f"{self.organization_id} {self.weekday} {self.starts}-{self.ends}"
+
+
+class OpeningHour(models.Model):
+    """When a venue is open on one weekday, in its organization's timezone (REQ-044, shared with REQ-021).
+    A day may have several blocks (a lunch break), and a day with none is closed."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    venue = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name="opening_hours")
+    weekday = models.PositiveSmallIntegerField()  # 0 = Monday
+    opens = models.TimeField()
+    closes = models.TimeField()
+
+    class Meta:
+        ordering = ["weekday", "opens"]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(weekday__lte=6), name="opening_hour_weekday"),
+            models.CheckConstraint(
+                condition=models.Q(closes__gt=models.F("opens")), name="opening_hour_closes_after_opening"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.venue_id} {self.weekday} {self.opens}-{self.closes}"
+
+
+class Closure(models.Model):
+    """Days a venue stays shut whatever its weekly hours say: a holiday, repairs."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    venue = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name="closures")
+    starts_on = models.DateField()
+    ends_on = models.DateField()
+    reason = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        ordering = ["starts_on"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(ends_on__gte=models.F("starts_on")), name="closure_ends_after_start"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.venue_id} closed {self.starts_on}-{self.ends_on}"

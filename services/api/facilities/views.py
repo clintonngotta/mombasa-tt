@@ -1,7 +1,8 @@
 from django.db import IntegrityError, transaction
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from django.utils import timezone
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -9,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
+from core.pagination import StandardPagination, search_term
 from organizations.access import (
     effective_permissions,
     lock_organization,
@@ -18,8 +20,17 @@ from organizations.access import (
 from organizations.models import Organization
 from organizations.permissions import Permission
 
-from .models import MAX_ACTIVE_TABLES, MAX_ACTIVE_VENUES, Table, TrainingHour, Venue
-from .serializers import TableSerializer, TrainingHourListSerializer, TrainingHourSerializer, VenueSerializer
+from . import profile
+from .models import MAX_ACTIVE_TABLES, MAX_ACTIVE_VENUES, Closure, OpeningHour, Table, TrainingHour, Venue
+from .serializers import (
+    FacilityProfileSerializer,
+    FacilitySerializer,
+    TableSerializer,
+    TrainingHourListSerializer,
+    TrainingHourSerializer,
+    VenueHoursSerializer,
+    VenueSerializer,
+)
 
 MANAGE = Permission.FACILITIES_MANAGE
 
@@ -52,7 +63,7 @@ class VenueViewSet(viewsets.GenericViewSet):
 
     @staticmethod
     def _reply(venue: Venue, code=status.HTTP_200_OK) -> Response:
-        venue = Venue.objects.prefetch_related("tables").get(pk=venue.pk)
+        venue = Venue.objects.prefetch_related("tables", "opening_hours", "closures").get(pk=venue.pk)
         return Response(VenueSerializer(venue, context={"staff": True}).data, status=code)
 
     @extend_schema(responses={200: VenueSerializer(many=True)})
@@ -60,7 +71,7 @@ class VenueViewSet(viewsets.GenericViewSet):
         organization = self.get_organization()
         require_membership(request.user, organization)
         staff = MANAGE in effective_permissions(request.user, organization)
-        venues = organization.venues.prefetch_related("tables")
+        venues = organization.venues.prefetch_related("tables", "opening_hours", "closures")
         if not staff:
             venues = venues.filter(active=True)
         return Response(VenueSerializer(venues, many=True, context={"staff": staff}).data)
@@ -123,6 +134,24 @@ class VenueViewSet(viewsets.GenericViewSet):
             _save(serializer, "label", "Another table here already has this label.")
         return self._reply(venue)
 
+    @extend_schema(request=VenueHoursSerializer, responses={200: VenueSerializer})
+    def hours(self, request, organization_pk, pk):
+        """Replace the venue's weekly opening hours and its closures together."""
+        organization = self.get_organization()
+        serializer = VenueHoursSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            venue = self._staff_venue(request, organization, pk)
+            venue.opening_hours.all().delete()
+            venue.closures.all().delete()
+            OpeningHour.objects.bulk_create(
+                OpeningHour(venue=venue, **hour) for hour in serializer.validated_data["hours"]
+            )
+            Closure.objects.bulk_create(
+                Closure(venue=venue, **closure) for closure in serializer.validated_data["closures"]
+            )
+        return self._reply(venue)
+
     @staticmethod
     def _ensure_room(organization: Organization) -> None:
         if organization.venues.filter(active=True).count() >= MAX_ACTIVE_VENUES:
@@ -170,3 +199,50 @@ class TrainingHoursView(APIView):
                 TrainingHour(organization=organization, **hour) for hour in serializer.validated_data["hours"]
             )
         return self._reply(organization)
+
+
+class FacilityViewSet(viewsets.ReadOnlyModelViewSet):
+    """The facility finder (REQ-044): branches of facility organizations whose profile the caller may
+    see, by place and by whether they are open now in the facility's own timezone."""
+
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+
+    def get_serializer_class(self):
+        return FacilityProfileSerializer if self.action == "retrieve" else FacilitySerializer
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Venue.objects.none()
+        return profile.with_profile(profile.findable(self.request.user)).order_by("name", "id")
+
+    def filter_queryset(self, queryset):
+        if self.action != "list":
+            return queryset
+        params = self.request.query_params
+        if term := search_term(self.request):
+            queryset = queryset.filter(
+                Q(name__icontains=term) | Q(organization__name__icontains=term) | Q(town__icontains=term)
+            )
+        if country := params.get("country", "").strip().upper():
+            queryset = queryset.filter(country=country)
+        if region := params.get("region", "").strip():
+            queryset = queryset.filter(region__iexact=region)
+        if city := params.get("city", "").strip():
+            queryset = queryset.filter(town__iexact=city)
+        if params.get("open_now") in ("true", "1"):
+            now = timezone.now()
+            queryset = [venue for venue in queryset if profile.is_open(venue, now)]
+        return queryset
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("search", str, description="Branch, facility or town"),
+            OpenApiParameter("country", str, description="Country code, e.g. KE"),
+            OpenApiParameter("region", str, description="Region, any letter case"),
+            OpenApiParameter("city", str, description="City or town, any letter case"),
+            OpenApiParameter("open_now", bool, description="Only branches open at this moment"),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)

@@ -24,3 +24,20 @@ export const tableCount = (venue: Venue) => {
   const count = venue.tables.filter((table) => table.active).length
   return count === 1 ? "1 table" : `${count} tables`
 }
+
+export type OpeningHour = Schemas["OpeningHour"]
+export type Closure = Schemas["Closure"]
+export type VenueProfile = Venue["profile"]
+
+/** Replace the weekly opening hours and the closures together (REQ-044). */
+export const saveVenueHours = (orgId: string, venueId: string, hours: OpeningHour[], closures: Closure[]) =>
+  api<Venue>(`${base(orgId)}${venueId}/hours/`, { method: "PUT", body: { hours, closures } })
+
+/** Facility organizations describe their venues as branches players can find. */
+export const runsFacility = (kind: string | undefined) => kind === "facility" || kind === "club_facility"
+
+export const PROFILE_OPTIONS: { value: VenueProfile; label: string; description: string }[] = [
+  { value: "hidden", label: "Hidden", description: "Not in the facility finder" },
+  { value: "members", label: "Members only", description: "Your members find it" },
+  { value: "public", label: "Public", description: "Every signed-in player finds it" },
+]

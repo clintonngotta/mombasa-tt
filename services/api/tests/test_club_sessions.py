@@ -161,7 +161,7 @@ def test_a_table_in_use_is_reported_before_the_session_is_saved(staff, club, tab
     schedule(staff, club, tables[:1], hours=26)
     # Cancelling frees the table.
     assert staff.post(sessions_url(club, first, "cancel/"), {}, format="json").json()["status"] == "cancelled"
-    schedule(staff, club, tables[:1], hours=24)
+    schedule(staff, club, tables[:1], hours=24, length=1)
 
 
 def test_a_running_tournament_at_the_venue_takes_its_tables(staff, club, tables, hall):

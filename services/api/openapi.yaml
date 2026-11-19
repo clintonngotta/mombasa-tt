@@ -486,6 +486,98 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/facilities/:
+    get:
+      operationId: facilities_list
+      description: |-
+        The facility finder (REQ-044): branches of facility organizations whose profile the caller may
+        see, by place and by whether they are open now in the facility's own timezone.
+      parameters:
+      - in: query
+        name: city
+        schema:
+          type: string
+        description: City or town, any letter case
+      - in: query
+        name: country
+        schema:
+          type: string
+        description: Country code, e.g. KE
+      - in: query
+        name: open_now
+        schema:
+          type: boolean
+        description: Only branches open at this moment
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: region
+        schema:
+          type: string
+        description: Region, any letter case
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Branch, facility or town
+      tags:
+      - facilities
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFacilityList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/facilities/{id}/:
+    get:
+      operationId: facilities_retrieve
+      description: |-
+        The facility finder (REQ-044): branches of facility organizations whose profile the caller may
+        see, by place and by whether they are open now in the facility's own timezone.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this venue.
+        required: true
+      tags:
+      - facilities
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/geography/countries/:
     get:
       operationId: geography_countries_list
@@ -7144,6 +7236,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/venues/{id}/hours/:
+    put:
+      operationId: organizations_venues_hours_update
+      description: Replace the venue's weekly opening hours and its closures together.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueHoursRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/venues/{id}/tables/:
     post:
       operationId: organizations_venues_tables_create
@@ -11910,6 +12042,37 @@ components:
           maxLength: 500
       required:
       - note
+    Closure:
+      type: object
+      properties:
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 120
+      required:
+      - ends_on
+      - reason
+      - starts_on
+    ClosureRequest:
+      type: object
+      properties:
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 120
+      required:
+      - ends_on
+      - starts_on
     ClubProfile:
       type: object
       properties:
@@ -13588,6 +13751,189 @@ components:
         * `casual` - Casual
         * `club` - Club
         * `competitive` - Competitive
+    Facility:
+      type: object
+      description: A facility branch as players find it (REQ-044).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        organization_id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+        directions:
+          type: string
+          readOnly: true
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+        amenities:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          readOnly: true
+        open_now:
+          type: boolean
+          readOnly: true
+        match_tables:
+          type: integer
+          readOnly: true
+        training_tables:
+          type: integer
+          readOnly: true
+      required:
+      - address
+      - amenities
+      - country
+      - directions
+      - id
+      - latitude
+      - longitude
+      - match_tables
+      - name
+      - open_now
+      - organization_id
+      - organization_name
+      - region
+      - town
+      - training_tables
+    FacilityProfile:
+      type: object
+      description: 'The whole published profile of one branch: hours, closures coming
+        up, rules and contact.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        organization_id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+        directions:
+          type: string
+          readOnly: true
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+        amenities:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          readOnly: true
+        open_now:
+          type: boolean
+          readOnly: true
+        match_tables:
+          type: integer
+          readOnly: true
+        training_tables:
+          type: integer
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        rules:
+          type: string
+          readOnly: true
+        timezone:
+          type: string
+          readOnly: true
+        opening_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpeningHour'
+          readOnly: true
+        closures:
+          type: array
+          items:
+            $ref: '#/components/schemas/Closure'
+          readOnly: true
+        closed_today:
+          allOf:
+          - $ref: '#/components/schemas/Closure'
+          nullable: true
+          readOnly: true
+      required:
+      - address
+      - amenities
+      - closed_today
+      - closures
+      - country
+      - directions
+      - id
+      - latitude
+      - longitude
+      - match_tables
+      - name
+      - open_now
+      - opening_hours
+      - organization_id
+      - organization_name
+      - phone
+      - region
+      - rules
+      - timezone
+      - town
+      - training_tables
     FormEnum:
       enum:
       - W
@@ -15784,6 +16130,40 @@ components:
       - sheet
       - status
       - umpire
+    OpeningHour:
+      type: object
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        opens:
+          type: string
+          format: time
+        closes:
+          type: string
+          format: time
+      required:
+      - closes
+      - opens
+      - weekday
+    OpeningHourRequest:
+      type: object
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        opens:
+          type: string
+          format: time
+        closes:
+          type: string
+          format: time
+      required:
+      - closes
+      - opens
+      - weekday
     OptionalReasonRequest:
       type: object
       properties:
@@ -16184,6 +16564,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Entry'
+    PaginatedFacilityList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Facility'
     PaginatedGuestClaimList:
       type: object
       required:
@@ -17309,6 +17714,8 @@ components:
           type: string
           minLength: 1
           maxLength: 40
+        kind:
+          $ref: '#/components/schemas/TableKindEnum'
         active:
           type: boolean
     PatchedTournamentRequest:
@@ -17375,12 +17782,19 @@ components:
           nullable: true
     PatchedVenueRequest:
       type: object
-      description: A venue with its tables in playing order.
+      description: A venue with its tables in playing order, and its branch profile
+        (REQ-044).
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 120
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         town:
           type: string
           minLength: 1
@@ -17403,6 +17817,32 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        phone:
+          oneOf:
+          - type: string
+            maxLength: 30
+            pattern: ^\+?[0-9 ()-]{6,30}$
+          - type: string
+            maxLength: 0
+        rules:
+          type: string
+          maxLength: 2000
+        amenities:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 20
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/ProfileEnum'
+          description: |-
+            Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+
+            * `hidden` - Hidden
+            * `members` - Members only
+            * `public` - Public
         active:
           type: boolean
     PatternStep:
@@ -18082,6 +18522,16 @@ components:
       - published_details
       - region
       - style
+    ProfileEnum:
+      enum:
+      - hidden
+      - members
+      - public
+      type: string
+      description: |-
+        * `hidden` - Hidden
+        * `members` - Members only
+        * `public` - Public
     Progress:
       type: object
       properties:
@@ -20201,6 +20651,8 @@ components:
         label:
           type: string
           maxLength: 40
+        kind:
+          $ref: '#/components/schemas/TableKindEnum'
         position:
           type: integer
           readOnly: true
@@ -20209,6 +20661,7 @@ components:
       required:
       - active
       - id
+      - kind
       - label
       - position
     TableDelayRequest:
@@ -20230,6 +20683,14 @@ components:
       - minutes
       - reason
       - table_id
+    TableKindEnum:
+      enum:
+      - match
+      - training
+      type: string
+      description: |-
+        * `match` - Match
+        * `training` - Training
     TableRequest:
       type: object
       properties:
@@ -20237,6 +20698,8 @@ components:
           type: string
           minLength: 1
           maxLength: 40
+        kind:
+          $ref: '#/components/schemas/TableKindEnum'
         active:
           type: boolean
       required:
@@ -20943,7 +21406,8 @@ components:
       - id
     Venue:
       type: object
-      description: A venue with its tables in playing order.
+      description: A venue with its tables in playing order, and its branch profile
+        (REQ-044).
       properties:
         id:
           type: string
@@ -20952,6 +21416,12 @@ components:
         name:
           type: string
           maxLength: 120
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         town:
           type: string
           maxLength: 80
@@ -20973,6 +21443,31 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        phone:
+          oneOf:
+          - type: string
+            maxLength: 30
+            pattern: ^\+?[0-9 ()-]{6,30}$
+          - type: string
+            maxLength: 0
+        rules:
+          type: string
+          maxLength: 2000
+        amenities:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          maxItems: 20
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/ProfileEnum'
+          description: |-
+            Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+
+            * `hidden` - Hidden
+            * `members` - Members only
+            * `public` - Public
         active:
           type: boolean
         tables:
@@ -20980,24 +21475,64 @@ components:
           items:
             $ref: '#/components/schemas/Table'
           readOnly: true
+        opening_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpeningHour'
+          readOnly: true
+        closures:
+          type: array
+          items:
+            $ref: '#/components/schemas/Closure'
+          readOnly: true
       required:
       - active
       - address
+      - amenities
+      - closures
+      - country
       - directions
       - id
       - latitude
       - longitude
       - name
+      - opening_hours
+      - phone
+      - profile
+      - region
+      - rules
       - tables
       - town
+    VenueHoursRequest:
+      type: object
+      description: The whole weekly timetable and list of closures, replaced together.
+      properties:
+        hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpeningHourRequest'
+        closures:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClosureRequest'
+      required:
+      - closures
+      - hours
     VenueRequest:
       type: object
-      description: A venue with its tables in playing order.
+      description: A venue with its tables in playing order, and its branch profile
+        (REQ-044).
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 120
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         town:
           type: string
           minLength: 1
@@ -21020,6 +21555,32 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        phone:
+          oneOf:
+          - type: string
+            maxLength: 30
+            pattern: ^\+?[0-9 ()-]{6,30}$
+          - type: string
+            maxLength: 0
+        rules:
+          type: string
+          maxLength: 2000
+        amenities:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          maxItems: 20
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/ProfileEnum'
+          description: |-
+            Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+
+            * `hidden` - Hidden
+            * `members` - Members only
+            * `public` - Public
         active:
           type: boolean
       required:
