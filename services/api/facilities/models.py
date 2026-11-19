@@ -18,6 +18,10 @@ class Venue(models.Model):
     name = models.CharField(max_length=120)
     town = models.CharField(max_length=80)
     address = models.CharField(max_length=200, blank=True)
+    # How to find it on the ground: the closest landmark and the way from the main road or stage.
+    directions = models.CharField(max_length=500, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -29,6 +33,11 @@ class Venue(models.Model):
                 "organization",
                 condition=models.Q(active=True),
                 name="venue_active_name_unique",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(latitude__isnull=True, longitude__isnull=True)
+                | models.Q(latitude__gte=-90, latitude__lte=90, longitude__gte=-180, longitude__lte=180),
+                name="venue_coordinates_valid",
             ),
         ]
 
