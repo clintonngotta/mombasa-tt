@@ -276,3 +276,51 @@ class Visit(models.Model):
 
     def __str__(self):
         return f"{self.venue_id} {self.visited_on} {self.amount_minor} {self.currency}"
+
+
+class Booking(models.Model):
+    """A request to use tables at a venue for a time (REQ-021). A request holds nothing; approval takes
+    the tables, checked against tournaments, training and other bookings in one locked transaction.
+    Cancelling frees them; a booking that has ended stays in the history. Fees are recorded by staff,
+    never charged online."""
+
+    class Status(models.TextChoices):
+        REQUESTED = "requested"
+        APPROVED = "approved"
+        REJECTED = "rejected"
+        CANCELLED = "cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    venue = models.ForeignKey(Venue, on_delete=models.PROTECT, related_name="bookings")
+    tables = models.ManyToManyField(Table, related_name="bookings")
+    requester = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="table_bookings"
+    )
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    note = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
+    # What staff said it costs, if anything; recorded, not collected.
+    fee_minor = models.PositiveIntegerField(null=True, blank=True)
+    fee_currency = models.CharField(max_length=3, default="KES")
+    reason = models.CharField(max_length=300, blank=True)  # rejection or cancellation
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["starts_at", "id"]
+        indexes = [models.Index(fields=["venue", "starts_at"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(ends_at__gt=models.F("starts_at")), name="table_booking_ends_after_start"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.venue_id} {self.starts_at:%Y-%m-%d %H:%M} ({self.status})"

@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from competitions.models import ScheduleSession, Tournament
 from core.exceptions import ApiException
-from facilities.models import Table
+from facilities.models import Booking, Table
 
 from .models import ClubSession, SessionInvitation
 from .service import ensure_free, lock_player
@@ -28,7 +28,22 @@ def _aware(day, at: time, zone: str) -> datetime:
     return datetime.combine(day, at, tzinfo=ZoneInfo(zone))
 
 
-def table_clashes(tables, starts: datetime, ends: datetime, exclude: ClubSession | None = None) -> list[dict]:
+def _booking_clashes(bookings, ids) -> list[dict]:
+    return [
+        {
+            "kind": "booking",
+            "title": f"Booked by {booking.requester.display_name}",
+            "starts_at": booking.starts_at,
+            "ends_at": booking.ends_at,
+            "tables": sorted(t.label for t in booking.tables.all() if t.pk in ids),
+        }
+        for booking in bookings.select_related("requester").prefetch_related("tables")
+    ]
+
+
+def table_clashes(
+    tables, starts: datetime, ends: datetime, exclude: ClubSession | None = None, exclude_booking=None
+) -> list[dict]:
     """What else uses any of `tables` between `starts` and `ends`."""
     ids = [t.pk for t in tables]
     found = []
@@ -51,6 +66,13 @@ def table_clashes(tables, starts: datetime, ends: datetime, exclude: ClubSession
                 "tables": sorted(t.label for t in session.tables.all() if t.pk in ids),
             }
         )
+
+    bookings = Booking.objects.filter(
+        tables__in=ids, status=Booking.Status.APPROVED, starts_at__lt=ends, ends_at__gt=starts
+    ).distinct()
+    if exclude_booking is not None:
+        bookings = bookings.exclude(pk=exclude_booking.pk)
+    found += _booking_clashes(bookings, ids)
 
     venues = {t.venue_id for t in tables}
     for tournament in Tournament.objects.filter(venue__in=venues, status__in=RUNNING):
@@ -187,10 +209,14 @@ def ensure_no_training_on(tables, starts, ends) -> None:
         }
         for session in sessions
     ]
+    approved = Booking.objects.filter(
+        tables__in=ids, status=Booking.Status.APPROVED, starts_at__lt=ends, ends_at__gt=starts
+    ).distinct()
+    clashes += _booking_clashes(approved, ids)
     if clashes:
         raise ApiException(
             "table_unavailable",
-            "Training is booked on a table you chose at that time.",
+            "Training or a booking holds a table you chose at that time.",
             409,
             extra={"conflicts": _as_json(clashes)},
         )

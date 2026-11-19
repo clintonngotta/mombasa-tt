@@ -36,6 +36,8 @@ import { ClubEventsPage } from "@/pages/events/ClubEventsPage"
 import { ReviewEventsPage } from "@/pages/events/ReviewEventsPage"
 import { NotificationsPage } from "@/pages/NotificationsPage"
 import { AnnouncePage } from "@/pages/club/AnnouncePage"
+import { MyBookingsPage } from "@/pages/profile/MyBookingsPage"
+import { ClubBookingsPage } from "@/pages/club/ClubBookingsPage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
@@ -149,6 +151,7 @@ function App() {
               <Route path="/club/venues/:id" element={<VenueEditPage />} />
               <Route path="/club/venues/:id/door" element={<DoorPage />} />
               <Route path="/club/takings" element={<TakingsPage />} />
+              <Route path="/club/bookings" element={<ClubBookingsPage />} />
               <Route path="/club" element={<ClubPage />} />
               <Route path="/club/find" element={<FindClubPage />} />
               <Route path="/club/find/:id" element={<ClubProfilePage />} />
@@ -179,6 +182,7 @@ function App() {
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/profile/claims" element={<GuestClaimsPage />} />
               <Route path="/profile/visits" element={<MyVisitsPage />} />
+              <Route path="/profile/bookings" element={<MyBookingsPage />} />
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/training" element={<TrainingPage />} />
               <Route path="/region" element={<RegionPage />} />

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { NotebookPen, Ticket, TrendingUp, UserPen, UserRoundCheck, Users } from "lucide-react"
+import { CalendarCheck, NotebookPen, Ticket, TrendingUp, UserPen, UserRoundCheck, Users } from "lucide-react"
 import { NavCard } from "@/components/layout/NavCard"
 import { Honours } from "@/components/ceremony/Honours"
 import { InstallApp } from "@/components/layout/InstallApp"
@@ -56,6 +56,7 @@ export function ProfilePage() {
         <NavCard to="/players" icon={Users} title="Player directory" description="Find players who chose to be listed" />
         {userId && <NavCard to={`/ratings/${userId}`} icon={TrendingUp} title="My ratings" description="Singles and doubles ratings and the matches behind them" />}
         <NavCard to="/matches" icon={NotebookPen} title="My match log" description="Private record of your matches, sets and notes" />
+        <NavCard to="/profile/bookings" icon={CalendarCheck} title="Table bookings" description="Your requests to book tables and the venues' answers" />
         <NavCard to="/profile/visits" icon={Ticket} title="Passes and visits" description="Your facility passes, to show at the door, and your visits" />
         <NavCard to="/profile/claims" icon={UserRoundCheck} title="Matches entered for you" description="Claim what a club entered under your name before you joined" />
       </nav>

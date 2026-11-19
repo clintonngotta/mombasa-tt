@@ -313,6 +313,17 @@ The privacy matrix covers every new route, keeps walk-in names and references wi
 
 **Booking approval — concurrent integration.** Setup: opening hours, closure and two requests for one slot. Steps: approve concurrently, race approval against match reservation, cancel winner, request closed time. Pass: at most one reservation; pending request never blocks; closure respected; cancellation releases future slot while retaining history. Evidence: transactions and reservation calendar.
 
+*Built in TASK-036 (2026-11-19).* `tests/test_bookings.py` checks the following:
+- Two requests for one slot both stand, since a pending request never blocks.
+- Approving one takes the table, and the other's approval is refused with the booking clash.
+- Five rounds of two approvals racing for one slot each end with exactly one approved.
+- Times after closing, a closure day and past times are refused.
+- An approved booking blocks a club training session.
+- Cancelling frees the slot for a new approval, and an ended booking can't be cancelled and stays listed.
+- Declining needs a reason, only staff decide, and outsiders can't book a members' venue or touch another's booking.
+
+The privacy matrix covers every route.
+
 ### EVAL-022
 
 **Payments — integration.** Setup: charge KES 1,000 (100000 minor units). Steps: allocate 40000 then 60000, submit duplicate request, over-allocate, use wrong currency, reverse second payment. Pass: balance sequence 100000→60000→0→60000; duplicate idempotent request does not add cash; excess stays credit; invalid allocation/currency fails; original/reversal both retained. Evidence: payment/allocation ledger.

@@ -1,3 +1,4 @@
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -16,6 +17,7 @@ from .models import (
     MAX_CLOSURES,
     MAX_OPENING_HOURS,
     MAX_TRAINING_HOURS,
+    Booking,
     Closure,
     OpeningHour,
     Pass,
@@ -287,6 +289,7 @@ class FacilityProfileSerializer(FacilitySerializer):
     closures = serializers.SerializerMethodField()
     closed_today = serializers.SerializerMethodField()
     passes = serializers.SerializerMethodField()
+    bookable_tables = serializers.SerializerMethodField()
 
     class Meta(FacilitySerializer.Meta):
         fields = [
@@ -298,8 +301,13 @@ class FacilityProfileSerializer(FacilitySerializer):
             "closures",
             "closed_today",
             "passes",
+            "bookable_tables",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(TableSerializer(many=True))
+    def get_bookable_tables(self, venue):
+        return TableSerializer([t for t in venue.tables.all() if t.active], many=True).data
 
     @extend_schema_field(PassSerializer(many=True))
     def get_passes(self, venue):
@@ -459,3 +467,61 @@ class BranchScheduleItemSerializer(serializers.Serializer):
     title = serializers.CharField()
     starts_at = serializers.DateTimeField()
     ends_at = serializers.DateTimeField()
+
+
+class TableBookingSerializer(serializers.ModelSerializer):
+    """A table booking, as its requester and the venue's staff see it."""
+
+    venue_id = serializers.UUIDField()
+    table_ids = serializers.ListField(
+        child=serializers.UUIDField(), write_only=True, min_length=1, max_length=20
+    )
+    venue_name = serializers.CharField(source="venue.name", read_only=True)
+    organization_name = serializers.CharField(source="venue.organization.name", read_only=True)
+    tables = serializers.SerializerMethodField()
+    requester_name = serializers.CharField(source="requester.display_name", read_only=True)
+    note = serializers.CharField(max_length=300, required=False, allow_blank=True, trim_whitespace=True)
+    ended = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Booking
+        fields = [
+            "id",
+            "venue_id",
+            "venue_name",
+            "organization_name",
+            "table_ids",
+            "tables",
+            "requester_name",
+            "starts_at",
+            "ends_at",
+            "note",
+            "status",
+            "fee_minor",
+            "fee_currency",
+            "reason",
+            "decided_at",
+            "ended",
+            "created_at",
+        ]
+        read_only_fields = ["id", "status", "fee_minor", "fee_currency", "reason", "decided_at", "created_at"]
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_tables(self, booking):
+        return [t.label for t in booking.tables.all()]
+
+    def get_ended(self, booking) -> bool:
+        return booking.ends_at <= timezone.now()
+
+    def validate(self, attrs):
+        if attrs["ends_at"] <= attrs["starts_at"]:
+            raise serializers.ValidationError({"ends_at": "It ends after it starts."})
+        return attrs
+
+
+class ApproveTableBookingSerializer(serializers.Serializer):
+    fee_minor = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=10_000_000)
+
+
+class TableBookingReasonSerializer(serializers.Serializer):
+    reason = serializers.CharField(max_length=300, trim_whitespace=True, required=False, allow_blank=True)
