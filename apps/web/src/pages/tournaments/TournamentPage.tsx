@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CalendarDays, Clock, Globe, MapPin, Pencil, Plus, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
+import { CeremonyLink } from "@/components/ceremony/CeremonyLink"
 import { SponsorsPanel } from "@/components/region/SponsorsPanel"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
@@ -60,6 +61,7 @@ export function TournamentPage() {
       {t && (
         <>
           <Overview tournament={t} />
+          <CeremonyLink tournamentId={t.id} staff={staff} open={t.status !== "draft" && t.status !== "cancelled"} />
           <SponsorsPanel tournamentId={t.id} staff={staff} />
           <Events tournament={t} staff={staff} />
           {staff && <Manage tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}

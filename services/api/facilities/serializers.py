@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from core.geography import coordinate_field, directions_field, validate_coordinates
 
-from .models import Table, Venue
+from .models import MAX_TRAINING_HOURS, Table, TrainingHour, Venue
 
 
 class TableSerializer(serializers.ModelSerializer):
@@ -53,3 +53,34 @@ class VenueSummarySerializer(serializers.ModelSerializer):
         model = Venue
         fields = ["id", "name", "town", "address", "directions", "latitude", "longitude"]
         read_only_fields = fields
+
+
+class TrainingHourSerializer(serializers.ModelSerializer):
+    """A weekly training time. `venue` is one of the organization's venues in use, or none."""
+
+    label = serializers.CharField(max_length=80, allow_blank=True, required=False, trim_whitespace=True)
+    venue = serializers.PrimaryKeyRelatedField(queryset=Venue.objects.all(), allow_null=True, required=False)
+    venue_name = serializers.CharField(source="venue.name", read_only=True, default=None)
+
+    class Meta:
+        model = TrainingHour
+        fields = ["id", "weekday", "starts", "ends", "label", "venue", "venue_name"]
+        read_only_fields = ["id", "venue_name"]
+
+    def validate_weekday(self, value):
+        if value > 6:
+            raise serializers.ValidationError("Choose a day of the week.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["ends"] <= attrs["starts"]:
+            raise serializers.ValidationError({"ends": "Training ends before it starts."})
+        venue = attrs.get("venue")
+        organization = self.context["organization"]
+        if venue is not None and (venue.organization_id != organization.id or not venue.active):
+            raise serializers.ValidationError({"venue": "Choose one of the club's venues in use."})
+        return attrs
+
+
+class TrainingHourListSerializer(serializers.Serializer):
+    hours = TrainingHourSerializer(many=True, max_length=MAX_TRAINING_HOURS)
