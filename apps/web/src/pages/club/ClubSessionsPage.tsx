@@ -6,15 +6,15 @@ import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
-import { TextAreaField } from "@/components/forms/SelectField"
+import { SelectField, TextAreaField } from "@/components/forms/SelectField"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ConflictList } from "@/components/training/ConflictList"
 import { ApiError, errorMessage } from "@/lib/api"
-import { can, useActiveMembership } from "@/lib/clubs"
+import { can, listMembers, useActiveMembership } from "@/lib/clubs"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
-import { clashesOf, clubSessionKeys, createClubSession, listClubSessions, type ClubSession, type When } from "@/lib/clubSessions"
+import { clashesOf, clubSessionKeys, createClubSession, listClubSessions, type ClubSession, type ClubSessionInput, type When } from "@/lib/clubSessions"
 import { DEFAULT_TIME_ZONE, formatInstant, fromZonedInput } from "@/lib/dates"
-import { listVenues, venueKeys } from "@/lib/venues"
+import { listVenues, runsFacility, venueKeys } from "@/lib/venues"
 import { cn } from "@/lib/utils"
 
 /**
@@ -43,7 +43,7 @@ export function ClubSessionsPage() {
       {allowed && !accessLost && (
         <>
           {adding ? (
-            <NewSession orgId={orgId} timeZone={timeZone} onClose={() => setAdding(false)} />
+            <NewSession orgId={orgId} timeZone={timeZone} facility={runsFacility(active?.organization.kind)} onClose={() => setAdding(false)} />
           ) : (
             <Button className="self-start" onClick={() => setAdding(true)}>
               <Plus aria-hidden className="size-5" /> Schedule a session
@@ -96,7 +96,14 @@ function SessionRow({ session, timeZone }: { session: ClubSession; timeZone: str
   )
 }
 
-function NewSession({ orgId, timeZone, onClose }: { orgId: string; timeZone: string; onClose: () => void }) {
+const LEVELS = [
+  { value: "", label: "Any level" },
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+]
+
+function NewSession({ orgId, timeZone, facility, onClose }: { orgId: string; timeZone: string; facility: boolean; onClose: () => void }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const venues = useQuery({ queryKey: venueKeys.list(orgId), queryFn: () => listVenues(orgId) })
@@ -106,9 +113,18 @@ function NewSession({ orgId, timeZone, onClose }: { orgId: string; timeZone: str
   const [tables, setTables] = useState<string[]>([])
   const [capacity, setCapacity] = useState("")
   const [notes, setNotes] = useState("")
+  const [coach, setCoach] = useState("")
+  const [level, setLevel] = useState("")
+  const [fee, setFee] = useState("")
+  const [open, setOpen] = useState(facility)
+  const [weeks, setWeeks] = useState("1")
+  const members = useQuery({ queryKey: ["clubs", orgId, "members", ""], queryFn: () => listMembers(orgId, "") })
+  // A facility keeps its match tables for play; training goes on its training tables.
   const options = (venues.data ?? [])
     .filter((venue) => venue.active)
-    .flatMap((venue) => venue.tables.filter((table) => table.active).map((table) => ({ value: table.id, label: table.label, description: venue.name })))
+    .flatMap((venue) =>
+      venue.tables.filter((table) => table.active && (!facility || table.kind === "training")).map((table) => ({ value: table.id, label: table.label, description: venue.name }))
+    )
   const save = useMutation({
     mutationFn: () =>
       createClubSession(orgId, {
@@ -118,6 +134,12 @@ function NewSession({ orgId, timeZone, onClose }: { orgId: string; timeZone: str
         starts_at: fromZonedInput(starts, timeZone) ?? "",
         ends_at: fromZonedInput(ends, timeZone) ?? "",
         capacity: capacity ? Number(capacity) : null,
+        coach_id: coach || null,
+        level: (level || "") as ClubSessionInput["level"],
+        fee_minor: fee ? Math.round(Number(fee) * 100) : null,
+        fee_currency: "KES",
+        open_to_players: open,
+        repeat_weeks: Number(weeks) || 1,
       }),
     onSuccess: (made) => {
       void queryClient.invalidateQueries({ queryKey: clubSessionKeys.all })
@@ -147,6 +169,20 @@ function NewSession({ orgId, timeZone, onClose }: { orgId: string; timeZone: str
       ) : (
         <ChoiceGroup legend="Tables" multiple options={options} value={tables} onChange={setTables} error={errors.table_ids} />
       )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SelectField label="Coach" value={coach} onChange={setCoach} options={[{ value: "", label: "No coach named" }, ...(members.data?.results ?? []).map((m) => ({ value: m.user, label: m.display_name }))]} error={errors.coach_id} />
+        <SelectField label="Level" value={level} onChange={setLevel} options={LEVELS} />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Fee at the door (KES)" optional type="number" min={0} step="0.01" inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} hint="Shown to players. Collected at the door, not here." error={errors.fee_minor} />
+        <Field label="Repeat weekly" type="number" min={1} max={12} inputMode="numeric" value={weeks} onChange={(e) => setWeeks(e.target.value)} hint="How many weeks in a row, up to 12." error={errors.repeat_weeks} />
+      </div>
+      <label className="flex min-h-12 items-center gap-3">
+        <input type="checkbox" className="size-5 accent-brand-blue" checked={open} onChange={(e) => setOpen(e.target.checked)} />
+        <span>
+          <span className="font-semibold">Any player can join</span> <span className="text-muted-foreground">: listed on your public profile, not only for those you invite.</span>
+        </span>
+      </label>
       <Field label="Places" optional type="number" min={1} max={500} inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} hint="Most members who can accept. Leave empty for no limit." error={errors.capacity} />
       <TextAreaField label="Notes for members" optional maxLength={1000} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       <ConflictList conflicts={clashes} timeZone={timeZone} lead="A table you chose is in use then:" next="Choose other tables or another time." />

@@ -4,6 +4,8 @@ from rest_framework import serializers
 from .models import Activity, Rsvp
 
 LONGEST = timezone.timedelta(days=14)
+# What a schedule lists; shared with a facility branch's schedule.
+SCHEDULE_KINDS = [("activity", "activity"), ("tournament", "tournament"), ("training", "training")]
 
 
 class ClubActivitySerializer(serializers.ModelSerializer):
@@ -120,7 +122,7 @@ class AttendeeSerializer(serializers.ModelSerializer):
 
 
 class ScheduleItemSerializer(serializers.Serializer):
-    kind = serializers.ChoiceField(choices=["activity", "tournament", "training"])
+    kind = serializers.ChoiceField(choices=SCHEDULE_KINDS)
     id = serializers.UUIDField()
     title = serializers.CharField()
     detail = serializers.CharField()

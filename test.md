@@ -234,6 +234,13 @@ Training slots come with TASK-103.
 
 The privacy matrix covers every new route, keeps walk-in names and references with the facility's staff, and records that the committee's template role sees finances.
 
+*Training and events built in TASK-103 (2026-11-19).* `tests/test_facility_training.py` checks the following:
+- A four-week series goes on training tables with a coach, level and fee, match tables are refused, and so is a coach who isn't a member.
+- A clash in week three keeps the whole series out.
+- A tournament day session on the training tables at that time is refused with the clash, while the match tables stay free.
+- Players join an open slot once, up to its capacity, can leave, and are refused on a calendar clash. A slot not open to players can't be joined.
+- The branch schedule lists a public anniversary, open training and a published tournament in date order, and leaves out members-only training and private activities.
+
 ### EVAL-045
 
 **Governance structure — integration/browser.** Setup: two clubs in one region, the region's body and the country's body created by a platform super admin, and a member of each club. Steps: the club admin configures committee positions with a custom field and assigns holders, one position granting the finance permission; a committee member without the governance permission tries to change the committee; the club admin nominates a successor, who accepts; a second admin is attempted; each club nominates a representative to the regional body, one over the body's cap; the body accepts one, declines one; the region nominates a representative to the national body; a representative leaves their club; a regional official approves a regional tournament and tries a national one. Pass: exactly one club admin at all times and the handover is audited; the delegated finance permission works and nothing more; the unauthorized edit is refused; the over-cap nomination is refused; accepted representatives appear with display name and club only and are removed on leaving; approvals follow the body and scope; committee history keeps past holders. Evidence: API tests, browser screenshots of committee setup and nominations.

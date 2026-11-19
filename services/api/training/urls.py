@@ -28,6 +28,7 @@ urlpatterns = [
 
 library = SimpleRouter()
 library.register("drills", views.DrillLibraryViewSet, basename="drill-library")
+library.register("open-sessions", session_views.OpenSessionViewSet, basename="open-session")
 library_urls = library.urls
 
 club_plans = views.ClubTrainingPlanViewSet

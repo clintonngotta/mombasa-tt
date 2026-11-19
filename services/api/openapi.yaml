@@ -578,6 +578,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/facilities/{id}/schedule/:
+    get:
+      operationId: facilities_schedule_list
+      description: |-
+        What the branch has coming up, in date order: training slots any player may join, the
+        facility's public activities, and tournaments held here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this venue.
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - facilities
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBranchScheduleItemList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/geography/countries/:
     get:
       operationId: geography_countries_list
@@ -3469,6 +3512,107 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UpcomingSession'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/open-sessions/:
+    get:
+      operationId: open_sessions_list
+      description: |-
+        Training slots any signed-in player may join (REQ-044): coming up, not cancelled. Joining goes
+        through the same check as accepting an invitation: the player's calendar and the places left.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: venue
+        schema:
+          type: string
+        description: Only this branch
+      tags:
+      - open-sessions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOpenSessionList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/open-sessions/{id}/join/:
+    post:
+      operationId: open_sessions_join_create
+      description: |-
+        Join: holds this time in your calendar. Refused when you already have something on or it's
+        full. Joining twice changes nothing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this club session.
+        required: true
+      tags:
+      - open-sessions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenSession'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/open-sessions/{id}/leave/:
+    post:
+      operationId: open_sessions_leave_create
+      description: 'Leave: your time is free again.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this club session.
+        required: true
+      tags:
+      - open-sessions
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenSession'
           description: ''
         4XX:
           description: Error envelope
@@ -12659,6 +12803,28 @@ components:
         * `confirmed` - Confirmed
         * `declined` - Declined
         * `cancelled` - Cancelled
+    BranchScheduleItem:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/ScheduleKindEnum'
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+      required:
+      - ends_at
+      - id
+      - kind
+      - starts_at
+      - title
     CalendarEntry:
       type: object
       properties:
@@ -13288,6 +13454,32 @@ components:
           maximum: 500
           minimum: 1
           nullable: true
+        coach_id:
+          type: string
+          format: uuid
+          nullable: true
+        coach_name:
+          type: string
+          readOnly: true
+        level:
+          oneOf:
+          - $ref: '#/components/schemas/CoachLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        fee_minor:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          nullable: true
+        fee_currency:
+          type: string
+          maxLength: 3
+        open_to_players:
+          type: boolean
+        series:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         status:
           allOf:
           - $ref: '#/components/schemas/ClubSessionStatusEnum'
@@ -13305,12 +13497,19 @@ components:
       required:
       - accepted
       - capacity
+      - coach_id
+      - coach_name
       - created_at
       - ends_at
+      - fee_currency
+      - fee_minor
       - id
       - invited
+      - level
       - notes
+      - open_to_players
       - plan_id
+      - series
       - starts_at
       - status
       - tables
@@ -13348,6 +13547,32 @@ components:
           maximum: 500
           minimum: 1
           nullable: true
+        coach_id:
+          type: string
+          format: uuid
+          nullable: true
+        level:
+          oneOf:
+          - $ref: '#/components/schemas/CoachLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        fee_minor:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          nullable: true
+        fee_currency:
+          type: string
+          minLength: 1
+          maxLength: 3
+        open_to_players:
+          type: boolean
+        repeat_weeks:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          description: 'On creation: make this many weekly sessions at the same time
+            (a series).'
       required:
       - ends_at
       - starts_at
@@ -17201,6 +17426,86 @@ components:
       - since
       - table
       - waiting_for
+    OpenSession:
+      type: object
+      description: A training slot any signed-in player may join (REQ-044, TASK-103).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionTable'
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ends_at:
+          type: string
+          format: date-time
+          readOnly: true
+        coach_name:
+          type: string
+          readOnly: true
+        level:
+          allOf:
+          - $ref: '#/components/schemas/CoachLevelEnum'
+          readOnly: true
+        fee_minor:
+          type: integer
+          readOnly: true
+          nullable: true
+        fee_currency:
+          type: string
+          readOnly: true
+        capacity:
+          type: integer
+          readOnly: true
+          nullable: true
+        places_left:
+          type: integer
+          nullable: true
+          readOnly: true
+        joined:
+          type: boolean
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ClubSessionStatusEnum'
+          readOnly: true
+      required:
+      - capacity
+      - coach_name
+      - ends_at
+      - fee_currency
+      - fee_minor
+      - id
+      - joined
+      - level
+      - notes
+      - organization_id
+      - organization_name
+      - places_left
+      - starts_at
+      - status
+      - tables
+      - title
     OpenSheet:
       type: object
       description: A match being scored, or finished and not yet confirmed by its
@@ -17532,6 +17837,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Attendee'
+    PaginatedBranchScheduleItemList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchScheduleItem'
     PaginatedCandidateList:
       type: object
       required:
@@ -18157,6 +18487,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MyVisit'
+    PaginatedOpenSessionList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenSession'
     PaginatedOrganizationList:
       type: object
       required:
@@ -18580,6 +18935,32 @@ components:
           maximum: 500
           minimum: 1
           nullable: true
+        coach_id:
+          type: string
+          format: uuid
+          nullable: true
+        level:
+          oneOf:
+          - $ref: '#/components/schemas/CoachLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        fee_minor:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          nullable: true
+        fee_currency:
+          type: string
+          minLength: 1
+          maxLength: 3
+        open_to_players:
+          type: boolean
+        repeat_weeks:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          description: 'On creation: make this many weekly sessions at the same time
+            (a series).'
     PatchedCommentRequest:
       type: object
       properties:
@@ -20953,7 +21334,7 @@ components:
       type: object
       properties:
         kind:
-          $ref: '#/components/schemas/ScheduleItemKindEnum'
+          $ref: '#/components/schemas/ScheduleKindEnum'
         id:
           type: string
           format: uuid
@@ -20980,7 +21361,7 @@ components:
       - place
       - starts_at
       - title
-    ScheduleItemKindEnum:
+    ScheduleKindEnum:
       enum:
       - activity
       - tournament

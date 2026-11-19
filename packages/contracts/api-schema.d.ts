@@ -340,6 +340,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/facilities/{id}/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What the branch has coming up, in date order: training slots any player may join, the
+         *     facility's public activities, and tournaments held here.
+         */
+        get: operations["facilities_schedule_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geography/countries/": {
         parameters: {
             query?: never;
@@ -1585,6 +1605,63 @@ export interface paths {
         get: operations["me_training_sessions_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/open-sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Training slots any signed-in player may join (REQ-044): coming up, not cancelled. Joining goes
+         *     through the same check as accepting an invitation: the player's calendar and the places left.
+         */
+        get: operations["open_sessions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/open-sessions/{id}/join/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Join: holds this time in your calendar. Refused when you already have something on or it's
+         *     full. Joining twice changes nothing.
+         */
+        post: operations["open_sessions_join_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/open-sessions/{id}/leave/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Leave: your time is free again. */
+        post: operations["open_sessions_leave_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5350,6 +5427,16 @@ export interface components {
          * @enum {string}
          */
         BookingStatusEnum: "requested" | "confirmed" | "declined" | "cancelled";
+        BranchScheduleItem: {
+            kind: components["schemas"]["ScheduleKindEnum"];
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+        };
         CalendarEntry: {
             kind: components["schemas"]["CalendarEntryKindEnum"];
             /** Format: uuid */
@@ -5596,6 +5683,15 @@ export interface components {
             /** Format: date-time */
             ends_at: string;
             capacity: number | null;
+            /** Format: uuid */
+            coach_id: string | null;
+            readonly coach_name: string;
+            level: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            fee_minor: number | null;
+            fee_currency: string;
+            open_to_players: boolean;
+            /** Format: uuid */
+            readonly series: string | null;
             readonly status: components["schemas"]["ClubSessionStatusEnum"];
             readonly invited: number;
             readonly accepted: number;
@@ -5614,6 +5710,14 @@ export interface components {
             /** Format: date-time */
             ends_at: string;
             capacity?: number | null;
+            /** Format: uuid */
+            coach_id?: string | null;
+            level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            fee_minor?: number | null;
+            fee_currency?: string;
+            open_to_players?: boolean;
+            /** @description On creation: make this many weekly sessions at the same time (a series). */
+            repeat_weeks?: number;
         };
         /**
          * @description * `scheduled` - Scheduled
@@ -7094,6 +7198,29 @@ export interface components {
             /** @description Players of the tie's current rubber who are in use elsewhere (staff only). */
             waiting_for: string[];
         };
+        /** @description A training slot any signed-in player may join (REQ-044, TASK-103). */
+        OpenSession: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly title: string;
+            readonly notes: string;
+            readonly tables: components["schemas"]["SessionTable"][];
+            /** Format: date-time */
+            readonly starts_at: string;
+            /** Format: date-time */
+            readonly ends_at: string;
+            readonly coach_name: string;
+            readonly level: components["schemas"]["CoachLevelEnum"];
+            readonly fee_minor: number | null;
+            readonly fee_currency: string;
+            readonly capacity: number | null;
+            readonly places_left: number | null;
+            readonly joined: boolean;
+            readonly status: components["schemas"]["ClubSessionStatusEnum"];
+        };
         /** @description A match being scored, or finished and not yet confirmed by its umpire. */
         OpenSheet: {
             sheet: components["schemas"]["SheetContext"];
@@ -7220,6 +7347,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Attendee"][];
+        };
+        PaginatedBranchScheduleItemList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["BranchScheduleItem"][];
         };
         PaginatedCandidateList: {
             /** @example 123 */
@@ -7596,6 +7738,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["MyVisit"][];
         };
+        PaginatedOpenSessionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["OpenSession"][];
+        };
         PaginatedOrganizationList: {
             /** @example 123 */
             count: number;
@@ -7779,6 +7936,14 @@ export interface components {
             /** Format: date-time */
             ends_at?: string;
             capacity?: number | null;
+            /** Format: uuid */
+            coach_id?: string | null;
+            level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            fee_minor?: number | null;
+            fee_currency?: string;
+            open_to_players?: boolean;
+            /** @description On creation: make this many weekly sessions at the same time (a series). */
+            repeat_weeks?: number;
         };
         PatchedCommentRequest: {
             body?: string;
@@ -8778,7 +8943,7 @@ export interface components {
             notice_minutes: number;
         };
         ScheduleItem: {
-            kind: components["schemas"]["ScheduleItemKindEnum"];
+            kind: components["schemas"]["ScheduleKindEnum"];
             /** Format: uuid */
             id: string;
             title: string;
@@ -8796,7 +8961,7 @@ export interface components {
          *     * `training` - training
          * @enum {string}
          */
-        ScheduleItemKindEnum: "activity" | "tournament" | "training";
+        ScheduleKindEnum: "activity" | "tournament" | "training";
         ScheduleRow: {
             /** Format: uuid */
             match_id: string;
@@ -10303,6 +10468,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FacilityProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    facilities_schedule_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this venue. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedBranchScheduleItemList"];
                 };
             };
             /** @description Error envelope */
@@ -13289,6 +13490,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpcomingSession"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    open_sessions_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only this branch */
+                venue?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOpenSessionList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    open_sessions_join_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this club session. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    open_sessions_leave_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this club session. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenSession"];
                 };
             };
             /** @description Error envelope */

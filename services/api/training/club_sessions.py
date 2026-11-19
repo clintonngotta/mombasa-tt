@@ -163,3 +163,34 @@ def record_attendance(invitation: SessionInvitation, attended: bool | None, acto
         invitation.attendance_at = timezone.now() if attended is not None else None
         invitation.save(update_fields=["attended", "attendance_by", "attendance_at"])
     return invitation
+
+
+def ensure_no_training_on(tables, starts, ends) -> None:
+    """For a tournament's day session (REQ-044): refuse tables a club or facility training session
+    already holds then, with what is in the way. The tables are locked first, as for training."""
+    ids = [t.pk for t in tables]
+    list(Table.objects.select_for_update().filter(pk__in=ids).order_by("pk"))
+    sessions = (
+        ClubSession.objects.filter(
+            tables__in=ids, status=ClubSession.Status.SCHEDULED, starts_at__lt=ends, ends_at__gt=starts
+        )
+        .distinct()
+        .prefetch_related("tables")
+    )
+    clashes = [
+        {
+            "kind": "club_session",
+            "title": session.title,
+            "starts_at": session.starts_at,
+            "ends_at": session.ends_at,
+            "tables": sorted(t.label for t in session.tables.all() if t.pk in ids),
+        }
+        for session in sessions
+    ]
+    if clashes:
+        raise ApiException(
+            "table_unavailable",
+            "Training is booked on a table you chose at that time.",
+            409,
+            extra={"conflicts": _as_json(clashes)},
+        )

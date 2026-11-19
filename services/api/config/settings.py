@@ -194,6 +194,7 @@ SPECTACULAR_SETTINGS = {
         "SkillEnum": "training.models.Skill",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",
+        "ScheduleKindEnum": "activities.serializers.SCHEDULE_KINDS",
         "ActivityStatusEnum": "activities.models.Activity.Status",
         "SessionInvitationStatusEnum": "training.models.SessionInvitation.Status",
         "CoachLevelEnum": "coaching.models.Level",

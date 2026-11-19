@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from activities.serializers import SCHEDULE_KINDS
 from core.geography import (
     CountryField,
     coordinate_field,
@@ -450,3 +451,11 @@ class TakingsSerializer(serializers.Serializer):
     by_method = TakingsMethodSerializer(many=True)
     by_pass = TakingsPassSerializer(many=True)
     reversed = serializers.IntegerField(help_text="Visits reversed that month, not counted above")
+
+
+class BranchScheduleItemSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=SCHEDULE_KINDS)
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    starts_at = serializers.DateTimeField()
+    ends_at = serializers.DateTimeField()

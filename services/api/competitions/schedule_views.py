@@ -1,5 +1,8 @@
 """The day schedule editor (TASK-099), for the host's competition staff."""
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -9,6 +12,7 @@ from rest_framework.response import Response
 
 from core.exceptions import ApiException
 from facilities.models import Table
+from training import club_sessions
 
 from . import publication, scheduling
 from .models import Event, ScheduleSession, ScheduleVersion, Tournament
@@ -393,13 +397,28 @@ class ScheduleSessionViewSet(viewsets.GenericViewSet):
         tournament = self._tournament(request, tournament_pk)
         return Response(SessionSerializer(scheduling.sessions(tournament), many=True).data)
 
+    @staticmethod
+    def _keep_clear_of_training(tournament, data, session=None):
+        """A day session can't take tables training already holds then (REQ-044)."""
+        day = data.get("day", getattr(session, "day", None))
+        starts = data.get("starts", getattr(session, "starts", None))
+        ends = data.get("ends", getattr(session, "ends", None))
+        tables = data.get("tables", list(session.tables.all()) if session else [])
+        zone = ZoneInfo(tournament.timezone)
+        club_sessions.ensure_no_training_on(
+            tables, datetime.combine(day, starts, tzinfo=zone), datetime.combine(day, ends, tzinfo=zone)
+        )
+
+    @transaction.atomic
     def create(self, request, tournament_pk):
         tournament = self._tournament(request, tournament_pk)
         made = SessionSerializer(data=request.data, context={"tournament": tournament})
         made.is_valid(raise_exception=True)
+        self._keep_clear_of_training(tournament, made.validated_data)
         made.save(tournament=tournament)
         return Response(made.data, status=201)
 
+    @transaction.atomic
     def partial_update(self, request, tournament_pk, pk):
         tournament = self._tournament(request, tournament_pk)
         session = get_object_or_404(tournament.schedule_sessions, pk=pk)
@@ -407,6 +426,7 @@ class ScheduleSessionViewSet(viewsets.GenericViewSet):
             session, data=request.data, partial=True, context={"tournament": tournament}
         )
         changed.is_valid(raise_exception=True)
+        self._keep_clear_of_training(tournament, changed.validated_data, session)
         changed.save()
         return Response(changed.data)
 
