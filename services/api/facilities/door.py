@@ -12,6 +12,7 @@ from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from core.exceptions import ApiException
+from finance import posting
 
 from .models import Pass, Venue, Visit
 from .profile import local_now
@@ -76,7 +77,7 @@ def record(venue: Venue, actor, *, pass_sold=None, player=None, walk_in_name="",
         raise ApiException("pass_unavailable", "Choose one of this branch's prices in use.", 400)
     if method != Visit.Method.CASH and not reference.strip():
         raise ApiException("reference_required", "Enter the M-Pesa or payment reference.", 400)
-    return Visit.objects.create(
+    visit = Visit.objects.create(
         venue=venue,
         pass_sold=pass_sold,
         player=player,
@@ -89,6 +90,8 @@ def record(venue: Venue, actor, *, pass_sold=None, player=None, walk_in_name="",
         valid_until=on + timedelta(days=pass_sold.days - 1),
         recorded_by=actor,
     )
+    posting.post_visit(visit)  # the price owed, what was collected and the match (REQ-022)
+    return visit
 
 
 @transaction.atomic
@@ -102,6 +105,7 @@ def reverse(visit: Visit, actor, reason: str) -> Visit:
     visit.reversed_by = actor
     visit.reversal_reason = reason
     visit.save(update_fields=["reversed_at", "reversed_by", "reversal_reason"])
+    posting.reverse_visit(visit, actor, reason)
     return visit
 
 

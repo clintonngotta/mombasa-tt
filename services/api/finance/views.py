@@ -53,7 +53,7 @@ def _org(pk) -> Organization:
 
 def _member(organization, user_id):
     """Someone who is, or was, a member: the ledger keeps what former members owe."""
-    if not Membership.objects.filter(organization=organization, user_id=user_id).exists():
+    if user_id is None or not Membership.objects.filter(organization=organization, user_id=user_id).exists():
         raise ApiException("not_a_member", "Choose a member of the organization.", 400)
     return get_object_or_404(get_user_model(), pk=user_id)
 
@@ -69,11 +69,11 @@ def payments_of(organization):
 def balances(charges, payments) -> list[dict]:
     rows = defaultdict(lambda: {"owed_minor": 0, "credit_minor": 0})
     names = {}
-    for charge in charges:
+    for charge in charges.filter(member__isnull=False):  # a walk-in settles at the door
         key = (charge.member_id, charge.currency)
         rows[key]["owed_minor"] += ledger.outstanding(charge)
         names[charge.member_id] = charge.member.display_name
-    for payment in payments:
+    for payment in payments.filter(payer__isnull=False):
         key = (payment.payer_id, payment.currency)
         rows[key]["credit_minor"] += ledger.credit(payment)
         names[payment.payer_id] = payment.payer.display_name

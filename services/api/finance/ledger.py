@@ -35,7 +35,17 @@ def credit(payment: Payment) -> int:
 
 @transaction.atomic
 def record(
-    organization, actor, *, payer, amount_minor, currency, method, reference, received_on, request_key
+    organization,
+    actor,
+    *,
+    payer,
+    amount_minor,
+    currency,
+    method,
+    reference,
+    received_on,
+    request_key,
+    walk_in_name="",
 ):
     """Record money received. The same request sent twice records it once and returns the first."""
     existing = Payment.objects.filter(organization=organization, request_key=request_key).first()
@@ -52,6 +62,7 @@ def record(
                 reference=reference,
                 received_on=received_on,
                 request_key=request_key,
+                walk_in_name=walk_in_name,
                 recorded_by=actor,
             )
     except IntegrityError:

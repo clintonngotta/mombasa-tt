@@ -28,7 +28,9 @@ class Charge(models.Model):
     organization = models.ForeignKey(
         "organizations.Organization", on_delete=models.CASCADE, related_name="charges"
     )
-    member = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="charges")
+    # Nobody's account for a facility walk-in (REQ-044): their name is kept for the facility only.
+    member = models.ForeignKey(USER, on_delete=models.PROTECT, null=True, blank=True, related_name="charges")
+    walk_in_name = models.CharField(max_length=80, blank=True)
     kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.OTHER)
     purpose = models.CharField(max_length=120)
     amount_minor = models.PositiveIntegerField()
@@ -82,7 +84,8 @@ class Payment(models.Model):
     organization = models.ForeignKey(
         "organizations.Organization", on_delete=models.CASCADE, related_name="payments"
     )
-    payer = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="payments")
+    payer = models.ForeignKey(USER, on_delete=models.PROTECT, null=True, blank=True, related_name="payments")
+    walk_in_name = models.CharField(max_length=80, blank=True)
     amount_minor = models.PositiveIntegerField()
     currency = models.CharField(max_length=3, default="KES")
     method = models.CharField(max_length=6, choices=Method.choices)

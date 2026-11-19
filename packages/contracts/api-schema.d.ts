@@ -6664,8 +6664,11 @@ export interface components {
         Charge: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: uuid */
-            member_id: string;
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            member_id: string | null;
             readonly member_name: string;
             kind: components["schemas"]["ChargeKindEnum"];
             /** Format: uuid */
@@ -6695,8 +6698,11 @@ export interface components {
          */
         ChargeKindEnum: "event_fee" | "booking" | "due" | "visit" | "other";
         ChargeRequest: {
-            /** Format: uuid */
-            member_id: string;
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            member_id: string | null;
             kind?: components["schemas"]["ChargeKindEnum"];
             purpose: string;
             amount_minor: number;
@@ -9679,8 +9685,11 @@ export interface components {
         Payment: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: uuid */
-            payer_id: string;
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            payer_id: string | null;
             readonly payer_name: string;
             amount_minor: number;
             /** @default KES */
@@ -9706,8 +9715,11 @@ export interface components {
          */
         PaymentMethodEnum: "cash" | "mpesa" | "bank" | "other";
         PaymentRequest: {
-            /** Format: uuid */
-            payer_id: string;
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            payer_id: string | null;
             amount_minor: number;
             /** @default KES */
             currency: string;

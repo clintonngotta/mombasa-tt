@@ -15704,6 +15704,8 @@ components:
         member_id:
           type: string
           format: uuid
+          nullable: true
+          description: None for a facility walk-in
         member_name:
           type: string
           readOnly: true
@@ -15786,6 +15788,8 @@ components:
         member_id:
           type: string
           format: uuid
+          nullable: true
+          description: None for a facility walk-in
         kind:
           $ref: '#/components/schemas/ChargeKindEnum'
         purpose:
@@ -23122,6 +23126,8 @@ components:
         payer_id:
           type: string
           format: uuid
+          nullable: true
+          description: None for a facility walk-in
         payer_name:
           type: string
           readOnly: true
@@ -23190,6 +23196,8 @@ components:
         payer_id:
           type: string
           format: uuid
+          nullable: true
+          description: None for a facility walk-in
         amount_minor:
           type: integer
           maximum: 100000000
