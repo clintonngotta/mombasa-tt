@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom"
-import { Dumbbell, House, Swords, Trophy, Users, UserRound, type LucideIcon } from "lucide-react"
+import { House, Swords, Trophy, Users, UserRound, type LucideIcon } from "lucide-react"
+import { BatIcon } from "@/components/brand/BatIcon"
 import { cn } from "@/lib/utils"
 import { Wordmark } from "@/components/brand/Wordmark"
 import { OrganizationSwitcher } from "@/components/clubs/OrganizationSwitcher"
@@ -10,7 +11,7 @@ type NavItem = { to: string; label: string; icon: LucideIcon }
 const NAV_ITEMS: NavItem[] = [
   { to: "/home", label: "Home", icon: House },
   { to: "/play", label: "Play", icon: Swords },
-  { to: "/training", label: "Training", icon: Dumbbell },
+  { to: "/training", label: "Training", icon: BatIcon },
   { to: "/rankings", label: "Rankings", icon: Trophy },
   { to: "/club", label: "Club", icon: Users },
   { to: "/profile", label: "Profile", icon: UserRound },

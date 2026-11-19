@@ -106,11 +106,21 @@ ACCESS: dict[str, dict[str, str]] = {
     "my-drill-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
     "training-plan-list": {"get": OWNER, "post": OWNER},
     "training-plan-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
+    "training-plan-recommendations": {"get": OWNER},
     "training-plan-items": {"post": OWNER},  # someone else's plan id is a 404, see test_training
     "training-plan-item": {"patch": OWNER, "delete": OWNER},
     # A club's drills: members read them, training staff change them.
     "organization-drills": {"get": MEMBER, "post": STAFF},
     "organization-drill": {"patch": STAFF, "delete": STAFF},
+    # The drill library: the standard drills, your own and your clubs'. Another club's drill is a 404.
+    "drill-library-list": {"get": SIGNED_IN},
+    "drill-library-detail": {"get": SIGNED_IN},
+    # A club's training plans: members read them, training staff write them and get recommendations.
+    "organization-training-plans": {"get": MEMBER, "post": STAFF},
+    "organization-training-plan": {"get": MEMBER, "patch": STAFF, "delete": STAFF},
+    "organization-training-plan-recommendations": {"get": STAFF},
+    "organization-training-plan-items": {"post": STAFF},
+    "organization-training-plan-item": {"patch": STAFF, "delete": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     "organization-permissions": {"get": SIGNED_IN},
@@ -235,6 +245,10 @@ BODIES = {
     ("organization-venues", "post"): {"name": "Second hall", "town": "Mombasa"},
     ("organization-drills", "post"): {"title": "Ghost serve", "instructions": "Short and low."},
     ("organization-drill", "patch"): {"focus": "Footwork"},
+    ("organization-training-plans", "post"): {"title": "Week", "period": "week", "starts_on": "2026-11-30"},
+    ("organization-training-plan", "patch"): {"goal": "Footwork"},
+    ("organization-training-plan-items", "post"): {"kind": "checklist", "title": "Shadow play"},
+    ("organization-training-plan-item", "patch"): {"completed": True},
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
@@ -398,6 +412,13 @@ class World:
         self.club_drill = Drill.objects.create(
             organization=self.coast, title="MARK-CLUB-DRILL", instructions="For members"
         )
+        self.club_plan = TrainingPlan.objects.create(
+            organization=self.coast, title="MARK-CLUB-PLAN", goal_skills=["footwork"]
+        )
+        self.club_item = PlanItem.objects.create(
+            plan=self.club_plan, kind=PlanItem.Kind.CHECKLIST, title="MARK-CLUB-ITEM"
+        )
+        self.spare_club_plan = TrainingPlan.objects.create(organization=self.coast, title="Spare club plan")
         # A venue with a table in use and one switched off; a second venue switched off.
         self.venue = Venue.objects.create(organization=self.coast, name="Makadara Hall", town="Mombasa")
         self.table = Table.objects.create(venue=self.venue, label="Table 1")
@@ -573,6 +594,11 @@ class World:
             "training-plan-detail": self.baraka_plan.id,
             "training-plan-item": self.baraka_item.id,
             "organization-drill": self.club_drill.id,
+            "drill-library-detail": self.club_drill.id,
+            "training-plan-recommendations": self.baraka_plan.id,
+            "organization-training-plan": self.spare_club_plan.id,
+            "organization-training-plan-recommendations": self.club_plan.id,
+            "organization-training-plan-item": self.club_item.id,
             # Faith's, because the staff checks remove Baraka before they reach this route.
             "organization-member-fields": self.faith_membership.id,
             "organization-member-field": self.staff_field.id,
@@ -634,7 +660,8 @@ class World:
         if "pk" in names:
             found["pk"] = pk[name]
         if "plan_pk" in names:
-            found["plan_pk"] = self.baraka_plan.id
+            club = name.startswith("organization-training-plan")
+            found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
         whole = ("tournament-tables", "tournament-reservations")
@@ -912,6 +939,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-PLAN": {"baraka"},
         "MARK-BARAKA-ITEM": {"baraka"},
         "MARK-CLUB-DRILL": {"amina", "baraka", "faith", "grace"},
+        "MARK-CLUB-PLAN": {"amina", "baraka", "faith", "grace"},
+        "MARK-CLUB-ITEM": {"amina", "baraka", "faith", "grace"},
         # Controls: a listed player's published detail and picture reach every signed-in viewer, which
         # shows the crawl really reads the pages where a leak would appear.
         "MARK-FAITH-STYLE": set(world.viewers),

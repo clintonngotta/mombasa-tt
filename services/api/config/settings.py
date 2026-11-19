@@ -183,6 +183,7 @@ SPECTACULAR_SETTINGS = {
     # Several models have a `status` field; give each choice set a stable component name.
     "ENUM_NAME_OVERRIDES": {
         "MembershipStatusEnum": "organizations.models.Membership.Status",
+        "SkillEnum": "training.models.Skill",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
         "MatchResultEnum": "matchlog.models.MatchResult",
         "InvitationStatusEnum": "organizations.models.Invitation.Status",

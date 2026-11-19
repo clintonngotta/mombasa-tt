@@ -188,3 +188,189 @@ def test_a_session_may_not_overlap_a_scheduled_match(staff, club):
     # A checklist item for the same day reserves nothing, and a session before the match is fine.
     add_item(client, mine["id"], kind="checklist", title="Warm-up drills")
     add_item(client, mine["id"], kind="session", title="Early hit", starts_at=at(1), ends_at=at(2.5))
+
+
+def test_the_standard_library_is_seeded_shared_and_read_only(admin, club):
+    client = logged_in(make_user("player@example.com"))
+    library = client.get("/api/v1/drills/?library=standard").json()
+    assert len(library) == 17 and {d["library"] for d in library} == {"standard"}
+    falkenberg = next(d for d in library if d["title"] == "Falkenberg")
+    assert [(s["stroke"], s["x"]) for s in falkenberg["pattern"]] == [
+        ("BH", "left"),
+        ("FH pivot", "left"),
+        ("FH wide", "right"),
+    ]
+    assert falkenberg["coaching_points"] and falkenberg["level"] == "intermediate"
+    assert client.get(f"/api/v1/drills/{falkenberg['id']}/").json()["title"] == "Falkenberg"
+    # Filters, and nobody edits a standard drill through their own library.
+    assert {d["category"] for d in client.get("/api/v1/drills/?category=serve").json()} == {"serve"}
+    assert (
+        client.patch(f"{ME}drills/{falkenberg['id']}/", {"title": "Mine"}, format="json").status_code == 404
+    )
+    assert (
+        client.patch(f"/api/v1/drills/{falkenberg['id']}/", {"title": "X"}, format="json").status_code == 405
+    )
+
+    # A plan can start from a standard drill.
+    mine = plan(client, "Falkenberg week")
+    item = add_item(client, mine["id"], kind="checklist", drill=falkenberg["id"])["items"][0]
+    assert item["title"] == "Falkenberg"
+
+    # The library shows a club's drills to its members only.
+    staff_client = logged_in(admin)
+    body = {"title": "Club special", "instructions": "Ours."}
+    club_drill = staff_client.post(f"{ORGS}{club.id}/drills/", body, format="json").json()
+    assert club_drill["organization_name"] == "Coast TT Club"
+    assert club_drill["id"] not in {d["id"] for d in client.get("/api/v1/drills/").json()}
+    assert client.get(f"/api/v1/drills/{club_drill['id']}/").status_code == 404
+    assert club_drill["id"] in {d["id"] for d in staff_client.get("/api/v1/drills/").json()}
+
+
+def test_patterns_are_placed_on_the_table_and_validated(db):
+    client = logged_in(make_user("player@example.com"))
+    steps = [
+        {"hitter": "partner", "stroke": "BH", "x": "left", "depth": "long"},
+        {"hitter": "partner", "stroke": "FH middle", "x": "center", "depth": "half"},
+    ]
+    body = {"title": "Two corners", "instructions": "Move.", "pattern": steps, "level": "beginner"}
+    made = client.post(f"{ME}drills/", body, format="json")
+    assert made.status_code == 201 and made.json()["pattern"] == steps
+    for bad in ({**steps[0], "x": "outside"}, {**steps[0], "hitter": "coach"}, {**steps[0], "stroke": ""}):
+        assert client.post(f"{ME}drills/", {**body, "pattern": [bad]}, format="json").status_code == 400
+    too_many = {**body, "pattern": steps * 7}
+    assert client.post(f"{ME}drills/", too_many, format="json").status_code == 400
+
+
+def test_clubs_plan_days_and_weeks_for_their_members(admin, club):
+    coach, member = make_user("coach@example.com"), make_user("member@example.com")
+    add_member(club, coach, "captain")
+    add_member(club, member)
+    plans = f"{ORGS}{club.id}/training-plans/"
+    coaching, client = logged_in(coach), logged_in(member)
+
+    assert (
+        client.post(
+            plans, {"title": "Tuesday", "period": "day", "starts_on": "2026-12-01"}, format="json"
+        ).status_code
+        == 403
+    )
+    assert coaching.post(plans, {"title": "Week", "period": "week"}, format="json").status_code == 400
+    week = coaching.post(
+        plans, {"title": "Footwork week", "period": "week", "starts_on": "2026-11-30"}, format="json"
+    )
+    assert week.status_code == 201 and week.json()["ends_on"] == "2026-12-06"
+    month = coaching.post(
+        plans, {"title": "January", "period": "month", "starts_on": "2027-01-31"}, format="json"
+    )
+    assert month.json()["ends_on"] == "2027-02-27"
+    day = coaching.post(
+        plans, {"title": "Tuesday", "period": "day", "starts_on": "2026-12-01"}, format="json"
+    ).json()
+    assert day["ends_on"] == "2026-12-01"
+
+    # Club sessions are the club's timetable: they reserve no member's time, so overlapping is fine.
+    items = f"{plans}{week.json()['id']}/items/"
+    standard = client.get("/api/v1/drills/?library=standard").json()[0]
+    coaching.post(
+        items, {"kind": "session", "title": "Group A", "starts_at": at(0), "ends_at": at(2)}, format="json"
+    )
+    both = coaching.post(
+        items, {"kind": "session", "title": "Group B", "starts_at": at(1), "ends_at": at(3)}, format="json"
+    )
+    assert both.status_code == 201
+    with_drill = coaching.post(items, {"kind": "checklist", "drill": standard["id"]}, format="json").json()
+    assert [i["title"] for i in with_drill["items"]] == ["Group A", "Group B", standard["title"]]
+    assert client.post(items, {"kind": "checklist", "title": "Mine"}, format="json").status_code == 403
+
+    # Members read the club's plans; outsiders don't; a member's own calendar isn't touched.
+    titles = {p["title"] for p in client.get(plans).json()["results"]}
+    assert titles == {"Tuesday", "Footwork week", "January"}
+    assert client.get(f"{plans}{day['id']}/").json()["period"] == "day"
+    assert logged_in(make_user("outsider@example.com")).get(plans).status_code == 403
+    assert client.get(f"{ME}training-sessions/").json() == []
+    assert coaching.delete(f"{plans}{day['id']}/").status_code == 204
+
+
+def test_a_plans_goal_recommends_drills_that_teach_it(admin, club):
+    client = logged_in(make_user("player@example.com"))
+    made = client.post(
+        f"{ME}training-plans/", {"title": "Attack first", "goal_skills": ["third_ball"]}, format="json"
+    ).json()
+    found = client.get(f"{ME}training-plans/{made['id']}/recommendations/").json()
+    titles = [r["drill"]["title"] for r in found]
+    # The drill built around the skill comes first; every one teaches it.
+    assert titles[0] == "Serve and third-ball attack" and "Short backspin serves" in titles
+    assert all("third_ball" in r["matched"] for r in found)
+    # A drill already in the plan isn't suggested again; no goal, no suggestions.
+    add_item(client, made["id"], kind="checklist", drill=found[0]["drill"]["id"])
+    again = client.get(f"{ME}training-plans/{made['id']}/recommendations/").json()
+    assert found[0]["drill"]["id"] not in [r["drill"]["id"] for r in again]
+    assert (
+        client.patch(f"{ME}training-plans/{made['id']}/", {"goal_skills": []}, format="json").status_code
+        == 200
+    )
+    assert client.get(f"{ME}training-plans/{made['id']}/recommendations/").json() == []
+    bad = client.post(f"{ME}training-plans/", {"title": "X", "goal_skills": ["juggling"]}, format="json")
+    assert bad.status_code == 400
+
+    # A club plan is recommended the standard library and the club's own drills, for its training staff.
+    staff = logged_in(admin)
+    body = {"title": "Club footwork", "instructions": "Ours.", "skills": ["footwork"]}
+    ours = staff.post(f"{ORGS}{club.id}/drills/", body, format="json").json()
+    week = staff.post(
+        f"{ORGS}{club.id}/training-plans/",
+        {"title": "Week", "period": "week", "starts_on": "2026-11-30", "goal_skills": ["footwork"]},
+        format="json",
+    ).json()
+    url = f"{ORGS}{club.id}/training-plans/{week['id']}/recommendations/"
+    assert ours["id"] in [r["drill"]["id"] for r in staff.get(url).json()]
+    assert client.get(url).status_code == 403
+
+
+def test_a_session_carries_its_running_order_from_warm_up_to_cool_down(db):
+    client = logged_in(make_user("player@example.com"))
+    library = {d["title"]: d["id"] for d in client.get("/api/v1/drills/").json()}
+    mine = plan(client)
+    run = [
+        {"phase": "warm_up", "drill": library["Dynamic warm-up"], "minutes": 10},
+        {"phase": "on_table", "drill": library["Falkenberg"], "minutes": 30},
+        {"phase": "off_table", "title": "Skipping intervals", "minutes": 10},
+        {"phase": "cool_down", "drill": library["Cool-down stretch"], "minutes": 10},
+    ]
+    session = add_item(
+        client,
+        mine["id"],
+        kind="session",
+        title="Tuesday session",
+        starts_at=at(0),
+        ends_at=at(1),
+        activities=run,
+    )["items"][0]
+    assert [(a["phase"], a["title"], a["minutes"]) for a in session["activities"]] == [
+        ("warm_up", "Dynamic warm-up", 10),
+        ("on_table", "Falkenberg", 30),
+        ("off_table", "Skipping intervals", 10),
+        ("cool_down", "Cool-down stretch", 10),
+    ]
+    item_url = f"{ME}training-plans/{mine['id']}/items/{session['id']}/"
+    # More minutes than the session holds, unknown phases, foreign drills and blank titles are refused.
+    too_long = [*run, {"phase": "match_play", "title": "Games", "minutes": 30}]
+    assert client.patch(item_url, {"activities": too_long}, format="json").status_code == 400
+    assert (
+        client.patch(item_url, {"activities": [{"phase": "nap", "title": "Z"}]}, format="json").status_code
+        == 400
+    )
+    assert client.patch(item_url, {"activities": [{"phase": "warm_up"}]}, format="json").status_code == 400
+    stranger = (
+        logged_in(make_user("other@example.com"))
+        .post(f"{ME}drills/", {"title": "Secret", "instructions": "Mine."}, format="json")
+        .json()
+    )
+    foreign = [{"phase": "on_table", "drill": stranger["id"]}]
+    assert client.patch(item_url, {"activities": foreign}, format="json").status_code == 400
+    assert (
+        client.patch(item_url, {"activities": run[:2]}, format="json").json()["items"][0]["activities"][1][
+            "title"
+        ]
+        == "Falkenberg"
+    )

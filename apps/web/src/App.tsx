@@ -29,8 +29,9 @@ import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
 import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
 import { MembersPage } from "@/pages/club/MembersPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
-import { PlanPage } from "@/pages/training/PlanPage"
-import { DrillsPage } from "@/pages/training/DrillsPage"
+import { ClubPlanPage, PlanPage } from "@/pages/training/PlanPage"
+import { DrillDetailPage } from "@/pages/training/DrillDetailPage"
+import { DrillEditPage } from "@/pages/training/DrillEditPage"
 import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
 import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
@@ -125,7 +126,11 @@ function App() {
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/training" element={<TrainingPage />} />
               <Route path="/training/plans/:id" element={<PlanPage />} />
-              <Route path="/training/drills" element={<DrillsPage />} />
+              <Route path="/training/club-plans/:id" element={<ClubPlanPage />} />
+              <Route path="/training/drills" element={<Navigate to="/training?tab=drills" replace />} />
+              <Route path="/training/drills/new" element={<DrillEditPage />} />
+              <Route path="/training/drills/:id" element={<DrillDetailPage />} />
+              <Route path="/training/drills/:id/edit" element={<DrillEditPage />} />
               <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/players/:id" element={<PlayerPage />} />

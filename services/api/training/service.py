@@ -83,6 +83,37 @@ def ensure_free(user, starts: datetime, ends: datetime, exclude: PlanItem | None
 
 
 def usable_drills(user):
-    """Drills a player may put in their plans: their own and those of clubs they are an active member of."""
+    """Drills a player may see and put in their plans: the standard library, their own, and those of
+    clubs they are an active member of."""
     clubs = Membership.objects.active().filter(user=user).values("organization")
-    return Drill.objects.filter(Q(owner=user) | Q(organization__in=clubs))
+    standard = Q(owner__isnull=True, organization__isnull=True)
+    return Drill.objects.filter(standard | Q(owner=user) | Q(organization__in=clubs))
+
+
+LEVELS = ["beginner", "intermediate", "advanced"]
+
+
+def recommend(drills, skills: list[str], *, exclude=(), limit: int = 6) -> list[dict]:
+    """Drills that teach the most of `skills`, best first: more goal skills taught, then drills built
+    around a goal skill (listed first), then fewer other skills, then the standard library before the
+    rest, then by level and title."""
+    wanted = set(skills)
+    if not wanted:
+        return []
+    found = []
+    for drill in drills.filter(skills__overlap=list(wanted)).exclude(pk__in=list(exclude)):
+        matched = [skill for skill in drill.skills if skill in wanted]
+        standard = drill.owner_id is None and drill.organization_id is None
+        level = LEVELS.index(drill.level) if drill.level in LEVELS else len(LEVELS)
+        # A drill listing a goal skill first is built around it.
+        primary = drill.skills.index(matched[0])
+        key = (
+            -len(matched),
+            primary,
+            len(drill.skills) - len(matched),
+            not standard,
+            level,
+            drill.title.lower(),
+        )
+        found.append((key, {"drill": drill, "matched": matched}))
+    return [item for _, item in sorted(found, key=lambda pair: pair[0])[:limit]]
