@@ -262,6 +262,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/drills/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's personal drill library, private to them. */
+        get: operations["me_drills_list"];
+        put?: never;
+        /** @description The player's personal drill library, private to them. */
+        post: operations["me_drills_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/drills/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's personal drill library, private to them. */
+        get: operations["me_drills_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description The player's personal drill library, private to them. */
+        delete: operations["me_drills_destroy"];
+        options?: never;
+        head?: never;
+        /** @description The player's personal drill library, private to them. */
+        patch: operations["me_drills_partial_update"];
+        trace?: never;
+    };
     "/api/v1/me/entries/": {
         parameters: {
             query?: never;
@@ -272,6 +309,24 @@ export interface paths {
         /** @description Every entry the caller plays in, newest first, with its event and tournament. */
         get: operations["me_entries_list"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/equipment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PUT /me/equipment/: the player's own equipment, private to them. */
+        get: operations["me_equipment_retrieve"];
+        /** @description GET/PUT /me/equipment/: the player's own equipment, private to them. */
+        put: operations["me_equipment_update"];
         post?: never;
         delete?: never;
         options?: never;
@@ -585,6 +640,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/training-plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's own training plans with their items and progress. */
+        get: operations["me_training_plans_list"];
+        put?: never;
+        /** @description The player's own training plans with their items and progress. */
+        post: operations["me_training_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's own training plans with their items and progress. */
+        get: operations["me_training_plans_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description The player's own training plans with their items and progress. */
+        delete: operations["me_training_plans_destroy"];
+        options?: never;
+        head?: never;
+        /** @description The player's own training plans with their items and progress. */
+        patch: operations["me_training_plans_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/{plan_pk}/items/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Items of one of the player's plans. Sessions are checked against the player's calendar; ticking an
+         *     item off (`completed`) is all a checklist item ever does.
+         */
+        post: operations["me_training_plans_items_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/{plan_pk}/items/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Items of one of the player's plans. Sessions are checked against the player's calendar; ticking an
+         *     item off (`completed`) is all a checklist item ever does.
+         */
+        delete: operations["me_training_plans_items_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Items of one of the player's plans. Sessions are checked against the player's calendar; ticking an
+         *     item off (`completed`) is all a checklist item ever does.
+         */
+        patch: operations["me_training_plans_items_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/training-sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/training-sessions/: the player's sessions that haven't ended yet, soonest first. */
+        get: operations["me_training_sessions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/": {
         parameters: {
             query?: never;
@@ -601,6 +754,42 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/drills/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        get: operations["organizations_drills_list"];
+        put?: never;
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        post: operations["organizations_drills_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/drills/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        delete: operations["organizations_drills_destroy"];
+        options?: never;
+        head?: never;
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        patch: operations["organizations_drills_partial_update"];
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/invitations/": {
@@ -2574,6 +2763,31 @@ export interface components {
          * @enum {string}
          */
         DrawStatusEnum: "preview" | "published" | "superseded";
+        /** @description A drill. Instructions are required; everything else is optional. */
+        Drill: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            instructions: string;
+            focus: string;
+            duration_minutes: number | null;
+            repetitions: number | null;
+            equipment: string;
+            readonly library: string;
+            /** Format: uuid */
+            readonly organization: string | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description A drill. Instructions are required; everything else is optional. */
+        DrillRequest: {
+            title: string;
+            instructions: string;
+            focus?: string;
+            duration_minutes?: number | null;
+            repetitions?: number | null;
+            equipment?: string;
+        };
         EmailOnlyRequest: {
             /** Format: email */
             email: string;
@@ -2659,6 +2873,18 @@ export interface components {
             readonly ends_on: string;
             readonly timezone: string;
             readonly status: components["schemas"]["TournamentStatusEnum"];
+        };
+        Equipment: {
+            blade: string;
+            forehand: string;
+            backhand: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        EquipmentRequest: {
+            blade?: string;
+            forehand?: string;
+            backhand?: string;
         };
         Event: {
             /** Format: uuid */
@@ -3347,6 +3573,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["DirectoryPlayer"][];
         };
+        PaginatedDrillList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Drill"][];
+        };
         PaginatedEntryList: {
             /** @example 123 */
             count: number;
@@ -3542,10 +3783,34 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["Tournament"][];
         };
+        PaginatedTrainingPlanList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["TrainingPlan"][];
+        };
         PasswordResetConfirmRequest: {
             uid: string;
             token: string;
             password: string;
+        };
+        /** @description A drill. Instructions are required; everything else is optional. */
+        PatchedDrillRequest: {
+            title?: string;
+            instructions?: string;
+            focus?: string;
+            duration_minutes?: number | null;
+            repetitions?: number | null;
+            equipment?: string;
         };
         PatchedEventRequest: {
             name?: string;
@@ -3601,6 +3866,19 @@ export interface components {
             notes?: string;
             games?: components["schemas"]["GameRequest"][];
         };
+        /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
+        PatchedPlanItemRequest: {
+            kind?: components["schemas"]["PlanItemKindEnum"];
+            title?: string;
+            notes?: string;
+            /** Format: uuid */
+            drill?: string | null;
+            /** Format: date-time */
+            starts_at?: string | null;
+            /** Format: date-time */
+            ends_at?: string | null;
+            completed?: boolean;
+        };
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         PatchedProfileRequest: {
             display_name?: string;
@@ -3641,6 +3919,14 @@ export interface components {
             timezone?: string;
             scope?: components["schemas"]["TournamentScopeEnum"];
             registration_fee?: components["schemas"]["RegistrationFeeRequest"];
+        };
+        PatchedTrainingPlanRequest: {
+            title?: string;
+            goal?: string;
+            /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
+            ends_on?: string | null;
         };
         /** @description A venue with its tables in playing order. */
         PatchedVenueRequest: {
@@ -3703,6 +3989,43 @@ export interface components {
         Placement: {
             label: string;
             entries: components["schemas"]["DrawEntry"][];
+        };
+        /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
+        PlanItem: {
+            /** Format: uuid */
+            readonly id: string;
+            kind: components["schemas"]["PlanItemKindEnum"];
+            title: string;
+            notes: string;
+            /** Format: uuid */
+            drill: string | null;
+            readonly drill_title: string;
+            readonly order: number;
+            /** Format: date-time */
+            starts_at: string | null;
+            /** Format: date-time */
+            ends_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+        };
+        /**
+         * @description * `checklist` - Checklist
+         *     * `session` - Session
+         * @enum {string}
+         */
+        PlanItemKindEnum: "checklist" | "session";
+        /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
+        PlanItemRequest: {
+            kind: components["schemas"]["PlanItemKindEnum"];
+            title?: string;
+            notes?: string;
+            /** Format: uuid */
+            drill?: string | null;
+            /** Format: date-time */
+            starts_at?: string | null;
+            /** Format: date-time */
+            ends_at?: string | null;
+            completed?: boolean;
         };
         /**
          * @description Public player page: the directory card plus only the extended details the player published.
@@ -3782,6 +4105,10 @@ export interface components {
             published_details: components["schemas"]["PublishedDetailsEnum"][];
             readonly goals: components["schemas"]["GoalsEnum"][];
             readonly onboarding_completed: boolean;
+        };
+        Progress: {
+            done: number;
+            total: number;
         };
         /**
          * @description * `decided` - decided
@@ -4539,10 +4866,46 @@ export interface components {
          * @enum {string}
          */
         TournamentStatusEnum: "draft" | "published" | "in_progress" | "completed" | "cancelled";
+        TrainingPlan: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            goal: string;
+            /** Format: date */
+            starts_on: string | null;
+            /** Format: date */
+            ends_on: string | null;
+            readonly items: components["schemas"]["PlanItem"][];
+            readonly progress: components["schemas"]["Progress"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        TrainingPlanRequest: {
+            title: string;
+            goal?: string;
+            /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
+            ends_on?: string | null;
+        };
         Umpire: {
             /** Format: uuid */
             id: string;
             display_name: string;
+        };
+        UpcomingSession: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            plan: string;
+            plan_title: string;
+            readonly title: string;
+            /** Format: date-time */
+            readonly starts_at: string | null;
+            /** Format: date-time */
+            readonly ends_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
         };
         User: {
             /** Format: uuid */
@@ -5050,6 +5413,167 @@ export interface operations {
             };
         };
     };
+    me_drills_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDrillList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrillRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDrillRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_entries_list: {
         parameters: {
             query?: {
@@ -5070,6 +5594,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedMyEntryList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_equipment_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_equipment_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EquipmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
                 };
             };
             /** @description Error envelope */
@@ -5777,6 +6361,295 @@ export interface operations {
             };
         };
     };
+    me_training_plans_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTrainingPlanList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrainingPlanRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTrainingPlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_items_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_items_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_items_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlanItemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_sessions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpcomingSession"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_list: {
         parameters: {
             query?: {
@@ -5831,6 +6704,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrillRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDrillRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
                 };
             };
             /** @description Error envelope */

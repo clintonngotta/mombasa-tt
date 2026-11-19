@@ -28,6 +28,9 @@ import { FindClubPage } from "@/pages/club/FindClubPage"
 import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
 import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
 import { MembersPage } from "@/pages/club/MembersPage"
+import { TrainingPage } from "@/pages/training/TrainingPage"
+import { PlanPage } from "@/pages/training/PlanPage"
+import { DrillsPage } from "@/pages/training/DrillsPage"
 import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
 import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
@@ -120,6 +123,9 @@ function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/rankings" element={<RankingsPage />} />
+              <Route path="/training" element={<TrainingPage />} />
+              <Route path="/training/plans/:id" element={<PlanPage />} />
+              <Route path="/training/drills" element={<DrillsPage />} />
               <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/players/:id" element={<PlayerPage />} />

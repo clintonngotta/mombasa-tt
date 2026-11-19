@@ -54,6 +54,7 @@ from profiles.models import PlayerProfile
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
+from training.models import Drill, Equipment, PlanItem, TrainingPlan
 
 from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
@@ -98,6 +99,18 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-managed-organizations": {"get": OWNER},
     "me-membership-leave": {"post": OWNER},
     "me-membership-fields": {"get": OWNER, "patch": OWNER},  # member-visible fields only
+    # Training (REQ-026, REQ-027): equipment, personal drills and plans are the player's own.
+    "my-equipment": {"get": OWNER, "put": OWNER},
+    "my-training-sessions": {"get": OWNER},
+    "my-drill-list": {"get": OWNER, "post": OWNER},
+    "my-drill-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
+    "training-plan-list": {"get": OWNER, "post": OWNER},
+    "training-plan-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
+    "training-plan-items": {"post": OWNER},  # someone else's plan id is a 404, see test_training
+    "training-plan-item": {"patch": OWNER, "delete": OWNER},
+    # A club's drills: members read them, training staff change them.
+    "organization-drills": {"get": MEMBER, "post": STAFF},
+    "organization-drill": {"patch": STAFF, "delete": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     "organization-permissions": {"get": SIGNED_IN},
@@ -220,6 +233,8 @@ BODIES = {
     ("organization-member-field-list", "post"): {"label": "Locker", "kind": "text"},
     ("organization-member-field", "patch"): {"label": "Renamed field"},
     ("organization-venues", "post"): {"name": "Second hall", "town": "Mombasa"},
+    ("organization-drills", "post"): {"title": "Ghost serve", "instructions": "Short and low."},
+    ("organization-drill", "patch"): {"focus": "Footwork"},
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
@@ -370,6 +385,18 @@ class World:
         self.staff_field = field("MARK-FIELD-STAFF", visibility=MemberField.Visibility.STAFF)
         self.retired_field = field(
             "MARK-FIELD-RETIRED", visibility=MemberField.Visibility.MEMBER, retired_at=timezone.now()
+        )
+        # Training: Baraka's equipment, drill and plan are his alone; Coast's drill is for its members.
+        Equipment.objects.create(user=self.baraka, blade="MARK-BARAKA-BLADE")
+        self.baraka_drill = Drill.objects.create(
+            owner=self.baraka, title="MARK-BARAKA-DRILL", instructions="Private"
+        )
+        self.baraka_plan = TrainingPlan.objects.create(owner=self.baraka, title="MARK-BARAKA-PLAN")
+        self.baraka_item = PlanItem.objects.create(
+            plan=self.baraka_plan, kind=PlanItem.Kind.CHECKLIST, title="MARK-BARAKA-ITEM"
+        )
+        self.club_drill = Drill.objects.create(
+            organization=self.coast, title="MARK-CLUB-DRILL", instructions="For members"
         )
         # A venue with a table in use and one switched off; a second venue switched off.
         self.venue = Venue.objects.create(organization=self.coast, name="Makadara Hall", town="Mombasa")
@@ -542,6 +569,10 @@ class World:
             "me-invitation-decline": self.invitation.id,
             "me-membership-leave": self.baraka_membership.id,
             "me-membership-fields": self.baraka_membership.id,
+            "my-drill-detail": self.baraka_drill.id,
+            "training-plan-detail": self.baraka_plan.id,
+            "training-plan-item": self.baraka_item.id,
+            "organization-drill": self.club_drill.id,
             # Faith's, because the staff checks remove Baraka before they reach this route.
             "organization-member-fields": self.faith_membership.id,
             "organization-member-field": self.staff_field.id,
@@ -602,6 +633,8 @@ class World:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
             found["pk"] = pk[name]
+        if "plan_pk" in names:
+            found["plan_pk"] = self.baraka_plan.id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
         whole = ("tournament-tables", "tournament-reservations")
@@ -656,6 +689,10 @@ class World:
             ),
             "member_field_values": sorted(MemberFieldValue.objects.values_list("field__label", "value")),
             "venues": sorted(Venue.objects.values_list("name", "town", "active")),
+            "equipment": sorted(Equipment.objects.values_list("user__email", "blade")),
+            "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
+            "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
+            "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
             "tables": sorted(Table.objects.values_list("label", "active")),
             "tournaments": sorted(Tournament.objects.values_list("name", "status", "cancel_reason")),
             "events": sorted(Event.objects.values_list("name", "status", "capacity", "cancel_reason")),
@@ -870,6 +907,11 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},
         "MARK-FAITH-BIO": {"faith"},  # unpublished
+        "MARK-BARAKA-BLADE": {"baraka"},
+        "MARK-BARAKA-DRILL": {"baraka"},
+        "MARK-BARAKA-PLAN": {"baraka"},
+        "MARK-BARAKA-ITEM": {"baraka"},
+        "MARK-CLUB-DRILL": {"amina", "baraka", "faith", "grace"},
         # Controls: a listed player's published detail and picture reach every signed-in viewer, which
         # shows the crawl really reads the pages where a leak would appear.
         "MARK-FAITH-STYLE": set(world.viewers),
