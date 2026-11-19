@@ -52,6 +52,30 @@ class PersonalMatchViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
+    @extend_schema(responses={200: PersonalMatchSerializer, 201: PersonalMatchSerializer})
+    def create(self, request, *args, **kwargs):
+        """Record a match. A Quick Score save sends its client_ref: saving the same game again (a retry
+        after the connection dropped) returns the record already made, with 200, and changes nothing."""
+        existing = self._saved(request.data.get("client_ref"))
+        if existing is not None:
+            return Response(self.get_serializer(existing).data)
+        try:
+            with transaction.atomic():
+                return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            # Two saves of the same game raced: the other one won.
+            existing = self._saved(request.data.get("client_ref"))
+            if existing is None:
+                raise
+            return Response(self.get_serializer(existing).data)
+
+    def _saved(self, ref):
+        try:
+            ref = uuid.UUID(str(ref)) if ref else None
+        except ValueError:
+            return None  # validation reports it
+        return self.get_queryset().filter(client_ref=ref).first() if ref else None
+
     @extend_schema(
         responses=inline_serializer(
             "MatchLabels", {"labels": serializers.ListField(child=serializers.CharField())}

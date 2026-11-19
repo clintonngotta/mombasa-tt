@@ -2060,8 +2060,8 @@ paths:
     post:
       operationId: me_matches_create
       description: |-
-        The signed-in player's own match log (REQ-037). The queryset is always scoped to the
-        requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+        Record a match. A Quick Score save sends its client_ref: saving the same game again (a retry
+        after the connection dropped) returns the record already made, with 200, and changes nothing.
       tags:
       - me
       requestBody:
@@ -2073,6 +2073,12 @@ paths:
       security:
       - sessionAuth: []
       responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalMatch'
+          description: ''
         '201':
           content:
             application/json:
@@ -15047,7 +15053,7 @@ components:
             maxItems: 2
             minItems: 2
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/OfficialResultSourceEnum'
         reason:
           type: string
           description: Why it was corrected.
@@ -15080,6 +15086,16 @@ components:
       - version
       - winner
       - winner_id
+    OfficialResultSourceEnum:
+      enum:
+      - umpire
+      - staff
+      - correction
+      type: string
+      description: |-
+        * `umpire` - Umpire
+        * `staff` - Staff
+        * `correction` - Correction
     OnTable:
       type: object
       description: 'The match is on a table: the table and its players are held until
@@ -16426,6 +16442,20 @@ components:
         notes:
           type: string
           maxLength: 5000
+        source:
+          allOf:
+          - $ref: '#/components/schemas/PersonalMatchSourceEnum'
+          description: |-
+            manual: typed in afterwards; quick_score: scored live in Quick Score.
+
+            * `manual` - Entered by hand
+            * `quick_score` - Quick Score
+        client_ref:
+          type: string
+          format: uuid
+          nullable: true
+          description: The device's id for the game. Saving again with the same id
+            returns the record already saved.
         games:
           type: array
           items:
@@ -16826,6 +16856,20 @@ components:
         notes:
           type: string
           maxLength: 5000
+        source:
+          allOf:
+          - $ref: '#/components/schemas/PersonalMatchSourceEnum'
+          description: |-
+            manual: typed in afterwards; quick_score: scored live in Quick Score.
+
+            * `manual` - Entered by hand
+            * `quick_score` - Quick Score
+        client_ref:
+          type: string
+          format: uuid
+          nullable: true
+          description: The device's id for the game. Saving again with the same id
+            returns the record already saved.
         games:
           type: array
           items:
@@ -16849,6 +16893,7 @@ components:
           format: date-time
           readOnly: true
       required:
+      - client_ref
       - created_at
       - format
       - games
@@ -16861,6 +16906,7 @@ components:
       - partner_name
       - played_on
       - result
+      - source
       - updated_at
       - venue
     PersonalMatchRequest:
@@ -16887,6 +16933,20 @@ components:
         notes:
           type: string
           maxLength: 5000
+        source:
+          allOf:
+          - $ref: '#/components/schemas/PersonalMatchSourceEnum'
+          description: |-
+            manual: typed in afterwards; quick_score: scored live in Quick Score.
+
+            * `manual` - Entered by hand
+            * `quick_score` - Quick Score
+        client_ref:
+          type: string
+          format: uuid
+          nullable: true
+          description: The device's id for the game. Saving again with the same id
+            returns the record already saved.
         games:
           type: array
           items:
@@ -16895,6 +16955,14 @@ components:
       - games
       - label
       - played_on
+    PersonalMatchSourceEnum:
+      enum:
+      - manual
+      - quick_score
+      type: string
+      description: |-
+        * `manual` - Entered by hand
+        * `quick_score` - Quick Score
     PhaseEnum:
       enum:
       - warm_up
@@ -19057,16 +19125,6 @@ components:
             $ref: '#/components/schemas/SlotRequest'
       required:
       - slots
-    SourceEnum:
-      enum:
-      - umpire
-      - staff
-      - correction
-      type: string
-      description: |-
-        * `umpire` - Umpire
-        * `staff` - Staff
-        * `correction` - Correction
     Sponsor:
       type: object
       description: An accepted sponsorship as everyone who sees the tournament sees

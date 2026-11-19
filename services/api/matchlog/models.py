@@ -32,12 +32,28 @@ class PersonalMatch(models.Model):
     partner_name = models.CharField(max_length=80, blank=True)
     venue = models.CharField(max_length=120, blank=True)
     notes = models.TextField(blank=True, max_length=5000)
+    # How the record was made: typed in afterwards, or scored point by point with Quick Score (REQ-017).
+    source = models.CharField(
+        max_length=12,
+        choices=[("manual", "Entered by hand"), ("quick_score", "Quick Score")],
+        default="manual",
+    )
+    # The device's own id for a Quick Score game, so a save retried after a dropped connection
+    # returns the record already made instead of making a second one.
+    client_ref = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-played_on", "-created_at"]
         indexes = [models.Index(fields=["owner", "-played_on"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "client_ref"],
+                condition=models.Q(client_ref__isnull=False),
+                name="personal_match_one_per_client_ref",
+            )
+        ]
 
     def __str__(self):
         return f"{self.played_on} {self.label} vs {self.opponent_name or 'unknown'}"

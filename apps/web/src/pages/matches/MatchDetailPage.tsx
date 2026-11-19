@@ -60,7 +60,7 @@ export function MatchDetailPage() {
           </p>
         )}
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Lock aria-hidden className="size-4" /> Self-recorded · private to you
+          <Lock aria-hidden className="size-4" /> {m.source === "quick_score" ? "Scored by you with Quick Score" : "Self-recorded"} · private to you · never rated
         </p>
       </header>
 
