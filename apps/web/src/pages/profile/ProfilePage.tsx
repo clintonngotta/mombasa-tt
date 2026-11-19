@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { NotebookPen, TrendingUp, UserPen, Users } from "lucide-react"
 import { NavCard } from "@/components/layout/NavCard"
+import { Honours } from "@/components/ceremony/Honours"
 import { Avatar } from "@/components/profile/Avatar"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
@@ -55,6 +56,8 @@ export function ProfilePage() {
         {userId && <NavCard to={`/ratings/${userId}`} icon={TrendingUp} title="My ratings" description="Singles and doubles ratings and the matches behind them" />}
         <NavCard to="/matches" icon={NotebookPen} title="My match log" description="Private record of your matches, sets and notes" />
       </nav>
+
+      <Honours />
 
       {signOut.isError && <FormAlert>{errorMessage(signOut.error)}</FormAlert>}
       {unsent > 0 && (

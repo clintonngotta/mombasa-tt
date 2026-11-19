@@ -629,6 +629,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/agenda/:
+    get:
+      operationId: me_agenda_list
+      description: 'GET /me/agenda/: the agendas of the bodies of your clubs'' regions,
+        and of bodies you belong to.'
+      parameters:
+      - in: query
+        name: year
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgendaItem'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/articles/:
+    get:
+      operationId: me_articles_list
+      description: 'GET /me/articles/: published articles from regional bodies to
+        your clubs, newest first.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Article'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/avatar/:
     put:
       operationId: me_avatar_update
@@ -1496,6 +1549,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/honours/:
+    get:
+      operationId: me_honours_list
+      description: 'GET /me/honours/: awards you received at published ceremonies,
+        newest first.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Honour'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/invitations/:
     get:
       operationId: me_invitations_list
@@ -1887,6 +1964,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MatchStats'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/meetings/:
+    get:
+      operationId: me_meetings_list
+      description: 'GET /me/meetings/: meetings you are invited to, upcoming first,
+        with your answer.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Meeting'
           description: ''
         4XX:
           description: Error envelope
@@ -2853,6 +2954,28 @@ paths:
       operationId: organizations_list
       description: Search, view and register organizations (REQ-004).
       parameters:
+      - in: query
+        name: city
+        schema:
+          type: string
+        description: City or town, any letter case
+      - in: query
+        name: country
+        schema:
+          type: string
+        description: Country code, e.g. KE
+      - in: query
+        name: kind
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - club
+            - club_facility
+            - facility
+            - regional_body
+        description: Only these kinds
       - name: page
         required: false
         in: query
@@ -2866,10 +2989,15 @@ paths:
         schema:
           type: integer
       - in: query
+        name: region
+        schema:
+          type: string
+        description: Region, any letter case
+      - in: query
         name: search
         schema:
           type: string
-        description: Name or town
+        description: Name, town or region
       tags:
       - organizations
       security:
@@ -3028,6 +3156,344 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/agenda/:
+    get:
+      operationId: organizations_agenda_list
+      description: 'GET/POST /organizations/{body}/agenda/: the body''s yearly agenda.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: year
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgendaItem'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_agenda_create
+      description: 'GET/POST /organizations/{body}/agenda/: the body''s yearly agenda.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgendaItemRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgendaItem'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/agenda/{id}/:
+    patch:
+      operationId: organizations_agenda_partial_update
+      description: PATCH/DELETE /organizations/{body}/agenda/{id}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAgendaItemRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgendaItem'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_agenda_destroy
+      description: PATCH/DELETE /organizations/{body}/agenda/{id}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/articles/:
+    get:
+      operationId: organizations_articles_list
+      description: |-
+        GET/POST /organizations/{body}/articles/: announcement staff see drafts too; everyone else sees
+        the published articles that reach them.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Article'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_articles_create
+      description: |-
+        GET/POST /organizations/{body}/articles/: announcement staff see drafts too; everyone else sees
+        the published articles that reach them.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/articles/{id}/:
+    get:
+      operationId: organizations_articles_retrieve
+      description: GET/PATCH/DELETE /organizations/{body}/articles/{id}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_articles_partial_update
+      description: GET/PATCH/DELETE /organizations/{body}/articles/{id}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedArticleRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_articles_destroy
+      description: GET/PATCH/DELETE /organizations/{body}/articles/{id}/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/articles/{id}/publish/:
+    post:
+      operationId: organizations_articles_publish_create
+      description: 'POST /organizations/{body}/articles/{id}/publish/: send it to
+        its clubs.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
           description: ''
         4XX:
           description: Error envelope
@@ -3987,6 +4453,371 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/:
+    get:
+      operationId: organizations_meetings_list
+      description: |-
+        GET/POST /organizations/{org}/meetings/: governance staff see every meeting; others see the
+        published meetings they are invited to.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_meetings_create
+      description: |-
+        GET/POST /organizations/{org}/meetings/: governance staff see every meeting; others see the
+        published meetings they are invited to.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/:
+    get:
+      operationId: organizations_meetings_retrieve
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+        delete a draft; invitees read it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_meetings_partial_update
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+        delete a draft; invitees read it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMeetingRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_meetings_destroy
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+        delete a draft; invitees read it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/answer/:
+    post:
+      operationId: organizations_meetings_answer_create
+      description: 'POST .../meetings/{id}/answer/: attending or apologies, until
+        it ends.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/cancel/:
+    post:
+      operationId: organizations_meetings_cancel_create
+      description: POST .../meetings/{id}/cancel/ with a reason.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/check-in/:
+    post:
+      operationId: organizations_meetings_check_in_create
+      description: 'POST .../meetings/{id}/check-in/: an invitee marks themselves
+        present while it runs.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/minutes/:
+    post:
+      operationId: organizations_meetings_minutes_create
+      description: 'POST .../meetings/{id}/minutes/: record the minutes once the meeting
+        has started.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MinutesRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/publish/:
+    post:
+      operationId: organizations_meetings_publish_create
+      description: 'POST .../meetings/{id}/publish/: invite the audience.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/member-fields/:
     get:
       operationId: organizations_member_fields_list
@@ -4374,6 +5205,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/region-clubs/:
+    get:
+      operationId: organizations_region_clubs_list
+      description: |-
+        GET /organizations/{body}/region-clubs/: the region's clubs with member counts and upcoming
+        tournaments, for the body's members and the region's officials.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegionClub'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/roles/:
     get:
       operationId: organizations_roles_list
@@ -4517,6 +5380,114 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/sponsorships/:
+    get:
+      operationId: organizations_sponsorships_list
+      description: |-
+        GET/POST /organizations/{org}/sponsorships/: what the organization offers tournaments, for its
+        competition staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sponsorship'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_sponsorships_create
+      description: |-
+        GET/POST /organizations/{org}/sponsorships/: what the organization offers tournaments, for its
+        competition staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SponsorshipRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sponsorship'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/sponsorships/{id}/withdraw/:
+    post:
+      operationId: organizations_sponsorships_withdraw_create
+      description: |-
+        POST /organizations/{org}/sponsorships/{id}/withdraw/: before the host has decided, or after it
+        accepted (the sponsor pulls out).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sponsorship'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/tournaments/:
     get:
       operationId: organizations_tournaments_list
@@ -4584,6 +5555,75 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-hours/:
+    get:
+      operationId: organizations_training_hours_list
+      description: |-
+        The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+        holders of training.manage replace the whole list.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingHour'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: organizations_training_hours_update
+      description: |-
+        The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+        holders of training.manage replace the whole list.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingHourListRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingHour'
           description: ''
         4XX:
           description: Error envelope
@@ -5207,6 +6247,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{id}/profile/:
+    get:
+      operationId: organizations_profile_retrieve
+      description: 'GET /organizations/{id}/profile/: any signed-in player, member
+        or not.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/permissions/:
     get:
       operationId: organizations_permissions_list
@@ -5447,6 +6516,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GeographyRanking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/regional-bodies/:
+    get:
+      operationId: regional_bodies_list
+      description: |-
+        GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
+        appointed to a region (or a platform super admin naming one) becomes its first admin.
+      tags:
+      - regional-bodies
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegionalBody'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: regional_bodies_create
+      description: |-
+        GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
+        appointed to a region (or a platform super admin naming one) becomes its first admin.
+      tags:
+      - regional-bodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegionalBodyInputRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionalBody'
           description: ''
         4XX:
           description: Error envelope
@@ -6007,6 +7129,311 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/:
+    get:
+      operationId: tournaments_ceremony_retrieve
+      description: |-
+        GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+        draft for the host's competition staff. PUT sets when, where and who hosts it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: tournaments_ceremony_update
+      description: |-
+        GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+        draft for the host's competition staff. PUT sets when, where and who hosts it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CeremonyRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/awards/:
+    post:
+      operationId: tournaments_ceremony_awards_create
+      description: 'POST /tournaments/{id}/ceremony/awards/: an award of the organizers''
+        own, added last.'
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/:
+    patch:
+      operationId: tournaments_ceremony_awards_partial_update
+      description: |-
+        PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+        special award's recipient; remove it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAwardRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_ceremony_awards_destroy
+      description: |-
+        PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+        special award's recipient; remove it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/present/:
+    post:
+      operationId: tournaments_ceremony_awards_present_create
+      description: |-
+        POST /tournaments/{id}/ceremony/awards/{award}/present/: mark it handed over (again to undo). When
+        every award is presented the ceremony is done.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/generate/:
+    post:
+      operationId: tournaments_ceremony_generate_create
+      description: |-
+        POST /tournaments/{id}/ceremony/generate/: the placement awards of the completed events, third to
+        first and the main event last; awards already presented and the organizers' own are kept.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/publish/:
+    post:
+      operationId: tournaments_ceremony_publish_create
+      description: 'POST /tournaments/{id}/ceremony/publish/: show the ceremony with
+        everyone who sees the tournament.'
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/ceremony/reorder/:
+    post:
+      operationId: tournaments_ceremony_reorder_create
+      description: POST /tournaments/{id}/ceremony/reorder/ with every award id in
+        the order they are presented.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardOrderRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ceremony'
           description: ''
         4XX:
           description: Error envelope
@@ -7931,6 +9358,148 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/sponsors/:
+    get:
+      operationId: tournaments_sponsors_list
+      description: 'GET /tournaments/{id}/sponsors/: the accepted sponsors, for everyone
+        who can see the tournament.'
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sponsor'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/sponsorships/:
+    get:
+      operationId: tournaments_sponsorships_list
+      description: 'GET /tournaments/{id}/sponsorships/: every offer, for the host''s
+        competition staff.'
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sponsorship'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/sponsorships/{id}/accept/:
+    post:
+      operationId: tournaments_sponsorships_accept_create
+      description: 'POST /tournaments/{id}/sponsorships/{offer}/{accept|decline}/:
+        the host club decides.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sponsorship'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/sponsorships/{id}/decline/:
+    post:
+      operationId: tournaments_sponsorships_decline_create
+      description: 'POST /tournaments/{id}/sponsorships/{offer}/{accept|decline}/:
+        the host club decides.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sponsorship'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/tables/:
     get:
       operationId: tournaments_tables_list
@@ -8179,6 +9748,135 @@ components:
       description: |-
         * `open` - Open
         * `closed` - Closed
+    AgendaItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/OrgRef'
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/AgendaItemKindEnum'
+        title:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        tournament:
+          allOf:
+          - $ref: '#/components/schemas/TournamentRef'
+          readOnly: true
+          nullable: true
+      required:
+      - description
+      - ends_on
+      - id
+      - kind
+      - organization
+      - starts_on
+      - title
+      - tournament
+    AgendaItemKindEnum:
+      enum:
+      - tournament
+      - meeting
+      - event
+      - deadline
+      - other
+      type: string
+      description: |-
+        * `tournament` - Tournament
+        * `meeting` - Meeting
+        * `event` - Event
+        * `deadline` - Deadline
+        * `other` - Other
+    AgendaItemRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/AgendaItemKindEnum'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        tournament_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+      required:
+      - starts_on
+      - title
+    AgendaRow:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        presenter:
+          type: string
+          default: ''
+          maxLength: 120
+        tournament:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - presenter
+      - title
+      - tournament
+    AgendaRowRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        presenter:
+          type: string
+          default: ''
+          maxLength: 120
+        tournament:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - title
+    AnswerAnswerEnum:
+      enum:
+      - attending
+      - apologies
+      type: string
+      description: |-
+        * `attending` - attending
+        * `apologies` - apologies
+    AnswerRequest:
+      type: object
+      properties:
+        answer:
+          $ref: '#/components/schemas/AnswerAnswerEnum'
+      required:
+      - answer
     AppliesToEnum:
       enum:
       - position
@@ -8212,6 +9910,99 @@ components:
         * `pending` - Pending
         * `approved` - Approved
         * `rejected` - Rejected
+    Article:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/OrgRef'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 140
+        summary:
+          type: string
+          maxLength: 280
+        body:
+          type: string
+          maxLength: 10000
+        audience:
+          $ref: '#/components/schemas/ArticleAudienceEnum'
+        clubs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrgRef'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ArticleStatusEnum'
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - audience
+      - body
+      - clubs
+      - id
+      - organization
+      - published_at
+      - status
+      - summary
+      - title
+      - updated_at
+    ArticleAudienceEnum:
+      enum:
+      - region
+      - chosen
+      type: string
+      description: |-
+        * `region` - Region
+        * `chosen` - Chosen
+    ArticleRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 140
+        summary:
+          type: string
+          maxLength: 280
+        body:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        audience:
+          $ref: '#/components/schemas/ArticleAudienceEnum'
+        club_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 200
+      required:
+      - body
+      - title
+    ArticleStatusEnum:
+      enum:
+      - draft
+      - published
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
     AssignHolderRequest:
       type: object
       properties:
@@ -8405,6 +10196,108 @@ components:
           description: JPEG, PNG or WebP, up to 5 MB
       required:
       - file
+    Award:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/AwardKindEnum'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        event:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        event_name:
+          type: string
+          readOnly: true
+          nullable: true
+        place:
+          type: integer
+          readOnly: true
+          nullable: true
+        receives:
+          type: string
+          readOnly: true
+        recipient_name:
+          type: string
+          maxLength: 120
+        prize:
+          type: string
+          maxLength: 200
+        presenter:
+          type: string
+          maxLength: 120
+        presented_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - event
+      - event_name
+      - id
+      - kind
+      - order
+      - place
+      - presented_at
+      - presenter
+      - prize
+      - receives
+      - recipient_name
+      - title
+    AwardKindEnum:
+      enum:
+      - placement
+      - special
+      type: string
+      description: |-
+        * `placement` - Placement
+        * `special` - Special
+    AwardOrderRequest:
+      type: object
+      properties:
+        awards:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 200
+      required:
+      - awards
+    AwardRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        recipient_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        recipient_name:
+          type: string
+          maxLength: 120
+        prize:
+          type: string
+          maxLength: 200
+        presenter:
+          type: string
+          maxLength: 120
+      required:
+      - title
     BestOfEnum:
       enum:
       - 3
@@ -8637,6 +10530,15 @@ components:
         * `trainee_session` - trainee_session
         * `club_session` - club_session
         * `tournament` - tournament
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     Candidate:
       type: object
       properties:
@@ -8674,6 +10576,75 @@ components:
         * `warm_up` - Warm Up
         * `off_table` - Off Table
         * `cool_down` - Cool Down
+    Ceremony:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        location:
+          type: string
+          maxLength: 200
+        host:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 1000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CeremonyStatusEnum'
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        awards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Award'
+          readOnly: true
+      required:
+      - awards
+      - host
+      - id
+      - location
+      - notes
+      - published_at
+      - starts_at
+      - status
+    CeremonyRequest:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        location:
+          type: string
+          maxLength: 200
+        host:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 1000
+    CeremonyStatusEnum:
+      enum:
+      - draft
+      - published
+      - done
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `done` - Done
     Change:
       type: object
       properties:
@@ -8712,6 +10683,80 @@ components:
       required:
       - conflicts
       - warnings
+    ClubProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        directions:
+          type: string
+          readOnly: true
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+        description:
+          type: string
+          readOnly: true
+        timezone:
+          type: string
+          readOnly: true
+        venues:
+          type: array
+          items:
+            $ref: '#/components/schemas/VenueSummary'
+          readOnly: true
+        training_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingHour'
+          readOnly: true
+        upcoming_tournaments:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpcomingTournament'
+          readOnly: true
+      required:
+      - country
+      - description
+      - directions
+      - id
+      - kind
+      - latitude
+      - longitude
+      - name
+      - region
+      - timezone
+      - town
+      - training_hours
+      - upcoming_tournaments
+      - venues
     ClubRanking:
       type: object
       properties:
@@ -9255,6 +11300,13 @@ components:
       required:
       - label
       - value
+    DecisionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          default: ''
+          maxLength: 300
     DeckPlayer:
       type: object
       properties:
@@ -10398,6 +12450,63 @@ components:
       - membership_id
       - started_on
       - values
+    Honour:
+      type: object
+      description: An award a player received at a published ceremony.
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        place:
+          type: integer
+          nullable: true
+        prize:
+          type: string
+        tournament:
+          type: string
+          format: uuid
+        tournament_name:
+          type: string
+        held_on:
+          type: string
+          format: date
+      required:
+      - held_on
+      - id
+      - place
+      - prize
+      - title
+      - tournament
+      - tournament_name
+    InKind:
+      type: object
+      properties:
+        item:
+          type: string
+          maxLength: 80
+        quantity:
+          type: integer
+          maximum: 100000
+          minimum: 1
+      required:
+      - item
+      - quantity
+    InKindRequest:
+      type: object
+      properties:
+        item:
+          type: string
+          minLength: 1
+          maxLength: 80
+        quantity:
+          type: integer
+          maximum: 100000
+          minimum: 1
+      required:
+      - item
+      - quantity
     Invitation:
       type: object
       description: Staff view of an invitation they sent.
@@ -10455,6 +12564,45 @@ components:
         * `accepted` - Accepted
         * `declined` - Declined
         * `revoked` - Revoked
+    Invitee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        club:
+          type: string
+          readOnly: true
+          nullable: true
+        answer:
+          allOf:
+          - $ref: '#/components/schemas/InviteeAnswerEnum'
+          readOnly: true
+        checked_in_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - answer
+      - checked_in_at
+      - club
+      - display_name
+      - id
+    InviteeAnswerEnum:
+      enum:
+      - none
+      - attending
+      - apologies
+      type: string
+      description: |-
+        * `none` - None
+        * `attending` - Attending
+        * `apologies` - Apologies
     JoinRequest:
       type: object
       description: Staff view of a request. Shows the requester's display name only,
@@ -10508,11 +12656,13 @@ components:
       - club
       - facility
       - club_facility
+      - regional_body
       type: string
       description: |-
         * `club` - Club
         * `facility` - Facility
         * `club_facility` - Club Facility
+        * `regional_body` - Regional Body
     LabelTally:
       type: object
       properties:
@@ -10999,6 +13149,174 @@ components:
         * `games` - games
         * `points` - points
         * `lot` - lot
+    Meeting:
+      type: object
+      description: |-
+        A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+        an invitee sees their own answer as `me`.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/OrgRef'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        kind:
+          $ref: '#/components/schemas/MeetingKindEnum'
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        location:
+          type: string
+          maxLength: 200
+        online_link:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        audience:
+          $ref: '#/components/schemas/MeetingAudienceEnum'
+        agenda:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgendaRow'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MeetingStatusEnum'
+          readOnly: true
+        minutes:
+          type: string
+          readOnly: true
+        minutes_recorded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancel_reason:
+          type: string
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        invitees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invitee'
+          readOnly: true
+        me:
+          allOf:
+          - $ref: '#/components/schemas/Invitee'
+          nullable: true
+          readOnly: true
+      required:
+      - agenda
+      - audience
+      - cancel_reason
+      - ends_at
+      - id
+      - invitees
+      - kind
+      - location
+      - me
+      - minutes
+      - minutes_recorded_at
+      - online_link
+      - organization
+      - published_at
+      - starts_at
+      - status
+      - title
+    MeetingAudienceEnum:
+      enum:
+      - committee
+      - club_admins
+      - members
+      - named
+      type: string
+      description: |-
+        * `committee` - Committee
+        * `club_admins` - Club Admins
+        * `members` - Members
+        * `named` - Named
+    MeetingKindEnum:
+      enum:
+      - committee
+      - general
+      - representatives
+      - special
+      type: string
+      description: |-
+        * `committee` - Committee
+        * `general` - General
+        * `representatives` - Representatives
+        * `special` - Special
+    MeetingRequest:
+      type: object
+      description: |-
+        A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+        an invitee sees their own answer as `me`.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          $ref: '#/components/schemas/MeetingKindEnum'
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        location:
+          type: string
+          maxLength: 200
+        online_link:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        audience:
+          $ref: '#/components/schemas/MeetingAudienceEnum'
+        named_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 200
+        agenda:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgendaRowRequest'
+      required:
+      - ends_at
+      - starts_at
+      - title
+    MeetingStatusEnum:
+      enum:
+      - draft
+      - published
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `cancelled` - Cancelled
     Member:
       type: object
       description: 'Staff view of a member: display name and roles, never email or
@@ -11192,6 +13510,15 @@ components:
       description: |-
         * `active` - Active
         * `left` - Left
+    MinutesRequest:
+      type: object
+      properties:
+        minutes:
+          type: string
+          minLength: 1
+          maxLength: 20000
+      required:
+      - minutes
     Money:
       type: object
       description: The event's declared entry fee in the REQ-032 money shape.
@@ -11610,6 +13937,36 @@ components:
         reason:
           type: string
           maxLength: 300
+    OrgRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        town:
+          type: string
+      required:
+      - id
+      - name
+      - town
+    OrgRefRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        town:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - name
+      - town
     Organization:
       type: object
       properties:
@@ -11644,6 +14001,9 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        description:
+          type: string
+          maxLength: 2000
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -11651,6 +14011,7 @@ components:
           maxLength: 64
       required:
       - country
+      - description
       - directions
       - id
       - kind
@@ -11725,6 +14086,9 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        description:
+          type: string
+          maxLength: 2000
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -12334,6 +14698,73 @@ components:
       - id
       - position
       - started_on
+    PatchedAgendaItemRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/AgendaItemKindEnum'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        tournament_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+    PatchedArticleRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 140
+        summary:
+          type: string
+          maxLength: 280
+        body:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        audience:
+          $ref: '#/components/schemas/ArticleAudienceEnum'
+        club_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 200
+    PatchedAwardRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        recipient_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        recipient_name:
+          type: string
+          maxLength: 120
+        prize:
+          type: string
+          maxLength: 200
+        presenter:
+          type: string
+          maxLength: 120
     PatchedCommentRequest:
       type: object
       properties:
@@ -12482,6 +14913,47 @@ components:
           nullable: true
           description: 'Team events: rubbers a team must win to take the tie; at most
             half of them, rounded up, so a tie always has a winner. Null otherwise.'
+    PatchedMeetingRequest:
+      type: object
+      description: |-
+        A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+        an invitee sees their own answer as `me`.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          $ref: '#/components/schemas/MeetingKindEnum'
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        location:
+          type: string
+          maxLength: 200
+        online_link:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        audience:
+          $ref: '#/components/schemas/MeetingAudienceEnum'
+        named_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 200
+        agenda:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgendaRowRequest'
     PatchedMemberFieldRequest:
       type: object
       description: |-
@@ -12520,6 +14992,8 @@ components:
             nullable: true
     PatchedOrganizationLocationRequest:
       type: object
+      description: 'The club''s settings that roles.manage edits: where it is and
+        what it is about.'
       properties:
         country:
           type: string
@@ -12548,6 +15022,9 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        description:
+          type: string
+          maxLength: 2000
     PatchedPersonalMatchRequest:
       type: object
       properties:
@@ -13892,6 +16369,76 @@ components:
       required:
       - cities
       - name
+    RegionClub:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          readOnly: true
+        members:
+          type: integer
+          readOnly: true
+        upcoming_tournaments:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - kind
+      - members
+      - name
+      - town
+      - upcoming_tournaments
+    RegionalBody:
+      type: object
+      description: A regional body as anyone signed in may see it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
+      required:
+      - country
+      - id
+      - name
+      - region
+      - town
+    RegionalBodyInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        region_id:
+          type: integer
+        town:
+          type: string
+          maxLength: 80
+      required:
+      - name
     RegistrationFee:
       type: object
       properties:
@@ -15133,6 +17680,129 @@ components:
         * `umpire` - Umpire
         * `staff` - Staff
         * `correction` - Correction
+    Sponsor:
+      type: object
+      description: An accepted sponsorship as everyone who sees the tournament sees
+        it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sponsor:
+          allOf:
+          - $ref: '#/components/schemas/OrgRef'
+          readOnly: true
+        amount_minor:
+          type: integer
+          readOnly: true
+          nullable: true
+        currency:
+          type: string
+          readOnly: true
+        in_kind:
+          type: array
+          items:
+            $ref: '#/components/schemas/InKind'
+          readOnly: true
+      required:
+      - amount_minor
+      - currency
+      - id
+      - in_kind
+      - sponsor
+    Sponsorship:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sponsor:
+          allOf:
+          - $ref: '#/components/schemas/OrgRef'
+          readOnly: true
+        tournament:
+          allOf:
+          - $ref: '#/components/schemas/TournamentRef'
+          readOnly: true
+        amount_minor:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        currency:
+          type: string
+          readOnly: true
+        in_kind:
+          type: array
+          items:
+            $ref: '#/components/schemas/InKind'
+        conditions:
+          type: string
+          maxLength: 1000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SponsorshipStatusEnum'
+          readOnly: true
+          default: offered
+        reason:
+          type: string
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_minor
+      - conditions
+      - created_at
+      - currency
+      - decided_at
+      - id
+      - in_kind
+      - reason
+      - sponsor
+      - status
+      - tournament
+    SponsorshipRequest:
+      type: object
+      properties:
+        tournament_id:
+          type: string
+          format: uuid
+          writeOnly: true
+        amount_minor:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        in_kind:
+          type: array
+          items:
+            $ref: '#/components/schemas/InKindRequest'
+        conditions:
+          type: string
+          maxLength: 1000
+      required:
+      - tournament_id
+    SponsorshipStatusEnum:
+      enum:
+      - offered
+      - accepted
+      - declined
+      - withdrawn
+      type: string
+      description: |-
+        * `offered` - Offered
+        * `accepted` - Accepted
+        * `declined` - Declined
+        * `withdrawn` - Withdrawn
     StandingRow:
       type: object
       properties:
@@ -15520,6 +18190,52 @@ components:
       - status
       - timezone
       - venue
+    TournamentRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        status:
+          type: string
+      required:
+      - ends_on
+      - id
+      - name
+      - starts_on
+      - status
+    TournamentRefRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        status:
+          type: string
+          minLength: 1
+      required:
+      - ends_on
+      - id
+      - name
+      - starts_on
+      - status
     TournamentRequest:
       type: object
       description: |-
@@ -15683,6 +18399,78 @@ components:
       - played
       - rating
       - won
+    TrainingHour:
+      type: object
+      description: A weekly training time. `venue` is one of the organization's venues
+        in use, or none.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        label:
+          type: string
+          maxLength: 80
+        venue:
+          type: string
+          format: uuid
+          nullable: true
+        venue_name:
+          type: string
+          readOnly: true
+      required:
+      - ends
+      - id
+      - label
+      - starts
+      - venue
+      - venue_name
+      - weekday
+    TrainingHourListRequest:
+      type: object
+      properties:
+        hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingHourRequest'
+      required:
+      - hours
+    TrainingHourRequest:
+      type: object
+      description: A weekly training time. `venue` is one of the organization's venues
+        in use, or none.
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        label:
+          type: string
+          maxLength: 80
+        venue:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - ends
+      - starts
+      - weekday
     TrainingPlan:
       type: object
       properties:
@@ -15826,6 +18614,43 @@ components:
       - plan_title
       - starts_at
       - title
+    UpcomingTournament:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        starts_on:
+          type: string
+          format: date
+          readOnly: true
+        ends_on:
+          type: string
+          format: date
+          readOnly: true
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/TournamentScopeEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TournamentStatusEnum'
+          readOnly: true
+        venue_name:
+          type: string
+          readOnly: true
+      required:
+      - ends_on
+      - id
+      - name
+      - scope
+      - starts_on
+      - status
+      - venue_name
     User:
       type: object
       properties:

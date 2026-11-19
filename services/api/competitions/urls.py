@@ -1,5 +1,6 @@
 from django.urls import path
 
+from . import ceremony
 from .result_views import ResultViewSet
 from .schedule_views import ScheduleSessionViewSet, ScheduleViewSet
 from .views import (
@@ -23,6 +24,37 @@ urlpatterns = [
         "awaiting-approval/",
         TournamentViewSet.as_view({"get": "awaiting_approval"}),
         name="tournament-awaiting-approval",
+    ),
+    path("<uuid:tournament_pk>/ceremony/", ceremony.CeremonyView.as_view(), name="tournament-ceremony"),
+    path(
+        "<uuid:tournament_pk>/ceremony/generate/",
+        ceremony.GenerateAwardsView.as_view(),
+        name="tournament-ceremony-generate",
+    ),
+    path(
+        "<uuid:tournament_pk>/ceremony/publish/",
+        ceremony.PublishCeremonyView.as_view(),
+        name="tournament-ceremony-publish",
+    ),
+    path(
+        "<uuid:tournament_pk>/ceremony/reorder/",
+        ceremony.ReorderAwardsView.as_view(),
+        name="tournament-ceremony-reorder",
+    ),
+    path(
+        "<uuid:tournament_pk>/ceremony/awards/",
+        ceremony.AwardsView.as_view(),
+        name="tournament-ceremony-awards",
+    ),
+    path(
+        "<uuid:tournament_pk>/ceremony/awards/<uuid:pk>/",
+        ceremony.AwardView.as_view(),
+        name="tournament-ceremony-award",
+    ),
+    path(
+        "<uuid:tournament_pk>/ceremony/awards/<uuid:pk>/present/",
+        ceremony.PresentAwardView.as_view(),
+        name="tournament-ceremony-award-present",
     ),
     path(
         "<uuid:tournament_pk>/schedule/",
@@ -192,6 +224,7 @@ urlpatterns = [
 # Mounted under /me/.
 me_urlpatterns = [
     path("entries/", MyEntriesViewSet.as_view({"get": "list"}), name="me-entries"),
+    path("honours/", ceremony.MyHonoursView.as_view(), name="me-honours"),
 ]
 
 # Mounted under /organizations/<organization_pk>/.

@@ -14,7 +14,7 @@ One named world, then every route of the API is exercised against it:
 
 import importlib
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from django.apps import apps
@@ -26,6 +26,8 @@ from attachments.models import Attachment
 from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
 from competitions import drawing, ties
 from competitions.models import (
+    Award,
+    Ceremony,
     DrawVersion,
     Entry,
     EntryPlayer,
@@ -60,6 +62,7 @@ from organizations.models import (
 from organizations.permissions import RoleKey
 from outbox.models import Job
 from profiles.models import PlayerProfile
+from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
@@ -119,6 +122,43 @@ ACCESS: dict[str, dict[str, str]] = {
     "training-plan-items": {"post": OWNER},  # someone else's plan id is a 404, see test_training
     "training-plan-item": {"patch": OWNER, "delete": OWNER},
     # A club's drills: members read them, training staff change them.
+    # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
+    "tournament-ceremony": {"get": STAFF, "put": STAFF},
+    "tournament-ceremony-generate": {"post": STAFF},
+    "tournament-ceremony-publish": {"post": STAFF},
+    "tournament-ceremony-reorder": {"post": STAFF},
+    "tournament-ceremony-awards": {"post": STAFF},
+    "tournament-ceremony-award": {"patch": STAFF, "delete": STAFF},
+    "tournament-ceremony-award-present": {"post": STAFF},
+    "me-honours": {"get": OWNER},
+    # Regional bodies (REQ-048). Coast Spinners is in the Mombasa region of "Coast Region TT", whose
+    # admin is Amina: the region's clubs read the agenda and published articles; body staff write them.
+    "regional-bodies": {"get": SIGNED_IN, "post": SIGNED_IN},  # setting one up needs an appointment
+    "organization-region-clubs": {"get": STAFF},
+    "organization-agenda": {"get": MEMBER, "post": STAFF},
+    "organization-agenda-item": {"patch": STAFF, "delete": STAFF},
+    "organization-articles": {"get": MEMBER, "post": STAFF},
+    "organization-article": {"get": MEMBER, "patch": STAFF, "delete": STAFF},
+    "organization-article-publish": {"post": STAFF},
+    "my-agenda": {"get": OWNER},
+    "my-articles": {"get": OWNER},
+    "my-meetings": {"get": OWNER},
+    # Coast's meetings: governance staff run them, invitees answer and check in. The list answers
+    # everyone with what is theirs to see.
+    "organization-meetings": {"get": SIGNED_IN, "post": STAFF},
+    "organization-meeting": {"get": STAFF, "patch": STAFF, "delete": STAFF},  # a draft
+    "organization-meeting-publish": {"post": STAFF},
+    "organization-meeting-cancel": {"post": STAFF},
+    "organization-meeting-minutes": {"post": STAFF},
+    "organization-meeting-answer": {"post": OWNER},  # Baraka's invitation
+    "organization-meeting-check-in": {"post": OWNER},
+    # Sponsorships: Coast's finance staff offer; a host's competition staff decide; sponsors are shown.
+    "organization-sponsorships": {"get": STAFF, "post": STAFF},
+    "organization-sponsorship-withdraw": {"post": STAFF},
+    "tournament-sponsors": {"get": SIGNED_IN},
+    "tournament-sponsorships": {"get": STAFF},
+    "tournament-sponsorship-accept": {"post": STAFF},
+    "tournament-sponsorship-decline": {"post": STAFF},
     # Coaching (REQ-047): coaches are found by any player; coachings, bookings, the trainees a coach
     # sees and the coach's notes belong to the two people involved. Another's id is a 404.
     "coaches": {"get": SIGNED_IN},
@@ -157,6 +197,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-training-plan-item": {"patch": STAFF, "delete": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
+    # What a player sees before joining: location, description, training hours and coming tournaments.
+    "organization-profile": {"get": SIGNED_IN},
+    "organization-training-hours": {"get": SIGNED_IN, "put": STAFF},
     "organization-permissions": {"get": SIGNED_IN},
     "organization-join-requests": {"get": STAFF, "post": SIGNED_IN},  # anyone may ask to join
     "organization-join-request-approve": {"post": STAFF},
@@ -291,8 +334,30 @@ FAITH_MEMBERSHIP = "00000000-0000-4000-8000-0000000000fa"  # Faith, for the admi
 ENTERED_WINNER = "00000000-0000-4000-8000-0000000000b1"
 CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 
+NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tournament Coast can sponsor
+
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 BODIES = {
+    ("tournament-ceremony", "put"): {"location": "Main hall"},
+    ("tournament-ceremony-awards", "post"): {"title": "Fair play"},
+    ("tournament-ceremony-award", "patch"): {"prize": "Trophy"},
+    ("tournament-ceremony-reorder", "post"): lambda: {
+        "awards": [str(pk) for pk in Award.objects.order_by("-order").values_list("id", flat=True)]
+    },
+    ("organization-agenda", "post"): {"title": "County open", "starts_on": "2027-02-01"},
+    ("organization-agenda-item", "patch"): {"title": "Renamed date"},
+    ("organization-articles", "post"): {"title": "News", "body": "Hello clubs"},
+    ("organization-article", "patch"): {"summary": "Short"},
+    ("organization-meetings", "post"): lambda: {
+        "title": "Committee",
+        "starts_at": (timezone.now() + timedelta(days=3)).isoformat(),
+        "ends_at": (timezone.now() + timedelta(days=3, hours=2)).isoformat(),
+    },
+    ("organization-meeting", "patch"): {"location": "Clubhouse"},
+    ("organization-meeting-cancel", "post"): {"reason": "Venue closed"},
+    ("organization-meeting-minutes", "post"): {"minutes": "Agreed the budget."},
+    ("organization-meeting-answer", "post"): {"answer": "attending"},
+    ("organization-sponsorships", "post"): {"tournament_id": NYALI_CUP, "amount_minor": 100000},
     ("tournament-schedule", "put"): {"slots": []},
     ("tournament-schedule-check", "post"): {"slots": []},
     ("tournament-schedule-delay", "post"): {"table_id": SPARE_TABLE, "minutes": 20, "reason": "late_start"},
@@ -304,6 +369,7 @@ BODIES = {
     },
     ("tournament-schedule-session", "patch"): {"name": "Morning"},
     ("organization-detail", "patch"): {"country": "KE", "region": "Mombasa", "town": "Mombasa"},
+    ("organization-training-hours", "put"): {"hours": [{"weekday": 1, "starts": "18:00", "ends": "20:00"}]},
     ("organization-invitations", "post"): {"email": "newcomer@example.com"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
@@ -728,6 +794,80 @@ class World:
         ):
             MemberFieldValue.objects.create(membership=self.faith_membership, field=which, value=value)
 
+        # A draft award ceremony of the published cup, with Baraka named for one award.
+        ceremony = Ceremony.objects.create(tournament=self.published, location="MARK-CEREMONY-PLACE")
+        self.award = Award.objects.create(
+            ceremony=ceremony, title="MARK-AWARD-DRAFT", recipient=self.baraka, order=1
+        )
+        self.award_to_present = Award.objects.create(ceremony=ceremony, title="Best umpire", order=2)
+        # Regional body (REQ-048): Coast Spinners sits in its region; Amina runs it too.
+        self.coast.country, self.coast.region = "KE", "Mombasa"
+        self.coast.save(update_fields=["country", "region"])
+        self.body = Organization.objects.create(
+            name="Coast Region TT", town="Mombasa", country="KE", region="Mombasa", kind="regional_body"
+        )
+        Membership.objects.create(organization=self.body, user=self.amina).roles.add(
+            seed_roles(self.body)[RoleKey.ADMIN]
+        )
+        self.agenda_item = AgendaItem.objects.create(
+            organization=self.body, title="MARK-AGENDA", starts_on="2027-01-10", ends_on="2027-01-10"
+        )
+        self.draft_article = Article.objects.create(
+            organization=self.body, title="MARK-ARTICLE-DRAFT", body="x"
+        )
+        self.article = Article.objects.create(
+            organization=self.body,
+            title="MARK-ARTICLE-PUB",
+            body="x",
+            status=Article.Status.PUBLISHED,
+            published_at=timezone.now(),
+        )
+        now = timezone.now()
+        later = {"starts_at": now + timedelta(days=2), "ends_at": now + timedelta(days=2, hours=2)}
+
+        def meeting(title, invite=(), **extra):
+            made = Meeting.objects.create(organization=self.coast, title=title, **{**later, **extra})
+            for user in invite:
+                MeetingInvitee.objects.create(meeting=made, user=user)
+            return made
+
+        self.draft_meeting = meeting("MARK-MEETING-DRAFT", audience=Meeting.Audience.MEMBERS)
+        self.meeting_to_publish = meeting("To publish", audience=Meeting.Audience.MEMBERS)
+        self.meeting_to_cancel = meeting("To cancel", [self.baraka], status=Meeting.Status.PUBLISHED)
+        self.running_meeting = meeting(
+            "MARK-MEETING-RUNNING",
+            [self.baraka],
+            status=Meeting.Status.PUBLISHED,
+            starts_at=now - timedelta(minutes=10),
+            ends_at=now + timedelta(hours=2),
+        )
+        nyali_cup = Tournament.objects.create(
+            id=NYALI_CUP,
+            organization=self.nyali,
+            name="Nyali Open",
+            starts_on="2026-12-12",
+            ends_on="2026-12-12",
+            timezone="Africa/Nairobi",
+            status=Tournament.Status.PUBLISHED,
+        )
+        nyali_league = Tournament.objects.create(
+            organization=self.nyali,
+            name="Nyali League",
+            starts_on="2026-12-19",
+            ends_on="2026-12-19",
+            timezone="Africa/Nairobi",
+            status=nyali_cup.status,
+        )
+        self.offer = Sponsorship.objects.create(
+            sponsor=self.coast, tournament=nyali_league, amount_minor=500000, conditions="MARK-SPONSOR-TERMS"
+        )
+        self.offer_to_accept = Sponsorship.objects.create(
+            sponsor=self.nyali, tournament=self.published, amount_minor=100000
+        )
+        self.offer_to_decline = Sponsorship.objects.create(
+            sponsor=self.body, tournament=self.published, amount_minor=1
+        )
+
         self.viewers = {
             "amina": self.amina,
             "baraka": self.baraka,
@@ -754,6 +894,20 @@ class World:
             "my-drill-detail": self.baraka_drill.id,
             "training-plan-detail": self.baraka_plan.id,
             "training-plan-item": self.baraka_item.id,
+            "tournament-ceremony-award": self.award.id,
+            "tournament-ceremony-award-present": self.award_to_present.id,
+            "organization-agenda-item": self.agenda_item.id,
+            "organization-article": self.article.id,
+            "organization-article-publish": self.draft_article.id,
+            "organization-meeting": self.draft_meeting.id,
+            "organization-meeting-publish": self.meeting_to_publish.id,
+            "organization-meeting-cancel": self.meeting_to_cancel.id,
+            "organization-meeting-minutes": self.running_meeting.id,
+            "organization-meeting-answer": self.running_meeting.id,
+            "organization-meeting-check-in": self.running_meeting.id,
+            "organization-sponsorship-withdraw": self.offer.id,
+            "tournament-sponsorship-accept": self.offer_to_accept.id,
+            "tournament-sponsorship-decline": self.offer_to_decline.id,
             "coach": self.kito.id,
             "coach-slots": self.kito.id,
             "my-coach-comment": self.coach_note.id,
@@ -832,6 +986,7 @@ class World:
             "scorecard-conflicts": self.scorecard.id,
             "tournament-scoring-conflict-resolve": self.conflict.id,
             "organization-detail": self.coast.id,
+            "organization-profile": self.coast.id,
             "player-detail": self.baraka.id,
             "player-ratings": self.baraka.id,
             "tournament-schedule-session": self.session.id,
@@ -846,6 +1001,14 @@ class World:
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
+        if name.startswith("tournament-ceremony"):
+            found["tournament_pk"] = self.published.id
+            return found
+        if name.startswith(("organization-region", "organization-agenda", "organization-article")):
+            found["organization_pk"] = self.body.id
+        if name.startswith("tournament-sponsor"):
+            found["tournament_pk"] = self.published.id
+            return found
         if "coaching_pk" in names:
             found["coaching_pk"] = self.coaching.id
         if "table_pk" in names:
@@ -920,6 +1083,15 @@ class World:
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
+            "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
+            "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
+            "agenda": sorted(AgendaItem.objects.values_list("title", "starts_on")),
+            "articles": sorted(Article.objects.values_list("title", "summary", "status")),
+            "meetings": sorted(Meeting.objects.values_list("title", "status", "location", "minutes")),
+            "meeting_invitees": sorted(
+                MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at")
+            ),
+            "sponsorships": sorted(Sponsorship.objects.values_list("amount_minor", "status")),
             "coach_profiles": sorted(
                 CoachProfile.objects.values_list("user__email", "headline", "accepting")
             ),
@@ -1148,6 +1320,14 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-DRILL": {"baraka"},
         "MARK-BARAKA-PLAN": {"baraka"},
         "MARK-BARAKA-ITEM": {"baraka"},
+        "MARK-AWARD-DRAFT": {"amina"},  # a draft ceremony isn't anyone's honour yet
+        "MARK-CEREMONY-PLACE": {"amina"},
+        "MARK-AGENDA": {"amina", "baraka", "faith", "grace"},
+        "MARK-ARTICLE-PUB": {"amina", "baraka", "faith", "grace"},
+        "MARK-ARTICLE-DRAFT": {"amina"},
+        "MARK-MEETING-DRAFT": {"amina"},
+        "MARK-MEETING-RUNNING": {"amina", "baraka"},
+        "MARK-SPONSOR-TERMS": {"amina"},
         "MARK-COACH-NOTE": {"baraka"},
         "MARK-COACHING-MESSAGE": {"baraka"},
         "MARK-BOOKING-NOTE": {"baraka"},
@@ -1214,8 +1394,29 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "directions",
         "latitude",
         "longitude",
+        "description",
         "kind",
         "timezone",
+    }
+    profile = viewer.get(f"/api/v1/organizations/{world.coast.id}/profile/").json()
+    assert set(profile) == {
+        "id",
+        "name",
+        "kind",
+        "country",
+        "region",
+        "town",
+        "directions",
+        "latitude",
+        "longitude",
+        "description",
+        "timezone",
+        "venues",
+        "training_hours",
+        "upcoming_tournaments",
+    }
+    assert {"id", "name", "starts_on", "ends_on", "scope", "status", "venue_name"} >= {
+        key for tournament in profile["upcoming_tournaments"] for key in tournament
     }
     cup = viewer.get(f"/api/v1/tournaments/{world.published.id}/").json()
     assert set(cup) == {

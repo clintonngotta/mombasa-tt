@@ -10,6 +10,10 @@ from core import views as core_views
 from core.catalogue import CountryCatalogueView, CountryOptionsView
 from profiles.views import PlayerDetailView, PlayerDirectoryView
 from ratings.views import ClubRankingView, GeographyRankingView, PlayerRatingsView, RankingView
+from regions.urls import body_urlpatterns as regional_bodies
+from regions.urls import me_urlpatterns as my_region
+from regions.urls import organization_urlpatterns as body_routes
+from regions.urls import tournament_urlpatterns as sponsorships
 from scoring.urls import me_urlpatterns as my_scorecards
 from scoring.urls import tournament_urlpatterns as umpires
 from training.urls import club_drills, library_urls
@@ -23,6 +27,7 @@ api_v1 = [
     path("me/", include(my_entries)),
     path("me/", include(my_scorecards)),
     path("me/", include("training.urls")),
+    path("me/", include(my_region)),
     path("me/", include(my_coaching)),
     path("coaches/", include(coach_urlpatterns)),
     path("scorecards/", include("scoring.urls")),
@@ -30,9 +35,12 @@ api_v1 = [
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
     path("organizations/<uuid:organization_pk>/", include(organization_tournaments)),
     path("organizations/<uuid:organization_pk>/", include(club_drills)),
+    path("organizations/<uuid:organization_pk>/", include(body_routes)),
+    path("regional-bodies/", include(regional_bodies)),
     path("tournaments/", include("competitions.urls")),
     path("tournaments/", include(umpires)),
     path("tournaments/", include("reservations.urls")),
+    path("tournaments/", include(sponsorships)),
     path("", include(library_urls)),
     path("players/", PlayerDirectoryView.as_view(), name="player-directory"),
     path("players/<uuid:pk>/", PlayerDetailView.as_view(), name="player-detail"),
