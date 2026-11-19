@@ -194,6 +194,8 @@ SPECTACULAR_SETTINGS = {
     ],
     # Several models have a `status` field; give each choice set a stable component name.
     "ENUM_NAME_OVERRIDES": {
+        # Campaigns and welfare projects share one audience choice set (all or selected members).
+        "FinanceAudienceEnum": "finance.models.Campaign.Audience",
         "MembershipStatusEnum": "organizations.models.Membership.Status",
         "SkillEnum": "training.models.Skill",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",

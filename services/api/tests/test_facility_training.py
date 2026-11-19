@@ -37,7 +37,9 @@ def tables(hall, kind):
 
 
 def slot(staff, club, on, expect=201, days=2, hours=2, **body):
-    starts = (timezone.now() + timedelta(days=days)).replace(microsecond=0, second=0)
+    # 10:00 in Nairobi, so a session never crosses local midnight whenever the suite runs.
+    nairobi = timezone.now().astimezone(ZoneInfo("Africa/Nairobi"))
+    starts = (nairobi + timedelta(days=days)).replace(hour=10, minute=0, second=0, microsecond=0)
     payload = {
         "title": "Juniors",
         "table_ids": [str(t.id) for t in on],

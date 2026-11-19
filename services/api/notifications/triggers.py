@@ -192,3 +192,27 @@ def due_reminder(charge, state: str, outstanding_minor: int, version: str | None
         link="/club/my-payments",
         organization=charge.organization,
     )
+
+
+def welfare_opened(project) -> None:
+    """Tell the audience a welfare project is open. Only that: never its title, description or who it
+    is for, which may carry a member's health or circumstances (REQ-038)."""
+    from finance.models import WelfareProject
+    from organizations.models import Membership
+
+    if project.audience == WelfareProject.Audience.SELECTED:
+        audience = list(project.audience_members.values_list("pk", flat=True))
+    else:
+        audience = list(
+            Membership.objects.active()
+            .filter(organization=project.organization)
+            .values_list("user_id", flat=True)
+        )
+    notify(
+        [u for u in audience if u != project.beneficiary_id],
+        Category.ANNOUNCEMENT,
+        f"{project.organization.name} opened a welfare project",
+        subject=f"welfare:{project.id}",
+        link="/club/welfare",
+        organization=project.organization,
+    )

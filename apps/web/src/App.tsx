@@ -41,6 +41,7 @@ import { ClubBookingsPage } from "@/pages/club/ClubBookingsPage"
 import { ClubFinancePage } from "@/pages/club/ClubFinancePage"
 import { CampaignsPage } from "@/pages/club/CampaignsPage"
 import { SpendingPage } from "@/pages/club/SpendingPage"
+import { WelfarePage } from "@/pages/club/WelfarePage"
 import { MyFinancesPage } from "@/pages/club/MyFinancesPage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
@@ -159,6 +160,7 @@ function App() {
               <Route path="/club/finance" element={<ClubFinancePage />} />
               <Route path="/club/finance/campaigns" element={<CampaignsPage />} />
               <Route path="/club/finance/spending" element={<SpendingPage />} />
+              <Route path="/club/welfare" element={<WelfarePage />} />
               <Route path="/club/my-payments" element={<MyFinancesPage />} />
               <Route path="/club" element={<ClubPage />} />
               <Route path="/club/find" element={<FindClubPage />} />

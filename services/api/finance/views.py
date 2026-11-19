@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -22,8 +23,8 @@ from organizations.committee import local_today
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
-from . import dues, ledger, summaries
-from .models import Campaign, CampaignMember, Charge, Expense
+from . import dues, ledger, summaries, welfare
+from .models import Campaign, CampaignMember, Charge, Expense, WelfareContribution, WelfareProject
 from .serializers import (
     AllocateSerializer,
     BalanceSerializer,
@@ -40,6 +41,9 @@ from .serializers import (
     PurposeTotalSerializer,
     ReceiptUploadSerializer,
     RemindedSerializer,
+    WelfareContributionSerializer,
+    WelfareProjectSerializer,
+    WelfareUpdateSerializer,
 )
 
 RECEIPT_SIDE = 1600  # long enough to read a till slip
@@ -528,3 +532,203 @@ class PurposesView(APIView):
             ],
         }
         return Response(PurposesSerializer(data).data)
+
+
+def _welfare_out(request, project, organization, status_code=status.HTTP_200_OK):
+    context = {"today": local_today(organization), "user": request.user}
+    return Response(WelfareProjectSerializer(project, context=context).data, status=status_code)
+
+
+def _welfare_projects(organization):
+    return organization.welfare_projects.select_related("beneficiary", "organization")
+
+
+def _visible_project(request, organization_pk, pk):
+    """The project for staff, or for a member of its audience while it isn't hidden; 404 otherwise."""
+    organization = _org(organization_pk)
+    project = get_object_or_404(_welfare_projects(organization), pk=pk)
+    if welfare.is_staff(request.user, organization):
+        return organization, project, True
+    require_membership(request.user, organization)
+    if not welfare.visible_to_member(project, request.user):
+        raise Http404
+    return organization, project, False
+
+
+class WelfareProjectsView(APIView):
+    """Welfare projects (REQ-038). Members see those meant for them; welfare and finance staff see all."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: WelfareProjectSerializer(many=True)})
+    def get(self, request, organization_pk):
+        organization = _org(organization_pk)
+        projects = list(_welfare_projects(organization))
+        if not welfare.is_staff(request.user, organization):
+            require_membership(request.user, organization)
+            projects = [p for p in projects if welfare.visible_to_member(p, request.user)]
+        context = {"today": local_today(organization), "user": request.user}
+        return Response(WelfareProjectSerializer(projects, many=True, context=context).data)
+
+    @extend_schema(request=WelfareProjectSerializer, responses={201: WelfareProjectSerializer})
+    @transaction.atomic
+    def post(self, request, organization_pk):
+        """Set up a project. Its audience hears that it opened, never what it is about."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, Permission.WELFARE_MANAGE)
+        body = WelfareProjectSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = dict(body.validated_data)
+        member_ids = data.pop("member_ids")
+        beneficiary_id = data.pop("beneficiary_id")
+        beneficiary = _member(organization, beneficiary_id) if beneficiary_id else None
+        if data.get("audience") == WelfareProject.Audience.SELECTED and not member_ids:
+            raise ApiException("members_required", "Choose the members this project is for.", 400)
+        project = WelfareProject.objects.create(
+            organization=organization, beneficiary=beneficiary, created_by=request.user, **data
+        )
+        if project.audience == WelfareProject.Audience.SELECTED:
+            project.audience_members.set([_member(organization, user_id) for user_id in member_ids])
+        from notifications import triggers
+
+        triggers.welfare_opened(project)
+        return _welfare_out(request, project, organization, status.HTTP_201_CREATED)
+
+
+class WelfareProjectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: WelfareProjectSerializer})
+    def get(self, request, organization_pk, pk):
+        organization, project, _ = _visible_project(request, organization_pk, pk)
+        return _welfare_out(request, project, organization)
+
+    @extend_schema(request=WelfareUpdateSerializer, responses={200: WelfareProjectSerializer})
+    def patch(self, request, organization_pk, pk):
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, Permission.WELFARE_MANAGE)
+        project = get_object_or_404(_welfare_projects(organization), pk=pk)
+        if welfare.is_closed(project, local_today(organization)):
+            raise ApiException("project_closed", "This project is closed.", 409)
+        body = WelfareUpdateSerializer(data=request.data, partial=True)
+        body.is_valid(raise_exception=True)
+        for field, value in body.validated_data.items():
+            setattr(project, field, value)
+        project.save()
+        return _welfare_out(request, project, organization)
+
+
+class HideWelfareView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=None, responses={200: WelfareProjectSerializer})
+    def post(self, request, organization_pk, pk):
+        """Hide the project from members: the beneficiary may ask for it themselves. Staff still see
+        it, and its ledger stays."""
+        organization = _org(organization_pk)
+        project = get_object_or_404(_welfare_projects(organization), pk=pk)
+        if project.beneficiary_id != request.user.pk:
+            require_permission(request.user, organization, Permission.WELFARE_MANAGE)
+        project = welfare.hide(project)
+        if not welfare.is_staff(request.user, organization):
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return _welfare_out(request, project, organization)
+
+
+class CloseWelfareView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=None, responses={200: WelfareProjectSerializer})
+    def post(self, request, organization_pk, pk):
+        """Close the project: its totals and records stay, read-only."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, Permission.WELFARE_MANAGE)
+        project = get_object_or_404(_welfare_projects(organization), pk=pk)
+        if not project.closed_at:
+            project.closed_at = timezone.now()
+            project.save(update_fields=["closed_at"])
+        return _welfare_out(request, project, organization)
+
+
+def _welfare_staff(request, organization_pk, pk, record=False):
+    organization = _org(organization_pk)
+    allowed = welfare.can_record if record else welfare.is_staff
+    if not allowed(request.user, organization):
+        require_permission(request.user, organization, Permission.WELFARE_MANAGE)
+    return organization, get_object_or_404(_welfare_projects(organization), pk=pk)
+
+
+class WelfareContributionsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: WelfareContributionSerializer(many=True)})
+    def get(self, request, organization_pk, pk):
+        """Every gift with its giver, anonymous ones included: welfare and finance staff only."""
+        _, project = _welfare_staff(request, organization_pk, pk)
+        found = project.contributions.select_related("contributor", "payment")
+        return Response(WelfareContributionSerializer(found, many=True).data)
+
+    @extend_schema(
+        request=WelfareContributionSerializer,
+        responses={201: WelfareContributionSerializer, 200: WelfareContributionSerializer},
+    )
+    def post(self, request, organization_pk, pk):
+        """Record a gift received outside Coast TT. Sending the same request_key again records nothing."""
+        organization, project = _welfare_staff(request, organization_pk, pk, record=True)
+        body = WelfareContributionSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = dict(body.validated_data)
+        contributor = _member(organization, data.pop("contributor_id"))
+        before = WelfareContribution.objects.filter(project=project).count()
+        made = welfare.contribute(
+            project,
+            request.user,
+            local_today(organization),
+            contributor=contributor,
+            anonymous=data.pop("anonymous"),
+            request_key=data.pop("request_key"),
+            **data,
+        )
+        new = WelfareContribution.objects.filter(project=project).count() > before
+        return Response(
+            WelfareContributionSerializer(made).data,
+            status=status.HTTP_201_CREATED if new else status.HTTP_200_OK,
+        )
+
+
+class ReverseWelfareContributionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=FinanceReasonSerializer, responses={200: WelfareContributionSerializer})
+    def post(self, request, organization_pk, pk, contribution_pk):
+        organization, project = _welfare_staff(request, organization_pk, pk, record=True)
+        contribution = get_object_or_404(project.contributions, pk=contribution_pk)
+        body = FinanceReasonSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        welfare.reverse_contribution(
+            contribution, request.user, body.validated_data["reason"], local_today(organization)
+        )
+        contribution = WelfareContribution.objects.select_related("contributor", "payment").get(
+            pk=contribution.pk
+        )
+        return Response(WelfareContributionSerializer(contribution).data)
+
+
+class WelfareExpensesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: ExpenseSerializer(many=True)})
+    def get(self, request, organization_pk, pk):
+        _, project = _welfare_staff(request, organization_pk, pk)
+        return Response(ExpenseSerializer(project.expenses.all(), many=True).data)
+
+    @extend_schema(request=ExpenseSerializer, responses={201: ExpenseSerializer})
+    def post(self, request, organization_pk, pk):
+        """Record spending, a visit gift say. It may exceed what was given: the deficit shows."""
+        organization, project = _welfare_staff(request, organization_pk, pk, record=True)
+        body = ExpenseSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = dict(body.validated_data)
+        data.pop("campaign_id", None)
+        expense = welfare.spend(project, request.user, local_today(organization), **data)
+        return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)

@@ -6,8 +6,8 @@ from rest_framework import serializers
 
 from attachments.serializers import AttachmentLinkSerializer
 
-from . import dues, ledger
-from .models import Campaign, Charge, Expense, Payment
+from . import dues, ledger, welfare
+from .models import Campaign, Charge, Expense, Payment, WelfareProject
 
 
 class ChargeSerializer(serializers.ModelSerializer):
@@ -307,3 +307,138 @@ class SpendingSerializer(serializers.Serializer):
 class PurposesSerializer(serializers.Serializer):
     purposes = PurposeTotalSerializer(many=True)
     spending = SpendingSerializer(many=True)
+
+
+class ContributorSerializer(serializers.Serializer):
+    name = serializers.CharField(help_text='"Anonymous" for those who asked')
+    amount_minor = serializers.IntegerField()
+
+
+class WelfareProjectSerializer(serializers.ModelSerializer):
+    """A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
+    and a contributor list only when the club shows one."""
+
+    title = serializers.CharField(max_length=120, trim_whitespace=True)
+    beneficiary_id = serializers.UUIDField(allow_null=True, required=False, default=None)
+    beneficiary_name = serializers.SerializerMethodField()
+    suggested_minor = serializers.IntegerField(
+        min_value=1, max_value=100_000_000, allow_null=True, required=False
+    )
+    target_minor = serializers.IntegerField(
+        min_value=1, max_value=1_000_000_000, allow_null=True, required=False
+    )
+    currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
+    member_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        write_only=True,
+        required=False,
+        default=list,
+        help_text="The members a selected-audience project is for.",
+    )
+    hidden = serializers.SerializerMethodField()
+    closed = serializers.SerializerMethodField()
+    received_minor = serializers.SerializerMethodField()
+    spent_minor = serializers.SerializerMethodField()
+    remaining_minor = serializers.SerializerMethodField()
+    my_contribution_minor = serializers.SerializerMethodField()
+    contributors = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WelfareProject
+        fields = [
+            "id",
+            "title",
+            "description",
+            "beneficiary_id",
+            "beneficiary_name",
+            "suggested_minor",
+            "currency",
+            "target_minor",
+            "deadline",
+            "audience",
+            "member_ids",
+            "show_contributors",
+            "hidden",
+            "closed",
+            "received_minor",
+            "spent_minor",
+            "remaining_minor",
+            "my_contribution_minor",
+            "contributors",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+    def _totals(self, project):
+        cache = self.context.setdefault("totals", {})
+        if project.pk not in cache:
+            cache[project.pk] = welfare.totals(project)
+        return cache[project.pk]
+
+    def get_beneficiary_name(self, project) -> str | None:
+        return project.beneficiary.display_name if project.beneficiary_id else None
+
+    def get_hidden(self, project) -> bool:
+        return project.hidden_at is not None
+
+    def get_closed(self, project) -> bool:
+        return welfare.is_closed(project, self.context.get("today") or timezone.localdate())
+
+    def get_received_minor(self, project) -> int:
+        return self._totals(project)["received_minor"]
+
+    def get_spent_minor(self, project) -> int:
+        return self._totals(project)["spent_minor"]
+
+    def get_remaining_minor(self, project) -> int:
+        return self._totals(project)["remaining_minor"]
+
+    def get_my_contribution_minor(self, project) -> int:
+        user = self.context.get("user")
+        return welfare.own_total(project, user) if user else 0
+
+    @extend_schema_field(ContributorSerializer(many=True, allow_null=True))
+    def get_contributors(self, project):
+        if not project.show_contributors:
+            return None
+        return ContributorSerializer(welfare.contributor_list(project), many=True).data
+
+
+class WelfareUpdateSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=120, trim_whitespace=True, required=False)
+    description = serializers.CharField(required=False, allow_blank=True)
+    suggested_minor = serializers.IntegerField(min_value=1, allow_null=True, required=False)
+    target_minor = serializers.IntegerField(min_value=1, allow_null=True, required=False)
+    deadline = serializers.DateField(allow_null=True, required=False)
+    show_contributors = serializers.BooleanField(required=False)
+
+
+class WelfareContributionSerializer(serializers.Serializer):
+    """A gift as finance and welfare staff see it."""
+
+    id = serializers.UUIDField(read_only=True)
+    contributor_id = serializers.UUIDField()
+    contributor_name = serializers.CharField(read_only=True)
+    amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000)
+    currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
+    method = serializers.ChoiceField(choices=Payment.Method.choices)
+    reference = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
+    received_on = serializers.DateField()
+    request_key = serializers.UUIDField(write_only=True)
+    anonymous = serializers.BooleanField(default=False)
+    reversed = serializers.BooleanField(read_only=True)
+
+    def to_representation(self, contribution):
+        payment = contribution.payment
+        return {
+            "id": str(contribution.id),
+            "contributor_id": str(contribution.contributor_id),
+            "contributor_name": contribution.contributor.display_name,
+            "amount_minor": payment.amount_minor,
+            "currency": payment.currency,
+            "method": payment.method,
+            "reference": payment.reference,
+            "received_on": payment.received_on.isoformat(),
+            "anonymous": contribution.anonymous,
+            "reversed": payment.reversed_at is not None,
+        }

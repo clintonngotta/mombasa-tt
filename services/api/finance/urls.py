@@ -54,6 +54,35 @@ urlpatterns = [
     ),
     path("finance/summary/", views.SummaryView.as_view(), name="organization-finance-summary"),
     path("finance-purposes/", views.PurposesView.as_view(), name="organization-finance-purposes"),
+    path("welfare-projects/", views.WelfareProjectsView.as_view(), name="organization-welfare-projects"),
+    path(
+        "welfare-projects/<uuid:pk>/", views.WelfareProjectView.as_view(), name="organization-welfare-project"
+    ),
+    path(
+        "welfare-projects/<uuid:pk>/hide/",
+        views.HideWelfareView.as_view(),
+        name="organization-welfare-project-hide",
+    ),
+    path(
+        "welfare-projects/<uuid:pk>/close/",
+        views.CloseWelfareView.as_view(),
+        name="organization-welfare-project-close",
+    ),
+    path(
+        "welfare-projects/<uuid:pk>/contributions/",
+        views.WelfareContributionsView.as_view(),
+        name="organization-welfare-contributions",
+    ),
+    path(
+        "welfare-projects/<uuid:pk>/contributions/<uuid:contribution_pk>/reverse/",
+        views.ReverseWelfareContributionView.as_view(),
+        name="organization-welfare-contribution-reverse",
+    ),
+    path(
+        "welfare-projects/<uuid:pk>/expenses/",
+        views.WelfareExpensesView.as_view(),
+        name="organization-welfare-expenses",
+    ),
     path("finance/balances/", views.BalancesView.as_view(), name="organization-balances"),
     path("my-finances/", views.MyFinancesView.as_view(), name="organization-my-finances"),
 ]

@@ -29,13 +29,14 @@ def purpose_totals(organization, *, campaigns_only=False) -> list[dict]:
     rows = defaultdict(lambda: {"received_minor": 0, "spent_minor": 0, "expected_minor": 0})
     received = (
         Allocation.objects.filter(STANDING_ALLOCATION, charge__organization=organization)
+        .exclude(charge__kind=Charge.Kind.WELFARE)  # welfare projects keep their own totals
         .values("charge__campaign_id", "charge__currency")
         .annotate(total=Sum("amount_minor"))
     )
     for r in received:
         rows[(r["charge__campaign_id"], r["charge__currency"])]["received_minor"] += r["total"]
     spent = (
-        Expense.objects.filter(STANDING_EXPENSE, organization=organization)
+        Expense.objects.filter(STANDING_EXPENSE, organization=organization, welfare_project__isnull=True)
         .values("campaign_id", "currency")
         .annotate(total=Sum("amount_minor"))
     )

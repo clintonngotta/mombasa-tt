@@ -25,7 +25,7 @@ export const getMyFinances = (orgId: string) => api<Schemas["MyFinances"]>(`/org
 
 export const STATUS_LABEL: Record<string, string> = { paid: "Paid", partial: "Part paid", pending: "Owed", overdue: "Overdue", waived: "Waived" }
 export const METHOD_LABEL: Record<Payment["method"], string> = { cash: "Cash", mpesa: "M-Pesa", bank: "Bank", other: "Other" }
-export const KIND_LABEL: Record<Charge["kind"], string> = { event_fee: "Event fee", booking: "Booking", due: "Dues", visit: "Visit", other: "Other" }
+export const KIND_LABEL: Record<Charge["kind"], string> = { event_fee: "Event fee", booking: "Booking", due: "Dues", visit: "Visit", welfare: "Welfare gift", other: "Other" }
 
 /** Shillings typed by staff into minor units; null when it isn't a positive amount. */
 export function toMinor(text: string): number | null {
@@ -67,3 +67,18 @@ export function uploadReceipt(orgId: string, id: string, file: File) {
 }
 export const getFinanceSummary = (orgId: string) => api<PurposeTotal[]>(`${base(orgId)}summary/`)
 export const getPurposes = (orgId: string) => api<Schemas["Purposes"]>(`/organizations/${orgId}/finance-purposes/`)
+
+export type WelfareProject = Schemas["WelfareProject"]
+export type WelfareContribution = Schemas["WelfareContribution"]
+export const welfareKeys = (orgId: string) => ["finance", "ledger", orgId, "welfare"] as const
+const welfare = (orgId: string) => `/organizations/${orgId}/welfare-projects/`
+export const listWelfare = (orgId: string) => api<WelfareProject[]>(welfare(orgId))
+export const createWelfare = (orgId: string, body: Schemas["WelfareProjectRequest"]) => api<WelfareProject>(welfare(orgId), { body })
+export const updateWelfare = (orgId: string, id: string, body: Schemas["PatchedWelfareUpdateRequest"]) => api<WelfareProject>(`${welfare(orgId)}${id}/`, { method: "PATCH", body })
+export const hideWelfare = (orgId: string, id: string) => api<WelfareProject | null>(`${welfare(orgId)}${id}/hide/`, { body: {} })
+export const closeWelfare = (orgId: string, id: string) => api<WelfareProject>(`${welfare(orgId)}${id}/close/`, { body: {} })
+export const listContributions = (orgId: string, id: string) => api<WelfareContribution[]>(`${welfare(orgId)}${id}/contributions/`)
+export const recordContribution = (orgId: string, id: string, body: Schemas["WelfareContributionRequest"]) => api<WelfareContribution>(`${welfare(orgId)}${id}/contributions/`, { body })
+export const reverseContribution = (orgId: string, id: string, contributionId: string, reason: string) =>
+  api<WelfareContribution>(`${welfare(orgId)}${id}/contributions/${contributionId}/reverse/`, { body: { reason } })
+export const recordWelfareExpense = (orgId: string, id: string, body: Schemas["ExpenseRequest"]) => api<Expense>(`${welfare(orgId)}${id}/expenses/`, { body })
