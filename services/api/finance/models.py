@@ -1,0 +1,113 @@
+"""A club's manual ledger (REQ-022): what members owe, what was received, and how it was matched.
+
+Amounts are integer minor units with their currency. Nothing here processes payments: staff record money
+received outside Coast TT. Records are never edited or deleted; a mistake is reversed with a reason and
+the original stays. Balances are worked out from the records that stand.
+"""
+
+import uuid
+
+from django.conf import settings
+from django.db import models
+from django.db.models import Q
+
+USER = settings.AUTH_USER_MODEL
+
+
+class Charge(models.Model):
+    """Something a member owes the organization: an event fee, a booking, a due or anything else."""
+
+    class Kind(models.TextChoices):
+        EVENT_FEE = "event_fee", "Event fee"
+        BOOKING = "booking", "Booking"
+        DUE = "due", "Due"
+        VISIT = "visit", "Facility visit"
+        OTHER = "other", "Other"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="charges"
+    )
+    member = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="charges")
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.OTHER)
+    purpose = models.CharField(max_length=120)
+    amount_minor = models.PositiveIntegerField()
+    currency = models.CharField(max_length=3, default="KES")
+    due_on = models.DateField(null=True, blank=True)
+    # What the charge is for, when it comes from elsewhere (a booking, a facility visit).
+    source_id = models.UUIDField(null=True, blank=True)
+    waived_at = models.DateTimeField(null=True, blank=True)
+    waived_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    waive_reason = models.CharField(max_length=300, blank=True)
+    created_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["due_on", "created_at", "id"]
+        indexes = [models.Index(fields=["organization", "member"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["kind", "source_id"],
+                condition=Q(source_id__isnull=False),
+                name="one_charge_per_source",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.purpose} {self.amount_minor} {self.currency}"
+
+
+class Payment(models.Model):
+    """Money received outside Coast TT, as staff recorded it. A reference helps reconcile but is not an
+    identity: two payments can share one. `request_key` makes a retried request record nothing new."""
+
+    class Method(models.TextChoices):
+        CASH = "cash", "Cash"
+        MPESA = "mpesa", "M-Pesa"
+        BANK = "bank", "Bank transfer"
+        OTHER = "other", "Other"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="payments"
+    )
+    payer = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="payments")
+    amount_minor = models.PositiveIntegerField()
+    currency = models.CharField(max_length=3, default="KES")
+    method = models.CharField(max_length=6, choices=Method.choices)
+    reference = models.CharField(max_length=60, blank=True)
+    received_on = models.DateField()
+    request_key = models.UUIDField()
+    recorded_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reversed_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    reversal_reason = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["-received_on", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["organization", "request_key"], name="one_payment_per_request"),
+            models.CheckConstraint(condition=Q(amount_minor__gt=0), name="payment_positive"),
+        ]
+
+    def __str__(self):
+        return f"{self.amount_minor} {self.currency} from {self.payer_id}"
+
+
+class Allocation(models.Model):
+    """Part of a payment matched to a charge. A reversed payment's allocations no longer count."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name="allocations")
+    charge = models.ForeignKey(Charge, on_delete=models.PROTECT, related_name="allocations")
+    amount_minor = models.PositiveIntegerField()
+    created_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        constraints = [models.CheckConstraint(condition=Q(amount_minor__gt=0), name="allocation_positive")]
+
+    def __str__(self):
+        return f"{self.amount_minor} of {self.payment_id} to {self.charge_id}"

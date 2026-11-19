@@ -328,6 +328,16 @@ The privacy matrix covers every route.
 
 **Payments — integration.** Setup: charge KES 1,000 (100000 minor units). Steps: allocate 40000 then 60000, submit duplicate request, over-allocate, use wrong currency, reverse second payment. Pass: balance sequence 100000→60000→0→60000; duplicate idempotent request does not add cash; excess stays credit; invalid allocation/currency fails; original/reversal both retained. Evidence: payment/allocation ledger.
 
+*Built in TASK-037 (2026-11-19).* `tests/test_finance_ledger.py` checks the following:
+- A KES 1,000 charge runs 100000→60000→0, then back to 60000 when the second payment is reversed; both payments and both allocations are kept, and reversing again is refused.
+- Sending a payment's request key again returns the same payment and adds no cash.
+- Over-allocation against the charge or the payment fails, excess stays as credit, and a charge in another currency is refused.
+- A waived charge owes nothing and takes no payment.
+- Statuses read paid, part paid and overdue as the dates and payments say.
+- Members see only their own charges; viewers read but can't record; a charge for a non-member is refused.
+
+The privacy matrix covers every route.
+
 ### EVAL-023
 
 **Contributions — clock-controlled integration.** Setup: selected members; monthly campaign due on day 31; weekly/quarterly/yearly and leap-day fixtures. Steps: run generator twice, advance across February, change amount, add new member, waive due, partially pay overdue item. Pass: one due per campaign/member/period; dates clamp correctly; prior dues unchanged; no old dues for new member; a weekly and a monthly Club operations campaign bill every active member once per period with overrides/waivers honoured and none after a member leaves; statuses and outstanding amounts correct. Evidence: period keys and expected ledger table.

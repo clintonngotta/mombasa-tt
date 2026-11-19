@@ -150,7 +150,14 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
   - **Decline** needs a reason. **Cancelling** by the player or staff frees the slot; a booking that has ended stays in the history.
   - The player is notified of each decision.
   - **Route:** this lives at `/me/table-bookings/`, because coaching already serves `/me/bookings/`.
-- [ ] **TASK-037** — Implement charges, manual payments, allocations, excess credit and reversals. Depends: TASK-013, TASK-018, TASK-036. REQ-022 / EVAL-022. Done: ledger arithmetic reconciles and currency mismatches are rejected.
+- [x] **TASK-037** — Implement charges, manual payments, allocations, excess credit and reversals. Depends: TASK-013, TASK-018, TASK-036. REQ-022 / EVAL-022. Done: ledger arithmetic reconciles and currency mismatches are rejected. Implemented 2026-11-19 in the `finance` app:
+  - **Charges** are what a member owes the organization: an event fee, booking, dues, visit or other, with a purpose, amount in minor units, currency and optional due date. A charge made from another record (`kind` with `source_id`) exists once.
+  - **Payments** are recorded, never processed: payer, amount, cash, M-Pesa, bank or other, reference and date. Each carries a `request_key`; sending it again returns the first payment (200) and records nothing new.
+  - **Allocations** apply a payment to the payer's charges. Applying more than the charge still owes or than the payment has left (`over_allocated`), to another currency (`currency_mismatch`) or to a waived charge (`charge_waived`) is refused, with the rows locked. What isn't applied stays visible as credit.
+  - **Reversal** needs a reason and keeps the payment and its allocations; they simply stop counting. **Waiving** needs a reason, and a waived charge owes nothing.
+  - **Status** is computed: paid, part paid, owed, overdue (past due and not fully paid) or waived.
+  - **Access.** `finances.view` reads charges, payments and balances; `finances.manage` records. A member sees only their own (`/organizations/{id}/my-finances/`).
+  - **Screens:** `/club/finance` for finance staff, and "My payments" (`/club/my-payments`) for every member.
 - [ ] **TASK-038** — Implement contribution campaigns, period generation, assignments and waivers. Depends: TASK-037, TASK-007. REQ-023 / EVAL-023. Done: retries/month-end/leap-year cases create exactly one correct due per period; the weekly/monthly "Club operations" template creates all-member dues with overrides/waivers and none for periods before joining or after leaving.
 - [ ] **TASK-039** — Implement contribution member/staff views and reminders. Depends: TASK-038, TASK-033. REQ-023 / EVAL-023. Done: pending/partial/overdue status and visibility match records.
 - [ ] **TASK-040** — Implement purpose expenses, receipts, reversals and transparent summaries. Depends: TASK-037, TASK-038, TASK-016. REQ-024 / EVAL-024. Done: received/spent/remaining totals reconcile, including deficits and reversals.

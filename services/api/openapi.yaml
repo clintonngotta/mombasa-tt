@@ -6791,6 +6791,288 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/balances/:
+    get:
+      operationId: organizations_finance_balances_list
+      description: Every member's outstanding balance and unmatched credit, per currency.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/charges/:
+    get:
+      operationId: organizations_finance_charges_list
+      parameters:
+      - in: query
+        name: member
+        schema:
+          type: string
+        description: Only this member's
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Charge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_finance_charges_create
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChargeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Charge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/charges/{id}/waive/:
+    post:
+      operationId: organizations_finance_charges_waive_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Charge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/payments/:
+    get:
+      operationId: organizations_finance_payments_list
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_finance_payments_create
+      description: Record money received. Repeating a request (same request_key) returns
+        the first record.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/payments/{id}/allocate/:
+    post:
+      operationId: organizations_finance_payments_allocate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllocateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/payments/{id}/reverse/:
+    post:
+      operationId: organizations_finance_payments_reverse_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/guest-claims/:
     get:
       operationId: organizations_guest_claims_list
@@ -8142,6 +8424,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Member'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/my-finances/:
+    get:
+      operationId: organizations_my_finances_retrieve
+      description: What the signed-in member owes and paid the organization. Nobody
+        else's records.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyFinances'
           description: ''
         4XX:
           description: Error envelope
@@ -13586,6 +13897,18 @@ components:
           nullable: true
       required:
       - title
+    AllocateRequest:
+      type: object
+      properties:
+        charge_id:
+          type: string
+          format: uuid
+        amount_minor:
+          type: integer
+          minimum: 1
+      required:
+      - amount_minor
+      - charge_id
     AnnouncementAudienceEnum:
       enum:
       - members
@@ -14083,6 +14406,26 @@ components:
           maxLength: 120
       required:
       - title
+    Balance:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        member_name:
+          type: string
+        currency:
+          type: string
+        owed_minor:
+          type: integer
+        credit_minor:
+          type: integer
+      required:
+      - credit_minor
+      - currency
+      - member_id
+      - member_name
+      - owed_minor
     BestOfEnum:
       enum:
       - 3
@@ -14639,6 +14982,109 @@ components:
       - match_id
       - notify
       - title
+    Charge:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        member_id:
+          type: string
+          format: uuid
+        member_name:
+          type: string
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/ChargeKindEnum'
+        purpose:
+          type: string
+          maxLength: 120
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+        due_on:
+          type: string
+          format: date
+          nullable: true
+        paid_minor:
+          type: integer
+          readOnly: true
+        outstanding_minor:
+          type: integer
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        waive_reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_minor
+      - created_at
+      - currency
+      - due_on
+      - id
+      - kind
+      - member_id
+      - member_name
+      - outstanding_minor
+      - paid_minor
+      - purpose
+      - status
+      - waive_reason
+    ChargeKindEnum:
+      enum:
+      - event_fee
+      - booking
+      - due
+      - visit
+      - other
+      type: string
+      description: |-
+        * `event_fee` - Event fee
+        * `booking` - Booking
+        * `due` - Due
+        * `visit` - Facility visit
+        * `other` - Other
+    ChargeRequest:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        kind:
+          $ref: '#/components/schemas/ChargeKindEnum'
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 120
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        due_on:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - amount_minor
+      - member_id
+      - purpose
     Checked:
       type: object
       properties:
@@ -17019,6 +17465,15 @@ components:
       - timezone
       - town
       - training_tables
+    FinanceReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     FormEnum:
       enum:
       - W
@@ -18739,18 +19194,6 @@ components:
       description: |-
         * `active` - Active
         * `left` - Left
-    MethodEnum:
-      enum:
-      - cash
-      - mpesa
-      - other
-      - pass
-      type: string
-      description: |-
-        * `cash` - Cash
-        * `mpesa` - M-Pesa
-        * `other` - Other
-        * `pass` - Covered by a pass
     MinutesRequest:
       type: object
       properties:
@@ -18913,6 +19356,25 @@ components:
       - team_name
       - tournament
       - withdrawn_at
+    MyFinances:
+      type: object
+      properties:
+        charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Charge'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+        balances:
+          type: array
+          items:
+            $ref: '#/components/schemas/Balance'
+      required:
+      - balances
+      - charges
+      - payments
     MyGuestInvitation:
       type: object
       description: 'An invitation to the signed-in player: who they were entered as,
@@ -19232,7 +19694,7 @@ components:
           readOnly: true
         method:
           allOf:
-          - $ref: '#/components/schemas/MethodEnum'
+          - $ref: '#/components/schemas/VisitMethodEnum'
           readOnly: true
         visited_on:
           type: string
@@ -21787,6 +22249,114 @@ components:
       - hitter
       - stroke
       - x
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        payer_id:
+          type: string
+          format: uuid
+        payer_name:
+          type: string
+          readOnly: true
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+        method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        reference:
+          type: string
+          default: ''
+          maxLength: 60
+        received_on:
+          type: string
+          format: date
+        allocated_minor:
+          type: integer
+          readOnly: true
+        credit_minor:
+          type: integer
+          readOnly: true
+        reversed:
+          type: boolean
+          readOnly: true
+        reversal_reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - allocated_minor
+      - amount_minor
+      - created_at
+      - credit_minor
+      - currency
+      - id
+      - method
+      - payer_id
+      - payer_name
+      - received_on
+      - reference
+      - reversal_reason
+      - reversed
+    PaymentMethodEnum:
+      enum:
+      - cash
+      - mpesa
+      - bank
+      - other
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `mpesa` - M-Pesa
+        * `bank` - Bank transfer
+        * `other` - Other
+    PaymentRequest:
+      type: object
+      properties:
+        payer_id:
+          type: string
+          format: uuid
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        reference:
+          type: string
+          default: ''
+          maxLength: 60
+        received_on:
+          type: string
+          format: date
+        request_key:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: A new id per payment recorded; sending it again records nothing
+            new.
+      required:
+      - amount_minor
+      - method
+      - payer_id
+      - received_on
+      - request_key
     PeriodEnum:
       enum:
       - day
@@ -23059,7 +23629,7 @@ components:
           type: string
           maxLength: 80
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/VisitMethodEnum'
         reference:
           type: string
           maxLength: 60
@@ -25269,7 +25839,7 @@ components:
         visits:
           type: integer
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/VisitMethodEnum'
       required:
       - amount_minor
       - currency
@@ -26270,7 +26840,7 @@ components:
           readOnly: true
         method:
           allOf:
-          - $ref: '#/components/schemas/MethodEnum'
+          - $ref: '#/components/schemas/VisitMethodEnum'
           readOnly: true
         reference:
           type: string
@@ -26319,6 +26889,18 @@ components:
       - valid_until
       - visited_on
       - walk_in_name
+    VisitMethodEnum:
+      enum:
+      - cash
+      - mpesa
+      - other
+      - pass
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `mpesa` - M-Pesa
+        * `other` - Other
+        * `pass` - Covered by a pass
     XEnum:
       enum:
       - left

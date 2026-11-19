@@ -38,6 +38,8 @@ import { NotificationsPage } from "@/pages/NotificationsPage"
 import { AnnouncePage } from "@/pages/club/AnnouncePage"
 import { MyBookingsPage } from "@/pages/profile/MyBookingsPage"
 import { ClubBookingsPage } from "@/pages/club/ClubBookingsPage"
+import { ClubFinancePage } from "@/pages/club/ClubFinancePage"
+import { MyFinancesPage } from "@/pages/club/MyFinancesPage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
@@ -152,6 +154,8 @@ function App() {
               <Route path="/club/venues/:id/door" element={<DoorPage />} />
               <Route path="/club/takings" element={<TakingsPage />} />
               <Route path="/club/bookings" element={<ClubBookingsPage />} />
+              <Route path="/club/finance" element={<ClubFinancePage />} />
+              <Route path="/club/my-payments" element={<MyFinancesPage />} />
               <Route path="/club" element={<ClubPage />} />
               <Route path="/club/find" element={<FindClubPage />} />
               <Route path="/club/find/:id" element={<ClubProfilePage />} />
