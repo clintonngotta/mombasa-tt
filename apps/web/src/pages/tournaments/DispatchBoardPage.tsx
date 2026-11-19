@@ -13,6 +13,7 @@ import { drawKeys } from "@/lib/draws"
 import { dispatchMatch, getBoard, reservationKeys, runAutoDispatch, setAutoDispatch, type Board, type BoardTable, type QueuedMatch } from "@/lib/reservations"
 import { scoringKeys } from "@/lib/scoring"
 import { getTournament, tournamentKeys } from "@/lib/tournaments"
+import { useLiveTournament } from "@/lib/live"
 
 const LOOK_EVERY = 15_000
 
@@ -42,6 +43,7 @@ function Sides({ a, b }: { a: string; b: string }) {
  */
 export function DispatchBoardPage() {
   const { id = "" } = useParams()
+  useLiveTournament(id)
   const queryClient = useQueryClient()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const board = useQuery({ queryKey: reservationKeys.board(id), queryFn: () => getBoard(id), refetchInterval: LOOK_EVERY, staleTime: 0 })

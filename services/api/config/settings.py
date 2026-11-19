@@ -33,6 +33,7 @@ CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 INSTALLED_APPS = [
+    "daphne",  # runserver serves ASGI, WebSockets included
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "rest_framework",
     "drf_spectacular",
+    "channels",
     "core",
     "accounts",
     "attachments",
@@ -53,6 +55,7 @@ INSTALLED_APPS = [
     "organizations",
     "outbox",
     "ratings",
+    "realtime",
     "regions",
     "reservations",
     "scoring",
@@ -211,9 +214,47 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
+# One JSON object per line (core/logging.py) with the request ID, for the log collector; plain text by
+# default while developing. LOG_FORMAT=json or text overrides either.
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "text" if DEBUG else "json")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "filters": {"request_id": {"()": "core.logging.RequestIdFilter"}},
+    "formatters": {
+        "json": {"()": "core.logging.JsonFormatter"},
+        "text": {"format": "%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "json" if LOG_FORMAT == "json" else "text",
+        }
+    },
     "root": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO")},
+}
+
+# Redis carries Celery's wake-ups and the WebSocket messages between processes. It is optional while
+# developing: without it the outbox is polled by `manage.py work_outbox` and WebSocket messages reach
+# only pages served by the same process. Keep it on a private network (deployment.md).
+REDIS_URL = os.environ.get("REDIS_URL", "")
+
+CELERY_BROKER_URL = REDIS_URL or "memory://"
+CELERY_TASK_IGNORE_RESULT = True
+# A task is acknowledged when it finishes, so one a dying worker held goes to another worker. The work
+# itself is in the outbox table, which makes a repeat harmless.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BEAT_SCHEDULE = {"outbox-sweep": {"task": "outbox.work", "schedule": 5.0}}
+
+CHANNEL_LAYERS = {
+    "default": (
+        {"BACKEND": "channels_redis.core.RedisChannelLayer", "CONFIG": {"hosts": [REDIS_URL]}}
+        if REDIS_URL
+        else {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    )
 }

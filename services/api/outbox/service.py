@@ -5,15 +5,17 @@ own database writes and the job being marked done commit together, so a worker t
 leaves the job pending and nothing half-done, and the next run does it once. Handlers must still be
 safe to run twice, because anything they do outside the database is not undone by a rollback.
 
-Jobs are done by a worker process, never inside the request that wrote them (deployment.md): today
-that is `manage.py work_outbox`, which polls for due jobs and retries what failed. Celery will call
-the same `work` when it arrives (TASK-007).
+Jobs are done by a worker process, never inside the request that wrote them (deployment.md). With
+Redis configured (REDIS_URL) that is Celery: a new job wakes a worker once its transaction commits, and
+beat sweeps for retries that are due (config/celery.py). Without Redis, `manage.py work_outbox` polls.
+Either way the job lives in the database, so a lost wake-up only delays it.
 """
 
 import logging
 from collections.abc import Callable
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -37,8 +39,20 @@ def handler(kind: str):
 
 def enqueue(kind: str, key: str, payload: dict | None = None) -> Job:
     """Write the job with the change it follows from. The same key again is the same job."""
-    job, _ = Job.objects.get_or_create(key=key, defaults={"kind": kind, "payload": payload or {}})
+    job, created = Job.objects.get_or_create(key=key, defaults={"kind": kind, "payload": payload or {}})
+    if created and settings.REDIS_URL:
+        transaction.on_commit(_wake)
     return job
+
+
+def _wake() -> None:
+    """Ask a Celery worker to look now. If Redis is unreachable, beat's sweep finds the job later."""
+    from .tasks import work as work_task
+
+    try:
+        work_task.apply_async(retry=False)
+    except Exception:
+        logger.warning("Could not wake an outbox worker; the next sweep will do the job", exc_info=True)
 
 
 def work(limit: int = 100) -> int:

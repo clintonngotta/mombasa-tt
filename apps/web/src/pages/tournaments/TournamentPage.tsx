@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
+import { useLiveTournament } from "@/lib/live"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
 import { formatDayRange, formatInstant } from "@/lib/dates"
@@ -43,6 +44,7 @@ import {
 /** One tournament (REQ-007): what everyone sees, plus the controls of the host's competition staff. */
 export function TournamentPage() {
   const { id = "" } = useParams()
+  useLiveTournament(id)
   const { results: memberships } = useMemberships()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const t = tournament.data
