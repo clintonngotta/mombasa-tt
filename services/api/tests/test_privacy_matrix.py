@@ -49,7 +49,7 @@ from competitions.models import (
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
-from finance.models import Allocation, Charge, Payment
+from finance.models import Allocation, Campaign, CampaignMember, Charge, Payment
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
@@ -165,6 +165,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-payment-allocate": {"post": STAFF},
     "organization-payment-reverse": {"post": STAFF},
     "organization-balances": {"get": STAFF},
+    "organization-campaigns": {"get": STAFF, "post": STAFF},
+    "organization-campaign": {"get": STAFF, "patch": STAFF},
+    "organization-campaign-close": {"post": STAFF},
+    "organization-campaign-terms": {"post": STAFF},
     "organization-my-finances": {"get": MEMBER},
     "soda-game-list": {"get": OWNER, "post": OWNER},
     "soda-game-detail": {"get": OWNER},
@@ -561,6 +565,17 @@ BODIES = {
         "amount_minor": 100,
     },
     ("organization-payment-reverse", "post"): {"reason": "Recorded twice"},
+    ("organization-campaigns", "post"): lambda: {
+        "title": "Net fund",
+        "amount_minor": 1000,
+        "cadence": "once",
+        "starts_on": (timezone.localdate() + timedelta(days=90)).isoformat(),
+    },
+    ("organization-campaign", "patch"): {"amount_minor": 2000},
+    ("organization-campaign-terms", "post"): lambda: {
+        "member_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
+        "amount_minor": 500,
+    },
     ("my-notification-preferences", "put"): {"preferences": [{"category": "soda", "enabled": False}]},
     ("organization-external-events", "post"): {
         "name": "Kilifi Open",
@@ -836,6 +851,19 @@ class World:
         Charge.objects.create(
             organization=self.coast, member=self.faith, purpose="Ball fund", amount_minor=5000
         )
+
+        # Dues campaigns whose first period is still to come, so reading the ledger generates nothing.
+        def dues_campaign(title):
+            return Campaign.objects.create(
+                organization=self.coast,
+                title=title,
+                amount_minor=50000,
+                cadence="monthly",
+                starts_on=timezone.localdate() + timedelta(days=60),
+            )
+
+        self.campaign = dues_campaign("MARK-CAMPAIGN")
+        self.campaign_to_close = dues_campaign("Old dues")
 
         def payment(reference):
             return Payment.objects.create(
@@ -1377,6 +1405,9 @@ class World:
             "organization-charge-waive": self.charge.id,
             "organization-payment-allocate": self.payment.id,
             "organization-payment-reverse": self.payment_to_reverse.id,
+            "organization-campaign": self.campaign.id,
+            "organization-campaign-close": self.campaign_to_close.id,
+            "organization-campaign-terms": self.campaign.id,
             "organization-external-event": self.external.id,
             "organization-external-event-live": self.external.id,
             "external-event-approve": self.external.id,
@@ -1535,6 +1566,10 @@ class World:
                 (p.reference, p.amount_minor, p.reversed_at is None) for p in Payment.objects.all()
             ),
             "allocations": Allocation.objects.count(),
+            "campaigns": sorted(
+                (c.title, c.amount_minor, c.closed_at is None) for c in Campaign.objects.all()
+            ),
+            "campaign_terms": sorted(CampaignMember.objects.values_list("amount_minor", "waived")),
             "soda_policies": sorted(
                 Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
             ),
@@ -1629,6 +1664,10 @@ ALSO_STAFF = {
             "organization-payment-allocate",
             "organization-payment-reverse",
             "organization-balances",
+            "organization-campaigns",
+            "organization-campaign",
+            "organization-campaign-close",
+            "organization-campaign-terms",
         ]
     },
     # ...and announcements, which include submitting external events.
@@ -1826,6 +1865,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
         "MARK-SODA-MESSAGE": {"baraka"},
         "MARK-ALERT": {"baraka"},
+        "MARK-CAMPAIGN": {"amina", "grace"},  # finance staff
         "MARK-CHARGE": {"amina", "faith", "grace"},  # the member and finance staff
         "MARK-PAYMENT-REF": {"amina", "faith", "grace"},
         "MARK-EXTERNAL-PENDING": {

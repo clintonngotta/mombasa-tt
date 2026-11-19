@@ -1,8 +1,11 @@
+from datetime import date
+
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from . import ledger
-from .models import Charge, Payment
+from . import dues, ledger
+from .models import Campaign, Charge, Payment
 
 
 class ChargeSerializer(serializers.ModelSerializer):
@@ -14,6 +17,7 @@ class ChargeSerializer(serializers.ModelSerializer):
     paid_minor = serializers.SerializerMethodField()
     outstanding_minor = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    campaign_id = serializers.UUIDField(read_only=True, allow_null=True)
 
     class Meta:
         model = Charge
@@ -22,6 +26,8 @@ class ChargeSerializer(serializers.ModelSerializer):
             "member_id",
             "member_name",
             "kind",
+            "campaign_id",
+            "period",
             "purpose",
             "amount_minor",
             "currency",
@@ -32,7 +38,7 @@ class ChargeSerializer(serializers.ModelSerializer):
             "waive_reason",
             "created_at",
         ]
-        read_only_fields = ["id", "waive_reason", "created_at"]
+        read_only_fields = ["id", "period", "waive_reason", "created_at"]
 
     def get_paid_minor(self, charge) -> int:
         return ledger.paid_towards(charge)
@@ -110,3 +116,97 @@ class MyFinancesSerializer(serializers.Serializer):
     charges = ChargeSerializer(many=True)
     payments = PaymentSerializer(many=True)
     balances = BalanceSerializer(many=True)
+
+
+class CampaignTermSerializer(serializers.Serializer):
+    member_id = serializers.UUIDField()
+    member_name = serializers.CharField(read_only=True)
+    included = serializers.BooleanField(default=True)
+    amount_minor = serializers.IntegerField(min_value=0, max_value=100_000_000, allow_null=True, default=None)
+    waived = serializers.BooleanField(default=False)
+    waive_reason = serializers.CharField(max_length=300, required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if attrs["waived"] and not attrs["waive_reason"].strip():
+            raise serializers.ValidationError({"waive_reason": "Give a reason for the waiver."})
+        return attrs
+
+
+class CampaignSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(max_length=120, trim_whitespace=True)
+    amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000)
+    currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
+    member_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        write_only=True,
+        required=False,
+        default=list,
+        help_text="The members a selected-audience campaign bills.",
+    )
+    terms = serializers.SerializerMethodField()
+    closed = serializers.SerializerMethodField()
+    next_due_on = serializers.SerializerMethodField()
+    dues_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Campaign
+        fields = [
+            "id",
+            "title",
+            "description",
+            "amount_minor",
+            "currency",
+            "cadence",
+            "starts_on",
+            "ends_on",
+            "audience",
+            "member_ids",
+            "terms",
+            "closed",
+            "next_due_on",
+            "dues_count",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+    def validate(self, attrs):
+        starts = attrs.get("starts_on", getattr(self.instance, "starts_on", None))
+        ends = attrs.get("ends_on", getattr(self.instance, "ends_on", None))
+        if starts and ends and ends < starts:
+            raise serializers.ValidationError({"ends_on": "The last date can't be before the first."})
+        return attrs
+
+    @extend_schema_field(CampaignTermSerializer(many=True))
+    def get_terms(self, campaign):
+        return CampaignTermSerializer(
+            [
+                {
+                    "member_id": t.member_id,
+                    "member_name": t.member.display_name,
+                    "included": t.included,
+                    "amount_minor": t.amount_minor,
+                    "waived": t.waived,
+                    "waive_reason": t.waive_reason,
+                }
+                for t in campaign.terms.all()
+            ],
+            many=True,
+        ).data
+
+    def get_closed(self, campaign) -> bool:
+        return campaign.closed_at is not None
+
+    def get_next_due_on(self, campaign) -> date | None:
+        return dues.next_period(campaign, self.context.get("today") or timezone.localdate())
+
+    def get_dues_count(self, campaign) -> int:
+        return campaign.dues.count()
+
+
+class CampaignUpdateSerializer(serializers.Serializer):
+    """What can change once a campaign runs: the cadence and start stay as they were."""
+
+    title = serializers.CharField(max_length=120, trim_whitespace=True, required=False)
+    description = serializers.CharField(required=False, allow_blank=True)
+    amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000, required=False)
+    ends_on = serializers.DateField(required=False, allow_null=True)

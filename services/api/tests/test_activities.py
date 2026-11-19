@@ -1,6 +1,7 @@
 """Club activities, RSVPs and the club schedule (REQ-039, EVAL-039; TASK-072)."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from django.core.cache import cache
@@ -196,7 +197,8 @@ def test_the_schedule_merges_activities_tournaments_and_training_in_order(office
         officer.post(url(club, made, "publish/"), {}, format="json")
     venue = make_venue(staff, club)
     add_table(staff, club, venue, "Table 1")
-    day = (timezone.now() + timedelta(days=3)).date().isoformat()
+    nairobi = ZoneInfo("Africa/Nairobi")
+    day = (timezone.now().astimezone(nairobi) + timedelta(days=3)).date().isoformat()
     cup = make_tournament(staff, club, venue, starts_on=day, ends_on=day, timezone="Africa/Nairobi")
     from .test_tournaments import add_event
 
@@ -205,7 +207,9 @@ def test_the_schedule_merges_activities_tournaments_and_training_in_order(office
     from facilities.models import Table
 
     table = Table.objects.get(venue_id=venue["id"])
-    starts = (timezone.now() + timedelta(days=2)).replace(microsecond=0)
+    # Mid-morning in Nairobi, two days on, so the session never runs past midnight whenever this runs.
+    two_days = (timezone.now().astimezone(nairobi) + timedelta(days=2)).date()
+    starts = datetime(two_days.year, two_days.month, two_days.day, 10, tzinfo=nairobi)
     staff.post(
         f"{ORGS}{club.id}/club-sessions/",
         {
