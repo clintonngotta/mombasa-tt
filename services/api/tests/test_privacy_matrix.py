@@ -71,7 +71,7 @@ from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsor
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
-from training.models import Drill, Equipment, PlanItem, TrainingPlan
+from training.models import ClubSession, Drill, Equipment, PlanItem, SessionInvitation, TrainingPlan
 
 from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
@@ -125,6 +125,10 @@ ACCESS: dict[str, dict[str, str]] = {
     # Training (REQ-026, REQ-027): equipment, personal drills and plans are the player's own.
     "my-equipment": {"get": OWNER, "put": OWNER},
     "my-training-sessions": {"get": OWNER},
+    # Club sessions (REQ-027): a member answers their own invitations; training staff run the rest.
+    "my-session-invitation-list": {"get": OWNER},
+    "my-session-invitation-accept": {"post": OWNER},
+    "my-session-invitation-decline": {"post": OWNER},
     "my-drill-list": {"get": OWNER, "post": OWNER},
     "my-drill-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
     "training-plan-list": {"get": OWNER, "post": OWNER},
@@ -210,6 +214,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-training-plan-recommendations": {"get": STAFF},
     "organization-training-plan-items": {"post": STAFF},
     "organization-training-plan-item": {"patch": STAFF, "delete": STAFF},
+    "organization-club-sessions": {"get": STAFF, "post": STAFF},
+    "organization-club-session": {"get": STAFF, "patch": STAFF},
+    "organization-club-session-cancel": {"post": STAFF},
+    "organization-club-session-invitations": {"get": STAFF, "post": STAFF},
+    "organization-club-session-invitation": {"patch": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     # What a player sees before joining: location, description, training hours and coming tournaments.
@@ -433,6 +442,24 @@ BODIES = {
     ("organization-training-plan", "patch"): {"goal": "Footwork"},
     ("organization-training-plan-items", "post"): {"kind": "checklist", "title": "Shadow play"},
     ("organization-training-plan-item", "patch"): {"completed": True},
+    ("organization-club-sessions", "post"): lambda: {
+        "title": "Extra session",
+        "table_ids": [str(Table.objects.get(label="Training table").id)],
+        "starts_at": (timezone.now() + timedelta(days=5)).replace(microsecond=0).isoformat(),
+        "ends_at": (timezone.now() + timedelta(days=5, hours=2)).replace(microsecond=0).isoformat(),
+    },
+    ("organization-club-session", "patch"): {"title": "Renamed session"},
+    ("organization-club-session-invitations", "post"): lambda: {
+        "user_ids": [
+            str(
+                Membership.objects.active()
+                .filter(organization=ClubSession.objects.get(notes="MARK-SESSION-NOTE").organization)
+                .values_list("user_id", flat=True)
+                .first()
+            )
+        ]
+    },
+    ("organization-club-session-invitation", "patch"): {"attended": None},
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
@@ -635,6 +662,27 @@ class World:
             plan=self.club_plan, kind=PlanItem.Kind.CHECKLIST, title="MARK-CLUB-ITEM"
         )
         self.spare_club_plan = TrainingPlan.objects.create(organization=self.coast, title="Spare club plan")
+        # A club session (REQ-027) in its own room, with Baraka invited; another one to cancel.
+        room = Venue.objects.create(organization=self.coast, name="Training room", town="Mombasa")
+        room_table = Table.objects.create(venue=room, label="Training table")
+        starts = timezone.now() + timedelta(days=2)
+        self.club_session = ClubSession.objects.create(
+            organization=self.coast,
+            title="Squad",
+            notes="MARK-SESSION-NOTE",
+            starts_at=starts,
+            ends_at=starts + timedelta(hours=2),
+        )
+        self.club_session.tables.set([room_table])
+        self.session_invitation = SessionInvitation.objects.create(
+            session=self.club_session, user=self.baraka
+        )
+        self.session_to_cancel = ClubSession.objects.create(
+            organization=self.coast,
+            title="To cancel",
+            starts_at=starts + timedelta(days=1),
+            ends_at=starts + timedelta(days=1, hours=2),
+        )
         # The committee (REQ-045): Faith holds a seat that grants a staff-only role; Grace held it before.
         # One committee field members see and one for governance staff, each with a value on the seat.
         self.position = CommitteePosition.objects.create(
@@ -1058,6 +1106,11 @@ class World:
             "player-detail": self.baraka.id,
             "player-ratings": self.baraka.id,
             "tournament-schedule-session": self.session.id,
+            "organization-club-session": self.club_session.id,
+            "organization-club-session-cancel": self.session_to_cancel.id,
+            "organization-club-session-invitation": self.session_invitation.id,
+            "my-session-invitation-accept": self.session_invitation.id,
+            "my-session-invitation-decline": self.session_invitation.id,
         }
         found = {}
         if "code" in names:
@@ -1066,6 +1119,8 @@ class World:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
             found["pk"] = pk[name]
+        if "session_pk" in names:
+            found["session_pk"] = self.club_session.id
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
@@ -1158,6 +1213,10 @@ class World:
             "equipment": sorted(Equipment.objects.values_list("user__email", "blade")),
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
+            "club_sessions": sorted(ClubSession.objects.values_list("title", "status", "notes")),
+            "session_invitations": sorted(
+                SessionInvitation.objects.values_list("session__title", "user_id", "status", "attended")
+            ),
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
             "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
             "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
@@ -1398,6 +1457,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-OPPONENT": {"baraka"},
         "MARK-BARAKA-NOTE": {"baraka"},
         "MARK-BARAKA-OBSERVATION": {"baraka"},
+        "MARK-SESSION-NOTE": {"amina", "baraka"},  # the club's training staff and the invited member
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},
         "MARK-FAITH-BIO": {"faith"},  # unpublished

@@ -68,7 +68,14 @@ export const LIBRARY_LABEL: Record<Library, string> = { standard: "Standard", pe
 export const PERIOD_LABEL: Record<Period, string> = { day: "Day", week: "Week", month: "Month", custom: "Custom dates" }
 
 /** What a 409 calendar_conflict carries: the commitments a session would overlap. */
-export type CalendarConflict = { kind: "training" | "match"; title: string; starts_at: string; ends_at: string }
+export type CalendarConflict = {
+  kind: "training" | "match" | "booking" | "club_session" | "tournament"
+  title: string
+  starts_at: string
+  ends_at: string
+  /** For a table in use: which of the chosen tables. */
+  tables?: string[]
+}
 
 /** Personal training is in the player's own timezone: plans aren't tied to a club. */
 export const LOCAL_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone

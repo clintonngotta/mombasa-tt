@@ -1233,6 +1233,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/session-invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in member's invitations to club sessions, and their answers. */
+        get: operations["me_session_invitations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/session-invitations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Accept: holds this time in your calendar. Refused when you already have something on, the
+         *     session is full or it was cancelled. Accepting again changes nothing.
+         */
+        post: operations["me_session_invitations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/session-invitations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Decline, or withdraw an acceptance: your time is free again. */
+        post: operations["me_session_invitations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/": {
         parameters: {
             query?: never;
@@ -1657,6 +1711,94 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The club's training sessions, for its training staff. */
+        get: operations["organizations_club_sessions_list"];
+        put?: never;
+        /** @description The club's training sessions, for its training staff. */
+        post: operations["organizations_club_sessions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The club's training sessions, for its training staff. */
+        get: operations["organizations_club_sessions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description The club's training sessions, for its training staff. */
+        patch: operations["organizations_club_sessions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Cancel the session: its tables and every accepted member's time are free again. */
+        post: operations["organizations_club_sessions_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{session_pk}/invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who is invited to a club session, their answers, and attendance; for the club's training staff. */
+        get: operations["organizations_club_sessions_invitations_list"];
+        put?: never;
+        /** @description Invite active members. Members already invited keep their invitation and answer. */
+        post: operations["organizations_club_sessions_invitations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{session_pk}/invitations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Mark whether the member came. Marking again with the same answer changes nothing. */
+        patch: operations["organizations_club_sessions_invitations_partial_update"];
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/committee/": {
@@ -4997,6 +5139,45 @@ export interface components {
             name: string;
             town: string;
         };
+        /** @description A club session as its training staff see it. */
+        ClubSession: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            notes: string;
+            /** Format: uuid */
+            plan_id: string | null;
+            readonly tables: components["schemas"]["SessionTable"][];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            capacity: number | null;
+            readonly status: components["schemas"]["ClubSessionStatusEnum"];
+            readonly invited: number;
+            readonly accepted: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description A club session as its training staff see it. */
+        ClubSessionRequest: {
+            title: string;
+            notes?: string;
+            /** Format: uuid */
+            plan_id?: string | null;
+            table_ids: string[];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            capacity?: number | null;
+        };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        ClubSessionStatusEnum: "scheduled" | "cancelled";
         /**
          * @description * `beginner` - Beginner
          *     * `intermediate` - Intermediate
@@ -5734,6 +5915,9 @@ export interface components {
          * @enum {string}
          */
         InvitationStatusEnum: "pending" | "accepted" | "declined" | "revoked";
+        InviteRequest: {
+            user_ids: string[];
+        };
         Invitee: {
             /** Format: uuid */
             readonly id: string;
@@ -6320,6 +6504,32 @@ export interface components {
             readonly confirmed_at: string | null;
             readonly device: components["schemas"]["Device"];
         };
+        MySession: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly title: string;
+            readonly notes: string;
+            readonly tables: components["schemas"]["SessionTable"][];
+            /** Format: date-time */
+            readonly starts_at: string;
+            /** Format: date-time */
+            readonly ends_at: string;
+            readonly status: components["schemas"]["ClubSessionStatusEnum"];
+            readonly full: boolean;
+        };
+        /** @description A member's own invitation: the session, their answer and whether they were marked present. */
+        MySessionInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["SessionInvitationStatusEnum"];
+            /** Format: date-time */
+            readonly responded_at: string | null;
+            readonly attended: boolean | null;
+            readonly session: components["schemas"]["MySession"];
+        };
         NominateRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -6479,6 +6689,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Candidate"][];
+        };
+        PaginatedClubSessionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["ClubSession"][];
         };
         PaginatedCoachProfileList: {
             /** @example 123 */
@@ -6765,6 +6990,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["MyScorecard"][];
         };
+        PaginatedMySessionInvitationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MySessionInvitation"][];
+        };
         PaginatedOrganizationList: {
             /** @example 123 */
             count: number;
@@ -6874,6 +7114,10 @@ export interface components {
             audience?: components["schemas"]["ArticleAudienceEnum"];
             club_ids?: string[];
         };
+        PatchedAttendanceRequest: {
+            /** @description Null clears the mark. */
+            attended?: boolean | null;
+        };
         PatchedAwardRequest: {
             title?: string;
             /** Format: uuid */
@@ -6881,6 +7125,19 @@ export interface components {
             recipient_name?: string;
             prize?: string;
             presenter?: string;
+        };
+        /** @description A club session as its training staff see it. */
+        PatchedClubSessionRequest: {
+            title?: string;
+            notes?: string;
+            /** Format: uuid */
+            plan_id?: string | null;
+            table_ids?: string[];
+            /** Format: date-time */
+            starts_at?: string;
+            /** Format: date-time */
+            ends_at?: string;
+            capacity?: number | null;
         };
         PatchedCommentRequest: {
             body?: string;
@@ -8044,6 +8301,27 @@ export interface components {
             table_ids: string[];
             event_ids: string[];
         };
+        /** @description One invited member, for the club's training staff: answer and attendance. */
+        SessionInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly user_id: string;
+            readonly display_name: string;
+            readonly status: components["schemas"]["SessionInvitationStatusEnum"];
+            /** Format: date-time */
+            readonly responded_at: string | null;
+            readonly attended: boolean | null;
+            /** Format: date-time */
+            readonly attendance_at: string | null;
+        };
+        /**
+         * @description * `invited` - Invited
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         * @enum {string}
+         */
+        SessionInvitationStatusEnum: "invited" | "accepted" | "declined";
         /** @description A block of one day's play. No events means every event. */
         SessionRequest: {
             name?: string;
@@ -8056,6 +8334,15 @@ export interface components {
             /** @description At least one. */
             table_ids: string[];
             event_ids?: string[];
+        };
+        SessionTable: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            readonly venue_name: string;
+        };
+        SessionTableRequest: {
+            label: string;
         };
         /** @description Which match a sheet is for, as the organizers' scoring page shows it. */
         SheetContext: {
@@ -11296,6 +11583,102 @@ export interface operations {
             };
         };
     };
+    me_session_invitations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMySessionInvitationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_session_invitations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this session invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_session_invitations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this session invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_trainees_plans_items_create: {
         parameters: {
             query?: never;
@@ -12496,6 +12879,275 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedClubSessionList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClubSessionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedClubSessionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_invitations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                session_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInvitation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_invitations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                session_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInvitation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_invitations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                session_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAttendanceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInvitation"];
                 };
             };
             /** @description Error envelope */

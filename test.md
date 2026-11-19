@@ -270,6 +270,17 @@ The privacy matrix covers `match-note-list` and `match-note-detail`.
 
 **Training — concurrency and UI.** Setup: invitation overlapping player match/booking and a personal checklist. Steps: accept invitation concurrently with dispatch; create session in occupied table; check off non-calendar drill; record attendance twice. Pass: only one conflicting commitment accepted; invitations alone do not reserve; checklists do not reserve; attendance retries do not duplicate. Evidence: reservation and attendance assertions.
 
+*Built in TASK-044 (2026-11-19).* `tests/test_club_sessions.py` checks the following:
+- An invited member's own training session can take the invited hour. Accepting is then refused with the clash listed, and once the member has accepted, the hour is taken. A checklist item still saves.
+- A coaching booking in the way is reported before accepting.
+- Ten rounds of one member accepting two overlapping sessions at the same instant each end with exactly one accepted.
+- A table used by another session, or by a published tournament at the venue, is refused before saving, and cancelling frees it.
+- Capacity holds, and accepting twice is harmless.
+- Attendance is refused before the start and leaves one mark however often it is recorded.
+- Only training staff run sessions, only active members are invited, and another club's tables are refused.
+
+The privacy matrix covers every new route, and the session note reaches only the club's training staff and the invited member. Taking the session's time while a match is being dispatched relies on the same scheduled-match check as TASK-043; it doesn't take a live table hold.
+
 ## Later-phase evaluations
 
 ### EVAL-028

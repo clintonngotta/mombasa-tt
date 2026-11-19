@@ -1,7 +1,8 @@
 """Calendar commitments of personal training (REQ-027, TASK-043).
 
 A training session in a plan occupies the player's time; a checklist item doesn't. A session may not
-overlap the player's other sessions, a coaching session booked with or by them (REQ-047), or a match they
+overlap the player's other sessions, a club session they accepted (TASK-044), a coaching session booked
+with or by them (REQ-047), or a match they
 are scheduled to play (a published draw's match with a
 planned time, lasting as long as the schedule expects it to). The check runs with the player's user row
 locked, so two sessions saved at the same moment can't both slip into the same hour.
@@ -18,7 +19,7 @@ from competitions.scheduling import match_minutes
 from core.exceptions import ApiException
 from organizations.models import Membership
 
-from .models import Drill, PlanItem
+from .models import ClubSession, Drill, PlanItem, SessionInvitation
 
 LONGEST_MATCH = timedelta(hours=3)  # how far back a match can start and still overlap
 
@@ -53,6 +54,23 @@ def conflicts(
                 "title": f"Coaching session with {other.display_name}",
                 "starts_at": booking.starts_at,
                 "ends_at": booking.ends_at,
+            }
+        )
+    accepted = SessionInvitation.objects.filter(
+        user=user,
+        status=SessionInvitation.Status.ACCEPTED,
+        session__status=ClubSession.Status.SCHEDULED,
+        session__starts_at__lt=ends,
+        session__ends_at__gt=starts,
+    ).select_related("session__organization")
+    for invitation in accepted:
+        session = invitation.session
+        found.append(
+            {
+                "kind": "club_session",
+                "title": f"{session.organization.name}: {session.title}",
+                "starts_at": session.starts_at,
+                "ends_at": session.ends_at,
             }
         )
     plays = Q(entry_a__players__user=user, entry_a__players__live=True) | Q(

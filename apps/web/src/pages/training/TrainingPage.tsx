@@ -9,6 +9,7 @@ import { SelectField } from "@/components/forms/SelectField"
 import { VirtualTable } from "@/components/training/VirtualTable"
 import { SkillChips } from "@/pages/training/DrillDetailPage"
 import { CoachingTab } from "@/pages/coaching/CoachingTab"
+import { ClubInvitations } from "@/components/training/ClubInvitations"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatDayRange, formatInstant } from "@/lib/dates"
 import { ROW } from "@/lib/clubAdmin"
@@ -78,6 +79,7 @@ export function TrainingPage() {
         {tab === "mine" && (
           <>
             <p className="-mb-4 text-muted-foreground">Only you see your plans, drills and equipment.</p>
+            <ClubInvitations />
             <Upcoming />
             <Plans />
             <EquipmentCard />

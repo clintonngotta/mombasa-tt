@@ -2521,6 +2521,108 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/session-invitations/:
+    get:
+      operationId: me_session_invitations_list
+      description: The signed-in member's invitations to club sessions, and their
+        answers.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMySessionInvitationList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/session-invitations/{id}/accept/:
+    post:
+      operationId: me_session_invitations_accept_create
+      description: |-
+        Accept: holds this time in your calendar. Refused when you already have something on, the
+        session is full or it was cancelled. Accepting again changes nothing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this session invitation.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MySessionInvitation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/session-invitations/{id}/decline/:
+    post:
+      operationId: me_session_invitations_decline_create
+      description: 'Decline, or withdraw an acceptance: your time is free again.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this session invitation.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MySessionInvitation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/:
     post:
       operationId: me_trainees_plans_items_create
@@ -3792,6 +3894,318 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Article'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/club-sessions/:
+    get:
+      operationId: organizations_club_sessions_list
+      description: The club's training sessions, for its training staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedClubSessionList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_club_sessions_create
+      description: The club's training sessions, for its training staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClubSessionRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubSession'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/club-sessions/{id}/:
+    get:
+      operationId: organizations_club_sessions_retrieve
+      description: The club's training sessions, for its training staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubSession'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_club_sessions_partial_update
+      description: The club's training sessions, for its training staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClubSessionRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubSession'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/club-sessions/{id}/cancel/:
+    post:
+      operationId: organizations_club_sessions_cancel_create
+      description: 'Cancel the session: its tables and every accepted member''s time
+        are free again.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubSession'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/club-sessions/{session_pk}/invitations/:
+    get:
+      operationId: organizations_club_sessions_invitations_list
+      description: Who is invited to a club session, their answers, and attendance;
+        for the club's training staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: session_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionInvitation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_club_sessions_invitations_create
+      description: Invite active members. Members already invited keep their invitation
+        and answer.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: session_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionInvitation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/club-sessions/{session_pk}/invitations/{id}/:
+    patch:
+      operationId: organizations_club_sessions_invitations_partial_update
+      description: Mark whether the member came. Marking again with the same answer
+        changes nothing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: session_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAttendanceRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInvitation'
           description: ''
         4XX:
           description: Error envelope
@@ -11641,6 +12055,113 @@ components:
       - id
       - name
       - town
+    ClubSession:
+      type: object
+      description: A club session as its training staff see it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 1000
+        plan_id:
+          type: string
+          format: uuid
+          nullable: true
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionTable'
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        capacity:
+          type: integer
+          maximum: 500
+          minimum: 1
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ClubSessionStatusEnum'
+          readOnly: true
+        invited:
+          type: integer
+          readOnly: true
+        accepted:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - accepted
+      - capacity
+      - created_at
+      - ends_at
+      - id
+      - invited
+      - notes
+      - plan_id
+      - starts_at
+      - status
+      - tables
+      - title
+    ClubSessionRequest:
+      type: object
+      description: A club session as its training staff see it.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 1000
+        plan_id:
+          type: string
+          format: uuid
+          nullable: true
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+            writeOnly: true
+          writeOnly: true
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        capacity:
+          type: integer
+          maximum: 500
+          minimum: 1
+          nullable: true
+      required:
+      - ends_at
+      - starts_at
+      - table_ids
+      - title
+    ClubSessionStatusEnum:
+      enum:
+      - scheduled
+      - cancelled
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `cancelled` - Cancelled
     CoachLevelEnum:
       enum:
       - beginner
@@ -13538,6 +14059,18 @@ components:
         * `accepted` - Accepted
         * `declined` - Declined
         * `revoked` - Revoked
+    InviteRequest:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 200
+          minItems: 1
+      required:
+      - user_ids
     Invitee:
       type: object
       properties:
@@ -15012,6 +15545,89 @@ components:
       - table
       - tournament_id
       - tournament_name
+    MySession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionTable'
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ends_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ClubSessionStatusEnum'
+          readOnly: true
+        full:
+          type: boolean
+          readOnly: true
+      required:
+      - ends_at
+      - full
+      - id
+      - notes
+      - organization_id
+      - organization_name
+      - starts_at
+      - status
+      - tables
+      - title
+    MySessionInvitation:
+      type: object
+      description: 'A member''s own invitation: the session, their answer and whether
+        they were marked present.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SessionInvitationStatusEnum'
+          readOnly: true
+        responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        attended:
+          type: boolean
+          readOnly: true
+          nullable: true
+        session:
+          allOf:
+          - $ref: '#/components/schemas/MySession'
+          readOnly: true
+      required:
+      - attended
+      - id
+      - responded_at
+      - session
+      - status
     NominateRequest:
       type: object
       properties:
@@ -15418,6 +16034,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Candidate'
+    PaginatedClubSessionList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubSession'
     PaginatedCoachProfileList:
       type: object
       required:
@@ -15893,6 +16534,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MyScorecard'
+    PaginatedMySessionInvitationList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MySessionInvitation'
     PaginatedOrganizationList:
       type: object
       required:
@@ -16106,6 +16772,13 @@ components:
             format: uuid
           writeOnly: true
           maxItems: 200
+    PatchedAttendanceRequest:
+      type: object
+      properties:
+        attended:
+          type: boolean
+          nullable: true
+          description: Null clears the mark.
     PatchedAwardRequest:
       type: object
       properties:
@@ -16127,6 +16800,39 @@ components:
         presenter:
           type: string
           maxLength: 120
+    PatchedClubSessionRequest:
+      type: object
+      description: A club session as its training staff see it.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 1000
+        plan_id:
+          type: string
+          format: uuid
+          nullable: true
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+            writeOnly: true
+          writeOnly: true
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        capacity:
+          type: integer
+          maximum: 500
+          minimum: 1
+          nullable: true
     PatchedCommentRequest:
       type: object
       properties:
@@ -18928,6 +19634,58 @@ components:
       - name
       - starts
       - table_ids
+    SessionInvitation:
+      type: object
+      description: 'One invited member, for the club''s training staff: answer and
+        attendance.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SessionInvitationStatusEnum'
+          readOnly: true
+        responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        attended:
+          type: boolean
+          readOnly: true
+          nullable: true
+        attendance_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - attendance_at
+      - attended
+      - display_name
+      - id
+      - responded_at
+      - status
+      - user_id
+    SessionInvitationStatusEnum:
+      enum:
+      - invited
+      - accepted
+      - declined
+      type: string
+      description: |-
+        * `invited` - Invited
+        * `accepted` - Accepted
+        * `declined` - Declined
     SessionRequest:
       type: object
       description: A block of one day's play. No events means every event.
@@ -18960,6 +19718,32 @@ components:
       - ends
       - starts
       - table_ids
+    SessionTable:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          maxLength: 40
+        venue_name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - label
+      - venue_name
+    SessionTableRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 40
+      required:
+      - label
     SheetContext:
       type: object
       description: Which match a sheet is for, as the organizers' scoring page shows
