@@ -191,6 +191,8 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "MembershipStatusEnum": "organizations.models.Membership.Status",
         "SkillEnum": "training.models.Skill",
+        "ClubSessionStatusEnum": "training.models.ClubSession.Status",
+        "SessionInvitationStatusEnum": "training.models.SessionInvitation.Status",
         "CoachLevelEnum": "coaching.models.Level",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
         "MatchResultEnum": "matchlog.models.MatchResult",

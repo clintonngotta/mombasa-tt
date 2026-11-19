@@ -151,6 +151,11 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
               Club profile and training hours
             </AdminLink>
           )}
+          {manageTraining && (
+            <AdminLink to="/club/sessions" icon={<CalendarClock aria-hidden className="size-5 text-brand-blue" />}>
+              Training sessions: invitations and attendance
+            </AdminLink>
+          )}
           {manageCompetitions && (
             <AdminLink to="/club/tournaments" icon={<Trophy aria-hidden className="size-5 text-brand-blue" />}>
               Tournaments

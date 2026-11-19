@@ -20,6 +20,8 @@ import { MatchDetailPage } from "@/pages/matches/MatchDetailPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { ProfileEditPage } from "@/pages/profile/ProfileEditPage"
 import { GuestClaimsPage } from "@/pages/profile/GuestClaimsPage"
+import { ClubSessionsPage } from "@/pages/club/ClubSessionsPage"
+import { ClubSessionPage } from "@/pages/club/ClubSessionPage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
@@ -136,6 +138,8 @@ function App() {
               <Route path="/club/admin-nominations" element={<AdminNominationsPage />} />
               <Route path="/club/members" element={<MembersPage />} />
               <Route path="/club/guests" element={<GuestsPage />} />
+              <Route path="/club/sessions" element={<ClubSessionsPage />} />
+              <Route path="/club/sessions/:id" element={<ClubSessionPage />} />
               <Route path="/club/committee" element={<CommitteePage />} />
               <Route path="/club/roles" element={<RolesPage />} />
               <Route path="/club/roles/new" element={<RoleEditPage />} />

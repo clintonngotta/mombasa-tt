@@ -220,3 +220,84 @@ class PlanItem(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ClubSession(models.Model):
+    """A training session a club runs (REQ-027, TASK-044): a time, the club's tables it takes, and the
+    members invited. Saving it takes the tables (no other session or tournament day may use them then).
+    An invitation holds nothing; a member's time is held only once they accept."""
+
+    class Status(models.TextChoices):
+        SCHEDULED = "scheduled"
+        CANCELLED = "cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="club_sessions"
+    )
+    title = models.CharField(max_length=120)
+    notes = models.CharField(max_length=1000, blank=True)
+    plan = models.ForeignKey(
+        TrainingPlan, on_delete=models.SET_NULL, null=True, blank=True, related_name="club_sessions"
+    )
+    tables = models.ManyToManyField("facilities.Table", related_name="club_sessions")
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    # Most members who may accept; empty means no limit beyond the invitations sent.
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["starts_at", "id"]
+        indexes = [models.Index(fields=["organization", "starts_at"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(ends_at__gt=F("starts_at")), name="club_session_ends_after_start"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.title} {self.starts_at:%Y-%m-%d %H:%M}"
+
+
+class SessionInvitation(models.Model):
+    """One member invited to a club session, their answer, and whether they came. Accepting holds the
+    member's time; declining or a cancelled session frees it. Attendance is a mark, so recording it twice
+    leaves one mark."""
+
+    class Status(models.TextChoices):
+        INVITED = "invited"
+        ACCEPTED = "accepted"
+        DECLINED = "declined"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(ClubSession, on_delete=models.CASCADE, related_name="invitations")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="session_invitations"
+    )
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.INVITED)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    # None until staff record attendance; then whether the member came.
+    attended = models.BooleanField(null=True, blank=True)
+    attendance_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    attendance_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["session", "user"], name="one_invitation_per_member"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} to {self.session_id} ({self.status})"
