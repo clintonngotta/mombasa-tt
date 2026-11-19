@@ -8,6 +8,8 @@ from competitions.urls import me_urlpatterns as my_entries
 from competitions.urls import organization_urlpatterns as organization_tournaments
 from core import views as core_views
 from core.catalogue import CountryCatalogueView, CountryOptionsView
+from guests.urls import club_urlpatterns as club_guests
+from guests.urls import me_urlpatterns as my_guest_claims
 from profiles.views import PlayerDetailView, PlayerDirectoryView
 from ratings.views import ClubRankingView, GeographyRankingView, PlayerRatingsView, RankingView
 from regions.urls import body_urlpatterns as regional_bodies
@@ -29,12 +31,14 @@ api_v1 = [
     path("me/", include("training.urls")),
     path("me/", include(my_region)),
     path("me/", include(my_coaching)),
+    path("me/", include(my_guest_claims)),
     path("coaches/", include(coach_urlpatterns)),
     path("scorecards/", include("scoring.urls")),
     path("organizations/", include("organizations.urls")),
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
     path("organizations/<uuid:organization_pk>/", include(organization_tournaments)),
     path("organizations/<uuid:organization_pk>/", include(club_drills)),
+    path("organizations/<uuid:organization_pk>/", include(club_guests)),
     path("organizations/<uuid:organization_pk>/", include(body_routes)),
     path("regional-bodies/", include(regional_bodies)),
     path("tournaments/", include("competitions.urls")),

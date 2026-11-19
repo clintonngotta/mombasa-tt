@@ -1,16 +1,19 @@
 import { useId, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FieldError } from "@/components/forms/Field"
 import { MIN_SEARCH_LENGTH, playerKeys, searchPlayers } from "@/lib/profile"
+import { errorMessage } from "@/lib/api"
+import { createGuest, guestKeys, listGuests } from "@/lib/guests"
 
 export type Picked = { id: string; display_name: string }
 
 /**
  * Choose players for an entry from the player directory. `fixed` players (the person entering) are
- * shown and can't be removed. Only players who chose to be listed can be found.
+ * shown and can't be removed. Only players who chose to be listed can be found; with `guestsOf`, the
+ * host's staff also find that club's guests and can add somebody new as a guest (REQ-003).
  */
 export function PlayerPicker({
   label,
@@ -19,6 +22,7 @@ export function PlayerPicker({
   fixed = [],
   max,
   error,
+  guestsOf,
   onChange,
 }: {
   label: string
@@ -27,15 +31,36 @@ export function PlayerPicker({
   fixed?: Picked[]
   max: number
   error?: string
+  /** The host club's id, for its staff: its unclaimed guests can be entered too. */
+  guestsOf?: string
   onChange: (players: Picked[]) => void
 }) {
   const id = useId()
   const [input, setInput] = useState("")
   const [term, setTerm] = useState("")
   const results = useQuery({ queryKey: playerKeys.search(term), queryFn: () => searchPlayers(term), enabled: term.length >= MIN_SEARCH_LENGTH })
+  const guests = useQuery({
+    queryKey: guestKeys.list(guestsOf ?? "", term),
+    queryFn: () => listGuests(guestsOf ?? "", term, false),
+    enabled: !!guestsOf && term.length >= MIN_SEARCH_LENGTH,
+  })
+  const queryClient = useQueryClient()
+  const add = (player: Picked) => {
+    onChange([...picked, player])
+    setInput("")
+    setTerm("")
+  }
+  const newGuest = useMutation({
+    mutationFn: () => createGuest(guestsOf ?? "", term),
+    onSuccess: (guest) => {
+      add({ id: guest.id, display_name: `${guest.display_name} (guest)` })
+      void queryClient.invalidateQueries({ queryKey: guestKeys.all })
+    },
+  })
   const chosen = new Set([...fixed, ...picked].map((player) => player.id))
   const full = fixed.length + picked.length >= max
   const found = (results.data?.results ?? []).filter((player) => !chosen.has(player.id))
+  const foundGuests = (guests.data?.results ?? []).filter((guest) => !chosen.has(guest.id))
 
   return (
     <fieldset className="flex flex-col gap-3">
@@ -85,7 +110,7 @@ export function PlayerPicker({
             {term.length > 0 && term.length < MIN_SEARCH_LENGTH && <p className="text-sm text-muted-foreground">Type at least {MIN_SEARCH_LENGTH} characters.</p>}
             {results.isLoading && <p className="text-sm text-muted-foreground">Searching…</p>}
             {results.isError && <FieldError>Search isn't working right now.</FieldError>}
-            {results.isSuccess && found.length === 0 && <p className="text-sm text-muted-foreground">No listed player matches “{term}”.</p>}
+            {results.isSuccess && found.length === 0 && foundGuests.length === 0 && <p className="text-sm text-muted-foreground">No listed player matches “{term}”.</p>}
             {found.length > 0 && (
               <ul className="flex flex-col gap-2">
                 {found.slice(0, 8).map((player) => (
@@ -95,11 +120,7 @@ export function PlayerPicker({
                       variant="outline"
                       className="h-auto min-h-12 w-full justify-start gap-2 text-left whitespace-normal"
                       aria-label={`Add ${player.display_name}`}
-                      onClick={() => {
-                        onChange([...picked, { id: player.id, display_name: player.display_name }])
-                        setInput("")
-                        setTerm("")
-                      }}
+                      onClick={() => add({ id: player.id, display_name: player.display_name })}
                     >
                       <Plus aria-hidden className="size-5 shrink-0" />
                       <span className="min-w-0 break-words">
@@ -111,6 +132,32 @@ export function PlayerPicker({
                 ))}
               </ul>
             )}
+            {foundGuests.length > 0 && (
+              <ul className="flex flex-col gap-2" aria-label="Club guests">
+                {foundGuests.slice(0, 8).map((guest) => (
+                  <li key={guest.id}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-auto min-h-12 w-full justify-start gap-2 text-left whitespace-normal"
+                      aria-label={`Add ${guest.display_name}, a guest`}
+                      onClick={() => add({ id: guest.id, display_name: `${guest.display_name} (guest)` })}
+                    >
+                      <Plus aria-hidden className="size-5 shrink-0" />
+                      <span className="min-w-0 break-words">
+                        {guest.display_name} <span className="text-muted-foreground">· guest, no account yet</span>
+                      </span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {guestsOf && results.isSuccess && term.length >= MIN_SEARCH_LENGTH && (
+              <Button type="button" variant="ghost" className="self-start" disabled={newGuest.isPending} onClick={() => newGuest.mutate()}>
+                <Plus aria-hidden className="size-5" /> Enter “{term}” as a guest
+              </Button>
+            )}
+            {newGuest.isError && <FieldError>{errorMessage(newGuest.error, "We couldn't add the guest.")}</FieldError>}
           </div>
         </div>
       )}

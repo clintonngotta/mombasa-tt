@@ -22,6 +22,7 @@ from django.urls import URLResolver, get_resolver, reverse
 from django.utils import timezone
 from rest_framework import serializers
 
+from accounts.models import User
 from attachments.models import Attachment
 from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
 from competitions import drawing, ties
@@ -45,6 +46,8 @@ from competitions.models import (
     Tournament,
 )
 from facilities.models import Table, Venue
+from guests import service as guests
+from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
 from organizations.models import (
     AdminHandover,
@@ -111,6 +114,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-invitation-list": {"get": OWNER},
     "me-invitation-accept": {"post": OWNER},
     "me-invitation-decline": {"post": OWNER},
+    "me-guest-invitation-list": {"get": OWNER},
+    "me-guest-invitation-accept": {"post": OWNER},
+    "me-guest-invitation-decline": {"post": OWNER},
+    "me-guest-claim-list": {"get": OWNER},
     "me-membership-list": {"get": OWNER},
     "me-managed-organizations": {"get": OWNER},
     "me-membership-leave": {"post": OWNER},
@@ -214,6 +221,13 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-join-request-reject": {"post": STAFF},
     "organization-invitations": {"get": STAFF, "post": STAFF},
     "organization-invitation-revoke": {"post": STAFF},
+    "organization-guest-list": {"get": STAFF, "post": STAFF},
+    "organization-guest-detail": {"patch": STAFF},
+    "organization-guest-invite": {"post": STAFF},
+    "organization-guest-revoke-invitation": {"post": STAFF},
+    "organization-guest-claim-list": {"get": STAFF},
+    "organization-guest-claim-retry": {"post": STAFF},
+    "organization-guest-claim-reject": {"post": STAFF},
     "organization-roles": {"get": STAFF, "post": STAFF},
     "organization-role": {"patch": STAFF, "delete": STAFF},
     # REQ-045: members see who the admin is; only the admin nominates or cancels; the nominee answers.
@@ -382,6 +396,11 @@ BODIES = {
     ("organization-detail", "patch"): {"country": "KE", "region": "Mombasa", "town": "Mombasa"},
     ("organization-training-hours", "put"): {"hours": [{"weekday": 1, "starts": "18:00", "ends": "20:00"}]},
     ("organization-invitations", "post"): {"email": "newcomer@example.com"},
+    ("organization-guest-list", "post"): {"display_name": "Walk-in Guest"},
+    ("organization-guest-detail", "patch"): {"display_name": "Kassim the Guest"},
+    ("organization-guest-invite", "post"): {"email": "kassim@example.com"},
+    ("organization-guest-claim-retry", "post"): {"note": "Checked again"},
+    ("organization-guest-claim-reject", "post"): {"note": "Not the same player"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
     ("organization-member-roles", "put"): {"roles": []},
@@ -885,6 +904,28 @@ class World:
             sponsor=self.body, tournament=self.published, amount_minor=1
         )
 
+        # Guests of Coast Spinners (REQ-003): one invited (Imani), two with claims waiting for staff.
+        self.guest = guests.create(self.coast, "Kassim Guest", self.amina)
+        self.guest_invitation = GuestInvitation.objects.create(
+            guest=self.guest, email=self.imani.email, invited_by=self.amina
+        )
+
+        def waiting_claim(name):
+            guest = guests.create(self.coast, name, self.amina)
+            invitation = GuestInvitation.objects.create(
+                # The address staff typed; the claim only shows staff what they already knew.
+                guest=guest,
+                email="kazi.typed@else.example",
+                invited_by=self.amina,
+                status="accepted",
+            )
+            return GuestClaim.objects.create(
+                guest=guest, invitation=invitation, claimant=self.daudi, status="conflict", clashes=["x"]
+            )
+
+        self.claim_to_retry = waiting_claim("Retry Guest")
+        self.claim_to_reject = waiting_claim("Reject Guest")
+
         self.viewers = {
             "amina": self.amina,
             "baraka": self.baraka,
@@ -907,6 +948,13 @@ class World:
             "me-admin-nomination-decline": self.nomination.id,
             "me-invitation-accept": self.invitation.id,
             "me-invitation-decline": self.invitation.id,
+            "me-guest-invitation-accept": self.guest_invitation.id,
+            "me-guest-invitation-decline": self.guest_invitation.id,
+            "organization-guest-detail": self.guest.user_id,
+            "organization-guest-invite": self.guest.user_id,
+            "organization-guest-revoke-invitation": self.guest.user_id,
+            "organization-guest-claim-retry": self.claim_to_retry.id,
+            "organization-guest-claim-reject": self.claim_to_reject.id,
             "me-membership-leave": self.baraka_membership.id,
             "me-membership-fields": self.baraka_membership.id,
             "my-drill-detail": self.baraka_drill.id,
@@ -1082,6 +1130,13 @@ class World:
             "member_roles": sorted(Membership.roles.through.objects.values_list("membership_id", "role_id")),
             "roles": sorted(Role.objects.values_list("organization__name", "name", "permissions")),
             "invitations": sorted(Invitation.objects.values_list("email", "status")),
+            "guests": sorted(
+                User.objects.filter(guest__isnull=False).values_list(
+                    "display_name", "is_active", "guest__claimed_by"
+                )
+            ),
+            "guest_invitations": sorted(GuestInvitation.objects.values_list("email", "status")),
+            "guest_claims": sorted(GuestClaim.objects.values_list("guest__user__display_name", "status")),
             "admin_handovers": sorted(AdminHandover.objects.values_list("to_user__email", "status")),
             "join_requests": sorted(JoinRequest.objects.values_list("user__email", "status")),
             "matches": sorted(PersonalMatch.objects.values_list("id", "label", "notes")),
@@ -1260,6 +1315,12 @@ def test_owner_routes_serve_the_owner(world):
         reverse("me-invitation-decline", kwargs={"pk": world.invitation.id}), {}, format="json"
     )
     assert declined.status_code in {200, 204}
+    asked = imani.get("/api/v1/me/guest-invitations/").json()["results"]
+    assert [i["id"] for i in asked] == [str(world.guest_invitation.id)]
+    claimed = imani.post(
+        reverse("me-guest-invitation-accept", kwargs={"pk": world.guest_invitation.id}), {}, format="json"
+    )
+    assert claimed.json()["status"] == "merged"
 
     left = baraka.post(
         reverse("me-membership-leave", kwargs={"pk": world.baraka_membership.id}), {}, format="json"

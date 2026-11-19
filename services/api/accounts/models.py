@@ -5,6 +5,9 @@ from django.contrib.auth.models import PermissionsMixin
 from django.db import models
 from django.utils import timezone
 
+# A guest's address (REQ-003): unique per guest, under a domain that can never receive mail (RFC 2606).
+GUEST_EMAIL_DOMAIN = "guests.invalid"
+
 
 def normalize_email(email: str) -> str:
     return email.strip().lower()
@@ -57,6 +60,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         self.email = normalize_email(self.email)
         super().save(*args, **kwargs)
+
+    @property
+    def can_receive_email(self) -> bool:
+        """False for a guest entered by club staff: it has no address of its own."""
+        return not self.email.endswith("@" + GUEST_EMAIL_DOMAIN)
 
     @property
     def is_email_verified(self) -> bool:

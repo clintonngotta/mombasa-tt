@@ -44,7 +44,7 @@ def send_entry_news(entry: Entry, news: str, actor) -> None:
     body += f"\n\nSee the tournament: {settings.FRONTEND_URL}/tournaments/{event.tournament_id}"
     # One message each, so players never see each other's addresses.
     for place in entry.players.all():
-        if place.user_id == actor.id:
+        if place.user_id == actor.id or not place.user.can_receive_email:
             continue
         try:
             send_mail(subject.format(**words), body, None, [place.user.email])
