@@ -1,13 +1,16 @@
 from django.db import transaction
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers, viewsets
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 
-from . import corrections, drawing, official
+from . import corrections, drawing, official, recap
 from .models import DrawVersion, Entry, Match, Resolution, Rubber, Tournament
 from .serializers import (
     MatchDetailSerializer,
@@ -145,3 +148,66 @@ class ResultViewSet(viewsets.GenericViewSet):
             )
             corrections.resolve(resolution, asked["choice"], asked["note"], request.user)
         return Response(ResolutionSerializer(resolutions_of(tournament), many=True).data)
+
+
+class RecapSideChangeSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+    display_name = serializers.CharField()
+    before = serializers.IntegerField()
+    after = serializers.IntegerField()
+    delta = serializers.IntegerField()
+
+
+class RecapPlayerSerializer(serializers.Serializer):
+    side = serializers.CharField()
+    user_id = serializers.UUIDField()
+    display_name = serializers.CharField()
+
+
+class RecapSerializer(serializers.Serializer):
+    match_id = serializers.UUIDField()
+    tournament_id = serializers.UUIDField()
+    tournament_name = serializers.CharField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    side_a = serializers.CharField()
+    side_b = serializers.CharField()
+    official = serializers.BooleanField()
+    outcome = serializers.CharField()
+    winner_side = serializers.CharField(allow_null=True)
+    games = serializers.ListField(child=serializers.ListField(child=serializers.IntegerField()))
+    players = RecapPlayerSerializer(many=True)
+    rating = serializers.ChoiceField(
+        choices=["none", "processing", "done", "unrated"],
+        help_text="processing: the official result waits for the rating worker; no number is shown yet.",
+    )
+    rating_changes = RecapSideChangeSerializer(many=True)
+
+
+class MatchRecapView(APIView):
+    """A match's recap for sharing (REQ-018): public for a published tournament, signed in or not."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(responses={200: RecapSerializer})
+    def get(self, request, tournament_pk, event_pk, pk):
+        match = recap.published_match(tournament_pk, event_pk, pk)
+        if match is None:
+            raise Http404
+        return Response(RecapSerializer(recap.recap(match)).data)
+
+
+class MatchCardView(APIView):
+    """The recap as a branded square image (SVG) to download or share."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(responses={(200, "image/svg+xml"): OpenApiTypes.STR})
+    def get(self, request, tournament_pk, event_pk, pk):
+        match = recap.published_match(tournament_pk, event_pk, pk)
+        if match is None:
+            raise Http404
+        response = HttpResponse(recap.card_svg(recap.recap(match)), content_type="image/svg+xml")
+        response["Content-Disposition"] = 'inline; filename="coast-tt-result.svg"'
+        response["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+        return response

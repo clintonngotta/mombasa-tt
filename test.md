@@ -170,6 +170,16 @@ The match page says "Scored by you with Quick Score · private to you · never r
 
 **Recaps/awards — integration/visual.** Setup: completed tournament, pending rating projection and selected award. Steps: inspect recap/card before/after projection, publish/unpublish announcement, attempt unauthorized award edit. Pass: values match official record, pending value is not fabricated, award publication is permissioned, shared card contains no private fields. Evidence: generated card and source-record comparison.
 
+*Built in TASK-032 (2026-11-19).* `tests/test_recap.py` checks the following:
+- Before a result, the recap is not official.
+- Once the result is official but not yet projected, the recap shows the winner and games with the rating **processing** and no number.
+- After the worker runs, it shows each player's rating before, after and change (1000→1016 and 1000→984).
+- A walkover is shown as unrated.
+- The card is SVG with the tournament, scores and winner and no contact data.
+- A draft tournament has no recap or card for anyone.
+
+Award authority is covered by `tests/test_ceremony.py`.
+
 ### EVAL-019
 
 **Notifications — integration and real browsers.** Setup: browser push supported/unsupported, opted in/out, expired subscription, queued assignment. Steps: enqueue same event ten times, change table before sending, open old alert, deny permission; test browser/home-screen conditions required on actual Android/iOS devices. Pass: one inbox entry per event version; obsolete unsent pushes suppressed; links show current assignment; inbox works without push; expired subscriptions disabled; unsupported devices receive honest setup/fallback UI. Evidence: outbox counts, browser versions and real-device recordings. Native push cases are deferred; external arrival speed is observed, not guaranteed.

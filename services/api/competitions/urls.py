@@ -1,7 +1,7 @@
 from django.urls import path
 
 from . import ceremony
-from .result_views import ResultViewSet
+from .result_views import MatchCardView, MatchRecapView, ResultViewSet
 from .schedule_views import ScheduleSessionViewSet, ScheduleViewSet
 from .streams import ReportStreamView, StreamsView, StreamView
 from .views import (
@@ -169,6 +169,16 @@ urlpatterns = [
         "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/",
         DrawViewSet.as_view({"get": "match"}),
         name="tournament-event-match",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/recap/",
+        MatchRecapView.as_view(),
+        name="tournament-event-match-recap",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/card.svg",
+        MatchCardView.as_view(),
+        name="tournament-event-match-card",
     ),
     path(
         "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/result/",

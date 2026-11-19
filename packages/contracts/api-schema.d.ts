@@ -4744,6 +4744,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The recap as a branded square image (SVG) to download or share. */
+        get: operations["tournaments_events_matches_card.svg_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/dispatch/": {
         parameters: {
             query?: never;
@@ -4818,6 +4835,23 @@ export interface paths {
          *     sheet already started stays as it is.
          */
         post: operations["tournaments_events_matches_recall_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recap/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A match's recap for sharing (REQ-018): public for a published tournament, signed in or not. */
+        get: operations["tournaments_events_matches_recap_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9259,6 +9293,14 @@ export interface components {
             /** @description The tournament's time zone, to show `at` in. */
             timezone: string;
         };
+        /**
+         * @description * `none` - none
+         *     * `processing` - processing
+         *     * `done` - done
+         *     * `unrated` - unrated
+         * @enum {string}
+         */
+        RatingEnum: "none" | "processing" | "done" | "unrated";
         RatingSummary: {
             discipline: components["schemas"]["SinglesOrDoublesEnum"];
             /**
@@ -9289,6 +9331,47 @@ export interface components {
         };
         RecallRequest: {
             reason: string;
+        };
+        Recap: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            tournament_id: string;
+            tournament_name: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            side_a: string;
+            side_b: string;
+            official: boolean;
+            outcome: string;
+            winner_side: string | null;
+            games: number[][];
+            players: components["schemas"]["RecapPlayer"][];
+            /**
+             * @description processing: the official result waits for the rating worker; no number is shown yet.
+             *
+             *     * `none` - none
+             *     * `processing` - processing
+             *     * `done` - done
+             *     * `unrated` - unrated
+             */
+            rating: components["schemas"]["RatingEnum"];
+            rating_changes: components["schemas"]["RecapSideChange"][];
+        };
+        RecapPlayer: {
+            side: string;
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+        };
+        RecapSideChange: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            before: number;
+            after: number;
+            delta: number;
         };
         RecommendRequestRequest: {
             /**
@@ -21137,6 +21220,38 @@ export interface operations {
             };
         };
     };
+    "tournaments_events_matches_card.svg_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/svg+xml": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_events_matches_dispatch_create: {
         parameters: {
             query?: never;
@@ -21264,6 +21379,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_recap_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recap"];
                 };
             };
             /** @description Error envelope */

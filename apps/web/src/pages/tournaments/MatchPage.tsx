@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { CoachNotes } from "@/components/coaching/CoachNotes"
 import { WatchLinks } from "@/components/streams/WatchLinks"
+import { MatchRecap } from "@/components/tournaments/MatchRecap"
 import { MyMatchNotes } from "@/components/matches/MyMatchNotes"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
@@ -44,6 +45,7 @@ export function MatchPage() {
       {missing && <FormAlert>This match doesn't exist. The draw may have been published again since you opened it.</FormAlert>}
       {failed && !missing && <FormAlert>{errorMessage(failed, "We couldn't load this match.")}</FormAlert>}
       {t && event && m && m.b && <Details match={m} second={m.b} event={event} tournamentId={id} timeZone={t.timezone} />}
+      {t && m && <MatchRecap tournamentId={id} eventId={eventId} matchId={matchId} />}
       {t && m && <WatchLinks tournament={t} staff={staff} matchId={matchId} live={t.status === "in_progress" && m.status === "scheduled" && !!m.b} />}
       {m && (m.a.entry?.mine || m.b?.entry?.mine) && <MyMatchNotes link={{ match_id: matchId }} />}
       {m && (m.a.entry?.mine || m.b?.entry?.mine) && <CoachNotes kind="official" matchId={matchId} />}

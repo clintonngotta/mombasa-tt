@@ -11253,6 +11253,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg:
+    get:
+      operationId: tournaments_events_matches_card.svg_retrieve
+      description: The recap as a branded square image (SVG) to download or share.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/dispatch/:
     post:
       operationId: tournaments_events_matches_dispatch_create
@@ -11434,6 +11475,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MatchDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recap/:
+    get:
+      operationId: tournaments_events_matches_recap_retrieve
+      description: 'A match''s recap for sharing (REQ-018): public for a published
+        tournament, signed in or not.'
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recap'
           description: ''
         4XX:
           description: Error envelope
@@ -22025,6 +22108,18 @@ components:
       - tournament_id
       - tournament_name
       - won
+    RatingEnum:
+      enum:
+      - none
+      - processing
+      - done
+      - unrated
+      type: string
+      description: |-
+        * `none` - none
+        * `processing` - processing
+        * `done` - done
+        * `unrated` - unrated
     RatingSummary:
       type: object
       properties:
@@ -22094,6 +22189,106 @@ components:
           maxLength: 300
       required:
       - reason
+    Recap:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        tournament_id:
+          type: string
+          format: uuid
+        tournament_name:
+          type: string
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        side_a:
+          type: string
+        side_b:
+          type: string
+        official:
+          type: boolean
+        outcome:
+          type: string
+        winner_side:
+          type: string
+          nullable: true
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecapPlayer'
+        rating:
+          allOf:
+          - $ref: '#/components/schemas/RatingEnum'
+          description: |-
+            processing: the official result waits for the rating worker; no number is shown yet.
+
+            * `none` - none
+            * `processing` - processing
+            * `done` - done
+            * `unrated` - unrated
+        rating_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecapSideChange'
+      required:
+      - event_id
+      - event_name
+      - games
+      - match_id
+      - official
+      - outcome
+      - players
+      - rating
+      - rating_changes
+      - side_a
+      - side_b
+      - tournament_id
+      - tournament_name
+      - winner_side
+    RecapPlayer:
+      type: object
+      properties:
+        side:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - side
+      - user_id
+    RecapSideChange:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        before:
+          type: integer
+        after:
+          type: integer
+        delta:
+          type: integer
+      required:
+      - after
+      - before
+      - delta
+      - display_name
+      - user_id
     RecommendRequestRequest:
       type: object
       properties:
