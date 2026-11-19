@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CalendarDays, Clock, Globe, MapPin, Pencil, Plus, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
+import { SponsorsPanel } from "@/components/region/SponsorsPanel"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
@@ -56,8 +57,10 @@ export function TournamentPage() {
       {t && (
         <>
           <Overview tournament={t} />
+          <SponsorsPanel tournamentId={t.id} staff={staff} />
           <Events tournament={t} staff={staff} />
           {staff && <Manage tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
+          {!staff && <Approve tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
         </>
       )}
     </div>
@@ -293,6 +296,49 @@ function ReasonForm({
   )
 }
 
+/** Whether the caller approves this tournament's tier: the platform, the country's official, or the
+ * region's official for a regional tournament. The API decides; this only chooses what to show. */
+function approves(t: Tournament, authority?: Membership["authority"]) {
+  return authority === "platform" || (authority === "country" && t.scope !== "international") || (authority === "regional" && t.scope === "regional")
+}
+
+/** For an official who doesn't run the host club: publish a tournament waiting for their approval, or
+ * decline it with a reason. */
+function Approve({ tournament: t, authority }: { tournament: Tournament; authority?: Membership["authority"] }) {
+  const onChange = useTournamentChange(t.id)
+  const [declining, setDeclining] = useState(false)
+  const publish = useMutation({ mutationFn: () => moveTournament(t.id, "publish"), onSuccess: onChange })
+  const reject = useMutation({
+    mutationFn: (reason: string) => rejectTournamentApproval(t.id, reason),
+    onSuccess: (fresh: Tournament) => {
+      setDeclining(false)
+      onChange(fresh)
+    },
+  })
+  if (t.status !== "draft" || t.approval_status !== "pending" || !approves(t, authority)) return null
+  return (
+    <section aria-labelledby="approve-heading" className="flex flex-col gap-3 rounded-xl border border-brand-blue/30 bg-surface-selected p-4">
+      <h2 id="approve-heading" className="text-2xl font-bold">
+        Waiting for your approval
+      </h2>
+      <p className="text-sm text-muted-foreground">{t.organization.name} asked to publish this {SCOPE_LABEL[t.scope].toLowerCase()} tournament.</p>
+      {publish.isError && <FormAlert>{errorMessage(publish.error)}</FormAlert>}
+      {declining ? (
+        <ReasonForm label="Why is approval declined?" submit="Decline approval" pending={reject.isPending} error={reject.error} onSubmit={(reason) => reject.mutate(reason)} onBack={() => setDeclining(false)} />
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={publish.isPending} onClick={() => publish.mutate()}>
+            Approve and publish
+          </Button>
+          <Button variant="outline" onClick={() => setDeclining(true)}>
+            Decline approval
+          </Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
 const NEXT: Partial<Record<Tournament["status"], { action: TournamentAction; label: string; note: string }>> = {
   draft: { action: "publish", label: "Publish tournament", note: "Publishing shows the tournament to every player. It needs a venue and at least one event." },
   published: { action: "start", label: "Start tournament", note: "Start on the day. Events are then started one by one." },
@@ -324,8 +370,7 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
   const next = NEXT[t.status]
   const open = !isClosed(t)
   const needsApproval = t.status === "draft" && t.scope !== "local"
-  const canApprove = authority === "platform" || (authority === "country" && t.scope !== "international")
-    || (authority === "regional" && t.scope === "regional")
+  const canApprove = approves(t, authority)
   const pendingApproval = t.approval_status === "pending"
 
   return (

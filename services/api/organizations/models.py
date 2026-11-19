@@ -21,6 +21,9 @@ class Organization(models.Model):
         CLUB = "club"
         FACILITY = "facility"
         CLUB_FACILITY = "club_facility"
+        # The table tennis body of one catalogue region (REQ-045, REQ-048): it runs regional tournaments,
+        # meetings, the yearly agenda, articles to the region's clubs and sponsorships.
+        REGIONAL_BODY = "regional_body"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
@@ -37,9 +40,25 @@ class Organization(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                "country",
+                Lower("region"),
+                condition=models.Q(kind="regional_body"),
+                name="one_body_per_region",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(kind="regional_body") | (~models.Q(country="") & ~models.Q(region="")),
+                name="regional_body_has_region",
+            ),
+        ]
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_body(self) -> bool:
+        return self.kind == self.Kind.REGIONAL_BODY
 
 
 class Role(models.Model):

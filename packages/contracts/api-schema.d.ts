@@ -329,6 +329,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/agenda/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/agenda/: the agendas of the bodies of your clubs' regions, and of bodies you belong to. */
+        get: operations["me_agenda_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/articles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/articles/: published articles from regional bodies to your clubs, newest first. */
+        get: operations["me_articles_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/avatar/": {
         parameters: {
             query?: never;
@@ -605,6 +639,23 @@ export interface paths {
          *     requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
          */
         get: operations["me_matches_stats_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/meetings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/meetings/: meetings you are invited to, upcoming first, with your answer. */
+        get: operations["me_meetings_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -919,6 +970,102 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["organizations_admin_nominate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/agenda/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/POST /organizations/{body}/agenda/: the body's yearly agenda. */
+        get: operations["organizations_agenda_list"];
+        put?: never;
+        /** @description GET/POST /organizations/{body}/agenda/: the body's yearly agenda. */
+        post: operations["organizations_agenda_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/agenda/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description PATCH/DELETE /organizations/{body}/agenda/{id}/. */
+        delete: operations["organizations_agenda_destroy"];
+        options?: never;
+        head?: never;
+        /** @description PATCH/DELETE /organizations/{body}/agenda/{id}/. */
+        patch: operations["organizations_agenda_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/articles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{body}/articles/: announcement staff see drafts too; everyone else sees
+         *     the published articles that reach them.
+         */
+        get: operations["organizations_articles_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{body}/articles/: announcement staff see drafts too; everyone else sees
+         *     the published articles that reach them.
+         */
+        post: operations["organizations_articles_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/articles/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PATCH/DELETE /organizations/{body}/articles/{id}/. */
+        get: operations["organizations_articles_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description GET/PATCH/DELETE /organizations/{body}/articles/{id}/. */
+        delete: operations["organizations_articles_destroy"];
+        options?: never;
+        head?: never;
+        /** @description GET/PATCH/DELETE /organizations/{body}/articles/{id}/. */
+        patch: operations["organizations_articles_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/articles/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /organizations/{body}/articles/{id}/publish/: send it to its clubs. */
+        post: operations["organizations_articles_publish_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1298,6 +1445,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/meetings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/meetings/: governance staff see every meeting; others see the
+         *     published meetings they are invited to.
+         */
+        get: operations["organizations_meetings_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/meetings/: governance staff see every meeting; others see the
+         *     published meetings they are invited to.
+         */
+        post: operations["organizations_meetings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+         *     delete a draft; invitees read it.
+         */
+        get: operations["organizations_meetings_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+         *     delete a draft; invitees read it.
+         */
+        delete: operations["organizations_meetings_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+         *     delete a draft; invitees read it.
+         */
+        patch: operations["organizations_meetings_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/answer/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/answer/: attending or apologies, until it ends. */
+        post: operations["organizations_meetings_answer_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/cancel/ with a reason. */
+        post: operations["organizations_meetings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/check-in/: an invitee marks themselves present while it runs. */
+        post: operations["organizations_meetings_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/minutes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/minutes/: record the minutes once the meeting has started. */
+        post: operations["organizations_meetings_minutes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/publish/: invite the audience. */
+        post: operations["organizations_meetings_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/member-fields/": {
         parameters: {
             query?: never;
@@ -1464,6 +1748,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/region-clubs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{body}/region-clubs/: the region's clubs with member counts and upcoming
+         *     tournaments, for the body's members and the region's officials.
+         */
+        get: operations["organizations_region_clubs_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/roles/": {
         parameters: {
             query?: never;
@@ -1514,6 +1818,50 @@ export interface paths {
          *     has every permission and can only be renamed; Admin and Member can't be deleted.
          */
         patch: operations["organizations_roles_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/sponsorships/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/sponsorships/: what the organization offers tournaments, for its
+         *     competition staff.
+         */
+        get: operations["organizations_sponsorships_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/sponsorships/: what the organization offers tournaments, for its
+         *     competition staff.
+         */
+        post: operations["organizations_sponsorships_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/sponsorships/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /organizations/{org}/sponsorships/{id}/withdraw/: before the host has decided, or after it
+         *     accepted (the sponsor pulls out).
+         */
+        post: operations["organizations_sponsorships_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/tournaments/": {
@@ -1857,6 +2205,30 @@ export interface paths {
         get: operations["rankings_geography_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/regional-bodies/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
+         *     appointed to a region (or a platform super admin naming one) becomes its first admin.
+         */
+        get: operations["regional_bodies_list"];
+        put?: never;
+        /**
+         * @description GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
+         *     appointed to a region (or a platform super admin naming one) becomes its first admin.
+         */
+        post: operations["regional_bodies_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3022,6 +3394,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/sponsors/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /tournaments/{id}/sponsors/: the accepted sponsors, for everyone who can see the tournament. */
+        get: operations["tournaments_sponsors_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/sponsorships/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /tournaments/{id}/sponsorships/: every offer, for the host's competition staff. */
+        get: operations["tournaments_sponsorships_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/sponsorships/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/sponsorships/{offer}/{accept|decline}/: the host club decides. */
+        post: operations["tournaments_sponsorships_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/sponsorships/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/sponsorships/{offer}/{accept|decline}/: the host club decides. */
+        post: operations["tournaments_sponsorships_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/tables/": {
         parameters: {
             query?: never;
@@ -3149,6 +3589,62 @@ export interface components {
          * @enum {string}
          */
         AdmissionEnum: "open" | "closed";
+        AgendaItem: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrgRef"];
+            kind: components["schemas"]["AgendaItemKindEnum"];
+            title: string;
+            description: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            readonly tournament: components["schemas"]["TournamentRef"] | null;
+        };
+        /**
+         * @description * `tournament` - Tournament
+         *     * `meeting` - Meeting
+         *     * `event` - Event
+         *     * `deadline` - Deadline
+         *     * `other` - Other
+         * @enum {string}
+         */
+        AgendaItemKindEnum: "tournament" | "meeting" | "event" | "deadline" | "other";
+        AgendaItemRequest: {
+            kind?: components["schemas"]["AgendaItemKindEnum"];
+            title: string;
+            description?: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on?: string;
+            /** Format: uuid */
+            tournament_id?: string | null;
+        };
+        AgendaRow: {
+            title: string;
+            /** @default  */
+            presenter: string;
+            /** Format: uuid */
+            tournament: string | null;
+        };
+        AgendaRowRequest: {
+            title: string;
+            /** @default  */
+            presenter: string;
+            /** Format: uuid */
+            tournament?: string | null;
+        };
+        /**
+         * @description * `attending` - attending
+         *     * `apologies` - apologies
+         * @enum {string}
+         */
+        AnswerAnswerEnum: "attending" | "apologies";
+        AnswerRequest: {
+            answer: components["schemas"]["AnswerAnswerEnum"];
+        };
         /**
          * @description * `position` - Position
          *     * `holder` - Holder
@@ -3168,6 +3664,40 @@ export interface components {
          * @enum {string}
          */
         ApprovalStatusEnum: "not_requested" | "pending" | "approved" | "rejected";
+        Article: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrgRef"];
+            title: string;
+            summary: string;
+            body: string;
+            audience: components["schemas"]["ArticleAudienceEnum"];
+            readonly clubs: components["schemas"]["OrgRef"][];
+            readonly status: components["schemas"]["ArticleStatusEnum"];
+            /** Format: date-time */
+            readonly published_at: string | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `region` - Region
+         *     * `chosen` - Chosen
+         * @enum {string}
+         */
+        ArticleAudienceEnum: "region" | "chosen";
+        ArticleRequest: {
+            title: string;
+            summary?: string;
+            body: string;
+            audience?: components["schemas"]["ArticleAudienceEnum"];
+            club_ids?: string[];
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         * @enum {string}
+         */
+        ArticleStatusEnum: "draft" | "published";
         AssignHolderRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -3279,6 +3809,9 @@ export interface components {
             suggested_match_id: string | null;
             /** @description Why a free table has no match. */
             idle_reason: string;
+        };
+        CancelRequest: {
+            reason: string;
         };
         Candidate: {
             /** Format: uuid */
@@ -3410,6 +3943,10 @@ export interface components {
         CountryOption: {
             value: string;
             label: string;
+        };
+        DecisionRequest: {
+            /** @default  */
+            reason: string;
         };
         DeckPlayer: {
             slot: components["schemas"]["SlotEnum"];
@@ -3866,6 +4403,14 @@ export interface components {
             started_on: string;
             values: components["schemas"]["CommitteeFieldEntry"][];
         };
+        InKind: {
+            item: string;
+            quantity: number;
+        };
+        InKindRequest: {
+            item: string;
+            quantity: number;
+        };
         /** @description Staff view of an invitation they sent. */
         Invitation: {
             /** Format: uuid */
@@ -3892,6 +4437,22 @@ export interface components {
          * @enum {string}
          */
         InvitationStatusEnum: "pending" | "accepted" | "declined" | "revoked";
+        Invitee: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+            readonly club: string | null;
+            readonly answer: components["schemas"]["InviteeAnswerEnum"];
+            /** Format: date-time */
+            readonly checked_in_at: string | null;
+        };
+        /**
+         * @description * `none` - None
+         *     * `attending` - Attending
+         *     * `apologies` - Apologies
+         * @enum {string}
+         */
+        InviteeAnswerEnum: "none" | "attending" | "apologies";
         /** @description Staff view of a request. Shows the requester's display name only, never their email. */
         JoinRequest: {
             /** Format: uuid */
@@ -3917,9 +4478,10 @@ export interface components {
          * @description * `club` - Club
          *     * `facility` - Facility
          *     * `club_facility` - Club Facility
+         *     * `regional_body` - Regional Body
          * @enum {string}
          */
-        KindEnum: "club" | "facility" | "club_facility";
+        KindEnum: "club" | "facility" | "club_facility" | "regional_body";
         LabelTally: {
             label: string;
             played: number;
@@ -4126,6 +4688,74 @@ export interface components {
          * @enum {string}
          */
         MeasureEnum: "match_points" | "rubbers" | "games" | "points" | "lot";
+        /**
+         * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+         *     an invitee sees their own answer as `me`.
+         */
+        Meeting: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrgRef"];
+            title: string;
+            kind: components["schemas"]["MeetingKindEnum"];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            location: string;
+            online_link: string;
+            audience: components["schemas"]["MeetingAudienceEnum"];
+            agenda: components["schemas"]["AgendaRow"][];
+            readonly status: components["schemas"]["MeetingStatusEnum"];
+            readonly minutes: string;
+            /** Format: date-time */
+            readonly minutes_recorded_at: string | null;
+            readonly cancel_reason: string;
+            /** Format: date-time */
+            readonly published_at: string | null;
+            readonly invitees: components["schemas"]["Invitee"][];
+            readonly me: components["schemas"]["Invitee"] | null;
+        };
+        /**
+         * @description * `committee` - Committee
+         *     * `club_admins` - Club Admins
+         *     * `members` - Members
+         *     * `named` - Named
+         * @enum {string}
+         */
+        MeetingAudienceEnum: "committee" | "club_admins" | "members" | "named";
+        /**
+         * @description * `committee` - Committee
+         *     * `general` - General
+         *     * `representatives` - Representatives
+         *     * `special` - Special
+         * @enum {string}
+         */
+        MeetingKindEnum: "committee" | "general" | "representatives" | "special";
+        /**
+         * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+         *     an invitee sees their own answer as `me`.
+         */
+        MeetingRequest: {
+            title: string;
+            kind?: components["schemas"]["MeetingKindEnum"];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            location?: string;
+            online_link?: string;
+            audience?: components["schemas"]["MeetingAudienceEnum"];
+            named_ids?: string[];
+            agenda?: components["schemas"]["AgendaRowRequest"][];
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        MeetingStatusEnum: "draft" | "published" | "cancelled";
         /** @description Staff view of a member: display name and roles, never email or contact details. */
         Member: {
             /** Format: uuid */
@@ -4206,6 +4836,9 @@ export interface components {
          * @enum {string}
          */
         MembershipStatusEnum: "active" | "left";
+        MinutesRequest: {
+            minutes: string;
+        };
         /** @description The event's declared entry fee in the REQ-032 money shape. */
         Money: {
             amount_minor: number;
@@ -4349,6 +4982,18 @@ export interface components {
         };
         OptionalReasonRequest: {
             reason?: string;
+        };
+        OrgRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            town: string;
+        };
+        OrgRefRequest: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            town: string;
         };
         Organization: {
             /** Format: uuid */
@@ -4709,6 +5354,24 @@ export interface components {
             ended_on: string;
             end_reason: components["schemas"]["EndReasonEnum"];
         };
+        PatchedAgendaItemRequest: {
+            kind?: components["schemas"]["AgendaItemKindEnum"];
+            title?: string;
+            description?: string;
+            /** Format: date */
+            starts_on?: string;
+            /** Format: date */
+            ends_on?: string;
+            /** Format: uuid */
+            tournament_id?: string | null;
+        };
+        PatchedArticleRequest: {
+            title?: string;
+            summary?: string;
+            body?: string;
+            audience?: components["schemas"]["ArticleAudienceEnum"];
+            club_ids?: string[];
+        };
         /** @description A committee field definition. `applies_to` and the type are fixed once created. */
         PatchedCommitteeFieldRequest: {
             label?: string;
@@ -4754,6 +5417,23 @@ export interface components {
             tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
             /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
             tie_wins_needed?: number | null;
+        };
+        /**
+         * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+         *     an invitee sees their own answer as `me`.
+         */
+        PatchedMeetingRequest: {
+            title?: string;
+            kind?: components["schemas"]["MeetingKindEnum"];
+            /** Format: date-time */
+            starts_at?: string;
+            /** Format: date-time */
+            ends_at?: string;
+            location?: string;
+            online_link?: string;
+            audience?: components["schemas"]["MeetingAudienceEnum"];
+            named_ids?: string[];
+            agenda?: components["schemas"]["AgendaRowRequest"][];
         };
         /**
          * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
@@ -5338,6 +6018,29 @@ export interface components {
             name: string;
             readonly cities: string[];
         };
+        RegionClub: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
+            readonly kind: components["schemas"]["KindEnum"];
+            readonly members: number;
+            readonly upcoming_tournaments: number;
+        };
+        /** @description A regional body as anyone signed in may see it. */
+        RegionalBody: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
+            readonly country: string;
+            readonly region: string;
+        };
+        RegionalBodyInputRequest: {
+            name: string;
+            region_id?: number;
+            town?: string;
+        };
         RegistrationFee: {
             amount_minor: number;
             /** @default KES */
@@ -5838,6 +6541,47 @@ export interface components {
          * @enum {string}
          */
         SourceEnum: "umpire" | "staff" | "correction";
+        /** @description An accepted sponsorship as everyone who sees the tournament sees it. */
+        Sponsor: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly sponsor: components["schemas"]["OrgRef"];
+            readonly amount_minor: number | null;
+            readonly currency: string;
+            readonly in_kind: components["schemas"]["InKind"][];
+        };
+        Sponsorship: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly sponsor: components["schemas"]["OrgRef"];
+            readonly tournament: components["schemas"]["TournamentRef"];
+            amount_minor: number | null;
+            readonly currency: string;
+            in_kind: components["schemas"]["InKind"][];
+            conditions: string;
+            /** @default offered */
+            readonly status: components["schemas"]["SponsorshipStatusEnum"];
+            readonly reason: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        SponsorshipRequest: {
+            /** Format: uuid */
+            tournament_id: string;
+            amount_minor?: number | null;
+            in_kind?: components["schemas"]["InKindRequest"][];
+            conditions?: string;
+        };
+        /**
+         * @description * `offered` - Offered
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `withdrawn` - Withdrawn
+         * @enum {string}
+         */
+        SponsorshipStatusEnum: "offered" | "accepted" | "declined" | "withdrawn";
         StandingRow: {
             rank: number;
             entry: components["schemas"]["DrawEntry"];
@@ -5984,6 +6728,26 @@ export interface components {
             readonly cancelled_at: string | null;
             readonly cancel_reason: string;
             readonly events: components["schemas"]["Event"][];
+        };
+        TournamentRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            status: string;
+        };
+        TournamentRefRequest: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            status: string;
         };
         /**
          * @description A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
@@ -6678,6 +7442,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_agenda_list: {
+        parameters: {
+            query?: {
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_articles_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"][];
                 };
             };
             /** @description Error envelope */
@@ -7484,6 +8306,34 @@ export interface operations {
             };
         };
     };
+    me_meetings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_memberships_list: {
         parameters: {
             query?: {
@@ -8275,6 +9125,328 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_list: {
+        parameters: {
+            query?: {
+                year?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgendaItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAgendaItemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedArticleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
                 };
             };
             /** @description Error envelope */
@@ -9158,6 +10330,333 @@ export interface operations {
             };
         };
     };
+    organizations_meetings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMeetingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_answer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_minutes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MinutesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_member_fields_list: {
         parameters: {
             query?: never;
@@ -9487,6 +10986,36 @@ export interface operations {
             };
         };
     };
+    organizations_region_clubs_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionClub"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_roles_list: {
         parameters: {
             query?: never;
@@ -9603,6 +11132,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Role"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_sponsorships_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_sponsorships_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SponsorshipRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_sponsorships_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
                 };
             };
             /** @description Error envelope */
@@ -10435,6 +12063,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeographyRanking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    regional_bodies_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionalBody"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    regional_bodies_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionalBodyInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionalBody"];
                 };
             };
             /** @description Error envelope */
@@ -12572,6 +14260,136 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScoringOverview"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsors_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsor"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsorships_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsorships_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsorships_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
                 };
             };
             /** @description Error envelope */

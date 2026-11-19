@@ -75,6 +75,31 @@ def staff_tournament(user, pk) -> Tournament:
     return tournament
 
 
+def approver_tournament(user, pk) -> Tournament:
+    """The tournament, locked, for its host's competition staff or for somebody who approves its tier
+    (a platform super admin or the responsible official). Call inside a transaction."""
+    tournament = get_object_or_404(
+        Tournament.objects.select_for_update(of=("self",)).select_related("organization"), pk=pk
+    )
+    if not approves(user, tournament):
+        require_staff(user, tournament)
+    return tournament
+
+
+def approves(user, tournament: Tournament) -> bool:
+    """Whoever approves the tier of a regional, national or international tournament, once its host has
+    asked for approval (or it is already out)."""
+    if tournament.scope == Tournament.Scope.LOCAL or not lifecycle.can_approve(tournament, user):
+        return False
+    return tournament.status != T.DRAFT or tournament.approval_status != Tournament.Approval.NOT_REQUESTED
+
+
+def sees_draft(user, tournament: Tournament) -> bool:
+    """A draft is shown to its host's competition staff, and to whoever approves its tier once the host
+    asks for approval."""
+    return manages(user, tournament.organization) or approves(user, tournament)
+
+
 def ensure_open(tournament: Tournament) -> None:
     if tournament.is_closed:
         raise ApiException(
@@ -199,13 +224,16 @@ class TournamentViewSet(viewsets.GenericViewSet):
 
     def retrieve(self, request, pk):
         tournament = get_object_or_404(tournaments(), pk=pk)
-        if tournament.status == T.DRAFT and not manages(request.user, tournament.organization):
+        if tournament.status == T.DRAFT and not sees_draft(request.user, tournament):
             raise Http404
         return Response(TournamentSerializer(tournament).data)
 
     def partial_update(self, request, pk):
         with transaction.atomic():
-            tournament = staff_tournament(request.user, pk)
+            tournament = approver_tournament(request.user, pk)
+            if not manages(request.user, tournament.organization) and set(request.data) - {"scope"}:
+                # An official changes only the tier (see lifecycle.ensure_may_change_scope).
+                raise ApiException("permission_denied", "Only the host club can change that.", 403)
             ensure_open(tournament)
             serializer = TournamentSerializer(
                 tournament, data=request.data, partial=True, context={"organization": tournament.organization}
@@ -246,15 +274,16 @@ class TournamentViewSet(viewsets.GenericViewSet):
             tournament.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def _transition(self, request, pk, change, **extra):
+    def _transition(self, request, pk, change, *, approvers=False, **extra):
         with transaction.atomic():
-            tournament = staff_tournament(request.user, pk)
+            find = approver_tournament if approvers else staff_tournament
+            tournament = find(request.user, pk)
             change(tournament, request.user, **extra)
         return reply(tournament)
 
     @extend_schema(request=None, responses={200: TournamentSerializer})
     def publish(self, request, pk):
-        return self._transition(request, pk, lifecycle.publish)
+        return self._transition(request, pk, lifecycle.publish, approvers=True)
 
     @extend_schema(request=None, responses={200: TournamentSerializer})
     def request_approval(self, request, pk):
@@ -265,7 +294,7 @@ class TournamentViewSet(viewsets.GenericViewSet):
         serializer = ReasonSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self._transition(
-            request, pk, lifecycle.reject_approval, reason=serializer.validated_data["reason"]
+            request, pk, lifecycle.reject_approval, approvers=True, reason=serializer.validated_data["reason"]
         )
 
     @extend_schema(request=None, responses={200: TournamentSerializer})

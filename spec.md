@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-046 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-048 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -252,7 +252,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 *Committees.* The club admin, or anyone they delegate the governance permission to, sets the committee: positions (for example chair, secretary, treasurer, organizing secretary, youth officer) with names, order, optional term start and end, and custom fields per position or per holder (text, number, date, choice, as REQ-005 member fields). Each position is held by an active member and may grant a role, so a treasurer can get the finance permission. Past holders stay in the committee history. Members see the current committee; custom fields follow their own visibility.
 
-*Regional and national bodies.* Each region and the country has a governing body, an organization of kind `regional_body` or `national_body` tied to one catalogue region or country (TASK-093). A platform super admin creates the body and nominates its first admin; from then on it runs like a club: configurable positions, custom fields, roles and its own admin. Its members are its officials and committee, not players. Officials holding the approval permission in a region's body approve regional publication, and in the country's body national publication (REQ-007 scopes, TASK-094); the existing individual appointments migrate into these bodies.
+*Regional and national bodies.* Each region and the country has a governing body, an organization of kind `regional_body` or `national_body` tied to one catalogue region or country (TASK-093). A platform super admin creates the body and nominates its first admin; from then on it runs like a club: configurable positions, custom fields, roles and its own admin. Its members are its officials and committee, not players. Until TASK-107 is complete, the official appointed to a region sets up that region's body and becomes its first admin (REQ-048). Officials holding the approval permission in a region's body approve regional publication, and in the country's body national publication (REQ-007 scopes, TASK-094); the existing individual appointments migrate into these bodies.
 
 *Representatives.* A club in a region nominates one or more representatives (active members) to its regional body; a regional body nominates representatives of its regions to the national body. The receiving body sees nominations, accepts or declines, and can set a cap per club. A representative belongs to the body as a representative position with a term, can be replaced by the nominating club, and is removed automatically when they leave the club. A body sees a representative's display name and the club they represent, never their private profile details.
 
@@ -265,6 +265,22 @@ On availability/result changes, rank ready matches by planned start, then ready-
 *Events that are not competitions.* Any level hosts events such as workshops, coaching clinics, anniversaries, award nights and open days, built on REQ-039 activities. The audience is the host's members, invited representatives (for a body, the reps of chosen or all clubs), named people, or open to all signed-in players; an open event may also be public. Capacity, RSVP and waitlist follow REQ-039. Check-in at the start marks attendance the same way as meetings.
 
 *Privacy.* Meetings and minutes are visible only to invitees and the host's governance staff; a body never sees a club's internal meetings. Attendance lists show display names only.
+
+### REQ-048
+
+**Regional officers and bodies — Phase 1 (user decision, 2026-11-19).** A regional body (REQ-045) works for the clubs of its region: the clubs and facilities in the same country and region.
+
+*Authority.* A country or regional official holds no club permission by appointment alone. In a club of their jurisdiction they read what members read (the club, its committee, its plans and tournaments), see its ranking, and approve and publish its regional or national tournaments once the host asks (they may then change only the tier). Members, roles, settings, finances and running competitions stay with the club. A platform super admin keeps every permission.
+
+*Clubs.* The body's members see the region's clubs with their member counts and upcoming tournaments.
+
+*Yearly agenda.* Governance staff of the body plan the year: dated items (tournament, meeting, event, deadline, other) with notes and, for a tournament, a link to a published tournament of the region. Members of the region's clubs read it, and see the coming dates on their club page.
+
+*Articles.* Announcement staff write articles (headline, summary, text) to every club of the region or chosen clubs, kept as drafts until published. A published article reaches the active members of the clubs it is for and the body's members; nobody else.
+
+*Meetings.* Any organization's governance staff call meetings (REQ-046 core): title, kind, start and end, place or online link, an ordered agenda, and invitees: the committee, all members, named people, or, for a body, the admins of the region's clubs. Invitees are fixed when the meeting is published; they answer attending or apologies, check in while it runs, and read the minutes staff record once it has started. A meeting is visible only to its invitees and the host's governance staff; a body never sees a club's meetings. Staff cancel a meeting with a reason before it starts. Approval and amendment of minutes, attachments and notifications remain TASK-109.
+
+*Sponsorships.* An organization's competition staff offer a published tournament that hasn't finished an amount (declared only, no payments) and/or goods with quantities, with conditions; one open offer per sponsor and tournament, never for its own. The host's competition staff accept or decline; the sponsor withdraws. Everyone who sees the tournament sees its accepted sponsors and what they give; offers and conditions are for the host's and the sponsor's staff.
 
 ## Competition rules: version `ITTF-2026-ch3`
 
@@ -314,6 +330,7 @@ House rules where the statutes leave the choice to the organizer:
 | Operations | Venue, Table, VenueHours, FacilityPrice, FacilityVisit, Pass (REQ-044), Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent, ScheduleSession/ScheduleVersion, CheckIn, MatchCall, MatchIncident (timeout, card, suspension, expedite), RefereeDecision, ResultsAnnouncement/AnnouncementVersion (REQ-043) |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
 | Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038), FinancialYear, AnnualReport/ReportVersion (REQ-041) |
+| Regions | AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship (REQ-048) |
 | Governance | Committee, Position, PositionHolder, Nomination, RepresentativeNomination, governing bodies (REQ-045); Meeting, AgendaItem, Attendance, Minutes, Decision, ActionItem (REQ-046) |
 | Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players. ExternalEvent listing and curation (REQ-042); platform scoped |
 | Development | PersonalMatch/PersonalGame (REQ-037), MatchNote, EquipmentProfile, Drill, TrainingPlan/Session, Invitation/Attendance |
