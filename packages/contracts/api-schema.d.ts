@@ -4104,6 +4104,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/streams/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /tournaments/{id}/streams/: the tournament's watch links (with ?match=, that match's
+         *     and the whole tournament's); staff add one for the tournament or a match.
+         */
+        get: operations["tournaments_streams_list"];
+        put?: never;
+        /**
+         * @description GET/POST /tournaments/{id}/streams/: the tournament's watch links (with ?match=, that match's
+         *     and the whole tournament's); staff add one for the tournament or a match.
+         */
+        post: operations["tournaments_streams_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/streams/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/streams/{stream}/: staff change a link's address or title, or
+         *     remove it (with its reports).
+         */
+        delete: operations["tournaments_streams_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/streams/{stream}/: staff change a link's address or title, or
+         *     remove it (with its reports).
+         */
+        patch: operations["tournaments_streams_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/streams/{id}/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/streams/{stream}/report/: anyone who sees the tournament says what is
+         *     wrong with a link. The host's staff see how many reports it has and decide.
+         */
+        post: operations["tournaments_streams_report_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/tables/": {
         parameters: {
             query?: never;
@@ -5452,6 +5520,31 @@ export interface components {
             /** @description Player ids for each rubber of the template, in order. */
             picks: string[][] | null;
         };
+        LiveStream: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            match_id: string | null;
+            /** Format: uuid */
+            readonly event_id: string | null;
+            /** @description The match's two sides, as on the draw. */
+            readonly match_label: string | null;
+            url: string;
+            readonly domain: string;
+            readonly platform: components["schemas"]["StreamPlatformEnum"];
+            readonly platform_label: string;
+            title: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** @description Reports so far; staff only, else null. */
+            readonly report_count: number | null;
+        };
+        LiveStreamRequest: {
+            /** Format: uuid */
+            match_id?: string | null;
+            url: string;
+            title?: string;
+        };
         LogInRequest: {
             /** Format: email */
             email: string;
@@ -6379,6 +6472,12 @@ export interface components {
             /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
             tie_wins_needed?: number | null;
         };
+        PatchedLiveStreamRequest: {
+            /** Format: uuid */
+            match_id?: string | null;
+            url?: string;
+            title?: string;
+        };
         /**
          * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
          *     an invitee sees their own answer as `me`.
@@ -7037,6 +7136,10 @@ export interface components {
         ReorderRequest: {
             positions: string[];
         };
+        ReportRequest: {
+            reason: components["schemas"]["StreamReportReasonEnum"];
+            note?: string;
+        };
         /** @description A match on a table: the table and the people held until its result is official. */
         Reservation: {
             /** Format: uuid */
@@ -7606,6 +7709,26 @@ export interface components {
             sequence: number;
             event: unknown;
         };
+        /**
+         * @description * `youtube` - YouTube
+         *     * `facebook` - Facebook
+         *     * `instagram` - Instagram
+         *     * `tiktok` - TikTok
+         *     * `twitch` - Twitch
+         *     * `x` - X
+         *     * `kick` - Kick
+         *     * `other` - Other site
+         * @enum {string}
+         */
+        StreamPlatformEnum: "youtube" | "facebook" | "instagram" | "tiktok" | "twitch" | "x" | "kick" | "other";
+        /**
+         * @description * `broken` - Doesn't work
+         *     * `wrong` - Wrong match or event
+         *     * `inappropriate` - Inappropriate or unsafe
+         *     * `other` - Something else
+         * @enum {string}
+         */
+        StreamReportReasonEnum: "broken" | "wrong" | "inappropriate" | "other";
         SubmitEventsRequest: {
             /** Format: uuid */
             assignment_id: string;
@@ -16898,6 +17021,169 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Sponsorship"];
                 };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveStream"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveStreamRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveStream"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLiveStreamRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveStream"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_report_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error envelope */
             "4XX": {
