@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
@@ -44,6 +45,11 @@ export function ClubFinancePage() {
     <div className="flex max-w-[720px] flex-col gap-6">
       <BackLink to="/club">Club</BackLink>
       <h1 className="text-[32px] leading-9 font-bold">Finances</h1>
+      {allowed && (
+        <Link to="/club/finance/campaigns" className="self-start font-semibold text-brand-blue underline">
+          Dues and contributions
+        </Link>
+      )}
       {memberships.isSuccess && (!allowed || accessLost) && <AccessLost />}
       {allowed && !accessLost && (
         <>

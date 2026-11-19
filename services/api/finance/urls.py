@@ -19,6 +19,18 @@ urlpatterns = [
         views.ReversePaymentView.as_view(),
         name="organization-payment-reverse",
     ),
+    path("finance/campaigns/", views.CampaignsView.as_view(), name="organization-campaigns"),
+    path("finance/campaigns/<uuid:pk>/", views.CampaignView.as_view(), name="organization-campaign"),
+    path(
+        "finance/campaigns/<uuid:pk>/close/",
+        views.CloseCampaignView.as_view(),
+        name="organization-campaign-close",
+    ),
+    path(
+        "finance/campaigns/<uuid:pk>/terms/",
+        views.CampaignTermView.as_view(),
+        name="organization-campaign-terms",
+    ),
     path("finance/balances/", views.BalancesView.as_view(), name="organization-balances"),
     path("my-finances/", views.MyFinancesView.as_view(), name="organization-my-finances"),
 ]

@@ -6821,6 +6821,219 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/campaigns/:
+    get:
+      operationId: organizations_finance_campaigns_list
+      description: Contribution campaigns (REQ-023). Finance staff read them; finance
+        managers set them up.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Campaign'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_finance_campaigns_create
+      description: Set up a campaign. Its dues to date are generated at once; the
+        rest as their dates come.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/campaigns/{id}/:
+    get:
+      operationId: organizations_finance_campaigns_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_finance_campaigns_partial_update
+      description: Change the title, description, amount or last date. Dues already
+        generated keep theirs.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCampaignUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/campaigns/{id}/close/:
+    post:
+      operationId: organizations_finance_campaigns_close_create
+      description: Stop generating dues. Dues already generated stay owed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/campaigns/{id}/terms/:
+    post:
+      operationId: organizations_finance_campaigns_terms_create
+      description: |-
+        Set one member's terms: included, their own amount, or waived with a reason. Periods already
+        generated keep their dues; waive one of those on the charge itself.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignTermRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/finance/charges/:
     get:
       operationId: organizations_finance_charges_list
@@ -14623,6 +14836,20 @@ components:
       - kind
       - starts_at
       - title
+    CadenceEnum:
+      enum:
+      - once
+      - weekly
+      - monthly
+      - quarterly
+      - yearly
+      type: string
+      description: |-
+        * `once` - One-time
+        * `weekly` - Weekly
+        * `monthly` - Monthly
+        * `quarterly` - Quarterly
+        * `yearly` - Yearly
     CalendarEntry:
       type: object
       properties:
@@ -14680,6 +14907,175 @@ components:
         * `trainee_session` - trainee_session
         * `club_session` - club_session
         * `tournament` - tournament
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+        audience:
+          $ref: '#/components/schemas/CampaignAudienceEnum'
+        terms:
+          type: array
+          items:
+            $ref: '#/components/schemas/CampaignTerm'
+          readOnly: true
+        closed:
+          type: boolean
+          readOnly: true
+        next_due_on:
+          type: string
+          format: date
+          nullable: true
+          readOnly: true
+        dues_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_minor
+      - audience
+      - cadence
+      - closed
+      - created_at
+      - currency
+      - description
+      - dues_count
+      - ends_on
+      - id
+      - next_due_on
+      - starts_on
+      - terms
+      - title
+    CampaignAudienceEnum:
+      enum:
+      - all
+      - selected
+      type: string
+      description: |-
+        * `all` - All active members
+        * `selected` - Selected members
+    CampaignRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+        audience:
+          $ref: '#/components/schemas/CampaignAudienceEnum'
+        member_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: The members a selected-audience campaign bills.
+      required:
+      - amount_minor
+      - cadence
+      - starts_on
+      - title
+    CampaignTerm:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        member_name:
+          type: string
+          readOnly: true
+        included:
+          type: boolean
+          default: true
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 0
+          nullable: true
+        waived:
+          type: boolean
+          default: false
+        waive_reason:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - amount_minor
+      - included
+      - member_id
+      - member_name
+      - waive_reason
+      - waived
+    CampaignTermRequest:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        included:
+          type: boolean
+          default: true
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 0
+          nullable: true
+        waived:
+          type: boolean
+          default: false
+        waive_reason:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - member_id
     CancelActivityRequest:
       type: object
       properties:
@@ -14997,6 +15393,16 @@ components:
           readOnly: true
         kind:
           $ref: '#/components/schemas/ChargeKindEnum'
+        campaign_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        period:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
         purpose:
           type: string
           maxLength: 120
@@ -15030,6 +15436,7 @@ components:
           readOnly: true
       required:
       - amount_minor
+      - campaign_id
       - created_at
       - currency
       - due_on
@@ -15039,6 +15446,7 @@ components:
       - member_name
       - outstanding_minor
       - paid_minor
+      - period
       - purpose
       - status
       - waive_reason
@@ -21405,6 +21813,25 @@ components:
         presenter:
           type: string
           maxLength: 120
+    PatchedCampaignUpdateRequest:
+      type: object
+      description: 'What can change once a campaign runs: the cadence and start stay
+        as they were.'
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        ends_on:
+          type: string
+          format: date
+          nullable: true
     PatchedClubActivityRequest:
       type: object
       description: An activity. Members see `my_answer` and the counts; only staff

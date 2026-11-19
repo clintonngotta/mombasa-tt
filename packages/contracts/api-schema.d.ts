@@ -2944,6 +2944,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Contribution campaigns (REQ-023). Finance staff read them; finance managers set them up. */
+        get: operations["organizations_finance_campaigns_list"];
+        put?: never;
+        /** @description Set up a campaign. Its dues to date are generated at once; the rest as their dates come. */
+        post: operations["organizations_finance_campaigns_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_finance_campaigns_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Change the title, description, amount or last date. Dues already generated keep theirs. */
+        patch: operations["organizations_finance_campaigns_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Stop generating dues. Dues already generated stay owed. */
+        post: operations["organizations_finance_campaigns_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/terms/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Set one member's terms: included, their own amount, or waived with a reason. Periods already
+         *     generated keep their dues; waive one of those on the charge itself.
+         */
+        post: operations["organizations_finance_campaigns_terms_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/finance/charges/": {
         parameters: {
             query?: never;
@@ -6237,6 +6309,15 @@ export interface components {
             /** Format: date-time */
             ends_at: string;
         };
+        /**
+         * @description * `once` - One-time
+         *     * `weekly` - Weekly
+         *     * `monthly` - Monthly
+         *     * `quarterly` - Quarterly
+         *     * `yearly` - Yearly
+         * @enum {string}
+         */
+        CadenceEnum: "once" | "weekly" | "monthly" | "quarterly" | "yearly";
         CalendarEntry: {
             kind: components["schemas"]["CalendarEntryKindEnum"];
             /** Format: uuid */
@@ -6263,6 +6344,72 @@ export interface components {
          * @enum {string}
          */
         CalendarEntryKindEnum: "booking" | "session" | "trainee_session" | "club_session" | "tournament";
+        Campaign: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            description: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            cadence: components["schemas"]["CadenceEnum"];
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string | null;
+            audience: components["schemas"]["CampaignAudienceEnum"];
+            readonly terms: components["schemas"]["CampaignTerm"][];
+            readonly closed: boolean;
+            /** Format: date */
+            readonly next_due_on: string | null;
+            readonly dues_count: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `all` - All active members
+         *     * `selected` - Selected members
+         * @enum {string}
+         */
+        CampaignAudienceEnum: "all" | "selected";
+        CampaignRequest: {
+            title: string;
+            description?: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            cadence: components["schemas"]["CadenceEnum"];
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on?: string | null;
+            audience?: components["schemas"]["CampaignAudienceEnum"];
+            /** @description The members a selected-audience campaign bills. */
+            member_ids?: string[];
+        };
+        CampaignTerm: {
+            /** Format: uuid */
+            member_id: string;
+            readonly member_name: string;
+            /** @default true */
+            included: boolean;
+            amount_minor: number | null;
+            /** @default false */
+            waived: boolean;
+            /** @default  */
+            waive_reason: string;
+        };
+        CampaignTermRequest: {
+            /** Format: uuid */
+            member_id: string;
+            /** @default true */
+            included: boolean;
+            amount_minor?: number | null;
+            /** @default false */
+            waived: boolean;
+            /** @default  */
+            waive_reason: string;
+        };
         CancelActivityRequest: {
             reason: string;
         };
@@ -6386,6 +6533,10 @@ export interface components {
             member_id: string;
             readonly member_name: string;
             kind: components["schemas"]["ChargeKindEnum"];
+            /** Format: uuid */
+            readonly campaign_id: string | null;
+            /** Format: date */
+            readonly period: string | null;
             purpose: string;
             amount_minor: number;
             /** @default KES */
@@ -9007,6 +9158,14 @@ export interface components {
             recipient_name?: string;
             prize?: string;
             presenter?: string;
+        };
+        /** @description What can change once a campaign runs: the cadence and start stay as they were. */
+        PatchedCampaignUpdateRequest: {
+            title?: string;
+            description?: string;
+            amount_minor?: number;
+            /** Format: date */
+            ends_on?: string | null;
         };
         /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
         PatchedClubActivityRequest: {
@@ -17951,6 +18110,202 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Balance"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCampaignUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_terms_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignTermRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
                 };
             };
             /** @description Error envelope */

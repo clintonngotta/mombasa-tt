@@ -342,6 +342,18 @@ The privacy matrix covers every route.
 
 **Contributions — clock-controlled integration.** Setup: selected members; monthly campaign due on day 31; weekly/quarterly/yearly and leap-day fixtures. Steps: run generator twice, advance across February, change amount, add new member, waive due, partially pay overdue item. Pass: one due per campaign/member/period; dates clamp correctly; prior dues unchanged; no old dues for new member; a weekly and a monthly Club operations campaign bill every active member once per period with overrides/waivers honoured and none after a member leaves; statuses and outstanding amounts correct. Evidence: period keys and expected ledger table.
 
+*Built in TASK-038 (2026-11-19).* `tests/test_finance_dues.py` drives the generator's date and checks the following:
+- A monthly campaign due on the 31st falls on 31 January, 28 February and 31 March, and on 29 February in a leap year.
+- Running the generator twice makes one due per member and period.
+- Weekly, quarterly (30 November to 29 February to 30 May), yearly from 29 February, and one-time cadences fall on the right days.
+- A changed amount applies only to later periods; a member's own amount and a waiver with a reason are honoured, and earlier dues stay.
+- A new member owes from the next period after joining, and a member who left owes no later periods.
+- A selected-members campaign bills only those chosen. A partly paid due past its date stays overdue, and a due can be waived.
+- Closing stops new dues, and `generate_dues` run twice catches up once.
+- Members can't read or set up campaigns.
+
+The privacy matrix covers the campaign routes. Reminders and the member's dues view are TASK-039.
+
 ### EVAL-024
 
 **Expenses/transparency — integration.** Setup: campaign received 150000 minor units and expenses 30000+20000. Steps: inspect member/staff summaries, reverse 20000 expense, add expense exceeding remaining receipts. Pass: balance 100000 then 120000, deficits visibly negative; expected dues are not counted as receipts; member sees own balances and aggregate purposes, not other members' ledgers/private receipts. Evidence: arithmetic and access assertions.

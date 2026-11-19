@@ -3,7 +3,9 @@
 from collections import defaultdict
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -12,14 +14,18 @@ from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 from organizations.access import require_membership, require_permission
+from organizations.committee import local_today
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
-from . import ledger
-from .models import Charge
+from . import dues, ledger
+from .models import Campaign, CampaignMember, Charge
 from .serializers import (
     AllocateSerializer,
     BalanceSerializer,
+    CampaignSerializer,
+    CampaignTermSerializer,
+    CampaignUpdateSerializer,
     ChargeSerializer,
     FinanceReasonSerializer,
     MyFinancesSerializer,
@@ -76,6 +82,7 @@ class ChargesView(APIView):
     def get(self, request, organization_pk):
         organization = _org(organization_pk)
         require_permission(request.user, organization, *VIEW)
+        dues.catch_up(organization)
         found = charges_of(organization)
         if member := request.query_params.get("member"):
             found = found.filter(member_id=member)
@@ -180,6 +187,7 @@ class BalancesView(APIView):
         """Every member's outstanding balance and unmatched credit, per currency."""
         organization = _org(organization_pk)
         require_permission(request.user, organization, *VIEW)
+        dues.catch_up(organization)
         return Response(
             BalanceSerializer(balances(charges_of(organization), payments_of(organization)), many=True).data
         )
@@ -194,7 +202,111 @@ class MyFinancesView(APIView):
     def get(self, request, organization_pk):
         organization = _org(organization_pk)
         require_membership(request.user, organization)
+        dues.catch_up(organization)
         charges = charges_of(organization).filter(member=request.user)
         payments = payments_of(organization).filter(payer=request.user)
         data = {"charges": charges, "payments": payments, "balances": balances(charges, payments)}
         return Response(MyFinancesSerializer(data).data)
+
+
+def _campaign_out(campaign, organization, status_code=status.HTTP_200_OK):
+    context = {"today": local_today(organization)}
+    return Response(CampaignSerializer(campaign, context=context).data, status=status_code)
+
+
+def _campaigns(organization):
+    return organization.campaigns.prefetch_related("terms__member")
+
+
+class CampaignsView(APIView):
+    """Contribution campaigns (REQ-023). Finance staff read them; finance managers set them up."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: CampaignSerializer(many=True)})
+    def get(self, request, organization_pk):
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, *VIEW)
+        dues.catch_up(organization)
+        context = {"today": local_today(organization)}
+        return Response(CampaignSerializer(_campaigns(organization), many=True, context=context).data)
+
+    @extend_schema(request=CampaignSerializer, responses={201: CampaignSerializer})
+    @transaction.atomic
+    def post(self, request, organization_pk):
+        """Set up a campaign. Its dues to date are generated at once; the rest as their dates come."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, MANAGE)
+        body = CampaignSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = dict(body.validated_data)
+        member_ids = data.pop("member_ids")
+        data.setdefault("audience", Campaign.Audience.ALL)
+        if data["audience"] == Campaign.Audience.SELECTED and not member_ids:
+            raise ApiException("members_required", "Choose the members this campaign is for.", 400)
+        campaign = Campaign.objects.create(organization=organization, created_by=request.user, **data)
+        if data["audience"] == Campaign.Audience.SELECTED:
+            for user_id in dict.fromkeys(member_ids):
+                CampaignMember.objects.create(campaign=campaign, member=_member(organization, user_id))
+        dues.generate(campaign, local_today(organization))
+        return _campaign_out(campaign, organization, status.HTTP_201_CREATED)
+
+
+class _CampaignAction(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, request, organization_pk, pk, *permissions):
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, *permissions)
+        return organization, get_object_or_404(_campaigns(organization), pk=pk)
+
+
+class CampaignView(_CampaignAction):
+    @extend_schema(responses={200: CampaignSerializer})
+    def get(self, request, organization_pk, pk):
+        organization, campaign = self._get(request, organization_pk, pk, *VIEW)
+        return _campaign_out(campaign, organization)
+
+    @extend_schema(request=CampaignUpdateSerializer, responses={200: CampaignSerializer})
+    def patch(self, request, organization_pk, pk):
+        """Change the title, description, amount or last date. Dues already generated keep theirs."""
+        organization, campaign = self._get(request, organization_pk, pk, MANAGE)
+        if campaign.closed_at:
+            raise ApiException("campaign_closed", "This campaign is closed.", 409)
+        body = CampaignUpdateSerializer(data=request.data, partial=True)
+        body.is_valid(raise_exception=True)
+        ends = body.validated_data.get("ends_on", campaign.ends_on)
+        if ends and ends < campaign.starts_on:
+            raise ApiException("bad_dates", "The last date can't be before the first.", 400)
+        for field, value in body.validated_data.items():
+            setattr(campaign, field, value)
+        campaign.save()
+        return _campaign_out(campaign, organization)
+
+
+class CloseCampaignView(_CampaignAction):
+    @extend_schema(request=None, responses={200: CampaignSerializer})
+    def post(self, request, organization_pk, pk):
+        """Stop generating dues. Dues already generated stay owed."""
+        organization, campaign = self._get(request, organization_pk, pk, MANAGE)
+        if not campaign.closed_at:
+            dues.generate(campaign, local_today(organization))
+            campaign.closed_at = timezone.now()
+            campaign.save(update_fields=["closed_at"])
+        return _campaign_out(campaign, organization)
+
+
+class CampaignTermView(_CampaignAction):
+    @extend_schema(request=CampaignTermSerializer, responses={200: CampaignSerializer})
+    def post(self, request, organization_pk, pk):
+        """Set one member's terms: included, their own amount, or waived with a reason. Periods already
+        generated keep their dues; waive one of those on the charge itself."""
+        organization, campaign = self._get(request, organization_pk, pk, MANAGE)
+        body = CampaignTermSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = dict(body.validated_data)
+        member = _member(organization, data.pop("member_id"))
+        # Bring dues up to date first, so the change applies from the next period only.
+        dues.generate(campaign, local_today(organization))
+        CampaignMember.objects.update_or_create(campaign=campaign, member=member, defaults=data)
+        return _campaign_out(get_object_or_404(_campaigns(organization), pk=pk), organization)

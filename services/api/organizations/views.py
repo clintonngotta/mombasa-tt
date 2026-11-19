@@ -83,7 +83,9 @@ def join(organization: Organization, user) -> Membership:
     )
     if not created and membership.status != Membership.Status.ACTIVE:
         membership.status = Membership.Status.ACTIVE
-        membership.save(update_fields=["status"])
+        # Rejoining starts afresh: dues run from the next period after this joining (REQ-023).
+        membership.joined_at = timezone.now()
+        membership.save(update_fields=["status", "joined_at"])
         membership.roles.clear()
     return membership
 

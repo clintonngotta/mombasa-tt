@@ -32,3 +32,20 @@ export function toMinor(text: string): number | null {
   const value = Math.round(Number(text) * 100)
   return Number.isFinite(value) && value > 0 ? value : null
 }
+
+export type Campaign = Schemas["Campaign"]
+export const campaignKeys = (orgId: string) => ["finance", "ledger", orgId, "campaigns"] as const
+export const listCampaigns = (orgId: string) => api<Campaign[]>(`${base(orgId)}campaigns/`)
+export const createCampaign = (orgId: string, body: Schemas["CampaignRequest"]) => api<Campaign>(`${base(orgId)}campaigns/`, { body })
+export const updateCampaign = (orgId: string, id: string, body: Schemas["PatchedCampaignUpdateRequest"]) => api<Campaign>(`${base(orgId)}campaigns/${id}/`, { method: "PATCH", body })
+export const closeCampaign = (orgId: string, id: string) => api<Campaign>(`${base(orgId)}campaigns/${id}/close/`, { body: {} })
+export const setCampaignTerm = (orgId: string, id: string, body: Schemas["CampaignTermRequest"]) => api<Campaign>(`${base(orgId)}campaigns/${id}/terms/`, { body })
+
+export const CADENCE_LABEL: Record<Campaign["cadence"], string> = { once: "One-time", weekly: "Weekly", monthly: "Monthly", quarterly: "Quarterly", yearly: "Yearly" }
+
+/** The ready-made "Club operations" dues: every active member, weekly or monthly, for running costs. */
+export const CLUB_OPERATIONS = {
+  title: "Club operations",
+  description: "Hall and table hire, balls, nets, repairs and utilities.",
+  audience: "all" as const,
+}
