@@ -15,6 +15,7 @@ import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, sideWon, spo
 import { canManageTournament, eventTabPath, firstTab, getTournament, tieSummary, tournamentKeys, type TournamentEvent } from "@/lib/tournaments"
 import { useMemberships } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
+import { useLiveTournament } from "@/lib/live"
 
 /**
  * One match of a published draw (REQ-010): the two sides left and right, the games, and where and when
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils"
  */
 export function MatchPage() {
   const { id = "", eventId = "", matchId = "" } = useParams()
+  useLiveTournament(id)
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const match = useQuery({ queryKey: drawKeys.match(matchId), queryFn: () => getMatch(id, eventId, matchId), enabled: tournament.isSuccess })
   const t = tournament.data

@@ -10,6 +10,7 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { getScoringOverview, resolveConflict, SCORING_STATUS_LABEL, scoringKeys, type OpenSheet, type ScoreConflict, type ScoringOverview } from "@/lib/scoring"
 import { getTournament, tournamentKeys } from "@/lib/tournaments"
+import { useLiveTournament } from "@/lib/live"
 
 const STEP: Record<OpenSheet["history"][number]["kind"], string> = {
   assigned: "Assigned to",
@@ -48,6 +49,7 @@ function eventWords(event: unknown, a: string, b: string): string {
  */
 export function ScoringOverviewPage() {
   const { id = "" } = useParams()
+  useLiveTournament(id)
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const overview = useQuery({ queryKey: scoringKeys.overview(id), queryFn: () => getScoringOverview(id), refetchInterval: 20_000, staleTime: 0 })
   const refused = overview.error instanceof ApiError && (overview.error.status === 403 || overview.error.status === 404)

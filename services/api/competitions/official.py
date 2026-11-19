@@ -8,8 +8,9 @@ from django.utils import timezone
 
 from core.exceptions import ApiException
 from outbox import service as outbox
+from realtime import broadcast
 
-from .models import Entry, Match, OfficialResult, Resolution, Rubber
+from .models import Entry, Event, Match, OfficialResult, Resolution, Rubber
 
 Source = OfficialResult.Source
 
@@ -82,6 +83,8 @@ def project(payload: dict) -> None:
         projection(result)
     result.projected_at = timezone.now()
     result.save(update_fields=["projected_at"])
+    event = Event.objects.only("id", "tournament_id").get(draws__matches__results=result)
+    broadcast.tournament_changed(event.tournament_id, "results", event_id=event.id)
 
 
 def ensure_not_held(match: Match) -> None:

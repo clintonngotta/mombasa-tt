@@ -23,6 +23,7 @@ services:
     environment:
       DJANGO_DEBUG: "true"
       DATABASE_URL: postgres://mombasa:mombasa-dev-only@db:5432/mombasa_tt
+      REDIS_URL: redis://redis:6379/0
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,api
       DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:${WEB_PORT:-8080},http://127.0.0.1:${WEB_PORT:-8080}
       FRONTEND_URL: http://localhost:${WEB_PORT:-8080}
@@ -43,6 +44,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')"]
       # Fast checks while starting, then every 30s so the runserver log stays readable.
@@ -52,19 +55,43 @@ services:
       start_period: 60s
       start_interval: 2s
 
-  # Does the work written to the outbox with each official result (REQ-015). Celery replaces the
-  # polling loop in TASK-007; the jobs and their handlers stay the same.
+  # Private: no host port. Carries Celery's wake-ups and WebSocket messages; the work itself stays in
+  # PostgreSQL (the outbox), so losing Redis delays jobs but never drops them.
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Does the work written to the outbox (REQ-015): woken by each new job, at most two at a time.
   worker:
     build: ./services/api
-    command: python manage.py work_outbox
+    command: celery -A config worker --loglevel INFO --concurrency 2
     restart: unless-stopped
-    environment:
+    environment: &worker-env
       DJANGO_DEBUG: "true"
       DATABASE_URL: postgres://mombasa:mombasa-dev-only@db:5432/mombasa_tt
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - ./services/api:/app
     depends_on:
       api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Exactly one: every few seconds it asks a worker to sweep for jobs whose retry is due.
+  beat:
+    build: ./services/api
+    command: celery -A config beat --loglevel INFO --schedule /tmp/celerybeat-schedule
+    restart: unless-stopped
+    environment: *worker-env
+    volumes:
+      - ./services/api:/app
+    depends_on:
+      redis:
         condition: service_healthy
 
   web:

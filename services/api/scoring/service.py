@@ -17,6 +17,7 @@ from competitions.models import DrawVersion, Event, Match, Rubber, RubberPlayer,
 from core.exceptions import ApiException
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
+from realtime import broadcast
 
 from .engine import Scoring, ScoringError, initial_state
 from .models import ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
@@ -297,6 +298,8 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
     if accepted:
         scorecard.state = scoring.state if refused is None else replayed(scorecard).state
         scorecard.save(update_fields=["revision", "state"])
+        event = event_of(scorecard)
+        broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id)
     return {"accepted": accepted, "refused": refused}
 
 
@@ -324,6 +327,8 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
     scorecard.confirmed_at = timezone.now()
     scorecard.confirmed_by = actor
     scorecard.save(update_fields=["state", "confirmed_at", "confirmed_by"])
+    event = event_of(scorecard)
+    broadcast.tournament_changed(event.tournament_id, "results", event_id=event.id)
 
 
 def _who(user_id) -> str | None:
