@@ -374,6 +374,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-draw": {"get": SIGNED_IN},
     "tournament-event-standings": {"get": SIGNED_IN},
     "tournament-event-match": {"get": SIGNED_IN},  # of the published draw only
+    # A match's recap and result card are public for a published tournament (REQ-018).
+    "tournament-event-match-recap": {"get": PUBLIC},
+    "tournament-event-match-card": {"get": PUBLIC},
     # A team's lineup is handed in by its captain or by staff: who may, and who sees the picks, is
     # covered in tests/test_ties.py. Sending both teams back to choose again is for staff.
     "tournament-event-match-lineup": {"post": SIGNED_IN},
@@ -1254,6 +1257,8 @@ class World:
             "tournament-event-entry-undo-check-in": self.faith_entry.id,
             "tournament-event-entry-withdraw": self.baraka_entry.id,
             "tournament-event-match": self.preview_match_id,
+            "tournament-event-match-recap": self.preview_match_id,
+            "tournament-event-match-card": self.preview_match_id,
             "tournament-event-match-lineup": self.tie.id,
             "tournament-event-match-lineup-reset": self.tie.id,
             "tournament-event-match-umpire": self.scored_match.id,
