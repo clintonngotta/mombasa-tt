@@ -19,6 +19,8 @@ import { MatchFormPage } from "@/pages/matches/MatchFormPage"
 import { MatchDetailPage } from "@/pages/matches/MatchDetailPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { ProfileEditPage } from "@/pages/profile/ProfileEditPage"
+import { GuestClaimsPage } from "@/pages/profile/GuestClaimsPage"
+import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
 import { PlayerRatingsPage } from "@/pages/ratings/PlayerRatingsPage"
@@ -130,6 +132,7 @@ function App() {
               <Route path="/club/invitations" element={<InvitationsInboxPage />} />
               <Route path="/club/admin-nominations" element={<AdminNominationsPage />} />
               <Route path="/club/members" element={<MembersPage />} />
+              <Route path="/club/guests" element={<GuestsPage />} />
               <Route path="/club/committee" element={<CommitteePage />} />
               <Route path="/club/roles" element={<RolesPage />} />
               <Route path="/club/roles/new" element={<RoleEditPage />} />
@@ -139,6 +142,7 @@ function App() {
               <Route path="/club/fields/:id" element={<MemberFieldEditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/profile/claims" element={<GuestClaimsPage />} />
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/training" element={<TrainingPage />} />
               <Route path="/region" element={<RegionPage />} />

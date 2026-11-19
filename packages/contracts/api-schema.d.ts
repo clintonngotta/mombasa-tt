@@ -784,6 +784,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/guest-claims/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's claims and how each ended. */
+        get: operations["me_guest_claims_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guest-invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open guest invitations to the signed-in player's verified address. */
+        get: operations["me_guest_invitations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guest-invitations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open guest invitations to the signed-in player's verified address. */
+        post: operations["me_guest_invitations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guest-invitations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open guest invitations to the signed-in player's verified address. */
+        post: operations["me_guest_invitations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/honours/": {
         parameters: {
             query?: never;
@@ -1794,6 +1862,126 @@ export interface paths {
         head?: never;
         /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
         patch: operations["organizations_drills_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guest-claims/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Claims of a club's guests, with their audit trail. A claim in `conflict` waits for staff. */
+        get: operations["organizations_guest_claims_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guest-claims/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Claims of a club's guests, with their audit trail. A claim in `conflict` waits for staff. */
+        post: operations["organizations_guest_claims_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guest-claims/{id}/retry/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Claims of a club's guests, with their audit trail. A claim in `conflict` waits for staff. */
+        post: operations["organizations_guest_claims_retry_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A club's guests: players its staff entered before they had an account. */
+        get: operations["organizations_guests_list"];
+        put?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        post: operations["organizations_guests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        patch: operations["organizations_guests_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/invite/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        post: operations["organizations_guests_invite_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/revoke-invitation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        post: operations["organizations_guests_revoke_invitation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/invitations/": {
@@ -4227,21 +4415,6 @@ export interface components {
             readonly received_at: string;
         };
         /**
-         * @description * `published` - Published
-         *     * `approval_requested` - Approval Requested
-         *     * `approval_rejected` - Approval Rejected
-         *     * `updated` - Updated
-         *     * `started` - Started
-         *     * `completed` - Completed
-         *     * `cancelled` - Cancelled
-         *     * `event_started` - Event Started
-         *     * `event_completed` - Event Completed
-         *     * `event_cancelled` - Event Cancelled
-         *     * `event_removed` - Event Removed
-         * @enum {string}
-         */
-        ActionEnum: "published" | "approval_requested" | "approval_rejected" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
-        /**
          * @description One part of a session's running order: a warm-up, a drill on the table, work off it, match play or
          *     the cool-down. A drill fills in the title when none is given.
          */
@@ -4706,6 +4879,16 @@ export interface components {
         Checked: {
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
+        };
+        ClaimEvent: {
+            action: components["schemas"]["GuestClaimActionEnum"];
+            readonly actor_name: string;
+            note: string;
+            /** Format: date-time */
+            readonly at: string;
+        };
+        ClaimNoteRequest: {
+            note: string;
         };
         ClubProfile: {
             /** Format: uuid */
@@ -5358,6 +5541,72 @@ export interface components {
             qualifiers: number;
             rows: components["schemas"]["StandingRow"][];
         };
+        /** @description A club's guest, for its staff. `id` is the player's id, the one entries and matches use. */
+        Guest: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            claimed_at: string | null;
+            readonly claimed_by_name: string;
+            readonly invitation: components["schemas"]["GuestInvitation"] | null;
+            /** @default 0 */
+            readonly entries: number;
+        };
+        /** @description A claim for staff, with its audit trail. */
+        GuestClaim: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly guest_id: string;
+            readonly guest_name: string;
+            readonly claimant_name: string;
+            /** Format: email */
+            readonly invited_email: string;
+            status: components["schemas"]["GuestClaimStatusEnum"];
+            readonly clashes: string[];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            resolved_at: string | null;
+            readonly events: components["schemas"]["ClaimEvent"][];
+        };
+        /**
+         * @description * `accepted` - Accepted
+         *     * `merged` - Merged
+         *     * `conflict` - Conflict
+         *     * `retried` - Retried
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        GuestClaimActionEnum: "accepted" | "merged" | "conflict" | "retried" | "rejected";
+        /**
+         * @description * `merged` - Merged
+         *     * `conflict` - Conflict
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        GuestClaimStatusEnum: "merged" | "conflict" | "rejected";
+        GuestInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: email */
+            email: string;
+            status: components["schemas"]["InvitationStatusEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        GuestInviteRequest: {
+            /** Format: email */
+            email: string;
+        };
+        GuestWriteRequest: {
+            display_name: string;
+        };
         /**
          * @description * `right` - Right
          *     * `left` - Left
@@ -5489,7 +5738,7 @@ export interface components {
         LifecycleEntry: {
             /** Format: uuid */
             readonly id: string;
-            readonly action: components["schemas"]["ActionEnum"];
+            readonly action: components["schemas"]["LifecycleEntryActionEnum"];
             readonly event_name: string;
             /** @default  */
             readonly actor_name: string;
@@ -5498,6 +5747,21 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        /**
+         * @description * `published` - Published
+         *     * `approval_requested` - Approval Requested
+         *     * `approval_rejected` - Approval Rejected
+         *     * `updated` - Updated
+         *     * `started` - Started
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         *     * `event_started` - Event Started
+         *     * `event_completed` - Event Completed
+         *     * `event_cancelled` - Event Cancelled
+         *     * `event_removed` - Event Removed
+         * @enum {string}
+         */
+        LifecycleEntryActionEnum: "published" | "approval_requested" | "approval_rejected" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
         /**
          * @description A team's players for each rubber of the tie, in the template's order: one id for a singles, two
          *     for a doubles.
@@ -5867,6 +6131,19 @@ export interface components {
             /** @default KES */
             currency: string;
         };
+        /** @description What came of accepting: merged, or waiting for the club to sort out a clash. */
+        MyClaim: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly guest_name: string;
+            readonly organization_name: string;
+            status: components["schemas"]["GuestClaimStatusEnum"];
+            readonly clashes: string[];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            resolved_at: string | null;
+        };
         /** @description One of the caller's own entries, with the event and tournament it is for. */
         MyEntry: {
             /** Format: uuid */
@@ -5892,6 +6169,18 @@ export interface components {
             readonly mine: boolean;
             readonly event: components["schemas"]["EntryEvent"];
             readonly tournament: components["schemas"]["EntryTournament"];
+        };
+        /** @description An invitation to the signed-in player: who they were entered as, and where. */
+        MyGuestInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly guest_name: string;
+            readonly organization_name: string;
+            readonly invited_by_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            expires_at: string;
         };
         /** @description The invitee's view: which organization, and who invited them (display name only). */
         MyInvitation: {
@@ -6171,6 +6460,36 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["Entry"][];
         };
+        PaginatedGuestClaimList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["GuestClaim"][];
+        };
+        PaginatedGuestList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Guest"][];
+        };
         PaginatedInvitationList: {
             /** @example 123 */
             count: number;
@@ -6246,6 +6565,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["Membership"][];
         };
+        PaginatedMyClaimList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyClaim"][];
+        };
         PaginatedMyEntryList: {
             /** @example 123 */
             count: number;
@@ -6260,6 +6594,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["MyEntry"][];
+        };
+        PaginatedMyGuestInvitationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyGuestInvitation"][];
         };
         PaginatedMyInvitationList: {
             /** @example 123 */
@@ -6471,6 +6820,9 @@ export interface components {
             tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
             /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
             tie_wins_needed?: number | null;
+        };
+        PatchedGuestWriteRequest: {
+            display_name?: string;
         };
         PatchedLiveStreamRequest: {
             /** Format: uuid */
@@ -9776,6 +10128,133 @@ export interface operations {
             };
         };
     };
+    me_guest_claims_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyClaimList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_guest_invitations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyGuestInvitationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_guest_invitations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaim"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_guest_invitations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_honours_list: {
         parameters: {
             query?: never;
@@ -12321,6 +12800,292 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guest_claims_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only these. */
+                status?: "conflict" | "merged" | "rejected";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGuestClaimList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guest_claims_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest claim. */
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestClaim"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guest_claims_retry_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest claim. */
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestClaim"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_list: {
+        parameters: {
+            query?: {
+                /** @description Only claimed (true) or unclaimed (false) guests. */
+                claimed?: boolean;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Part of the guest's name. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGuestList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedGuestWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_invite_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestInviteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_revoke_invitation_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
                 };
             };
             /** @description Error envelope */

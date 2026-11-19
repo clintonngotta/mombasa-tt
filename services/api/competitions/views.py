@@ -538,10 +538,13 @@ class EntryViewSet(viewsets.GenericViewSet):
             if not staff:
                 entries.ensure_registration_open(event)
             ids = asked.get("player_ids") or [request.user.id]
-            known = {
-                user.id: user
-                for user in User.objects.filter(pk__in=ids, is_active=True, email_verified_at__isnull=False)
-            }
+            # Verified players; and, for the host's staff, the host's own unclaimed guests (REQ-003).
+            enterable = Q(email_verified_at__isnull=False)
+            if staff:
+                enterable |= Q(
+                    guest__organization_id=tournament.organization_id, guest__claimed_by__isnull=True
+                )
+            known = {user.id: user for user in User.objects.filter(enterable, pk__in=ids, is_active=True)}
             if len(known) != len(ids):
                 raise ValidationError({"player_ids": "We don't know one of these players."})
             if not staff and request.user.id not in known:
