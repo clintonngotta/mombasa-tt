@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import { CoachNotes } from "@/components/coaching/CoachNotes"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { MatchStateChip, YouBadge } from "@/components/tournaments/MatchCard"
@@ -36,6 +37,7 @@ export function MatchPage() {
       {missing && <FormAlert>This match doesn't exist. The draw may have been published again since you opened it.</FormAlert>}
       {failed && !missing && <FormAlert>{errorMessage(failed, "We couldn't load this match.")}</FormAlert>}
       {t && event && m && m.b && <Details match={m} second={m.b} event={event} tournamentId={id} timeZone={t.timezone} />}
+      {m && (m.a.entry?.mine || m.b?.entry?.mine) && <CoachNotes kind="official" matchId={matchId} />}
       {t && event && m && !m.b && (
         <p className="rounded-xl border bg-card p-4">
           {m.a.entry ? `${m.a.entry.title} has a bye in the ${m.round_name.toLowerCase()}` : `This place in the ${m.round_name.toLowerCase()} is a bye`}: nothing is played and the entry

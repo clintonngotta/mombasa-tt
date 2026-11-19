@@ -1,7 +1,8 @@
 """Calendar commitments of personal training (REQ-027, TASK-043).
 
 A training session in a plan occupies the player's time; a checklist item doesn't. A session may not
-overlap the player's other sessions or a match they are scheduled to play (a published draw's match with a
+overlap the player's other sessions, a coaching session booked with or by them (REQ-047), or a match they
+are scheduled to play (a published draw's match with a
 planned time, lasting as long as the schedule expects it to). The check runs with the player's user row
 locked, so two sessions saved at the same moment can't both slip into the same hour.
 """
@@ -11,6 +12,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
+from coaching.models import Booking
 from competitions.models import DrawVersion, Match
 from competitions.scheduling import match_minutes
 from core.exceptions import ApiException
@@ -25,7 +27,9 @@ def lock_player(user) -> None:
     get_user_model().objects.select_for_update().filter(pk=user.pk).first()
 
 
-def conflicts(user, starts: datetime, ends: datetime, exclude: PlanItem | None = None) -> list[dict]:
+def conflicts(
+    user, starts: datetime, ends: datetime, exclude: PlanItem | None = None, exclude_booking=None
+) -> list[dict]:
     found = []
     sessions = PlanItem.objects.filter(
         plan__owner=user, kind=PlanItem.Kind.SESSION, starts_at__lt=ends, ends_at__gt=starts
@@ -35,6 +39,21 @@ def conflicts(user, starts: datetime, ends: datetime, exclude: PlanItem | None =
     for item in sessions:
         found.append(
             {"kind": "training", "title": item.title, "starts_at": item.starts_at, "ends_at": item.ends_at}
+        )
+    bookings = Booking.objects.filter(
+        Q(coach=user) | Q(trainee=user), status__in=Booking.HOLDING, starts_at__lt=ends, ends_at__gt=starts
+    ).select_related("coach", "trainee")
+    if exclude_booking is not None:
+        bookings = bookings.exclude(pk=exclude_booking.pk)
+    for booking in bookings:
+        other = booking.trainee if booking.coach_id == user.pk else booking.coach
+        found.append(
+            {
+                "kind": "booking",
+                "title": f"Coaching session with {other.display_name}",
+                "starts_at": booking.starts_at,
+                "ends_at": booking.ends_at,
+            }
         )
     plays = Q(entry_a__players__user=user, entry_a__players__live=True) | Q(
         entry_b__players__user=user, entry_b__players__live=True
@@ -65,13 +84,21 @@ def conflicts(user, starts: datetime, ends: datetime, exclude: PlanItem | None =
     return sorted(found, key=lambda c: c["starts_at"])
 
 
-def ensure_free(user, starts: datetime, ends: datetime, exclude: PlanItem | None = None) -> None:
+def ensure_free(
+    user,
+    starts: datetime,
+    ends: datetime,
+    exclude: PlanItem | None = None,
+    *,
+    exclude_booking=None,
+    message="You already have something on at that time.",
+) -> None:
     """409 with the clashing commitments when the player isn't free. Call with `lock_player` held."""
-    clashes = conflicts(user, starts, ends, exclude)
+    clashes = conflicts(user, starts, ends, exclude, exclude_booking)
     if clashes:
         raise ApiException(
             "calendar_conflict",
-            "You already have something on at that time.",
+            message,
             409,
             extra={
                 "conflicts": [

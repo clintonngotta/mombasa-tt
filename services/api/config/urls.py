@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView
 
+from coaching.urls import coach_urlpatterns
+from coaching.urls import me_urlpatterns as my_coaching
 from competitions.urls import me_urlpatterns as my_entries
 from competitions.urls import organization_urlpatterns as organization_tournaments
 from core import views as core_views
@@ -21,6 +23,8 @@ api_v1 = [
     path("me/", include(my_entries)),
     path("me/", include(my_scorecards)),
     path("me/", include("training.urls")),
+    path("me/", include(my_coaching)),
+    path("coaches/", include(coach_urlpatterns)),
     path("scorecards/", include("scoring.urls")),
     path("organizations/", include("organizations.urls")),
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
