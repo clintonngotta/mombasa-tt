@@ -211,7 +211,17 @@ The match page says "Scored by you with Quick Score · private to you · never r
 - The finder filters by place and by name.
 - Open now follows the organization's clock, not the server's or the viewer's, and a closure today shuts the branch whatever the hours say.
 
-Prices, door visits and takings come with TASK-102, and training slots with TASK-103.
+Training slots come with TASK-103.
+
+*Prices, door and takings built in TASK-102 (2026-11-19).* `tests/test_facility_visits.py` checks the following:
+- Prices are minor units with currency, and a bundle needs its sessions and days.
+- A cash day pass for a walk-in and an M-Pesa month pass for a player record the price and the reference, and M-Pesa without a reference is refused.
+- Reversal keeps the original with its reason, and a second reversal is refused.
+- A month pass covers later visits without collecting, a day pass covers only its day, an expired pass covers nothing, and a three-visit bundle refuses a fourth.
+- Takings for two branches reconcile per day, branch, method and pass with one reversal left out. Door staff without the finance permission get 403, and finance-only staff can't open the door screen.
+- A player sees only their own visits, never a walk-in name or a reference.
+
+The privacy matrix covers every new route, keeps walk-in names and references with the facility's staff, and records that the committee's template role sees finances.
 
 ### EVAL-045
 

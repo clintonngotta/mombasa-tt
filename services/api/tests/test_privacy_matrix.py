@@ -45,7 +45,7 @@ from competitions.models import (
     ScheduleVersion,
     Tournament,
 )
-from facilities.models import OpeningHour, Table, Venue
+from facilities.models import OpeningHour, Pass, Table, Venue, Visit
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
@@ -125,6 +125,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # Training (REQ-026, REQ-027): equipment, personal drills and plans are the player's own.
     "my-equipment": {"get": OWNER, "put": OWNER},
     "my-training-sessions": {"get": OWNER},
+    "my-facility-visit-list": {"get": OWNER},
     # Club sessions (REQ-027): a member answers their own invitations; training staff run the rest.
     "my-session-invitation-list": {"get": OWNER},
     "my-session-invitation-accept": {"post": OWNER},
@@ -279,6 +280,12 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-venue-tables": {"post": STAFF},
     "organization-venue-table": {"patch": STAFF},
     "organization-venue-hours": {"put": STAFF},
+    "organization-venue-passes": {"get": STAFF, "post": STAFF},
+    "organization-venue-pass": {"patch": STAFF},
+    "organization-venue-visits": {"get": STAFF, "post": STAFF},
+    "organization-venue-visit-active-pass": {"get": STAFF},
+    "organization-venue-visit-reverse": {"post": STAFF},
+    "organization-facility-takings": {"get": STAFF},  # finances.view, see test_facility_visits.py
     # Tournaments: published ones are for every signed-in player (signed-out pages come with TASK-035);
     # drafts and every change are for the host's competition staff.
     "organization-tournaments": {"get": STAFF, "post": STAFF},
@@ -467,6 +474,14 @@ BODIES = {
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
+    ("organization-venue-passes", "post"): {"name": "Week pass", "kind": "week", "amount_minor": 90000},
+    ("organization-venue-pass", "patch"): {"amount_minor": 25000},
+    ("organization-venue-visits", "post"): lambda: {
+        "pass_id": str(Pass.objects.get(name="Day pass").id),
+        "walk_in_name": "Door visitor",
+        "method": "cash",
+    },
+    ("organization-venue-visit-reverse", "post"): {"reason": "Recorded by mistake"},
     ("organization-venue-hours", "put"): {
         "hours": [{"weekday": 0, "opens": "08:00", "closes": "20:00"}],
         "closures": [],
@@ -728,6 +743,32 @@ class World:
         self.table = Table.objects.create(venue=self.venue, label="Table 1")
         Table.objects.create(venue=self.venue, label="MARK-TABLE-OFF", position=1, active=False)
         Venue.objects.create(organization=self.coast, name="MARK-VENUE-OFF", town="Mombasa", active=False)
+        # Door visits (REQ-044): a walk-in whose name stays with the facility's staff, and Baraka's own.
+        self.day_pass = Pass.objects.create(venue=self.venue, name="Day pass", kind="day", amount_minor=20000)
+        today = timezone.localdate()
+        self.walk_in = Visit.objects.create(
+            venue=self.venue,
+            pass_sold=self.day_pass,
+            walk_in_name="MARK-WALK-IN",
+            amount_minor=20000,
+            currency="KES",
+            method="mpesa",
+            reference="MARK-VISIT-REF",
+            visited_on=today,
+            valid_until=today,
+            recorded_by=self.amina,
+        )
+        Visit.objects.create(
+            venue=self.venue,
+            pass_sold=self.day_pass,
+            player=self.baraka,
+            amount_minor=20000,
+            currency="KES",
+            method="cash",
+            visited_on=today,
+            valid_until=today,
+            recorded_by=self.amina,
+        )
 
         # One tournament per state, so every staff action has something it would be valid on.
         def tournament(name, status, event_status=Event.Status.SCHEDULED):
@@ -1075,6 +1116,8 @@ class World:
             "organization-venue-tables": self.venue.id,
             "organization-venue-table": self.venue.id,
             "organization-venue-hours": self.venue.id,
+            "organization-venue-pass": self.day_pass.id,
+            "organization-venue-visit-reverse": self.walk_in.id,
             "facility-detail": self.venue.id,
             "tournament-detail": self.deletable.id,
             "tournament-publish": self.spare_draft.id,
@@ -1129,6 +1172,8 @@ class World:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
             found["pk"] = pk[name]
+        if "venue_pk" in names:
+            found["venue_pk"] = self.venue.id
         if "session_pk" in names:
             found["session_pk"] = self.club_session.id
         if "plan_pk" in names:
@@ -1221,6 +1266,11 @@ class World:
             "committee_values": sorted(CommitteeFieldValue.objects.values_list("field__label", "value")),
             "venues": sorted(Venue.objects.values_list("name", "town", "active", "profile")),
             "opening_hours": sorted(OpeningHour.objects.values_list("venue__name", "weekday", "opens")),
+            "passes": sorted(Pass.objects.values_list("name", "amount_minor", "active")),
+            "visits": sorted(
+                (str(v), w, r is None)
+                for v, w, r in Visit.objects.values_list("id", "walk_in_name", "reversed_at")
+            ),
             "equipment": sorted(Equipment.objects.values_list("user__email", "blade")),
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
@@ -1300,13 +1350,18 @@ def test_signed_out_callers_reach_only_public_routes(world):
     assert world.state() == before
 
 
+# Viewers who hold a staff route's permission through their role, so the refusal test skips them there.
+# Grace sits on the committee, whose template role sees the finances.
+ALSO_STAFF = {"organization-facility-takings": {"grace"}}
+
+
 @pytest.mark.parametrize("who", ["baraka", "faith", "chiku", "daudi", "grace", "hamisi", "operator"])
 def test_staff_routes_refuse_members_other_clubs_and_outsiders(world, who):
     before = world.state()
     client = logged_in(world.viewers[who])
     for name, methods, names in ROUTES:
         for method in methods:
-            if ACCESS[name][method] != STAFF:
+            if ACCESS[name][method] != STAFF or who in ALSO_STAFF.get(name, ()):
                 continue
             response = call(client, method, name, world.url(name, names))
             assert response.status_code in {403, 404}, f"{method.upper()} {name}: {response.status_code}"
@@ -1468,7 +1523,9 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-OPPONENT": {"baraka"},
         "MARK-BARAKA-NOTE": {"baraka"},
         "MARK-BARAKA-OBSERVATION": {"baraka"},
-        "MARK-SESSION-NOTE": {"amina", "baraka"},  # the club's training staff and the invited member
+        "MARK-SESSION-NOTE": {"amina", "baraka"},
+        "MARK-WALK-IN": {"amina"},  # the facility's staff only
+        "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},
         "MARK-FAITH-BIO": {"faith"},  # unpublished

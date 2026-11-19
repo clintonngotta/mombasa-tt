@@ -46,4 +46,6 @@ def is_open(venue: Venue, now: datetime | None = None) -> bool:
 
 
 def with_profile(queryset):
-    return queryset.select_related("organization").prefetch_related("opening_hours", "closures", "tables")
+    return queryset.select_related("organization").prefetch_related(
+        "opening_hours", "closures", "tables", "passes"
+    )

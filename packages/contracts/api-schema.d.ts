@@ -808,6 +808,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/facility-visits/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's own visits and passes at facilities, newest first. */
+        get: operations["me_facility_visits_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/goals/": {
         parameters: {
             query?: never;
@@ -2103,6 +2120,23 @@ export interface paths {
         patch: operations["organizations_drills_partial_update"];
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/facility-takings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What the facility's branches collected in a month (REQ-044), for those who see its finances. */
+        get: operations["organizations_facility_takings_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/guest-claims/": {
         parameters: {
             query?: never;
@@ -2995,6 +3029,93 @@ export interface paths {
          *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
          */
         patch: operations["organizations_venues_tables_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/passes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A branch's prices, for its facility staff. Players see the ones in use on the branch profile. */
+        get: operations["organizations_venues_passes_list"];
+        put?: never;
+        /** @description A branch's prices, for its facility staff. Players see the ones in use on the branch profile. */
+        post: operations["organizations_venues_passes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/passes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description A branch's prices, for its facility staff. Players see the ones in use on the branch profile. */
+        patch: operations["organizations_venues_passes_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The door screen of a branch: the day's visits, recording one, and reversing a mistake. */
+        get: operations["organizations_venues_visits_list"];
+        put?: never;
+        /** @description The door screen of a branch: the day's visits, recording one, and reversing a mistake. */
+        post: operations["organizations_venues_visits_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/{id}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reverse a visit recorded by mistake. The original stays, marked reversed with the reason. */
+        post: operations["organizations_venues_visits_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/active-pass/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The pass this player holds here that covers today, if any: shown at the door. */
+        get: operations["organizations_venues_visits_active_pass_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{id}/": {
@@ -5832,6 +5953,7 @@ export interface components {
             readonly opening_hours: components["schemas"]["OpeningHour"][];
             readonly closures: components["schemas"]["Closure"][];
             readonly closed_today: components["schemas"]["Closure"] | null;
+            readonly passes: components["schemas"]["Pass"][];
         };
         /**
          * @description * `W` - W
@@ -6509,6 +6631,14 @@ export interface components {
          * @enum {string}
          */
         MembershipStatusEnum: "active" | "left";
+        /**
+         * @description * `cash` - Cash
+         *     * `mpesa` - M-Pesa
+         *     * `other` - Other
+         *     * `pass` - Covered by a pass
+         * @enum {string}
+         */
+        MethodEnum: "cash" | "mpesa" | "other" | "pass";
         MinutesRequest: {
             minutes: string;
         };
@@ -6650,6 +6780,28 @@ export interface components {
             readonly responded_at: string | null;
             readonly attended: boolean | null;
             readonly session: components["schemas"]["MySession"];
+        };
+        /** @description The player's own visit or pass at a facility: never anybody else's, never a walk-in name. */
+        MyVisit: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly facility_name: string;
+            /** Format: uuid */
+            readonly venue_id: string;
+            readonly venue_name: string;
+            readonly pass_name: string;
+            readonly pass_kind: string;
+            readonly sessions: number | null;
+            readonly benefits: string[];
+            readonly amount_minor: number;
+            readonly currency: string;
+            readonly method: components["schemas"]["MethodEnum"];
+            /** Format: date */
+            readonly visited_on: string;
+            /** Format: date */
+            readonly valid_until: string;
+            readonly on_pass: boolean;
+            readonly reversed: boolean;
         };
         NominateRequest: {
             /** Format: uuid */
@@ -7155,6 +7307,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["MySessionInvitation"][];
         };
+        PaginatedMyVisitList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyVisit"][];
+        };
         PaginatedOrganizationList: {
             /** @example 123 */
             count: number;
@@ -7229,6 +7396,38 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["TrainingPlan"][];
+        };
+        /** @description A price at a branch (REQ-044): amounts are integer minor units with their currency. */
+        Pass: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            kind: components["schemas"]["PassKindEnum"];
+            amount_minor: number;
+            currency: string;
+            sessions: number | null;
+            valid_days: number | null;
+            benefits: string[];
+            active: boolean;
+        };
+        /**
+         * @description * `day` - Day pass
+         *     * `week` - Week pass
+         *     * `month` - Month pass
+         *     * `sessions` - Sessions bundle
+         * @enum {string}
+         */
+        PassKindEnum: "day" | "week" | "month" | "sessions";
+        /** @description A price at a branch (REQ-044): amounts are integer minor units with their currency. */
+        PassRequest: {
+            name: string;
+            kind: components["schemas"]["PassKindEnum"];
+            amount_minor: number;
+            currency?: string;
+            sessions?: number | null;
+            valid_days?: number | null;
+            benefits?: string[];
+            active?: boolean;
         };
         PasswordResetConfirmRequest: {
             uid: string;
@@ -7397,6 +7596,17 @@ export interface components {
             /** Format: double */
             longitude?: number | null;
             description?: string;
+        };
+        /** @description A price at a branch (REQ-044): amounts are integer minor units with their currency. */
+        PatchedPassRequest: {
+            name?: string;
+            kind?: components["schemas"]["PassKindEnum"];
+            amount_minor?: number;
+            currency?: string;
+            sessions?: number | null;
+            valid_days?: number | null;
+            benefits?: string[];
+            active?: boolean;
         };
         PatchedPersonalMatchRequest: {
             /** Format: date */
@@ -8028,6 +8238,15 @@ export interface components {
             /** @description It doesn't fit in the tournament's days. */
             beyond_last_day: boolean;
         };
+        RecordVisitRequest: {
+            /** Format: uuid */
+            pass_id?: string | null;
+            /** Format: uuid */
+            player_id?: string | null;
+            walk_in_name?: string;
+            method: components["schemas"]["MethodEnum"];
+            reference?: string;
+        };
         RefusedEvent: {
             sequence: number;
             /** @description A scoring engine code, `sequence_gap`, `sequence_conflict` or `revision_conflict`. */
@@ -8176,6 +8395,9 @@ export interface components {
             games?: number[][];
             /** Format: uuid */
             rubber_id?: string | null;
+        };
+        ReverseVisitRequest: {
+            reason: string;
         };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         Role: {
@@ -8751,6 +8973,52 @@ export interface components {
             /** @default false */
             take_over: boolean;
         };
+        /** @description A month's takings, reversed visits left out; each total is per currency. */
+        Takings: {
+            /** @description YYYY-MM, in the organization's timezone */
+            month: string;
+            total: components["schemas"]["TakingsRow"][];
+            by_day: components["schemas"]["TakingsDay"][];
+            by_branch: components["schemas"]["TakingsBranch"][];
+            by_method: components["schemas"]["TakingsMethod"][];
+            by_pass: components["schemas"]["TakingsPass"][];
+            /** @description Visits reversed that month, not counted above */
+            reversed: number;
+        };
+        TakingsBranch: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            /** Format: uuid */
+            venue_id: string;
+            venue_name: string;
+        };
+        TakingsDay: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            /** Format: date */
+            day: string;
+        };
+        TakingsMethod: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            method: components["schemas"]["MethodEnum"];
+        };
+        TakingsPass: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            /** Format: uuid */
+            pass_id: string;
+            pass_name: string;
+        };
+        TakingsRow: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+        };
         /** @description A team tie (REQ-011): its format, each team's lineup and, once both are in, its rubbers. */
         Tie: {
             wins_needed: number;
@@ -9095,6 +9363,32 @@ export interface components {
             table: components["schemas"]["ScheduleTable"] | null;
             /** Format: date-time */
             scheduled_at: string | null;
+        };
+        /** @description A door visit as the facility's staff see it, walk-in names included. */
+        Visit: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly pass_name: string;
+            readonly pass_kind: string;
+            /** Format: uuid */
+            readonly player_id: string | null;
+            readonly player_name: string;
+            readonly walk_in_name: string;
+            readonly amount_minor: number;
+            readonly currency: string;
+            readonly method: components["schemas"]["MethodEnum"];
+            readonly reference: string;
+            /** Format: date */
+            readonly visited_on: string;
+            /** Format: date */
+            readonly valid_until: string;
+            readonly recorded_by_name: string;
+            /** Format: date-time */
+            readonly recorded_at: string;
+            readonly reversed: boolean;
+            /** Format: date-time */
+            readonly reversed_at: string | null;
+            readonly reversal_reason: string;
         };
         /**
          * @description * `left` - left
@@ -10806,6 +11100,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_facility_visits_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyVisitList"];
                 };
             };
             /** @description Error envelope */
@@ -14074,6 +14401,41 @@ export interface operations {
             };
         };
     };
+    organizations_facility_takings_list: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM; this month by default */
+                month?: string;
+                /** @description Only this branch */
+                venue?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Takings"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_guest_claims_list: {
         parameters: {
             query?: {
@@ -16146,6 +16508,247 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_passes_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_passes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PassRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_passes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPassRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_list: {
+        parameters: {
+            query?: {
+                /** @description The branch's local day; today by default */
+                day?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordVisitRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReverseVisitRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_active_pass_retrieve: {
+        parameters: {
+            query?: {
+                /** @description The player's id */
+                player?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"];
                 };
             };
             /** @description Error envelope */
