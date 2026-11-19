@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
+import { PlaceFinderFields } from "@/components/forms/PlaceFinderFields"
+import { placeFinderBody, placeFinderErrors, placeFinderFrom } from "@/lib/place"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
 import { can, useActiveMembership } from "@/lib/clubs"
@@ -54,11 +56,13 @@ function VenueForm({ orgId, venue }: { orgId: string; venue?: Venue }) {
   const [name, setName] = useState(venue?.name ?? "")
   const [town, setTown] = useState(venue?.town ?? "")
   const [address, setAddress] = useState(venue?.address ?? "")
+  const [finder, setFinder] = useState(() => placeFinderFrom(venue))
+  const [submitted, setSubmitted] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
 
   const save = useMutation({
     mutationFn: () => {
-      const body = { name: name.trim(), town: town.trim(), address: address.trim() }
+      const body = { name: name.trim(), town: town.trim(), address: address.trim(), ...placeFinderBody(finder) }
       return venue ? updateVenue(orgId, venue.id, body) : createVenue(orgId, body)
     },
     onSuccess: (fresh) => {
@@ -72,10 +76,12 @@ function VenueForm({ orgId, venue }: { orgId: string; venue?: Venue }) {
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     setJustSaved(false)
-    save.mutate()
+    setSubmitted(true)
+    if (Object.keys(placeFinderErrors(finder)).length === 0) save.mutate()
   }
 
-  const errors = save.error instanceof ApiError ? save.error.fieldErrors() : {}
+  const serverErrors = save.error instanceof ApiError ? save.error.fieldErrors() : {}
+  const errors: Record<string, string | undefined> = submitted ? { ...serverErrors, ...placeFinderErrors(finder) } : serverErrors
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
@@ -93,9 +99,10 @@ function VenueForm({ orgId, venue }: { orgId: string; venue?: Venue }) {
         value={address}
         onChange={(e) => setAddress(e.target.value)}
         error={errors.address}
-        hint="Shown with tournaments held here so players can find it."
+        hint="Street or building. Shown with tournaments held here so players can find it."
       />
-      {save.isError && Object.keys(errors).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <PlaceFinderFields value={finder} onChange={setFinder} errors={errors} place="venue" />
+      {save.isError && Object.keys(serverErrors).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
       {setActive.isError && <FormAlert>{errorMessage(setActive.error)}</FormAlert>}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="lg" disabled={save.isPending}>

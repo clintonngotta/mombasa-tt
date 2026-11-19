@@ -5,6 +5,8 @@ import { CalendarClock, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
+import { PlaceDirections, PlaceFinderFields } from "@/components/forms/PlaceFinderFields"
+import { placeFinderBody, placeFinderErrors, placeFinderFrom } from "@/lib/place"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
 import { RegionFeed } from "@/components/region/RegionFeed"
 import { ApiError, errorMessage } from "@/lib/api"
@@ -139,6 +141,7 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           {membership.authority === "platform" ? "Platform super admin" : membership.authority === "country" ? "Country official" : membership.authority === "regional" ? "Regional official" : roleNames(membership.roles)}
         </span>
       </OrganizationCard>
+      <PlaceDirections place={membership.organization} className="-mt-2 px-1" />
       {manageRoles && <ClubLocation organization={membership.organization} />}
       {(manageMembers || manageRoles || manageCompetitions || manageFacilities) && (
         <nav aria-label="Club administration" className="flex flex-col gap-2">
@@ -201,9 +204,10 @@ function ClubLocation({ organization }: { organization: Organization }) {
   const [location, setLocation] = useState({
     country: organization.country, region: organization.region, city: organization.town,
   })
+  const [finder, setFinder] = useState(() => placeFinderFrom(organization))
   const save = useMutation({
     mutationFn: () => updateOrganizationLocation(organization.id, {
-      country: location.country, region: location.region, town: location.city,
+      country: location.country, region: location.region, town: location.city, ...placeFinderBody(finder),
     }),
     onSuccess: async () => {
       await Promise.all([
@@ -213,13 +217,14 @@ function ClubLocation({ organization }: { organization: Organization }) {
       setEditing(false)
     },
   })
-  const missing = locationErrors(location)
+  const missing = { ...locationErrors(location), ...placeFinderErrors(finder) }
   const fields = save.error instanceof ApiError ? save.error.fieldErrors() : {}
 
   if (!editing) {
     return (
       <Button type="button" variant="outline" className="self-start" onClick={() => {
         setLocation({ country: organization.country, region: organization.region, city: organization.town })
+        setFinder(placeFinderFrom(organization))
         setSubmitted(false)
         save.reset()
         setEditing(true)
@@ -236,6 +241,7 @@ function ClubLocation({ organization }: { organization: Organization }) {
       if (Object.keys(missing).length === 0) save.mutate()
     }}>
       <LocationFields value={location} onChange={setLocation} errors={submitted ? { ...fields, ...missing } : fields} cityLimit={80} />
+      <PlaceFinderFields value={finder} onChange={setFinder} errors={submitted ? { ...fields, ...missing } : fields} place={organization.kind === "facility" ? "facility" : "club"} />
       {save.isError && Object.keys(fields).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={save.isPending}>Save location</Button>

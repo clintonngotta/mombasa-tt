@@ -5002,6 +5002,11 @@ export interface components {
             town: string;
             country: string;
             region: string;
+            directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
             kind: components["schemas"]["KindEnum"];
             timezone: string;
         };
@@ -5021,6 +5026,11 @@ export interface components {
             town: string;
             country?: string;
             region?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
             kind?: components["schemas"]["KindEnum"];
             timezone?: string;
         };
@@ -5456,6 +5466,11 @@ export interface components {
             country?: string;
             region?: string;
             town?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
         };
         PatchedPersonalMatchRequest: {
             /** Format: date */
@@ -5562,6 +5577,11 @@ export interface components {
             name?: string;
             town?: string;
             address?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
             active?: boolean;
         };
         /** @description One shot of a drill on the virtual table; see Drill.pattern. */
@@ -6850,6 +6870,11 @@ export interface components {
             name: string;
             town: string;
             address: string;
+            directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
             active: boolean;
             readonly tables: components["schemas"]["Table"][];
         };
@@ -6858,15 +6883,32 @@ export interface components {
             name: string;
             town: string;
             address?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
             active?: boolean;
         };
-        /** @description What anyone who can see a tournament sees of its venue. */
+        /** @description What anyone who can see a tournament sees of its venue, including how to find it. */
         VenueSummary: {
             /** Format: uuid */
             readonly id: string;
             readonly name: string;
             readonly town: string;
             readonly address: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+        };
+        /** @description What anyone who can see a tournament sees of its venue, including how to find it. */
+        VenueSummaryRequest: {
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
         };
         VersionSlot: {
             /** Format: uuid */

@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('competitions', '0016_schedule_versions'),
-        ('organizations', '0010_alter_organization_kind_and_more'),
+        ('organizations', '0011_regional_body'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

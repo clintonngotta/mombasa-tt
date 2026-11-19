@@ -1278,6 +1278,9 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "town",
         "country",
         "region",
+        "directions",
+        "latitude",
+        "longitude",
         "kind",
         "timezone",
     }
@@ -1304,7 +1307,8 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "events",
     }
     assert set(cup["organization"]) == {"id", "name", "town", "country", "region"}
-    assert set(cup["venue"]) == {"id", "name", "town", "address"}
+    # A place's directions and coordinates are public, like its address: they help players find it.
+    assert set(cup["venue"]) == {"id", "name", "town", "address", "directions", "latitude", "longitude"}
 
     staff = logged_in(world.amina)
     base = f"/api/v1/organizations/{world.coast.id}"

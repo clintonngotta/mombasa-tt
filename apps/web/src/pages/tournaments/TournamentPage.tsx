@@ -6,6 +6,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { SponsorsPanel } from "@/components/region/SponsorsPanel"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
+import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
@@ -82,6 +83,7 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
         </Fact>
         <Fact icon={<MapPin aria-hidden className="size-5" />} label="Venue">
           {t.venue ? [t.venue.name, t.venue.address, t.venue.town].filter(Boolean).join(", ") : "Venue to be announced"}
+          {t.venue && <PlaceDirections place={t.venue} className="mt-1 text-muted-foreground" />}
         </Fact>
         <Fact icon={<Users aria-hidden className="size-5" />} label="Host">
           {t.organization.name}, {t.organization.town}

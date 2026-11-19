@@ -1,7 +1,13 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from core.geography import CountryField, validate_location
+from core.geography import (
+    CountryField,
+    coordinate_field,
+    directions_field,
+    validate_coordinates,
+    validate_location,
+)
 from core.timezones import validate_timezone
 
 from .access import membership_permissions
@@ -15,10 +21,14 @@ class OrganizationSerializer(serializers.ModelSerializer):
     town = serializers.CharField(max_length=80, trim_whitespace=True)
     timezone = serializers.CharField(max_length=64, required=False, validators=[validate_timezone])
     country = CountryField(max_length=2, required=False, allow_blank=True)
+    directions = directions_field()
+    latitude = coordinate_field(90)
+    longitude = coordinate_field(180)
 
     class Meta:
         model = Organization
-        fields = ["id", "name", "town", "country", "region", "kind", "timezone"]
+        fields = ["id", "name", "town", "country", "region", "directions", "latitude", "longitude"]
+        fields += ["kind", "timezone"]
 
     def validate_kind(self, value):
         """A regional body is set up by its region's official (POST /regional-bodies/), never by picking
@@ -32,6 +42,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         validate_location(attrs, self.instance, city_field="town", legacy_town=True)
+        validate_coordinates(attrs, self.instance)
         if self.instance and self.instance.is_body:
             for name in ("country", "region"):
                 if name in attrs and attrs[name] != getattr(self.instance, name):
@@ -41,14 +52,18 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 class OrganizationLocationSerializer(serializers.ModelSerializer):
     country = CountryField(max_length=2)
+    directions = directions_field()
+    latitude = coordinate_field(90)
+    longitude = coordinate_field(180)
 
     class Meta:
         model = Organization
-        fields = ["country", "region", "town"]
+        fields = ["country", "region", "town", "directions", "latitude", "longitude"]
         extra_kwargs = {"region": {"allow_blank": False, "required": True}}
 
     def validate(self, attrs):
         validate_location(attrs, self.instance, city_field="town")
+        validate_coordinates(attrs, self.instance)
         return attrs
 
 

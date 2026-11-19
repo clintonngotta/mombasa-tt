@@ -30,6 +30,10 @@ class Organization(models.Model):
     town = models.CharField(max_length=80)
     country = models.CharField(max_length=2, blank=True)
     region = models.CharField(max_length=100, blank=True)
+    # How to find it on the ground: the closest landmark and the way from the main road or stage.
+    directions = models.CharField(max_length=500, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.CLUB)
     # Dates of the organization's tournaments and activities are entered and shown in this timezone.
     timezone = models.CharField(max_length=64, default=DEFAULT_TIMEZONE)
@@ -50,6 +54,11 @@ class Organization(models.Model):
             models.CheckConstraint(
                 condition=~models.Q(kind="regional_body") | (~models.Q(country="") & ~models.Q(region="")),
                 name="regional_body_has_region",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(latitude__isnull=True, longitude__isnull=True)
+                | models.Q(latitude__gte=-90, latitude__lte=90, longitude__gte=-180, longitude__lte=180),
+                name="organization_coordinates_valid",
             ),
         ]
 
