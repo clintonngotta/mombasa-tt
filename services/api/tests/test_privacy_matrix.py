@@ -23,6 +23,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from accounts.models import User
+from activities.models import Activity, Rsvp
 from attachments.models import Attachment
 from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
 from competitions import drawing, ties
@@ -218,6 +219,17 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-training-plan-recommendations": {"get": STAFF},
     "organization-training-plan-items": {"post": STAFF},
     "organization-training-plan-item": {"patch": STAFF, "delete": STAFF},
+    # Club activities (REQ-039): the list shows anyone signed in the public ones only; the rest is for
+    # the audience, and the activities officer runs them. The schedule is for members.
+    "organization-activities": {"get": SIGNED_IN, "post": STAFF},
+    "organization-activity": {"get": MEMBER, "patch": STAFF},
+    "organization-activity-publish": {"post": STAFF},
+    "organization-activity-cancel": {"post": STAFF},
+    "organization-activity-rsvp": {"post": MEMBER},
+    "organization-activity-attendees": {"get": MEMBER},
+    "organization-activity-invitees": {"get": STAFF},
+    "organization-schedule": {"get": MEMBER},
+    "organization-schedule-ics": {"get": MEMBER},
     "organization-club-sessions": {"get": STAFF, "post": STAFF},
     "organization-club-session": {"get": STAFF, "patch": STAFF},
     "organization-club-session-cancel": {"post": STAFF},
@@ -460,6 +472,15 @@ BODIES = {
         "ends_at": (timezone.now() + timedelta(days=5, hours=2)).replace(microsecond=0).isoformat(),
     },
     ("organization-club-session", "patch"): {"title": "Renamed session"},
+    ("organization-activities", "post"): lambda: {
+        "title": "Fun day",
+        "kind": "fun_day",
+        "starts_at": (timezone.now() + timedelta(days=6)).isoformat(),
+        "ends_at": (timezone.now() + timedelta(days=6, hours=4)).isoformat(),
+    },
+    ("organization-activity", "patch"): {"place": "Moved to the beach"},
+    ("organization-activity-cancel", "post"): {"reason": "Rain"},
+    ("organization-activity-rsvp", "post"): {"answer": "maybe"},
     ("organization-club-session-invitations", "post"): lambda: {
         "user_ids": [
             str(
@@ -699,6 +720,30 @@ class World:
         self.club_session.tables.set([room_table])
         self.session_invitation = SessionInvitation.objects.create(
             session=self.club_session, user=self.baraka
+        )
+        # Club activities: a published members' night, a draft, and one to cancel.
+        later = timezone.now() + timedelta(days=4)
+        self.activity = Activity.objects.create(
+            organization=self.coast,
+            title="Members night",
+            description="MARK-ACTIVITY-PRIVATE",
+            starts_at=later,
+            ends_at=later + timedelta(hours=3),
+            status=Activity.Status.PUBLISHED,
+        )
+        self.activity_draft = Activity.objects.create(
+            organization=self.coast,
+            title="Draft night",
+            description="MARK-ACTIVITY-DRAFT",
+            starts_at=later,
+            ends_at=later + timedelta(hours=3),
+        )
+        self.activity_to_cancel = Activity.objects.create(
+            organization=self.coast,
+            title="To cancel",
+            starts_at=later,
+            ends_at=later + timedelta(hours=3),
+            status=Activity.Status.PUBLISHED,
         )
         self.session_to_cancel = ClubSession.objects.create(
             organization=self.coast,
@@ -1160,6 +1205,12 @@ class World:
             "player-ratings": self.baraka.id,
             "tournament-schedule-session": self.session.id,
             "organization-club-session": self.club_session.id,
+            "organization-activity": self.activity.id,
+            "organization-activity-publish": self.activity_draft.id,
+            "organization-activity-cancel": self.activity_to_cancel.id,
+            "organization-activity-rsvp": self.activity.id,
+            "organization-activity-attendees": self.activity.id,
+            "organization-activity-invitees": self.activity.id,
             "organization-club-session-cancel": self.session_to_cancel.id,
             "organization-club-session-invitation": self.session_invitation.id,
             "my-session-invitation-accept": self.session_invitation.id,
@@ -1274,6 +1325,8 @@ class World:
             "equipment": sorted(Equipment.objects.values_list("user__email", "blade")),
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
+            "activities": sorted(Activity.objects.values_list("title", "status", "place")),
+            "rsvps": sorted(Rsvp.objects.values_list("activity__title", "user_id", "answer")),
             "club_sessions": sorted(ClubSession.objects.values_list("title", "status", "notes")),
             "session_invitations": sorted(
                 SessionInvitation.objects.values_list("session__title", "user_id", "status", "attended")
@@ -1352,7 +1405,20 @@ def test_signed_out_callers_reach_only_public_routes(world):
 
 # Viewers who hold a staff route's permission through their role, so the refusal test skips them there.
 # Grace sits on the committee, whose template role sees the finances.
-ALSO_STAFF = {"organization-facility-takings": {"grace"}}
+# The committee's template role also runs club activities.
+ALSO_STAFF = {
+    "organization-facility-takings": {"grace"},
+    **{
+        name: {"grace"}
+        for name in (
+            "organization-activities",
+            "organization-activity",
+            "organization-activity-publish",
+            "organization-activity-cancel",
+            "organization-activity-invitees",
+        )
+    },
+}
 
 
 @pytest.mark.parametrize("who", ["baraka", "faith", "chiku", "daudi", "grace", "hamisi", "operator"])
@@ -1524,6 +1590,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-NOTE": {"baraka"},
         "MARK-BARAKA-OBSERVATION": {"baraka"},
         "MARK-SESSION-NOTE": {"amina", "baraka"},
+        "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
+        "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
         "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member
         str(world.baraka_avatar.id): {"baraka"},

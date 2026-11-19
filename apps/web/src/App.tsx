@@ -27,6 +27,9 @@ import { FacilityPage } from "@/pages/facilities/FacilityPage"
 import { DoorPage } from "@/pages/club/DoorPage"
 import { TakingsPage } from "@/pages/club/TakingsPage"
 import { MyVisitsPage } from "@/pages/profile/MyVisitsPage"
+import { ActivitiesPage } from "@/pages/club/ActivitiesPage"
+import { ActivityPage } from "@/pages/club/ActivityPage"
+import { ClubSchedulePage } from "@/pages/club/ClubSchedulePage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
@@ -147,6 +150,9 @@ function App() {
               <Route path="/club/guests" element={<GuestsPage />} />
               <Route path="/club/sessions" element={<ClubSessionsPage />} />
               <Route path="/club/sessions/:id" element={<ClubSessionPage />} />
+              <Route path="/club/activities" element={<ActivitiesPage />} />
+              <Route path="/club/schedule" element={<ClubSchedulePage />} />
+              <Route path="/activities/:orgId/:id" element={<ActivityPage />} />
               <Route path="/facilities" element={<FindFacilityPage />} />
               <Route path="/facilities/:id" element={<FacilityPage />} />
               <Route path="/club/committee" element={<CommitteePage />} />

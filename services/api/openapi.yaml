@@ -3568,6 +3568,362 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/:
+    get:
+      operationId: organizations_activities_list
+      description: |-
+        A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+        of the audience see them once published and answer.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedClubActivityList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_activities_create
+      description: |-
+        A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+        of the audience see them once published and answer.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClubActivityRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/:
+    get:
+      operationId: organizations_activities_retrieve
+      description: |-
+        A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+        of the audience see them once published and answer.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_activities_partial_update
+      description: |-
+        A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+        of the audience see them once published and answer.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClubActivityRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/attendees/:
+    get:
+      operationId: organizations_activities_attendees_list
+      description: Who is going or might, by display name, for the activity's audience
+        and its staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAttendeeList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/cancel/:
+    post:
+      operationId: organizations_activities_cancel_create
+      description: Cancel with a reason. The record stays, with the answers it had.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelActivityRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/invitees/:
+    get:
+      operationId: organizations_activities_invitees_retrieve
+      description: Who a selected-members activity is for, for its staff only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityInvitees'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/publish/:
+    post:
+      operationId: organizations_activities_publish_create
+      description: 'Publish a draft: the audience sees it and can answer.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/rsvp/:
+    post:
+      operationId: organizations_activities_rsvp_create
+      description: Answer going, maybe or not going. Going beyond the capacity puts
+        you on the waiting list.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RsvpRequestRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/admin/:
     get:
       operationId: organizations_admin_retrieve
@@ -6589,6 +6945,99 @@ paths:
       responses:
         '204':
           description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/schedule/:
+    get:
+      operationId: organizations_schedule_list
+      description: 'The club schedule for its members: activities, tournaments and
+        training sessions in date order.'
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - activity
+            - tournament
+            - training
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduleItem'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/schedule.ics:
+    get:
+      operationId: organizations_schedule.ics_retrieve
+      description: The same schedule as an .ics file, to add to a phone's calendar.
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - activity
+            - tournament
+            - training
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            text/calendar:
+              schema:
+                type: string
+          description: ''
         4XX:
           description: Error envelope
           content:
@@ -11346,6 +11795,16 @@ components:
       - minutes
       - phase
       - title
+    ActivityInvitees:
+      type: object
+      properties:
+        invitee_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - invitee_ids
     ActivityRequest:
       type: object
       description: |-
@@ -11368,6 +11827,16 @@ components:
           nullable: true
       required:
       - phase
+    ActivityStatusEnum:
+      enum:
+      - draft
+      - published
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `cancelled` - Cancelled
     AdminHandover:
       type: object
       properties:
@@ -11819,6 +12288,24 @@ components:
       - expires_at
       - id
       - url
+    Attendee:
+      type: object
+      description: 'Who answered, as the audience sees it: display names only.'
+      properties:
+        display_name:
+          type: string
+          readOnly: true
+        answer:
+          allOf:
+          - $ref: '#/components/schemas/RsvpAnswerEnum'
+          readOnly: true
+        waitlisted:
+          type: boolean
+          readOnly: true
+      required:
+      - answer
+      - display_name
+      - waitlisted
     AuthorityEnum:
       enum:
       - platform
@@ -12229,6 +12716,15 @@ components:
         * `trainee_session` - trainee_session
         * `club_session` - club_session
         * `tournament` - tournament
+    CancelActivityRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     CancelRequest:
       type: object
       properties:
@@ -12442,6 +12938,177 @@ components:
       required:
       - ends_on
       - starts_on
+    ClubActivity:
+      type: object
+      description: An activity. Members see `my_answer` and the counts; only staff
+        see invitee ids and drafts.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        kind:
+          $ref: '#/components/schemas/ClubActivityKindEnum'
+        description:
+          type: string
+          maxLength: 2000
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        place:
+          type: string
+          maxLength: 200
+        audience:
+          $ref: '#/components/schemas/ClubActivityAudienceEnum'
+        capacity:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          nullable: true
+        rsvp_deadline:
+          type: string
+          format: date-time
+          nullable: true
+        public:
+          type: boolean
+        cost_note:
+          type: string
+          maxLength: 200
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ActivityStatusEnum'
+          readOnly: true
+        cancel_reason:
+          type: string
+          readOnly: true
+        going:
+          type: integer
+          readOnly: true
+        waitlisted:
+          type: integer
+          readOnly: true
+        my_answer:
+          type: string
+          nullable: true
+          readOnly: true
+        my_waitlisted:
+          type: boolean
+          readOnly: true
+        can_answer:
+          type: boolean
+          description: In the audience (a member, and the activity is for all members
+            or invites them) and open.
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - audience
+      - can_answer
+      - cancel_reason
+      - capacity
+      - cost_note
+      - description
+      - ends_at
+      - going
+      - id
+      - kind
+      - my_answer
+      - my_waitlisted
+      - place
+      - public
+      - published_at
+      - rsvp_deadline
+      - starts_at
+      - status
+      - title
+      - waitlisted
+    ClubActivityAudienceEnum:
+      enum:
+      - members
+      - selected
+      type: string
+      description: |-
+        * `members` - All members
+        * `selected` - Selected members
+    ClubActivityKindEnum:
+      enum:
+      - social
+      - fun_day
+      - visit
+      - meeting
+      - practice
+      - open_day
+      - anniversary
+      - other
+      type: string
+      description: |-
+        * `social` - Social night
+        * `fun_day` - Fun day
+        * `visit` - Group visit
+        * `meeting` - Meeting
+        * `practice` - Practice night
+        * `open_day` - Open day
+        * `anniversary` - Anniversary
+        * `other` - Other
+    ClubActivityRequest:
+      type: object
+      description: An activity. Members see `my_answer` and the counts; only staff
+        see invitee ids and drafts.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          $ref: '#/components/schemas/ClubActivityKindEnum'
+        description:
+          type: string
+          maxLength: 2000
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        place:
+          type: string
+          maxLength: 200
+        audience:
+          $ref: '#/components/schemas/ClubActivityAudienceEnum'
+        invitee_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 500
+        capacity:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          nullable: true
+        rsvp_deadline:
+          type: string
+          format: date-time
+          nullable: true
+        public:
+          type: boolean
+        cost_note:
+          type: string
+          maxLength: 200
+      required:
+      - ends_at
+      - starts_at
+      - title
     ClubProfile:
       type: object
       properties:
@@ -15603,7 +16270,7 @@ components:
             $ref: '#/components/schemas/AgendaRow'
         status:
           allOf:
-          - $ref: '#/components/schemas/MeetingStatusEnum'
+          - $ref: '#/components/schemas/ActivityStatusEnum'
           readOnly: true
         minutes:
           type: string
@@ -15718,16 +16385,6 @@ components:
       - ends_at
       - starts_at
       - title
-    MeetingStatusEnum:
-      enum:
-      - draft
-      - published
-      - cancelled
-      type: string
-      description: |-
-        * `draft` - Draft
-        * `published` - Published
-        * `cancelled` - Cancelled
     Member:
       type: object
       description: 'Staff view of a member: display name and roles, never email or
@@ -16850,6 +17507,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AdminHandover'
+    PaginatedAttendeeList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attendee'
     PaginatedCandidateList:
       type: object
       required:
@@ -16875,6 +17557,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Candidate'
+    PaginatedClubActivityList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubActivity'
     PaginatedClubSessionList:
       type: object
       required:
@@ -17794,6 +18501,52 @@ components:
         presenter:
           type: string
           maxLength: 120
+    PatchedClubActivityRequest:
+      type: object
+      description: An activity. Members see `my_answer` and the counts; only staff
+        see invitee ids and drafts.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          $ref: '#/components/schemas/ClubActivityKindEnum'
+        description:
+          type: string
+          maxLength: 2000
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        place:
+          type: string
+          maxLength: 200
+        audience:
+          $ref: '#/components/schemas/ClubActivityAudienceEnum'
+        invitee_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 500
+        capacity:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          nullable: true
+        rsvp_deadline:
+          type: string
+          format: date-time
+          nullable: true
+        public:
+          type: boolean
+        cost_note:
+          type: string
+          maxLength: 200
     PatchedClubSessionRequest:
       type: object
       description: A club session as its training staff see it.
@@ -20067,6 +20820,23 @@ components:
       - id
       - key
       - name
+    RsvpAnswerEnum:
+      enum:
+      - going
+      - maybe
+      - not_going
+      type: string
+      description: |-
+        * `going` - Going
+        * `maybe` - Maybe
+        * `not_going` - Not Going
+    RsvpRequestRequest:
+      type: object
+      properties:
+        answer:
+          $ref: '#/components/schemas/RsvpAnswerEnum'
+      required:
+      - answer
     Rubber:
       type: object
       description: One individual match of a tie. `not_played` means the tie was decided
@@ -20179,6 +20949,47 @@ components:
       - sessions
       - tables
       - warnings
+    ScheduleItem:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/ScheduleItemKindEnum'
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        detail:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        place:
+          type: string
+        cancelled:
+          type: boolean
+      required:
+      - cancelled
+      - detail
+      - ends_at
+      - id
+      - kind
+      - place
+      - starts_at
+      - title
+    ScheduleItemKindEnum:
+      enum:
+      - activity
+      - tournament
+      - training
+      type: string
+      description: |-
+        * `activity` - activity
+        * `tournament` - tournament
+        * `training` - training
     ScheduleRow:
       type: object
       properties:

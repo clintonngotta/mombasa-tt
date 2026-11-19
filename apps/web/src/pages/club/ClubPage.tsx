@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, CalendarClock, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, UserRoundPlus, Users } from "lucide-react"
+import { Banknote, CalendarClock, CalendarDays, PartyPopper, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, UserRoundPlus, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
@@ -202,6 +202,16 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
       <AdminLink to="/club/committee" icon={<Landmark aria-hidden className="size-5 text-brand-blue" />}>
         {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
       </AdminLink>
+      {!membership.managedOnly && (
+        <AdminLink to="/club/schedule" icon={<CalendarDays aria-hidden className="size-5 text-brand-blue" />}>
+          Club schedule: activities, tournaments and training
+        </AdminLink>
+      )}
+      {can(membership, "activities.manage") && (
+        <AdminLink to="/club/activities" icon={<PartyPopper aria-hidden className="size-5 text-brand-blue" />}>
+          Activities: nights out, fun days and visits
+        </AdminLink>
+      )}
       {!membership.managedOnly && (
         <AdminLink to="/club/meetings" icon={<CalendarClock aria-hidden className="size-5 text-brand-blue" />}>
           Meetings

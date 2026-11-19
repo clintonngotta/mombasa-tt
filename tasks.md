@@ -91,7 +91,13 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 ## Phase 1: club life
 
-- [ ] **TASK-072** — Implement club activities (types, schedule fields, audience, capacity, draft/publish/cancel), RSVPs with transactional capacity and waitlist, and the members-only club schedule merging activities, tournaments and training sessions with .ics export. Depends: TASK-013, TASK-017. REQ-039 / EVAL-039. Done: capacity race, visibility and timezone tests pass.
+- [x] **TASK-072** — Implement club activities (types, schedule fields, audience, capacity, draft/publish/cancel), RSVPs with transactional capacity and waitlist, and the members-only club schedule merging activities, tournaments and training sessions with .ics export. Depends: TASK-013, TASK-017. REQ-039 / EVAL-039. Done: capacity race, visibility and timezone tests pass. Implemented 2026-11-19:
+  - **Activities** (`activities` app). Kinds, times in the organization's timezone, a free-text place, all members or selected members, optional capacity, an RSVP deadline, a public flag and a cost note shown as text only. Draft, published or cancelled with a reason; the record and its answers stay. Run by `activities.manage` at `/club/activities`.
+  - **RSVPs.** Going, maybe or not going, with the activity row locked. Going past capacity is waitlisted and never promoted automatically.
+  - **Attendees** are shown to the audience as display names only.
+  - **Club schedule** at `/club/schedule`, members only. Visible activities, published tournaments and club training sessions in date order, upcoming or past, filtered by kind, with an `.ics` export.
+
+  Notifications on publish, change and cancel come with TASK-073 and TASK-033.
 - [ ] **TASK-073** — Implement activity and club schedule mobile/web views, RSVP controls and publish/change/cancel notifications. Depends: TASK-072, TASK-033. REQ-039 / EVAL-039. Done: audience-only notifications and schedule screenshots recorded; cost notes never imply payment.
 - [ ] **TASK-076** — Implement soda game challenges: create/accept (with or without matching stake)/counter-time/decline/withdraw, pledge records, two-player result confirmation and disputes, settled marking, organization disable switches, and the stake policy feature flag. Depends: TASK-013, TASK-031. REQ-040 / EVAL-040. Done: stake visibility, no-rating impact and dispute tests pass with the flag off and on.
 - [ ] **TASK-077** — Implement soda game mobile/web views (challenge inbox, challenge form, result confirmation, pledge history) and challenge notifications. Depends: TASK-076, TASK-033. REQ-040 / EVAL-040. Done: screenshots recorded; stake fields hidden while the policy gate is off.

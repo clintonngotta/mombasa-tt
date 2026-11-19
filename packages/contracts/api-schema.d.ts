@@ -1609,6 +1609,139 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/activities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        get: operations["organizations_activities_list"];
+        put?: never;
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        post: operations["organizations_activities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        get: operations["organizations_activities_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        patch: operations["organizations_activities_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/attendees/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who is going or might, by display name, for the activity's audience and its staff. */
+        get: operations["organizations_activities_attendees_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Cancel with a reason. The record stays, with the answers it had. */
+        post: operations["organizations_activities_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/invitees/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who a selected-members activity is for, for its staff only. */
+        get: operations["organizations_activities_invitees_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Publish a draft: the audience sees it and can answer. */
+        post: operations["organizations_activities_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/rsvp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Answer going, maybe or not going. Going beyond the capacity puts you on the waiting list. */
+        post: operations["organizations_activities_rsvp_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/admin/": {
         parameters: {
             query?: never;
@@ -2741,6 +2874,40 @@ export interface paths {
          *     has every permission and can only be renamed; Admin and Member can't be deleted.
          */
         patch: operations["organizations_roles_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The club schedule for its members: activities, tournaments and training sessions in date order. */
+        get: operations["organizations_schedule_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/schedule.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The same schedule as an .ics file, to add to a phone's calendar. */
+        get: operations["organizations_schedule.ics_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/sponsorships/": {
@@ -4802,6 +4969,9 @@ export interface components {
             /** Format: uuid */
             drill: string | null;
         };
+        ActivityInvitees: {
+            invitee_ids: string[];
+        };
         /**
          * @description One part of a session's running order: a warm-up, a drill on the table, work off it, match play or
          *     the cool-down. A drill fills in the title when none is given.
@@ -4813,6 +4983,13 @@ export interface components {
             /** Format: uuid */
             drill?: string | null;
         };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        ActivityStatusEnum: "draft" | "published" | "cancelled";
         AdminHandover: {
             /** Format: uuid */
             readonly id: string;
@@ -5021,6 +5198,12 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
         };
+        /** @description Who answered, as the audience sees it: display names only. */
+        Attendee: {
+            readonly display_name: string;
+            readonly answer: components["schemas"]["RsvpAnswerEnum"];
+            readonly waitlisted: boolean;
+        };
         /**
          * @description * `platform` - platform
          *     * `country` - country
@@ -5193,6 +5376,9 @@ export interface components {
          * @enum {string}
          */
         CalendarEntryKindEnum: "booking" | "session" | "trainee_session" | "club_session" | "tournament";
+        CancelActivityRequest: {
+            reason: string;
+        };
         CancelRequest: {
             reason: string;
         };
@@ -5280,6 +5466,71 @@ export interface components {
             /** Format: date */
             ends_on: string;
             reason?: string;
+        };
+        /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
+        ClubActivity: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            kind: components["schemas"]["ClubActivityKindEnum"];
+            description: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place: string;
+            audience: components["schemas"]["ClubActivityAudienceEnum"];
+            capacity: number | null;
+            /** Format: date-time */
+            rsvp_deadline: string | null;
+            public: boolean;
+            cost_note: string;
+            readonly status: components["schemas"]["ActivityStatusEnum"];
+            readonly cancel_reason: string;
+            readonly going: number;
+            readonly waitlisted: number;
+            readonly my_answer: string | null;
+            readonly my_waitlisted: boolean;
+            /** @description In the audience (a member, and the activity is for all members or invites them) and open. */
+            readonly can_answer: boolean;
+            /** Format: date-time */
+            readonly published_at: string | null;
+        };
+        /**
+         * @description * `members` - All members
+         *     * `selected` - Selected members
+         * @enum {string}
+         */
+        ClubActivityAudienceEnum: "members" | "selected";
+        /**
+         * @description * `social` - Social night
+         *     * `fun_day` - Fun day
+         *     * `visit` - Group visit
+         *     * `meeting` - Meeting
+         *     * `practice` - Practice night
+         *     * `open_day` - Open day
+         *     * `anniversary` - Anniversary
+         *     * `other` - Other
+         * @enum {string}
+         */
+        ClubActivityKindEnum: "social" | "fun_day" | "visit" | "meeting" | "practice" | "open_day" | "anniversary" | "other";
+        /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
+        ClubActivityRequest: {
+            title: string;
+            kind?: components["schemas"]["ClubActivityKindEnum"];
+            description?: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place?: string;
+            audience?: components["schemas"]["ClubActivityAudienceEnum"];
+            invitee_ids?: string[];
+            capacity?: number | null;
+            /** Format: date-time */
+            rsvp_deadline?: string | null;
+            public?: boolean;
+            cost_note?: string;
         };
         ClubProfile: {
             /** Format: uuid */
@@ -6501,7 +6752,7 @@ export interface components {
             online_link: string;
             audience: components["schemas"]["MeetingAudienceEnum"];
             agenda: components["schemas"]["AgendaRow"][];
-            readonly status: components["schemas"]["MeetingStatusEnum"];
+            readonly status: components["schemas"]["ActivityStatusEnum"];
             readonly minutes: string;
             /** Format: date-time */
             readonly minutes_recorded_at: string | null;
@@ -6544,13 +6795,6 @@ export interface components {
             named_ids?: string[];
             agenda?: components["schemas"]["AgendaRowRequest"][];
         };
-        /**
-         * @description * `draft` - Draft
-         *     * `published` - Published
-         *     * `cancelled` - Cancelled
-         * @enum {string}
-         */
-        MeetingStatusEnum: "draft" | "published" | "cancelled";
         /** @description Staff view of a member: display name and roles, never email or contact details. */
         Member: {
             /** Format: uuid */
@@ -6962,6 +7206,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["AdminHandover"][];
         };
+        PaginatedAttendeeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Attendee"][];
+        };
         PaginatedCandidateList: {
             /** @example 123 */
             count: number;
@@ -6976,6 +7235,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Candidate"][];
+        };
+        PaginatedClubActivityList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["ClubActivity"][];
         };
         PaginatedClubSessionList: {
             /** @example 123 */
@@ -7474,6 +7748,24 @@ export interface components {
             recipient_name?: string;
             prize?: string;
             presenter?: string;
+        };
+        /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
+        PatchedClubActivityRequest: {
+            title?: string;
+            kind?: components["schemas"]["ClubActivityKindEnum"];
+            description?: string;
+            /** Format: date-time */
+            starts_at?: string;
+            /** Format: date-time */
+            ends_at?: string;
+            place?: string;
+            audience?: components["schemas"]["ClubActivityAudienceEnum"];
+            invitee_ids?: string[];
+            capacity?: number | null;
+            /** Format: date-time */
+            rsvp_deadline?: string | null;
+            public?: boolean;
+            cost_note?: string;
         };
         /** @description A club session as its training staff see it. */
         PatchedClubSessionRequest: {
@@ -8434,6 +8726,16 @@ export interface components {
             readonly key: components["schemas"]["RoleKeyEnum"];
             readonly name: string;
         };
+        /**
+         * @description * `going` - Going
+         *     * `maybe` - Maybe
+         *     * `not_going` - Not Going
+         * @enum {string}
+         */
+        RsvpAnswerEnum: "going" | "maybe" | "not_going";
+        RsvpRequestRequest: {
+            answer: components["schemas"]["RsvpAnswerEnum"];
+        };
         /** @description One individual match of a tie. `not_played` means the tie was decided before its turn. */
         Rubber: {
             /** Format: uuid */
@@ -8475,6 +8777,26 @@ export interface components {
             /** @description A published match moved by more than this, or to another table, is news for its people. */
             notice_minutes: number;
         };
+        ScheduleItem: {
+            kind: components["schemas"]["ScheduleItemKindEnum"];
+            /** Format: uuid */
+            id: string;
+            title: string;
+            detail: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place: string;
+            cancelled: boolean;
+        };
+        /**
+         * @description * `activity` - activity
+         *     * `tournament` - tournament
+         *     * `training` - training
+         * @enum {string}
+         */
+        ScheduleItemKindEnum: "activity" | "tournament" | "training";
         ScheduleRow: {
             /** Format: uuid */
             match_id: string;
@@ -13055,6 +13377,310 @@ export interface operations {
             };
         };
     };
+    organizations_activities_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedClubActivityList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClubActivityRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedClubActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_attendees_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAttendeeList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_invitees_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityInvitees"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_rsvp_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RsvpRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_admin_retrieve: {
         parameters: {
             query?: never;
@@ -15767,6 +16393,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Role"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_schedule_list: {
+        parameters: {
+            query?: {
+                kind?: ("activity" | "tournament" | "training")[];
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleItem"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "organizations_schedule.ics_retrieve": {
+        parameters: {
+            query?: {
+                kind?: ("activity" | "tournament" | "training")[];
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": string;
                 };
             };
             /** @description Error envelope */
