@@ -784,6 +784,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/honours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/honours/: awards you received at published ceremonies, newest first. */
+        get: operations["me_honours_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/invitations/": {
         parameters: {
             query?: never;
@@ -3004,6 +3021,145 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+         *     draft for the host's competition staff. PUT sets when, where and who hosts it.
+         */
+        get: operations["tournaments_ceremony_retrieve"];
+        /**
+         * @description GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+         *     draft for the host's competition staff. PUT sets when, where and who hosts it.
+         */
+        put: operations["tournaments_ceremony_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/awards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/ceremony/awards/: an award of the organizers' own, added last. */
+        post: operations["tournaments_ceremony_awards_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+         *     special award's recipient; remove it.
+         */
+        delete: operations["tournaments_ceremony_awards_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+         *     special award's recipient; remove it.
+         */
+        patch: operations["tournaments_ceremony_awards_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/present/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/ceremony/awards/{award}/present/: mark it handed over (again to undo). When
+         *     every award is presented the ceremony is done.
+         */
+        post: operations["tournaments_ceremony_awards_present_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/generate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/ceremony/generate/: the placement awards of the completed events, third to
+         *     first and the main event last; awards already presented and the organizers' own are kept.
+         */
+        post: operations["tournaments_ceremony_generate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/ceremony/publish/: show the ceremony with everyone who sees the tournament. */
+        post: operations["tournaments_ceremony_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/ceremony/reorder/ with every award id in the order they are presented. */
+        post: operations["tournaments_ceremony_reorder_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/corrections/": {
         parameters: {
             query?: never;
@@ -4283,6 +4439,40 @@ export interface components {
              */
             file: string;
         };
+        Award: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly order: number;
+            readonly kind: components["schemas"]["AwardKindEnum"];
+            title: string;
+            /** Format: uuid */
+            readonly event: string | null;
+            readonly event_name: string | null;
+            readonly place: number | null;
+            readonly receives: string;
+            recipient_name: string;
+            prize: string;
+            presenter: string;
+            /** Format: date-time */
+            readonly presented_at: string | null;
+        };
+        /**
+         * @description * `placement` - Placement
+         *     * `special` - Special
+         * @enum {string}
+         */
+        AwardKindEnum: "placement" | "special";
+        AwardOrderRequest: {
+            awards: string[];
+        };
+        AwardRequest: {
+            title: string;
+            /** Format: uuid */
+            recipient_id?: string | null;
+            recipient_name?: string;
+            prize?: string;
+            presenter?: string;
+        };
         /**
          * @description * `3` - 3
          *     * `5` - 5
@@ -4408,6 +4598,33 @@ export interface components {
          * @enum {string}
          */
         CategoryEnum: "serve" | "receive" | "footwork" | "topspin" | "block" | "short_game" | "multiball" | "match_play" | "warm_up" | "off_table" | "cool_down";
+        Ceremony: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            starts_at: string | null;
+            location: string;
+            host: string;
+            notes: string;
+            readonly status: components["schemas"]["CeremonyStatusEnum"];
+            /** Format: date-time */
+            readonly published_at: string | null;
+            readonly awards: components["schemas"]["Award"][];
+        };
+        CeremonyRequest: {
+            /** Format: date-time */
+            starts_at?: string | null;
+            location?: string;
+            host?: string;
+            notes?: string;
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `done` - Done
+         * @enum {string}
+         */
+        CeremonyStatusEnum: "draft" | "published" | "done";
         Change: {
             /** Format: uuid */
             match_id: string;
@@ -5095,6 +5312,19 @@ export interface components {
             /** Format: date */
             started_on: string;
             values: components["schemas"]["CommitteeFieldEntry"][];
+        };
+        /** @description An award a player received at a published ceremony. */
+        Honour: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            place: number | null;
+            prize: string;
+            /** Format: uuid */
+            tournament: string;
+            tournament_name: string;
+            /** Format: date */
+            held_on: string;
         };
         InKind: {
             item: string;
@@ -6091,6 +6321,14 @@ export interface components {
             body?: string;
             audience?: components["schemas"]["ArticleAudienceEnum"];
             club_ids?: string[];
+        };
+        PatchedAwardRequest: {
+            title?: string;
+            /** Format: uuid */
+            recipient_id?: string | null;
+            recipient_name?: string;
+            prize?: string;
+            presenter?: string;
         };
         PatchedCommentRequest: {
             body?: string;
@@ -9402,6 +9640,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Goals"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_honours_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Honour"][];
                 };
             };
             /** @description Error envelope */
@@ -14596,6 +14862,295 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CeremonyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_present_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_generate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_reorder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardOrderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
                 };
             };
             /** @description Error envelope */

@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-048 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-049 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -268,6 +268,15 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 *Privacy.* Meetings and minutes are visible only to invitees and the host's governance staff; a body never sees a club's internal meetings. Attendance lists show display names only.
 
+### REQ-049
+
+**Award ceremonies — Phase 1 (user decision, 2026-11-19).** A published tournament has an award ceremony planned by the host's competition staff: when, where and who hosts it, and the awards in the order they are presented.
+
+*Awards.* Placement awards come from the official results of completed events: winner, runner-up and joint third (the losing semi-finalists) of a knockout or groups-to-knockout event, and the top three of a round robin or a Jumbles table, joint places sharing a place. Generating them again replaces the placements not yet presented and keeps the rest. Staff add awards of their own (best player, most improved, fair play, best umpire, a sponsor's prize) for a player of the tournament or a named person, with a prize and who presents it. A placement's recipient is whoever placed; it can't be changed by hand.
+
+*Order.* Placements are proposed in the usual order: the events in reverse programme order, so the first (main) event is presented last, and within each event third place, then runner-up, then the winner. Staff move any award up or down.
+
+*Ceremony.* A ceremony is a draft for staff until published; then everyone who sees the tournament sees the running order, and each recipient sees the award among their honours on their profile. On the day staff mark each award presented (again to undo); when every award is presented the ceremony is done.
 ### REQ-047
 
 **Coaching — Phase 1 (user decision, 2026-11-19).** Any player can switch on a coach profile: headline, about, levels and skills they coach, an optional hourly rate (declared only, no payments), town and region, the clubs where they coach, weekly hours in their timezone, and whether they take new players. Signed-in players find coaches taking players by name, speciality, level or town.
@@ -344,6 +353,7 @@ House rules where the statutes leave the choice to the organizer:
 | Operations | Venue, Table, VenueHours, FacilityPrice, FacilityVisit, Pass (REQ-044), Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent, ScheduleSession/ScheduleVersion, CheckIn, MatchCall, MatchIncident (timeout, card, suspension, expedite), RefereeDecision, ResultsAnnouncement/AnnouncementVersion (REQ-043) |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
 | Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038), FinancialYear, AnnualReport/ReportVersion (REQ-041) |
+| Ceremonies | Ceremony, Award (REQ-049) |
 | Coaching | CoachProfile, Coaching, Availability, Booking, MatchComment (REQ-047) |
 | Regions | AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship (REQ-048) |
 | Governance | Committee, Position, PositionHolder, Nomination, RepresentativeNomination, governing bodies (REQ-045); Meeting, AgendaItem, Attendance, Minutes, Decision, ActionItem (REQ-046) |

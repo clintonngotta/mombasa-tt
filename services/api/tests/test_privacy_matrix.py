@@ -26,6 +26,8 @@ from attachments.models import Attachment
 from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
 from competitions import drawing, ties
 from competitions.models import (
+    Award,
+    Ceremony,
     DrawVersion,
     Entry,
     EntryPlayer,
@@ -120,6 +122,15 @@ ACCESS: dict[str, dict[str, str]] = {
     "training-plan-items": {"post": OWNER},  # someone else's plan id is a 404, see test_training
     "training-plan-item": {"patch": OWNER, "delete": OWNER},
     # A club's drills: members read them, training staff change them.
+    # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
+    "tournament-ceremony": {"get": STAFF, "put": STAFF},
+    "tournament-ceremony-generate": {"post": STAFF},
+    "tournament-ceremony-publish": {"post": STAFF},
+    "tournament-ceremony-reorder": {"post": STAFF},
+    "tournament-ceremony-awards": {"post": STAFF},
+    "tournament-ceremony-award": {"patch": STAFF, "delete": STAFF},
+    "tournament-ceremony-award-present": {"post": STAFF},
+    "me-honours": {"get": OWNER},
     # Regional bodies (REQ-048). Coast Spinners is in the Mombasa region of "Coast Region TT", whose
     # admin is Amina: the region's clubs read the agenda and published articles; body staff write them.
     "regional-bodies": {"get": SIGNED_IN, "post": SIGNED_IN},  # setting one up needs an appointment
@@ -327,6 +338,12 @@ NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tourname
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 BODIES = {
+    ("tournament-ceremony", "put"): {"location": "Main hall"},
+    ("tournament-ceremony-awards", "post"): {"title": "Fair play"},
+    ("tournament-ceremony-award", "patch"): {"prize": "Trophy"},
+    ("tournament-ceremony-reorder", "post"): lambda: {
+        "awards": [str(pk) for pk in Award.objects.order_by("-order").values_list("id", flat=True)]
+    },
     ("organization-agenda", "post"): {"title": "County open", "starts_on": "2027-02-01"},
     ("organization-agenda-item", "patch"): {"title": "Renamed date"},
     ("organization-articles", "post"): {"title": "News", "body": "Hello clubs"},
@@ -777,6 +794,12 @@ class World:
         ):
             MemberFieldValue.objects.create(membership=self.faith_membership, field=which, value=value)
 
+        # A draft award ceremony of the published cup, with Baraka named for one award.
+        ceremony = Ceremony.objects.create(tournament=self.published, location="MARK-CEREMONY-PLACE")
+        self.award = Award.objects.create(
+            ceremony=ceremony, title="MARK-AWARD-DRAFT", recipient=self.baraka, order=1
+        )
+        self.award_to_present = Award.objects.create(ceremony=ceremony, title="Best umpire", order=2)
         # Regional body (REQ-048): Coast Spinners sits in its region; Amina runs it too.
         self.coast.country, self.coast.region = "KE", "Mombasa"
         self.coast.save(update_fields=["country", "region"])
@@ -871,6 +894,8 @@ class World:
             "my-drill-detail": self.baraka_drill.id,
             "training-plan-detail": self.baraka_plan.id,
             "training-plan-item": self.baraka_item.id,
+            "tournament-ceremony-award": self.award.id,
+            "tournament-ceremony-award-present": self.award_to_present.id,
             "organization-agenda-item": self.agenda_item.id,
             "organization-article": self.article.id,
             "organization-article-publish": self.draft_article.id,
@@ -976,6 +1001,9 @@ class World:
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
+        if name.startswith("tournament-ceremony"):
+            found["tournament_pk"] = self.published.id
+            return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
             found["organization_pk"] = self.body.id
         if name.startswith("tournament-sponsor"):
@@ -1055,6 +1083,8 @@ class World:
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
+            "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
+            "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
             "agenda": sorted(AgendaItem.objects.values_list("title", "starts_on")),
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
             "meetings": sorted(Meeting.objects.values_list("title", "status", "location", "minutes")),
@@ -1290,6 +1320,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-DRILL": {"baraka"},
         "MARK-BARAKA-PLAN": {"baraka"},
         "MARK-BARAKA-ITEM": {"baraka"},
+        "MARK-AWARD-DRAFT": {"amina"},  # a draft ceremony isn't anyone's honour yet
+        "MARK-CEREMONY-PLACE": {"amina"},
         "MARK-AGENDA": {"amina", "baraka", "faith", "grace"},
         "MARK-ARTICLE-PUB": {"amina", "baraka", "faith", "grace"},
         "MARK-ARTICLE-DRAFT": {"amina"},
