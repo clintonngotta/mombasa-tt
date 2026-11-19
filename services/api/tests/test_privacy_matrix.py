@@ -51,6 +51,7 @@ from facilities.models import OpeningHour, Pass, Table, Venue, Visit
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
+from notifications.models import Notification, Preference
 from organizations.models import (
     AdminHandover,
     CommitteeField,
@@ -141,6 +142,13 @@ ACCESS: dict[str, dict[str, str]] = {
     "my-facility-visit-list": {"get": OWNER},
     # Soda games (REQ-040): the two players' own; a club sees only what both shared.
     "my-soda-settings": {"get": OWNER},
+    # The notification inbox (REQ-019): the player's own alerts and preferences.
+    "notification-list": {"get": OWNER},
+    "notification-unread-count": {"get": OWNER},
+    "notification-read": {"post": OWNER},
+    "notification-read-all": {"post": OWNER},
+    "my-notification-preferences": {"get": OWNER, "put": OWNER},
+    "organization-announcements": {"post": STAFF},
     "soda-game-list": {"get": OWNER, "post": OWNER},
     "soda-game-detail": {"get": OWNER},
     "soda-game-accept": {"post": OWNER},
@@ -517,6 +525,8 @@ BODIES = {
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
     ("organization-soda-policy", "put"): {"games_enabled": True, "stakes_enabled": False},
+    ("organization-announcements", "post"): {"title": "Hall closed", "audience": "members"},
+    ("my-notification-preferences", "put"): {"preferences": [{"category": "soda", "enabled": False}]},
     ("organization-external-events", "post"): {
         "name": "Kilifi Open",
         "organizer": "Kilifi TT",
@@ -782,6 +792,10 @@ class World:
             ends_on=timezone.localdate() + timedelta(days=30),
             town="Nairobi",
             entry_info="MARK-EXTERNAL-PENDING",
+        )
+        # An alert in Baraka's inbox.
+        self.alert = Notification.objects.create(
+            recipient=self.baraka, category="announcement", title="MARK-ALERT", subject="matrix:1"
         )
         # A soda game Baraka challenged Imani to, with a pledge only the two of them may see.
         self.soda = Challenge.objects.create(
@@ -1281,6 +1295,7 @@ class World:
             "organization-club-session": self.club_session.id,
             "organization-activity": self.activity.id,
             "soda-game-detail": self.soda.id,
+            "notification-read": self.alert.id,
             "organization-external-event": self.external.id,
             "organization-external-event-live": self.external.id,
             "external-event-approve": self.external.id,
@@ -1428,6 +1443,11 @@ class World:
                 )
             ),
             "link_reports": LinkReport.objects.count(),
+            "alerts": sorted(
+                (str(r), t, a is None)
+                for r, t, a in Notification.objects.values_list("recipient_id", "title", "read_at")
+            ),
+            "alert_preferences": sorted(Preference.objects.values_list("user_id", "category")),
             "soda_policies": sorted(
                 Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
             ),
@@ -1520,6 +1540,7 @@ ALSO_STAFF = {
             "organization-external-events",
             "organization-external-event",
             "organization-external-event-live",
+            "organization-announcements",
         )
     },
     **{
@@ -1706,6 +1727,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-SESSION-NOTE": {"amina", "baraka"},
         "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
         "MARK-SODA-MESSAGE": {"baraka"},
+        "MARK-ALERT": {"baraka"},
         "MARK-EXTERNAL-PENDING": {
             "amina",
             "baraka",

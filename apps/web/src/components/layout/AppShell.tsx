@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Wordmark } from "@/components/brand/Wordmark"
 import { OrganizationSwitcher } from "@/components/clubs/OrganizationSwitcher"
 import { UpdateBanner } from "@/components/layout/UpdateBanner"
+import { NotificationBell } from "@/components/layout/NotificationBell"
 
 type NavItem = { to: string; label: string; icon: LucideIcon }
 
@@ -22,7 +23,10 @@ export function AppShell() {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="hidden border-r bg-card lg:flex lg:flex-col lg:gap-6 lg:p-4">
-        <Wordmark className="px-3 pt-2" />
+        <div className="flex items-center justify-between gap-2">
+          <Wordmark className="px-3 pt-2" />
+          <NotificationBell />
+        </div>
         <OrganizationSwitcher />
         <nav aria-label="Main" className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (
@@ -34,7 +38,10 @@ export function AppShell() {
       <div className="flex min-h-dvh flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur lg:hidden">
           <Wordmark />
-          <OrganizationSwitcher className="max-w-[55%]" />
+          <div className="flex min-w-0 items-center gap-1">
+            <OrganizationSwitcher className="max-w-[55vw]" />
+            <NotificationBell />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 pb-24 lg:px-8 lg:pb-8">

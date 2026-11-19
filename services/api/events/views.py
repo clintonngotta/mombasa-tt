@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 from core.permissions import is_platform_super_admin
+from notifications import triggers
 from organizations.access import require_permission
 from organizations.models import Organization
 from organizations.permissions import Permission
@@ -185,6 +186,8 @@ class CuratorActionView(APIView):
                 event.reviewed_by = request.user
                 event.reviewed_at = timezone.now()
             event.save()
+            if self.action != "remove_link":
+                triggers.external_event_reviewed(event)
         return Response(ExternalEventSerializer(event).data)
 
 

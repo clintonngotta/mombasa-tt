@@ -24,7 +24,7 @@ from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
 from . import drawing
-from .models import Award, Ceremony, DrawVersion, Entry, Event, Tournament
+from .models import Award, Ceremony, DrawVersion, Entry, EntryPlayer, Event, Tournament
 from .official import title as entry_title
 
 PLACE_TITLE = {1: "Winner", 2: "Runner-up", 3: "Third place"}
@@ -349,6 +349,12 @@ class PublishCeremonyView(APIView):
                 ceremony.status = Ceremony.Status.PUBLISHED
                 ceremony.published_at = timezone.now()
                 ceremony.save(update_fields=["status", "published_at"])
+                from notifications import triggers
+
+                players = EntryPlayer.objects.filter(
+                    entry__event__tournament=ceremony.tournament
+                ).values_list("user_id", flat=True)
+                triggers.ceremony_published(ceremony.tournament, set(players))
         return _reply(ceremony)
 
 

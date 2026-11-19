@@ -133,6 +133,9 @@ def _decide(entry: Entry, actor, status: str, reason: str = "") -> None:
     entry.decided_by = actor
     entry.reason = reason
     entry.save(update_fields=["status", "decided_at", "decided_by", "reason"])
+    from notifications import triggers
+
+    triggers.entry_decided(entry, status)
 
 
 def _stand_down(entry: Entry) -> None:

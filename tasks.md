@@ -81,7 +81,21 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
   - **Web:** the match page's Recap section has rating changes, the card download and Share (native share or a copied link).
 
   Nothing is inferred from score presses.
-- [ ] **TASK-033** — Implement notification inbox/read state, triggers, audience selection and preferences. Depends: TASK-007, TASK-028, TASK-032. REQ-019 / EVAL-019. Done: alerts resolve current assignment and retries create one logical item.
+- [x] **TASK-033** — Implement notification inbox/read state, triggers, audience selection and preferences. Depends: TASK-007, TASK-028, TASK-032. REQ-019 / EVAL-019. Done: alerts resolve current assignment and retries create one logical item. Implemented 2026-11-19 (`notifications` app):
+  - **Inbox.** A durable inbox written in the same transaction as the change. One alert per recipient, category, subject and version, so a repeat is a no-op, and a new version marks older alerts **superseded**, whose link shows the current state.
+  - **Triggers:**
+    - registration decisions (accepted, waitlisted, rejected);
+    - **Called to table** on dispatch, with the reservation as its version;
+    - on recall, the call is superseded and an assignment alert is sent;
+    - the award ceremony published;
+    - club-session invitations;
+    - soda challenges and recorded results;
+    - external-event review decisions.
+  - **Preferences** per category; the table call can't be switched off.
+  - **Announcements** with an explicit audience (members, an event's players, or named members) under `announcements.manage`.
+  - **Web:** the bell with an unread count in the header, `/notifications` (inbox, unread filter, mark all read, preferences), and `/club/announce`.
+
+  Not built: "Up next" from the ready queue and browser push (TASK-034).
 - [ ] **TASK-034** — Implement optional browser push with feature detection, opt-in, device setup guidance and expired-subscription cleanup. Depends: TASK-033, TASK-009. REQ-019 / EVAL-019. Done: supported real-device delivery tested; unsupported/denied permission does not break inbox or scheduling.
 - [ ] **TASK-035** — Finish public tournament/player views and organizer web dashboard. Depends: TASK-021, TASK-028, TASK-032, TASK-016. REQ-020 / EVAL-020. Done: unauthenticated tournament journey and authorized admin journey pass.
 

@@ -184,6 +184,16 @@ Award authority is covered by `tests/test_ceremony.py`.
 
 **Notifications — integration and real browsers.** Setup: browser push supported/unsupported, opted in/out, expired subscription, queued assignment. Steps: enqueue same event ten times, change table before sending, open old alert, deny permission; test browser/home-screen conditions required on actual Android/iOS devices. Pass: one inbox entry per event version; obsolete unsent pushes suppressed; links show current assignment; inbox works without push; expired subscriptions disabled; unsupported devices receive honest setup/fallback UI. Evidence: outbox counts, browser versions and real-device recordings. Native push cases are deferred; external arrival speed is observed, not guaranteed.
 
+*Inbox built in TASK-033 (2026-11-19).* `tests/test_notifications.py` checks the following:
+- The same event sent ten times is one alert, and a new version supersedes the old.
+- Waitlisted then accepted gives two alerts, the first superseded.
+- Dispatch sends "Called to Table 1". A recall supersedes it and sends an assignment alert, and dispatch again calls to Table 2.
+- The inbox is the owner's alone: another player gets 404 on read.
+- Preferences switch a category off but never the table call.
+- Announcements reach only the chosen audience and need the permission.
+
+The privacy matrix covers every route. Push and real-device evidence wait for TASK-034.
+
 ### EVAL-020
 
 **Privacy/tenant isolation — integration.** Setup: A/B/outsider accounts and private fields/files/notes/unpublished media. Steps: enumerate IDs across list/detail/search/export/live/attachment endpoints as outsider and different-role users. Pass: no unauthorized field/object/event leaks; public pages contain only published allowlist; expired signed URL fails and revoked user cannot obtain a new one. Evidence: endpoint/access matrix with negative assertions. Later media cases remain not run until implemented.
