@@ -2793,6 +2793,416 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/:
+    get:
+      operationId: me_soda_games_list
+      description: The signed-in player's soda games, made or received. Nobody else
+        reaches them here.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedChallengeList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_soda_games_create
+      description: The signed-in player's soda games, made or received. Nobody else
+        reaches them here.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/:
+    get:
+      operationId: me_soda_games_retrieve
+      description: The signed-in player's soda games, made or received. Nobody else
+        reaches them here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/accept/:
+    post:
+      operationId: me_soda_games_accept_create
+      description: |-
+        The challenged player accepts, matching the stake or not; or the challenger takes the time
+        the challenged player proposed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/confirm/:
+    post:
+      operationId: me_soda_games_confirm_create
+      description: The signed-in player's soda games, made or received. Nobody else
+        reaches them here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/counter/:
+    post:
+      operationId: me_soda_games_counter_create
+      description: The challenged player proposes another time.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CounterRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/decline/:
+    post:
+      operationId: me_soda_games_decline_create
+      description: The signed-in player's soda games, made or received. Nobody else
+        reaches them here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/dispute/:
+    post:
+      operationId: me_soda_games_dispute_create
+      description: 'Disagree with the recorded games: nothing is owed until it''s
+        recorded again and confirmed.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisputeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/result/:
+    post:
+      operationId: me_soda_games_result_create
+      description: Record the games. The other player then confirms or disputes.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/settle/:
+    post:
+      operationId: me_soda_games_settle_create
+      description: The winner marks the pledge honoured. No money passes through Coast
+        TT.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/share/:
+    post:
+      operationId: me_soda_games_share_create
+      description: Let club members see this challenge and its result. Shown only
+        when both players share.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-games/{id}/withdraw/:
+    post:
+      operationId: me_soda_games_withdraw_create
+      description: The challenger withdraws before the challenge is accepted.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this challenge.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/soda-settings/:
+    get:
+      operationId: me_soda_settings_retrieve
+      description: Whether soda games and stakes are available to the signed-in player.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MySodaSettings'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/:
     post:
       operationId: me_trainees_plans_items_create
@@ -7181,6 +7591,100 @@ paths:
             text/calendar:
               schema:
                 type: string
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/soda-games/:
+    get:
+      operationId: organizations_soda_games_list
+      description: 'Soda games of the club''s members that both players chose to share:
+        names, time and result only.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SharedChallenge'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/soda-policy/:
+    get:
+      operationId: organizations_soda_policy_retrieve
+      description: An organization's switches for its members' soda games. Changing
+        them needs roles.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: organizations_soda_policy_update
+      description: An organization's switches for its members' soda games. Changing
+        them needs roles.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
           description: ''
         4XX:
           description: Error envelope
@@ -11888,6 +12392,12 @@ paths:
                 $ref: '#/components/schemas/ApiError'
 components:
   schemas:
+    AcceptRequest:
+      type: object
+      properties:
+        match_stake:
+          type: boolean
+          default: false
     AcceptedEvent:
       type: object
       properties:
@@ -13006,6 +13516,166 @@ components:
         * `draft` - Draft
         * `published` - Published
         * `done` - Done
+    Challenge:
+      type: object
+      description: |-
+        A challenge as one of its two players sees it. Stake fields appear only while stakes are
+        available to these players; anyone else never gets a challenge from this serializer.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        challenger:
+          allOf:
+          - $ref: '#/components/schemas/SodaPlayer'
+          readOnly: true
+        challenged:
+          allOf:
+          - $ref: '#/components/schemas/SodaPlayer'
+          readOnly: true
+        format:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        challenger_partner:
+          type: string
+          maxLength: 80
+        challenged_partner:
+          type: string
+          maxLength: 80
+        play_at:
+          type: string
+          format: date-time
+          nullable: true
+        proposed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        place:
+          type: string
+          maxLength: 120
+        best_of:
+          type: integer
+          maximum: 7
+          minimum: 1
+        message:
+          type: string
+          maxLength: 300
+        stake_minor:
+          type: integer
+          maximum: 100000
+          minimum: 1
+          nullable: true
+        stake_currency:
+          oneOf:
+          - type: string
+            pattern: ^[A-Z]{3}$
+          - type: string
+            maxLength: 0
+        stake_note:
+          type: string
+          maxLength: 60
+        challenged_staked:
+          type: boolean
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SodaChallengeStatusEnum'
+          readOnly: true
+        challenger_shares:
+          type: boolean
+          readOnly: true
+        challenged_shares:
+          type: boolean
+          readOnly: true
+        result:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        outcome:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        mine:
+          type: string
+          readOnly: true
+          description: 'challenger or challenged: which side the viewer is'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - best_of
+      - challenged
+      - challenged_partner
+      - challenged_shares
+      - challenged_staked
+      - challenger
+      - challenger_partner
+      - challenger_shares
+      - created_at
+      - format
+      - id
+      - message
+      - mine
+      - outcome
+      - place
+      - play_at
+      - proposed_at
+      - result
+      - stake_currency
+      - stake_minor
+      - stake_note
+      - status
+    ChallengeRequest:
+      type: object
+      description: |-
+        A challenge as one of its two players sees it. Stake fields appear only while stakes are
+        available to these players; anyone else never gets a challenge from this serializer.
+      properties:
+        challenged_id:
+          type: string
+          format: uuid
+          writeOnly: true
+        format:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        challenger_partner:
+          type: string
+          maxLength: 80
+        challenged_partner:
+          type: string
+          maxLength: 80
+        play_at:
+          type: string
+          format: date-time
+          nullable: true
+        place:
+          type: string
+          maxLength: 120
+        best_of:
+          type: integer
+          maximum: 7
+          minimum: 1
+        message:
+          type: string
+          maxLength: 300
+        stake_minor:
+          type: integer
+          maximum: 100000
+          minimum: 1
+          nullable: true
+        stake_currency:
+          oneOf:
+          - type: string
+            pattern: ^[A-Z]{3}$
+          - type: string
+            maxLength: 0
+        stake_note:
+          type: string
+          maxLength: 60
+      required:
+      - challenged_id
     Change:
       type: object
       properties:
@@ -14033,6 +14703,14 @@ components:
       required:
       - events
       - id
+    CounterRequest:
+      type: object
+      properties:
+        play_at:
+          type: string
+          format: date-time
+      required:
+      - play_at
     CountryCatalogue:
       type: object
       properties:
@@ -14198,6 +14876,15 @@ components:
           maxLength: 300
       required:
       - table_id
+    DisputeRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     Draw:
       type: object
       description: 'One version of an event''s draw: who sits where, and every match
@@ -17243,6 +17930,17 @@ components:
       - responded_at
       - session
       - status
+    MySodaSettings:
+      type: object
+      properties:
+        stakes_available:
+          type: boolean
+          description: Whether stake fields apply for this player.
+        games_enabled:
+          type: boolean
+      required:
+      - games_enabled
+      - stakes_available
     MyVisit:
       type: object
       description: 'The player''s own visit or pass at a facility: never anybody else''s,
@@ -17887,6 +18585,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Candidate'
+    PaginatedChallengeList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Challenge'
     PaginatedClubActivityList:
       type: object
       required:
@@ -20127,6 +20850,31 @@ components:
         * `all` - all
         * `won` - won
         * `lost` - lost
+    Policy:
+      type: object
+      properties:
+        games_enabled:
+          type: boolean
+        stakes_enabled:
+          type: boolean
+        stakes_available:
+          type: boolean
+          readOnly: true
+          description: False while the platform's stake policy gate is off.
+      required:
+      - games_enabled
+      - stakes_available
+      - stakes_enabled
+    PolicyRequest:
+      type: object
+      properties:
+        games_enabled:
+          type: boolean
+        stakes_enabled:
+          type: boolean
+      required:
+      - games_enabled
+      - stakes_enabled
     PoolEnum:
       enum:
       - men
@@ -20705,6 +21453,24 @@ components:
       - match_id
       - scheduled_at
       - table_id
+    RecordRequest:
+      type: object
+      properties:
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+              maximum: 99
+              minimum: 0
+            maxItems: 2
+            minItems: 2
+          description: Per game, [challenger's points, challenged's points].
+          maxItems: 7
+          minItems: 1
+      required:
+      - games
     RecordVisitRequest:
       type: object
       properties:
@@ -22043,6 +22809,69 @@ components:
           maxLength: 40
       required:
       - label
+    ShareRequest:
+      type: object
+      properties:
+        share:
+          type: boolean
+      required:
+      - share
+    SharedChallenge:
+      type: object
+      description: |-
+        What club members see of a challenge both players chose to share: who, when, the result. Never a
+        stake.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        challenger:
+          allOf:
+          - $ref: '#/components/schemas/SodaPlayer'
+          readOnly: true
+        challenged:
+          allOf:
+          - $ref: '#/components/schemas/SodaPlayer'
+          readOnly: true
+        format:
+          allOf:
+          - $ref: '#/components/schemas/SinglesOrDoublesEnum'
+          readOnly: true
+        play_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SodaChallengeStatusEnum'
+          readOnly: true
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+          nullable: true
+          readOnly: true
+        state:
+          type: string
+          readOnly: true
+        winner_id:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - challenged
+      - challenger
+      - format
+      - games
+      - id
+      - play_at
+      - state
+      - status
+      - winner_id
     SheetContext:
       type: object
       description: Which match a sheet is for, as the organizers' scoring page shows
@@ -22208,6 +23037,45 @@ components:
             $ref: '#/components/schemas/SlotRequest'
       required:
       - slots
+    SodaChallengeStatusEnum:
+      enum:
+      - pending
+      - countered
+      - accepted
+      - declined
+      - withdrawn
+      - played
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `countered` - Countered
+        * `accepted` - Accepted
+        * `declined` - Declined
+        * `withdrawn` - Withdrawn
+        * `played` - Played
+    SodaPlayer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
+    SodaPlayerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          minLength: 1
+      required:
+      - display_name
+      - id
     Sponsor:
       type: object
       description: An accepted sponsorship as everyone who sees the tournament sees

@@ -72,6 +72,7 @@ from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsor
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
+from soda.models import Challenge, Policy
 from training.models import ClubSession, Drill, Equipment, PlanItem, SessionInvitation, TrainingPlan
 
 from .conftest import BrowserClient
@@ -127,6 +128,21 @@ ACCESS: dict[str, dict[str, str]] = {
     "my-equipment": {"get": OWNER, "put": OWNER},
     "my-training-sessions": {"get": OWNER},
     "my-facility-visit-list": {"get": OWNER},
+    # Soda games (REQ-040): the two players' own; a club sees only what both shared.
+    "my-soda-settings": {"get": OWNER},
+    "soda-game-list": {"get": OWNER, "post": OWNER},
+    "soda-game-detail": {"get": OWNER},
+    "soda-game-accept": {"post": OWNER},
+    "soda-game-counter": {"post": OWNER},
+    "soda-game-decline": {"post": OWNER},
+    "soda-game-withdraw": {"post": OWNER},
+    "soda-game-result": {"post": OWNER},
+    "soda-game-confirm": {"post": OWNER},
+    "soda-game-dispute": {"post": OWNER},
+    "soda-game-settle": {"post": OWNER},
+    "soda-game-share": {"post": OWNER},
+    "organization-soda-games": {"get": MEMBER},
+    "organization-soda-policy": {"get": MEMBER, "put": STAFF},
     # Club sessions (REQ-027): a member answers their own invitations; training staff run the rest.
     "my-session-invitation-list": {"get": OWNER},
     "my-session-invitation-accept": {"post": OWNER},
@@ -486,6 +502,11 @@ BODIES = {
     ("organization-activity", "patch"): {"place": "Moved to the beach"},
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
+    ("organization-soda-policy", "put"): {"games_enabled": True, "stakes_enabled": False},
+    ("soda-game-counter", "post"): {"play_at": "2026-12-01T17:00:00Z"},
+    ("soda-game-result", "post"): {"games": [[11, 5], [11, 5]]},
+    ("soda-game-dispute", "post"): {"reason": "No"},
+    ("soda-game-share", "post"): {"share": True},
     ("organization-club-session-invitations", "post"): lambda: {
         "user_ids": [
             str(
@@ -725,6 +746,13 @@ class World:
         self.club_session.tables.set([room_table])
         self.session_invitation = SessionInvitation.objects.create(
             session=self.club_session, user=self.baraka
+        )
+        # A soda game Baraka challenged Imani to, with a pledge only the two of them may see.
+        self.soda = Challenge.objects.create(
+            challenger=self.baraka,
+            challenged=self.imani,
+            message="MARK-SODA-MESSAGE",
+            stake_note="MARK-SODA-STAKE",
         )
         # Club activities: a published members' night, a draft, and one to cancel.
         later = timezone.now() + timedelta(days=4)
@@ -1214,6 +1242,16 @@ class World:
             "tournament-schedule-session": self.session.id,
             "organization-club-session": self.club_session.id,
             "organization-activity": self.activity.id,
+            "soda-game-detail": self.soda.id,
+            "soda-game-accept": self.soda.id,
+            "soda-game-counter": self.soda.id,
+            "soda-game-decline": self.soda.id,
+            "soda-game-withdraw": self.soda.id,
+            "soda-game-result": self.soda.id,
+            "soda-game-confirm": self.soda.id,
+            "soda-game-dispute": self.soda.id,
+            "soda-game-settle": self.soda.id,
+            "soda-game-share": self.soda.id,
             "organization-activity-publish": self.activity_draft.id,
             "organization-activity-cancel": self.activity_to_cancel.id,
             "organization-activity-rsvp": self.activity.id,
@@ -1334,6 +1372,15 @@ class World:
             "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
             "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
             "activities": sorted(Activity.objects.values_list("title", "status", "place")),
+            "soda": sorted(
+                (str(i), st, a, b)
+                for i, st, a, b in Challenge.objects.values_list(
+                    "id", "status", "challenger_shares", "challenged_shares"
+                )
+            ),
+            "soda_policies": sorted(
+                Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
+            ),
             "rsvps": sorted(Rsvp.objects.values_list("activity__title", "user_id", "answer")),
             "club_sessions": sorted(ClubSession.objects.values_list("title", "status", "notes")),
             "session_invitations": sorted(
@@ -1599,6 +1646,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-OBSERVATION": {"baraka"},
         "MARK-SESSION-NOTE": {"amina", "baraka"},
         "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
+        "MARK-SODA-MESSAGE": {"baraka"},  # the two players (Imani isn't a viewer here)
+        "MARK-SODA-STAKE": set(),  # stakes stay hidden from everyone while the policy gate is off
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
         "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member
