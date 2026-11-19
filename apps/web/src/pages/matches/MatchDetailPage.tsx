@@ -5,6 +5,7 @@ import { ArrowLeft, Lock, MapPin, Pencil, Trash2 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { LabelPill, MatchSides, ResultBadge } from "@/components/matches/MatchSides"
+import { CoachNotes } from "@/components/coaching/CoachNotes"
 import { errorMessage } from "@/lib/api"
 import { deleteMatch, formatPlayedOn, getMatch, matchKeys } from "@/lib/matchlog"
 import { cn } from "@/lib/utils"
@@ -103,6 +104,8 @@ export function MatchDetailPage() {
           <p className="text-muted-foreground">No notes yet. Edit the match to add some.</p>
         )}
       </section>
+
+      <CoachNotes kind="personal" matchId={m.id} />
 
       {remove.isError && <FormAlert>{errorMessage(remove.error, "We couldn't delete this match.")}</FormAlert>}
       <div className="flex flex-col gap-3 sm:flex-row">

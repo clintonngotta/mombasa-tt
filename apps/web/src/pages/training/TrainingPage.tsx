@@ -8,6 +8,7 @@ import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { SelectField } from "@/components/forms/SelectField"
 import { VirtualTable } from "@/components/training/VirtualTable"
 import { SkillChips } from "@/pages/training/DrillDetailPage"
+import { CoachingTab } from "@/pages/coaching/CoachingTab"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatDayRange, formatInstant } from "@/lib/dates"
 import { ROW } from "@/lib/clubAdmin"
@@ -37,14 +38,16 @@ import {
   type TrainingPlan,
 } from "@/lib/training"
 
-type Tab = "mine" | "drills" | "club"
+type Tab = "mine" | "drills" | "club" | "coaching"
 const TABS: { value: Tab; label: string }[] = [
   { value: "mine", label: "My training" },
   { value: "drills", label: "Drills" },
   { value: "club", label: "Club plans" },
+  { value: "coaching", label: "Coaching" },
 ]
 
-/** Training (REQ-026, REQ-027): your plans and sessions, the drill library, and your club's plans. */
+/** Training (REQ-026, REQ-027, REQ-047): your plans and sessions, the drill library, your club's plans and
+ * coaching, as a coach or with one. */
 export function TrainingPage() {
   const [params, setParams] = useSearchParams()
   const tab = (TABS.find((t) => t.value === params.get("tab"))?.value ?? "mine") as Tab
@@ -54,7 +57,7 @@ export function TrainingPage() {
   return (
     <div className="flex max-w-[860px] flex-col gap-6">
       <h1 className="text-[32px] leading-9 font-bold">Training</h1>
-      <div role="tablist" aria-label="Training" className="flex gap-1 border-b">
+      <div role="tablist" aria-label="Training" className="flex gap-1 overflow-x-auto border-b">
         {TABS.filter((t) => t.value !== "club" || member).map((t) => (
           <button
             key={t.value}
@@ -63,7 +66,7 @@ export function TrainingPage() {
             aria-selected={tab === t.value}
             onClick={() => setParams(t.value === "mine" ? {} : { tab: t.value })}
             className={cn(
-              "-mb-px min-h-12 border-b-2 px-4 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              "-mb-px min-h-12 shrink-0 border-b-2 px-4 font-semibold whitespace-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
               tab === t.value ? "border-brand-blue text-brand-blue" : "border-transparent text-muted-foreground",
             )}
           >
@@ -82,6 +85,7 @@ export function TrainingPage() {
         )}
         {tab === "drills" && <DrillLibrary membership={member} />}
         {tab === "club" && member && <ClubPlans membership={member} />}
+        {tab === "coaching" && <CoachingTab />}
       </div>
     </div>
   )
@@ -140,6 +144,7 @@ function PlanList({ plans, to }: { plans: TrainingPlan[]; to: (plan: TrainingPla
           <Link to={to(plan)} className={cn(ROW, "outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
             <span className="flex min-w-0 flex-1 flex-col gap-2">
               <span className="truncate font-semibold">{plan.title}</span>
+              {plan.coach_name && <span className="text-sm font-semibold text-brand-blue">From coach {plan.coach_name}</span>}
               {plan.starts_on && (
                 <span className="text-sm text-muted-foreground">
                   {plan.period !== "custom" && `${PERIOD_LABEL[plan.period ?? "custom"]} · `}

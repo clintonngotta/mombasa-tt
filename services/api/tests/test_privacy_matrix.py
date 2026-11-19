@@ -23,6 +23,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from attachments.models import Attachment
+from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
 from competitions import drawing, ties
 from competitions.models import (
     DrawVersion,
@@ -147,6 +148,31 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-sponsorships": {"get": STAFF},
     "tournament-sponsorship-accept": {"post": STAFF},
     "tournament-sponsorship-decline": {"post": STAFF},
+    # Coaching (REQ-047): coaches are found by any player; coachings, bookings, the trainees a coach
+    # sees and the coach's notes belong to the two people involved. Another's id is a 404.
+    "coaches": {"get": SIGNED_IN},
+    "coach": {"get": SIGNED_IN},
+    "coach-slots": {"get": SIGNED_IN},
+    "my-coach-profile": {"get": OWNER, "put": OWNER},
+    "my-coach-availability": {"get": OWNER, "put": OWNER},
+    "my-coach-calendar": {"get": OWNER},
+    "my-coach-notes": {"get": OWNER},
+    "my-coach-comment": {"patch": OWNER, "delete": OWNER},
+    "my-coachings": {"get": OWNER, "post": OWNER},
+    "my-coaching-accept": {"post": OWNER},
+    "my-coaching-decline": {"post": OWNER},
+    "my-coaching-end": {"post": OWNER},
+    "my-trainee": {"get": OWNER},
+    "my-trainee-plans": {"post": OWNER},
+    "my-trainee-plan": {"get": OWNER, "patch": OWNER, "delete": OWNER},
+    "my-trainee-plan-recommendations": {"get": OWNER},
+    "my-trainee-plan-items": {"post": OWNER},
+    "my-trainee-plan-item": {"patch": OWNER, "delete": OWNER},
+    "my-trainee-comments": {"post": OWNER},
+    "my-bookings": {"get": OWNER, "post": OWNER},
+    "my-booking-confirm": {"post": OWNER},
+    "my-booking-decline": {"post": OWNER},
+    "my-booking-cancel": {"post": OWNER},
     "organization-drills": {"get": MEMBER, "post": STAFF},
     "organization-drill": {"patch": STAFF, "delete": STAFF},
     # The drill library: the standard drills, your own and your clubs'. Another club's drill is a 404.
@@ -517,7 +543,31 @@ class World:
         self.baraka_drill = Drill.objects.create(
             owner=self.baraka, title="MARK-BARAKA-DRILL", instructions="Private"
         )
-        self.baraka_plan = TrainingPlan.objects.create(owner=self.baraka, title="MARK-BARAKA-PLAN")
+        # Kito coaches Baraka (REQ-047). He isn't one of the viewers: everything between them is for
+        # Baraka alone here, and Kito's own reach is covered in test_coaching.
+        self.kito = make_user("kito.coach@else.example", display_name="Kito Coach")
+        CoachProfile.objects.create(user=self.kito, headline="Serve and footwork coach")
+        Availability.objects.create(coach=self.kito, weekday=0, starts="08:00", ends="12:00")
+        self.coaching = Coaching.objects.create(
+            coach=self.kito,
+            trainee=self.baraka,
+            requested_by=self.baraka,
+            status=Coaching.Status.ACTIVE,
+            message="MARK-COACHING-MESSAGE",
+        )
+        self.booking = Booking.objects.create(
+            coach=self.kito,
+            trainee=self.baraka,
+            starts_at=datetime(2026, 12, 7, 6, tzinfo=UTC),
+            ends_at=datetime(2026, 12, 7, 7, tzinfo=UTC),
+            note="MARK-BOOKING-NOTE",
+        )
+        self.baraka_plan = TrainingPlan.objects.create(
+            owner=self.baraka, coach=self.kito, title="MARK-BARAKA-PLAN"
+        )
+        self.coach_note = MatchComment.objects.create(
+            coach=self.kito, trainee=self.baraka, personal_match=self.match, body="MARK-COACH-NOTE"
+        )
         self.baraka_item = PlanItem.objects.create(
             plan=self.baraka_plan, kind=PlanItem.Kind.CHECKLIST, title="MARK-BARAKA-ITEM"
         )
@@ -829,6 +879,21 @@ class World:
             "organization-sponsorship-withdraw": self.offer.id,
             "tournament-sponsorship-accept": self.offer_to_accept.id,
             "tournament-sponsorship-decline": self.offer_to_decline.id,
+            "coach": self.kito.id,
+            "coach-slots": self.kito.id,
+            "my-coach-comment": self.coach_note.id,
+            "my-coaching-accept": self.coaching.id,
+            "my-coaching-decline": self.coaching.id,
+            "my-coaching-end": self.coaching.id,
+            "my-trainee": self.coaching.id,
+            "my-trainee-plans": self.coaching.id,
+            "my-trainee-plan": self.coaching.id,
+            "my-trainee-plan-recommendations": self.coaching.id,
+            "my-trainee-plan-item": self.baraka_item.id,
+            "my-trainee-comments": self.coaching.id,
+            "my-booking-confirm": self.booking.id,
+            "my-booking-decline": self.booking.id,
+            "my-booking-cancel": self.booking.id,
             "organization-drill": self.club_drill.id,
             "drill-library-detail": self.club_drill.id,
             "training-plan-recommendations": self.baraka_plan.id,
@@ -911,6 +976,8 @@ class World:
         if name.startswith("tournament-sponsor"):
             found["tournament_pk"] = self.published.id
             return found
+        if "coaching_pk" in names:
+            found["coaching_pk"] = self.coaching.id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
         if name.startswith("tournament-schedule"):
@@ -990,6 +1057,12 @@ class World:
                 MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at")
             ),
             "sponsorships": sorted(Sponsorship.objects.values_list("amount_minor", "status")),
+            "coach_profiles": sorted(
+                CoachProfile.objects.values_list("user__email", "headline", "accepting")
+            ),
+            "coachings": sorted(Coaching.objects.values_list("id", "status")),
+            "bookings": sorted(Booking.objects.values_list("id", "status", "starts_at")),
+            "coach_notes": sorted(MatchComment.objects.values_list("id", "body")),
             "tables": sorted(Table.objects.values_list("label", "active")),
             "tournaments": sorted(Tournament.objects.values_list("name", "status", "cancel_reason")),
             "events": sorted(Event.objects.values_list("name", "status", "capacity", "cancel_reason")),
@@ -1218,6 +1291,9 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-MEETING-DRAFT": {"amina"},
         "MARK-MEETING-RUNNING": {"amina", "baraka"},
         "MARK-SPONSOR-TERMS": {"amina"},
+        "MARK-COACH-NOTE": {"baraka"},
+        "MARK-COACHING-MESSAGE": {"baraka"},
+        "MARK-BOOKING-NOTE": {"baraka"},
         "MARK-CLUB-DRILL": {"amina", "baraka", "faith", "grace"},
         "MARK-CLUB-PLAN": {"amina", "baraka", "faith", "grace"},
         "MARK-CLUB-ITEM": {"amina", "baraka", "faith", "grace"},

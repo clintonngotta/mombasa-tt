@@ -142,7 +142,7 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 ### REQ-025
 
-**Match analysis — Phase 3.** Player-owned private notes linked to a match, observations, improvement goals and timestamps. Only the owning player can read/edit through normal product APIs; club roles do not grant note access. No coach sharing in this phase. Casual and competitive match links supported. For official (umpire-confirmed) matches the player may add and edit only these private notes; the official sets, scores and result are read-only to them (user decision, 2026-10-03). Self-recorded matches are covered by REQ-037.
+**Match analysis — Phase 3.** Player-owned private notes linked to a match, observations, improvement goals and timestamps. Only the owning player can read/edit through normal product APIs; club roles do not grant note access. A coach the player has accepted sees the player's matches and writes their own notes for the player under REQ-047; the player's own notes stay theirs alone. Casual and competitive match links supported. For official (umpire-confirmed) matches the player may add and edit only these private notes; the official sets, scores and result are read-only to them (user decision, 2026-10-03). Self-recorded matches are covered by REQ-037.
 
 ### REQ-026
 
@@ -266,6 +266,18 @@ On availability/result changes, rank ready matches by planned start, then ready-
 
 *Privacy.* Meetings and minutes are visible only to invitees and the host's governance staff; a body never sees a club's internal meetings. Attendance lists show display names only.
 
+### REQ-047
+
+**Coaching — Phase 1 (user decision, 2026-11-19).** Any player can switch on a coach profile: headline, about, levels and skills they coach, an optional hourly rate (declared only, no payments), town and region, the clubs where they coach, weekly hours in their timezone, and whether they take new players. Signed-in players find coaches taking players by name, speciality, level or town.
+
+*Coaching.* A player asks a coach to coach them, or a coach invites a player; the other accepts or declines, and either ends it. While it is active the coach sees the trainee's matches (their own match log and official matches they played), the plans the coach gave them with progress, their ratings and the sessions between them. A coach gives a trainee a copy of one of their own plans, a club plan they can read, or a new plan; the trainee owns it and its progress, its sessions are checked against the trainee's calendar (REQ-027), and the coach edits it while the coaching lasts.
+
+*Bookings.* A player asks for a session (30 minutes to 3 hours, at most 90 days ahead) at a free time inside the coach's weekly hours, with a coach taking players or their own coach. The coach confirms or declines; either person cancels before it starts. Requested and confirmed sessions hold both people's time: they clash with each other's sessions, training sessions and scheduled matches.
+
+*Calendar.* A coach's week shows their sessions, their own training, sessions of plans they gave trainees, and the training plans and published tournaments of the clubs where they coach and are a member.
+
+*Coach's notes.* A coach writes notes on a trainee's matches. A note is read by the trainee and by the coach who wrote it while they still coach them; nobody else, not club staff, officials or platform staff through product APIs. Notes stay with the trainee when the coaching ends.
+
 ### REQ-048
 
 **Regional officers and bodies — Phase 1 (user decision, 2026-11-19).** A regional body (REQ-045) works for the clubs of its region: the clubs and facilities in the same country and region.
@@ -330,6 +342,7 @@ House rules where the statutes leave the choice to the organizer:
 | Operations | Venue, Table, VenueHours, FacilityPrice, FacilityVisit, Pass (REQ-044), Availability, Reservation, DeviceAssignment, ScoreEvent, OutboxEvent, ScheduleSession/ScheduleVersion, CheckIn, MatchCall, MatchIncident (timeout, card, suspension, expedite), RefereeDecision, ResultsAnnouncement/AnnouncementVersion (REQ-043) |
 | Projections | RatingEvent/Projection, StandingProjection, Notification, PushSubscription |
 | Finances | Charge, Campaign, Due, Payment, Allocation, Waiver, Expense, Reversal, WelfareProject (REQ-038), FinancialYear, AnnualReport/ReportVersion (REQ-041) |
+| Coaching | CoachProfile, Coaching, Availability, Booking, MatchComment (REQ-047) |
 | Regions | AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship (REQ-048) |
 | Governance | Committee, Position, PositionHolder, Nomination, RepresentativeNomination, governing bodies (REQ-045); Meeting, AgendaItem, Attendance, Minutes, Decision, ActionItem (REQ-046) |
 | Club life | Activity, ActivityRSVP, Schedule projection (REQ-039); tenant scoped. Challenge (soda game) and StakePledge (REQ-040); owned by the two players. ExternalEvent listing and curation (REQ-042); platform scoped |
