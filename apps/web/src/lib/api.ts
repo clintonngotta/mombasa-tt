@@ -46,6 +46,9 @@ async function ensureCsrfToken() {
   return csrfToken()
 }
 
+/** The address of an API path for a plain link, such as a file to download with the session cookie. */
+export const apiUrl = (path: string) => `${API_BASE}${path}`
+
 /** Full address of a path the API hands out (e.g. a signed attachment link, which starts at the API's root). */
 export function apiOriginUrl(path: string) {
   return /^https?:/.test(API_BASE) ? new URL(path, API_BASE).toString() : path

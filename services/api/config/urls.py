@@ -39,6 +39,7 @@ api_v1 = [
     path("scorecards/", include("scoring.urls")),
     path("organizations/", include("organizations.urls")),
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
+    path("organizations/<uuid:organization_pk>/", include("activities.urls")),
     path("organizations/<uuid:organization_pk>/", include(organization_tournaments)),
     path("organizations/<uuid:organization_pk>/", include(club_drills)),
     path("organizations/<uuid:organization_pk>/", include(club_guests)),
