@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
+from notifications import triggers
 from organizations.access import require_membership, require_permission
 from organizations.models import Membership, Organization
 
@@ -126,9 +127,14 @@ class ActivityViewSet(
             and data["capacity"] < service.going_count(activity)
         ):
             raise ApiException("capacity_below_going", "More people are already going than that.", 409)
+        moved = activity.status == Activity.Status.PUBLISHED and any(
+            key in data and data[key] != getattr(activity, key) for key in ("starts_at", "ends_at", "place")
+        )
         for key, value in data.items():
             setattr(activity, key, value)
         activity.save()
+        if moved:
+            triggers.activity_news(activity, "changed")
         if activity.audience == Activity.Audience.MEMBERS:
             activity.invitees.clear()
         elif invitees is not None:
@@ -150,6 +156,7 @@ class ActivityViewSet(
             activity.status = Activity.Status.PUBLISHED
             activity.published_at = timezone.now()
             activity.save(update_fields=["status", "published_at"])
+            triggers.activity_news(activity, "published")
         return self._reply(activity)
 
     @extend_schema(request=CancelActivitySerializer, responses={200: ClubActivitySerializer})
@@ -168,6 +175,8 @@ class ActivityViewSet(
             activity.cancel_reason = body.validated_data["reason"]
             activity.cancelled_at = timezone.now()
             activity.save(update_fields=["status", "cancel_reason", "cancelled_at"])
+            if activity.published_at:
+                triggers.activity_news(activity, "cancelled")
         return self._reply(activity)
 
     @extend_schema(request=RsvpRequestSerializer, responses={200: ClubActivitySerializer})
