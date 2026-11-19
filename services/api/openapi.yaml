@@ -6791,6 +6791,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance-purposes/:
+    get:
+      operationId: organizations_finance_purposes_retrieve
+      description: |-
+        What members' contributions paid for: each campaign's totals and its spending, without receipts
+        or anyone's own payments. Members only.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purposes'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/finance/balances/:
     get:
       operationId: organizations_finance_balances_list
@@ -7220,6 +7250,158 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/expenses/:
+    get:
+      operationId: organizations_finance_expenses_list
+      description: 'Spending (REQ-024): finance staff read it with receipts; finance
+        managers record it.'
+      parameters:
+      - in: query
+        name: campaign
+        schema:
+          type: string
+        description: Only this campaign's
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expense'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_finance_expenses_create
+      description: 'Record money spent. It may exceed what was received: the purpose
+        then shows a deficit.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/expenses/{id}/receipt/:
+    put:
+      operationId: organizations_finance_expenses_receipt_update
+      description: Attach (or replace) the receipt photo. Stored privately, re-encoded
+        without metadata.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReceiptUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/expenses/{id}/reverse/:
+    post:
+      operationId: organizations_finance_expenses_reverse_create
+      description: Reverse an expense recorded in error; it stays, with who reversed
+        it and why.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/finance/payments/:
     get:
       operationId: organizations_finance_payments_list
@@ -7360,6 +7542,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Payment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/summary/:
+    get:
+      operationId: organizations_finance_summary_list
+      description: |-
+        Per purpose: received, spent and remaining (negative is a deficit), and dues still expected.
+        Member balances are under balances/.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PurposeTotal'
           description: ''
         4XX:
           description: Error envelope
@@ -17608,6 +17822,92 @@ components:
         * `in_progress` - In Progress
         * `completed` - Completed
         * `cancelled` - Cancelled
+    Expense:
+      type: object
+      description: An expense as finance staff see it, with a short-lived link to
+        its receipt.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        campaign_id:
+          type: string
+          format: uuid
+          nullable: true
+        campaign_title:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          maxLength: 200
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+        spent_on:
+          type: string
+          format: date
+        receipt:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          nullable: true
+          readOnly: true
+        reversed:
+          type: boolean
+          readOnly: true
+        reversal_reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_minor
+      - campaign_id
+      - campaign_title
+      - created_at
+      - currency
+      - description
+      - id
+      - receipt
+      - reversal_reason
+      - reversed
+      - spent_on
+    ExpenseRequest:
+      type: object
+      description: An expense as finance staff see it, with a short-lived link to
+        its receipt.
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+          nullable: true
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        spent_on:
+          type: string
+          format: date
+      required:
+      - amount_minor
+      - description
+      - spent_on
     ExperienceEnum:
       enum:
       - new
@@ -23677,6 +23977,51 @@ components:
         * `style` - Style
         * `experience` - Experience
         * `bio` - Bio
+    PurposeTotal:
+      type: object
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: None for general running costs
+        title:
+          type: string
+        currency:
+          type: string
+        received_minor:
+          type: integer
+          description: 'Actually received: standing matched payments'
+        spent_minor:
+          type: integer
+        remaining_minor:
+          type: integer
+          description: Received less spent; negative is a deficit
+        expected_minor:
+          type: integer
+          description: 'Dues still owed: not received, shown apart'
+      required:
+      - campaign_id
+      - currency
+      - expected_minor
+      - received_minor
+      - remaining_minor
+      - spent_minor
+      - title
+    Purposes:
+      type: object
+      properties:
+        purposes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurposeTotal'
+        spending:
+          type: array
+          items:
+            $ref: '#/components/schemas/Spending'
+      required:
+      - purposes
+      - spending
     QueuedMatch:
       type: object
       description: |-
@@ -24096,6 +24441,15 @@ components:
       - delta
       - display_name
       - user_id
+    ReceiptUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: 'A photo of the receipt: JPEG, PNG or WebP, up to 5 MB'
+      required:
+      - file
     RecommendRequestRequest:
       type: object
       properties:
@@ -25812,6 +26166,30 @@ components:
       required:
       - display_name
       - id
+    Spending:
+      type: object
+      description: 'What a purpose''s money paid for, as members see it: no receipts,
+        no names.'
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+          nullable: true
+        description:
+          type: string
+        amount_minor:
+          type: integer
+        currency:
+          type: string
+        spent_on:
+          type: string
+          format: date
+      required:
+      - amount_minor
+      - campaign_id
+      - currency
+      - description
+      - spent_on
     Sponsor:
       type: object
       description: An accepted sponsorship as everyone who sees the tournament sees

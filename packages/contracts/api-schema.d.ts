@@ -2927,6 +2927,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/finance-purposes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What members' contributions paid for: each campaign's totals and its spending, without receipts
+         *     or anyone's own payments. Members only.
+         */
+        get: operations["organizations_finance_purposes_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/finance/balances/": {
         parameters: {
             query?: never;
@@ -3082,6 +3102,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/finance/expenses/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Spending (REQ-024): finance staff read it with receipts; finance managers record it. */
+        get: operations["organizations_finance_expenses_list"];
+        put?: never;
+        /** @description Record money spent. It may exceed what was received: the purpose then shows a deficit. */
+        post: operations["organizations_finance_expenses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/expenses/{id}/receipt/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Attach (or replace) the receipt photo. Stored privately, re-encoded without metadata. */
+        put: operations["organizations_finance_expenses_receipt_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/expenses/{id}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reverse an expense recorded in error; it stays, with who reversed it and why. */
+        post: operations["organizations_finance_expenses_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/finance/payments/": {
         parameters: {
             query?: never;
@@ -3125,6 +3197,26 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["organizations_finance_payments_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Per purpose: received, spent and remaining (negative is a deficit), and dues still expected.
+         *     Member balances are under balances/.
+         */
+        get: operations["organizations_finance_summary_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7360,6 +7452,36 @@ export interface components {
          * @enum {string}
          */
         EventStatusEnum: "scheduled" | "in_progress" | "completed" | "cancelled";
+        /** @description An expense as finance staff see it, with a short-lived link to its receipt. */
+        Expense: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            campaign_id: string | null;
+            readonly campaign_title: string;
+            description: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            spent_on: string;
+            readonly receipt: components["schemas"]["AttachmentLink"] | null;
+            readonly reversed: boolean;
+            readonly reversal_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description An expense as finance staff see it, with a short-lived link to its receipt. */
+        ExpenseRequest: {
+            /** Format: uuid */
+            campaign_id?: string | null;
+            description: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            spent_on: string;
+        };
         /**
          * @description * `new` - New
          *     * `casual` - Casual
@@ -9922,6 +10044,26 @@ export interface components {
          * @enum {string}
          */
         PublishedDetailsEnum: "hand" | "grip" | "style" | "experience" | "bio";
+        PurposeTotal: {
+            /**
+             * Format: uuid
+             * @description None for general running costs
+             */
+            campaign_id: string | null;
+            title: string;
+            currency: string;
+            /** @description Actually received: standing matched payments */
+            received_minor: number;
+            spent_minor: number;
+            /** @description Received less spent; negative is a deficit */
+            remaining_minor: number;
+            /** @description Dues still owed: not received, shown apart */
+            expected_minor: number;
+        };
+        Purposes: {
+            purposes: components["schemas"]["PurposeTotal"][];
+            spending: components["schemas"]["Spending"][];
+        };
         /**
          * @description A match in the ready queue. `ready` has a free table suggested; `waiting` could be played but
          *     waits for a table, for a match ahead of it that shares a player, or for staff; `blocked` can't.
@@ -10116,6 +10258,13 @@ export interface components {
             before: number;
             after: number;
             delta: number;
+        };
+        ReceiptUploadRequest: {
+            /**
+             * Format: binary
+             * @description A photo of the receipt: JPEG, PNG or WebP, up to 5 MB
+             */
+            file: string;
         };
         RecommendRequestRequest: {
             /**
@@ -10819,6 +10968,16 @@ export interface components {
             /** Format: uuid */
             id: string;
             display_name: string;
+        };
+        /** @description What a purpose's money paid for, as members see it: no receipts, no names. */
+        Spending: {
+            /** Format: uuid */
+            campaign_id: string | null;
+            description: string;
+            amount_minor: number;
+            currency: string;
+            /** Format: date */
+            spent_on: string;
         };
         /** @description An accepted sponsorship as everyone who sees the tournament sees it. */
         Sponsor: {
@@ -18152,6 +18311,36 @@ export interface operations {
             };
         };
     };
+    organizations_finance_purposes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Purposes"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_finance_balances_list: {
         parameters: {
             query?: never;
@@ -18545,6 +18734,143 @@ export interface operations {
             };
         };
     };
+    organizations_finance_expenses_list: {
+        parameters: {
+            query?: {
+                /** @description Only this campaign's */
+                campaign?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_expenses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_expenses_receipt_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReceiptUploadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_expenses_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_finance_payments_list: {
         parameters: {
             query?: never;
@@ -18674,6 +19000,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_summary_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurposeTotal"][];
                 };
             };
             /** @description Error envelope */

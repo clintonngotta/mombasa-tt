@@ -49,7 +49,7 @@ from competitions.models import (
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
-from finance.models import Allocation, Campaign, CampaignMember, Charge, Payment
+from finance.models import Allocation, Campaign, CampaignMember, Charge, Expense, Payment
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
@@ -171,6 +171,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-campaign-terms": {"post": STAFF},
     "organization-campaign-dues": {"get": STAFF},
     "organization-campaign-remind": {"post": STAFF},
+    "organization-expenses": {"get": STAFF, "post": STAFF},
+    "organization-expense-reverse": {"post": STAFF},
+    "organization-expense-receipt": {"put": STAFF},
+    "organization-finance-summary": {"get": STAFF},
+    "organization-finance-purposes": {"get": MEMBER},
     "organization-my-finances": {"get": MEMBER},
     "soda-game-list": {"get": OWNER, "post": OWNER},
     "soda-game-detail": {"get": OWNER},
@@ -457,6 +462,9 @@ CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tournament Coast can sponsor
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
+# Routes that take a file upload rather than JSON.
+MULTIPART = {"organization-expense-receipt"}
+
 BODIES = {
     ("tournament-ceremony", "put"): {"location": "Main hall"},
     ("tournament-ceremony-awards", "post"): {"title": "Fair play"},
@@ -574,6 +582,13 @@ BODIES = {
         "starts_on": (timezone.localdate() + timedelta(days=90)).isoformat(),
     },
     ("organization-campaign", "patch"): {"amount_minor": 2000},
+    ("organization-expenses", "post"): lambda: {
+        "description": "Chalk",
+        "amount_minor": 300,
+        "spent_on": timezone.localdate().isoformat(),
+    },
+    ("organization-expense-reverse", "post"): {"reason": "Entered twice"},
+    ("organization-expense-receipt", "put"): lambda: {"file": image_upload("PNG", (64, 64), "slip.png")},
     ("organization-campaign-terms", "post"): lambda: {
         "member_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
         "amount_minor": 500,
@@ -866,6 +881,24 @@ class World:
 
         self.campaign = dues_campaign("MARK-CAMPAIGN")
         self.campaign_to_close = dues_campaign("Old dues")
+        # Spending on the campaign, with a private receipt, and one to reverse.
+        self.receipt = Attachment.store(
+            owner=self.amina,
+            purpose=Attachment.Purpose.RECEIPT,
+            content=b"receipt",
+            content_type="image/webp",
+        )
+        self.expense = Expense.objects.create(
+            organization=self.coast,
+            campaign=self.campaign,
+            description="MARK-EXPENSE",
+            amount_minor=2000,
+            spent_on=timezone.localdate(),
+            receipt=self.receipt,
+        )
+        self.expense_to_reverse = Expense.objects.create(
+            organization=self.coast, description="Old nets", amount_minor=1000, spent_on=timezone.localdate()
+        )
 
         def payment(reference):
             return Payment.objects.create(
@@ -1412,6 +1445,8 @@ class World:
             "organization-campaign-terms": self.campaign.id,
             "organization-campaign-dues": self.campaign.id,
             "organization-campaign-remind": self.campaign.id,
+            "organization-expense-reverse": self.expense_to_reverse.id,
+            "organization-expense-receipt": self.expense.id,
             "organization-external-event": self.external.id,
             "organization-external-event-live": self.external.id,
             "external-event-approve": self.external.id,
@@ -1574,6 +1609,10 @@ class World:
                 (c.title, c.amount_minor, c.closed_at is None) for c in Campaign.objects.all()
             ),
             "campaign_terms": sorted(CampaignMember.objects.values_list("amount_minor", "waived")),
+            "expenses": sorted(
+                (e.description, e.amount_minor, e.reversed_at is None, str(e.receipt_id))
+                for e in Expense.objects.all()
+            ),
             "soda_policies": sorted(
                 Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
             ),
@@ -1632,7 +1671,8 @@ def world(db):
 
 def call(client, method: str, name: str, url: str):
     body = BODIES.get((name, method), {})
-    return getattr(client, method)(url, body() if callable(body) else body, format="json")
+    kind = "multipart" if name in MULTIPART else "json"
+    return getattr(client, method)(url, body() if callable(body) else body, format=kind)
 
 
 def test_every_route_has_a_decision_about_who_may_call_it():
@@ -1674,6 +1714,10 @@ ALSO_STAFF = {
             "organization-campaign-terms",
             "organization-campaign-dues",
             "organization-campaign-remind",
+            "organization-expenses",
+            "organization-expense-reverse",
+            "organization-expense-receipt",
+            "organization-finance-summary",
         ]
     },
     # ...and announcements, which include submitting external events.
@@ -1871,7 +1915,10 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
         "MARK-SODA-MESSAGE": {"baraka"},
         "MARK-ALERT": {"baraka"},
-        "MARK-CAMPAIGN": {"amina", "grace"},  # finance staff
+        # Members see each campaign's totals and spending (REQ-024); receipts stay with finance staff.
+        "MARK-CAMPAIGN": {"amina", "baraka", "faith", "grace"},
+        "MARK-EXPENSE": {"amina", "baraka", "faith", "grace"},
+        str(world.receipt.id): {"amina", "grace"},
         "MARK-CHARGE": {"amina", "faith", "grace"},  # the member and finance staff
         "MARK-PAYMENT-REF": {"amina", "faith", "grace"},
         "MARK-EXTERNAL-PENDING": {

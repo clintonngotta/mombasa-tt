@@ -46,9 +46,14 @@ export function ClubFinancePage() {
       <BackLink to="/club">Club</BackLink>
       <h1 className="text-[32px] leading-9 font-bold">Finances</h1>
       {allowed && (
-        <Link to="/club/finance/campaigns" className="self-start font-semibold text-brand-blue underline">
-          Dues and contributions
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link to="/club/finance/campaigns" className="font-semibold text-brand-blue underline">
+            Dues and contributions
+          </Link>
+          <Link to="/club/finance/spending" className="font-semibold text-brand-blue underline">
+            Spending and what&apos;s left
+          </Link>
+        </div>
       )}
       {memberships.isSuccess && (!allowed || accessLost) && <AccessLost />}
       {allowed && !accessLost && (

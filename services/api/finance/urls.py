@@ -41,6 +41,19 @@ urlpatterns = [
         views.RemindCampaignView.as_view(),
         name="organization-campaign-remind",
     ),
+    path("finance/expenses/", views.ExpensesView.as_view(), name="organization-expenses"),
+    path(
+        "finance/expenses/<uuid:pk>/reverse/",
+        views.ReverseExpenseView.as_view(),
+        name="organization-expense-reverse",
+    ),
+    path(
+        "finance/expenses/<uuid:pk>/receipt/",
+        views.ExpenseReceiptView.as_view(),
+        name="organization-expense-receipt",
+    ),
+    path("finance/summary/", views.SummaryView.as_view(), name="organization-finance-summary"),
+    path("finance-purposes/", views.PurposesView.as_view(), name="organization-finance-purposes"),
     path("finance/balances/", views.BalancesView.as_view(), name="organization-balances"),
     path("my-finances/", views.MyFinancesView.as_view(), name="organization-my-finances"),
 ]

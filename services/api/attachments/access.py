@@ -8,6 +8,11 @@ from .models import Attachment
 def can_read(user, attachment: Attachment) -> bool:
     if not user.is_authenticated or not user.is_active:
         return False
+    if attachment.purpose == Attachment.Purpose.RECEIPT:
+        # Decided by the finance permission alone, even for whoever uploaded it.
+        from finance.summaries import can_read_receipt
+
+        return can_read_receipt(user, attachment)
     if attachment.owner_id == user.id:
         return True
     if attachment.purpose == Attachment.Purpose.AVATAR:

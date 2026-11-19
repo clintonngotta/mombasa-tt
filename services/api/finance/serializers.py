@@ -4,8 +4,10 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from attachments.serializers import AttachmentLinkSerializer
+
 from . import dues, ledger
-from .models import Campaign, Charge, Payment
+from .models import Campaign, Charge, Expense, Payment
 
 
 class ChargeSerializer(serializers.ModelSerializer):
@@ -234,3 +236,68 @@ class CampaignUpdateSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True)
     amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000, required=False)
     ends_on = serializers.DateField(required=False, allow_null=True)
+
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    """An expense as finance staff see it, with a short-lived link to its receipt."""
+
+    campaign_id = serializers.UUIDField(allow_null=True, required=False, default=None)
+    campaign_title = serializers.CharField(source="campaign.title", read_only=True, default=None)
+    description = serializers.CharField(max_length=200, trim_whitespace=True)
+    amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000)
+    currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
+    reversed = serializers.SerializerMethodField()
+    receipt = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Expense
+        fields = [
+            "id",
+            "campaign_id",
+            "campaign_title",
+            "description",
+            "amount_minor",
+            "currency",
+            "spent_on",
+            "receipt",
+            "reversed",
+            "reversal_reason",
+            "created_at",
+        ]
+        read_only_fields = ["id", "reversal_reason", "created_at"]
+
+    def get_reversed(self, expense) -> bool:
+        return expense.reversed_at is not None
+
+    @extend_schema_field(AttachmentLinkSerializer(allow_null=True))
+    def get_receipt(self, expense):
+        return AttachmentLinkSerializer(expense.receipt_id).data if expense.receipt_id else None
+
+
+class ReceiptUploadSerializer(serializers.Serializer):
+    file = serializers.FileField(help_text="A photo of the receipt: JPEG, PNG or WebP, up to 5 MB")
+
+
+class PurposeTotalSerializer(serializers.Serializer):
+    campaign_id = serializers.UUIDField(allow_null=True, help_text="None for general running costs")
+    title = serializers.CharField()
+    currency = serializers.CharField()
+    received_minor = serializers.IntegerField(help_text="Actually received: standing matched payments")
+    spent_minor = serializers.IntegerField()
+    remaining_minor = serializers.IntegerField(help_text="Received less spent; negative is a deficit")
+    expected_minor = serializers.IntegerField(help_text="Dues still owed: not received, shown apart")
+
+
+class SpendingSerializer(serializers.Serializer):
+    """What a purpose's money paid for, as members see it: no receipts, no names."""
+
+    campaign_id = serializers.UUIDField(allow_null=True)
+    description = serializers.CharField()
+    amount_minor = serializers.IntegerField()
+    currency = serializers.CharField()
+    spent_on = serializers.DateField()
+
+
+class PurposesSerializer(serializers.Serializer):
+    purposes = PurposeTotalSerializer(many=True)
+    spending = SpendingSerializer(many=True)

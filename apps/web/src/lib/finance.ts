@@ -54,3 +54,16 @@ export const campaignDuesKey = (orgId: string, id: string, status: string) => ["
 export const listCampaignDues = (orgId: string, id: string, status: string) =>
   api<Schemas["CampaignDues"]>(`${base(orgId)}campaigns/${id}/dues/${status ? `?status=${status}` : ""}`)
 export const remindCampaign = (orgId: string, id: string) => api<Schemas["Reminded"]>(`${base(orgId)}campaigns/${id}/remind/`, { body: {} })
+
+export type Expense = Schemas["Expense"]
+export type PurposeTotal = Schemas["PurposeTotal"]
+export const listExpenses = (orgId: string) => api<Expense[]>(`${base(orgId)}expenses/`)
+export const recordExpense = (orgId: string, body: Schemas["ExpenseRequest"]) => api<Expense>(`${base(orgId)}expenses/`, { body })
+export const reverseExpense = (orgId: string, id: string, reason: string) => api<Expense>(`${base(orgId)}expenses/${id}/reverse/`, { body: { reason } })
+export function uploadReceipt(orgId: string, id: string, file: File) {
+  const body = new FormData()
+  body.append("file", file)
+  return api<Expense>(`${base(orgId)}expenses/${id}/receipt/`, { method: "PUT", body })
+}
+export const getFinanceSummary = (orgId: string) => api<PurposeTotal[]>(`${base(orgId)}summary/`)
+export const getPurposes = (orgId: string) => api<Schemas["Purposes"]>(`/organizations/${orgId}/finance-purposes/`)

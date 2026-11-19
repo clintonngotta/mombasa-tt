@@ -8,18 +8,22 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from attachments.images import MAX_UPLOAD_BYTES, OUTPUT_CONTENT_TYPE, normalize_image
+from attachments.models import Attachment
 from core.exceptions import ApiException
 from organizations.access import require_membership, require_permission
 from organizations.committee import local_today
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
-from . import dues, ledger
-from .models import Campaign, CampaignMember, Charge
+from . import dues, ledger, summaries
+from .models import Campaign, CampaignMember, Charge, Expense
 from .serializers import (
     AllocateSerializer,
     BalanceSerializer,
@@ -28,12 +32,17 @@ from .serializers import (
     CampaignTermSerializer,
     CampaignUpdateSerializer,
     ChargeSerializer,
+    ExpenseSerializer,
     FinanceReasonSerializer,
     MyFinancesSerializer,
     PaymentSerializer,
+    PurposesSerializer,
+    PurposeTotalSerializer,
+    ReceiptUploadSerializer,
     RemindedSerializer,
 )
 
+RECEIPT_SIDE = 1600  # long enough to read a till slip
 VIEW = (Permission.FINANCES_VIEW, Permission.FINANCES_MANAGE)
 MANAGE = Permission.FINANCES_MANAGE
 
@@ -386,3 +395,136 @@ class RemindCampaignView(_CampaignAction):
         """Remind everyone overdue on the campaign. Pressing it again the same day sends nothing more."""
         organization, campaign = self._get(request, organization_pk, pk, MANAGE)
         return Response({"sent": dues.nudge(campaign, local_today(organization))})
+
+
+def _expenses(organization):
+    return organization.expenses.select_related("campaign")
+
+
+class ExpensesView(APIView):
+    """Spending (REQ-024): finance staff read it with receipts; finance managers record it."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[OpenApiParameter("campaign", str, description="Only this campaign's")],
+        responses={200: ExpenseSerializer(many=True)},
+    )
+    def get(self, request, organization_pk):
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, *VIEW)
+        found = _expenses(organization)
+        if campaign := request.query_params.get("campaign"):
+            found = found.filter(campaign_id=campaign)
+        return Response(ExpenseSerializer(found, many=True).data)
+
+    @extend_schema(request=ExpenseSerializer, responses={201: ExpenseSerializer})
+    def post(self, request, organization_pk):
+        """Record money spent. It may exceed what was received: the purpose then shows a deficit."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, MANAGE)
+        body = ExpenseSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = dict(body.validated_data)
+        campaign = summaries.check_campaign(organization, data.pop("campaign_id"))
+        if campaign and campaign.currency != data["currency"]:
+            raise ApiException("currency_mismatch", "The campaign is kept in another currency.", 400)
+        expense = Expense.objects.create(
+            organization=organization, campaign=campaign, recorded_by=request.user, **data
+        )
+        return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
+
+
+class ReverseExpenseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=FinanceReasonSerializer, responses={200: ExpenseSerializer})
+    def post(self, request, organization_pk, pk):
+        """Reverse an expense recorded in error; it stays, with who reversed it and why."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, MANAGE)
+        expense = get_object_or_404(_expenses(organization), pk=pk)
+        body = FinanceReasonSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        expense = summaries.reverse_expense(expense, request.user, body.validated_data["reason"])
+        return Response(ExpenseSerializer(expense).data)
+
+
+class ExpenseReceiptView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+    throttle_scope = "uploads"
+
+    @extend_schema(
+        request={"multipart/form-data": ReceiptUploadSerializer}, responses={200: ExpenseSerializer}
+    )
+    def put(self, request, organization_pk, pk):
+        """Attach (or replace) the receipt photo. Stored privately, re-encoded without metadata."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, MANAGE)
+        expense = get_object_or_404(_expenses(organization), pk=pk)
+        if int(request.META.get("CONTENT_LENGTH") or 0) > MAX_UPLOAD_BYTES + 64 * 1024:
+            raise ValidationError({"file": "Choose an image under 5 MB."})
+        body = ReceiptUploadSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        content = normalize_image(body.validated_data["file"], max_side=RECEIPT_SIDE)
+        new = None
+        try:
+            with transaction.atomic():
+                expense = Expense.objects.select_for_update().get(pk=expense.pk)
+                old = expense.receipt
+                new = Attachment.store(
+                    owner=request.user,
+                    purpose=Attachment.Purpose.RECEIPT,
+                    content=content,
+                    content_type=OUTPUT_CONTENT_TYPE,
+                )
+                expense.receipt = new
+                expense.save(update_fields=["receipt"])
+                if old:
+                    old.delete()
+        except BaseException:
+            if new is not None:
+                new.discard_file()
+            raise
+        return Response(ExpenseSerializer(get_object_or_404(_expenses(organization), pk=pk)).data)
+
+
+class SummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: PurposeTotalSerializer(many=True)})
+    def get(self, request, organization_pk):
+        """Per purpose: received, spent and remaining (negative is a deficit), and dues still expected.
+        Member balances are under balances/."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, *VIEW)
+        dues.catch_up(organization)
+        return Response(PurposeTotalSerializer(summaries.purpose_totals(organization), many=True).data)
+
+
+class PurposesView(APIView):
+    """What members' contributions paid for: each campaign's totals and its spending, without receipts
+    or anyone's own payments. Members only."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: PurposesSerializer})
+    def get(self, request, organization_pk):
+        organization = _org(organization_pk)
+        require_membership(request.user, organization)
+        spending = organization.expenses.filter(summaries.STANDING_EXPENSE, campaign__isnull=False)
+        data = {
+            "purposes": summaries.purpose_totals(organization, campaigns_only=True),
+            "spending": [
+                {
+                    "campaign_id": e.campaign_id,
+                    "description": e.description,
+                    "amount_minor": e.amount_minor,
+                    "currency": e.currency,
+                    "spent_on": e.spent_on,
+                }
+                for e in spending
+            ],
+        }
+        return Response(PurposesSerializer(data).data)

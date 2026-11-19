@@ -366,6 +366,16 @@ The privacy matrix covers the campaign routes.
 
 **Expenses/transparency — integration.** Setup: campaign received 150000 minor units and expenses 30000+20000. Steps: inspect member/staff summaries, reverse 20000 expense, add expense exceeding remaining receipts. Pass: balance 100000 then 120000, deficits visibly negative; expected dues are not counted as receipts; member sees own balances and aggregate purposes, not other members' ledgers/private receipts. Evidence: arithmetic and access assertions.
 
+*Built in TASK-040 (2026-11-19).* `tests/test_finance_expenses.py` checks the following:
+- A campaign that received 150000 and spent 30000 and 20000 shows 100000 left, then 120000 once the 20000 is reversed.
+- An expense above what remains shows a deficit of −80000, and the reversed expense is kept.
+- Dues still owed are reported as expected, not as received.
+- Members see purpose totals and spending descriptions, but not other members, receipts or the staff routes.
+- A receipt photo is stored privately: finance viewers get its link and members don't.
+- An expense naming another club's campaign, or one in another currency, is refused; general running costs have their own row.
+
+The privacy matrix covers every route, including the receipt upload.
+
 ## Phase 3 evaluations
 
 ### EVAL-038

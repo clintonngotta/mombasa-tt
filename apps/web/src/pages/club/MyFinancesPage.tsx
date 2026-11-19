@@ -5,13 +5,15 @@ import { errorMessage } from "@/lib/api"
 import { useActiveMembership } from "@/lib/clubs"
 import { ROW } from "@/lib/clubAdmin"
 import { formatMoney } from "@/lib/coaching"
-import { CADENCE_LABEL, financeKeys, getMyFinances, METHOD_LABEL, STATUS_LABEL, type Campaign } from "@/lib/finance"
+import { PurposeTotals } from "@/components/finance/PurposeTotals"
+import { CADENCE_LABEL, financeKeys, getMyFinances, getPurposes, METHOD_LABEL, STATUS_LABEL, type Campaign } from "@/lib/finance"
 
 /** What the member owes this organization and what they have paid (REQ-022). Only their own. */
 export function MyFinancesPage() {
   const { active } = useActiveMembership()
   const orgId = active?.organization.id ?? ""
   const mine = useQuery({ queryKey: financeKeys.mine(orgId), queryFn: () => getMyFinances(orgId), enabled: !!orgId })
+  const purposes = useQuery({ queryKey: [...financeKeys.mine(orgId), "purposes"], queryFn: () => getPurposes(orgId), enabled: !!orgId })
   const data = mine.data
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
@@ -88,6 +90,26 @@ export function MyFinancesPage() {
             </ul>
           </section>
         </>
+      )}
+      {purposes.data && purposes.data.purposes.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold">What contributions paid for</h2>
+          <PurposeTotals rows={purposes.data.purposes} />
+          {purposes.data.spending.length > 0 && (
+            <ul className="flex flex-col gap-1 text-sm">
+              {purposes.data.spending.map((s, i) => (
+                <li key={i} className="flex justify-between gap-2">
+                  <span>
+                    {s.description} · {purposes.data.purposes.find((p) => p.campaign_id === s.campaign_id)?.title}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatMoney(s.amount_minor, s.currency)} · {s.spent_on}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </div>
   )
