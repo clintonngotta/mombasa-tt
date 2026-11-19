@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.pagination import StandardPagination
+from notifications import triggers
 from organizations.access import require_membership, require_permission
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
@@ -75,6 +76,7 @@ class ChallengeViewSet(
         staked = data.get("stake_minor") is not None or bool(data.get("stake_note"))
         service.check_new(request.user, challenged, staked)
         challenge = Challenge.objects.create(challenger=request.user, challenged=challenged, **data)
+        triggers.challenged(challenge)
         return self._reply(challenge, status.HTTP_201_CREATED)
 
     @extend_schema(request=AcceptSerializer, responses={200: ChallengeSerializer})
@@ -115,6 +117,8 @@ class ChallengeViewSet(
         body.is_valid(raise_exception=True)
         challenge = self.get_object()
         service.record(challenge, request.user, body.validated_data["games"])
+        challenge.refresh_from_db()
+        triggers.result_recorded(challenge, request.user)
         return self._reply(challenge)
 
     @extend_schema(request=None, responses={200: ChallengeSerializer})

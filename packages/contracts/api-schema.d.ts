@@ -1360,6 +1360,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/notification-preferences/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Which categories of alerts the player gets. Being called to a table can't be switched off. */
+        get: operations["me_notification_preferences_retrieve"];
+        /** @description Which categories of alerts the player gets. Being called to a table can't be switched off. */
+        put: operations["me_notification_preferences_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's alerts, newest first. */
+        get: operations["me_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/{id}/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's alerts, newest first. */
+        post: operations["me_notifications_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/read-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's alerts, newest first. */
+        post: operations["me_notifications_read_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/unread-count/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's alerts, newest first. */
+        get: operations["me_notifications_unread_count_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/onboarding/complete/": {
         parameters: {
             query?: never;
@@ -2225,6 +2311,26 @@ export interface paths {
         head?: never;
         /** @description PATCH/DELETE /organizations/{body}/agenda/{id}/. */
         patch: operations["organizations_agenda_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/announcements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send an announcement to an explicit audience: the organization's members, the players of one of
+         *     its events, or named members. Needs announcements.manage.
+         */
+        post: operations["organizations_announcements_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/articles/": {
@@ -5583,6 +5689,22 @@ export interface components {
             tournament?: string | null;
         };
         /**
+         * @description * `members` - members
+         *     * `event` - event
+         *     * `people` - people
+         * @enum {string}
+         */
+        AnnouncementAudienceEnum: "members" | "event" | "people";
+        /** @description A message from the organization to an explicit audience. */
+        AnnouncementRequest: {
+            title: string;
+            body?: string;
+            audience: components["schemas"]["AnnouncementAudienceEnum"];
+            /** Format: uuid */
+            event_id?: string;
+            user_ids?: string[];
+        };
+        /**
          * @description * `attending` - attending
          *     * `apologies` - apologies
          * @enum {string}
@@ -5918,21 +6040,6 @@ export interface components {
          * @enum {string}
          */
         CategoriesEnum: "singles" | "doubles" | "team" | "juniors" | "veterans" | "women" | "open" | "para";
-        /**
-         * @description * `serve` - Serve
-         *     * `receive` - Receive
-         *     * `footwork` - Footwork
-         *     * `topspin` - Topspin
-         *     * `block` - Block
-         *     * `short_game` - Short Game
-         *     * `multiball` - Multiball
-         *     * `match_play` - Match Play
-         *     * `warm_up` - Warm Up
-         *     * `off_table` - Off Table
-         *     * `cool_down` - Cool Down
-         * @enum {string}
-         */
-        CategoryEnum: "serve" | "receive" | "footwork" | "topspin" | "block" | "short_game" | "multiball" | "match_play" | "warm_up" | "off_table" | "cool_down";
         Ceremony: {
             /** Format: uuid */
             readonly id: string;
@@ -6531,7 +6638,7 @@ export interface components {
             duration_minutes: number | null;
             repetitions: number | null;
             equipment: string;
-            category: components["schemas"]["CategoryEnum"] | components["schemas"]["BlankEnum"];
+            category: components["schemas"]["DrillCategoryEnum"] | components["schemas"]["BlankEnum"];
             level: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
             coaching_points: string;
             description: string;
@@ -6545,6 +6652,21 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /**
+         * @description * `serve` - Serve
+         *     * `receive` - Receive
+         *     * `footwork` - Footwork
+         *     * `topspin` - Topspin
+         *     * `block` - Block
+         *     * `short_game` - Short Game
+         *     * `multiball` - Multiball
+         *     * `match_play` - Match Play
+         *     * `warm_up` - Warm Up
+         *     * `off_table` - Off Table
+         *     * `cool_down` - Cool Down
+         * @enum {string}
+         */
+        DrillCategoryEnum: "serve" | "receive" | "footwork" | "topspin" | "block" | "short_game" | "multiball" | "match_play" | "warm_up" | "off_table" | "cool_down";
         /** @description A drill suggested for a plan's goal, with the goal skills it teaches. */
         DrillRecommendation: {
             drill: components["schemas"]["Drill"];
@@ -6558,7 +6680,7 @@ export interface components {
             duration_minutes?: number | null;
             repetitions?: number | null;
             equipment?: string;
-            category?: components["schemas"]["CategoryEnum"] | components["schemas"]["BlankEnum"];
+            category?: components["schemas"]["DrillCategoryEnum"] | components["schemas"]["BlankEnum"];
             level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
             coaching_points?: string;
             description?: string;
@@ -7776,6 +7898,33 @@ export interface components {
             /** Format: uuid */
             membership_id: string;
         };
+        Notification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly category: components["schemas"]["NotificationCategoryEnum"];
+            readonly title: string;
+            readonly body: string;
+            readonly link: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly read: boolean;
+            readonly superseded: boolean;
+        };
+        /**
+         * @description * `up_next` - Up next
+         *     * `table_call` - Called to table
+         *     * `assignment` - Changed or cancelled assignment
+         *     * `registration` - Registration decisions
+         *     * `announcement` - Announcements and awards
+         *     * `training` - Training sessions
+         *     * `activity` - Club activities
+         *     * `soda` - Soda games
+         *     * `booking` - Bookings
+         *     * `dues` - Dues and payments
+         *     * `events` - Events listing
+         * @enum {string}
+         */
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events";
         /** @enum {unknown} */
         NullEnum: null;
         /** @description One version of the official result of a match, or of one rubber of a tie. */
@@ -8374,6 +8523,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["MyVisit"][];
         };
+        PaginatedNotificationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Notification"][];
+        };
         PaginatedOpenSessionList: {
             /** @example 123 */
             count: number;
@@ -8601,7 +8765,7 @@ export interface components {
             duration_minutes?: number | null;
             repetitions?: number | null;
             equipment?: string;
-            category?: components["schemas"]["CategoryEnum"] | components["schemas"]["BlankEnum"];
+            category?: components["schemas"]["DrillCategoryEnum"] | components["schemas"]["BlankEnum"];
             level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
             coaching_points?: string;
             description?: string;
@@ -9122,6 +9286,23 @@ export interface components {
             term_end?: string | null;
             /** Format: uuid */
             grants_role?: string | null;
+        };
+        Preference: {
+            category: components["schemas"]["NotificationCategoryEnum"];
+            readonly label: string;
+            enabled: boolean;
+            /** @description Can't be switched off. */
+            readonly locked: boolean;
+        };
+        PreferenceRequest: {
+            category: components["schemas"]["NotificationCategoryEnum"];
+            enabled: boolean;
+        };
+        Preferences: {
+            preferences: components["schemas"]["Preference"][];
+        };
+        PreferencesRequest: {
+            preferences: components["schemas"]["PreferenceRequest"][];
         };
         Problem: {
             /** Format: uuid */
@@ -9879,6 +10060,9 @@ export interface components {
          * @enum {string}
          */
         SeedingEnum: "rating" | "manual" | "none";
+        Sent: {
+            sent: number;
+        };
         /**
          * @description One score event from the deck: its own id (so a retry is recognised), its place in the stream,
          *     the engine event itself, and the device's clock, which is kept but decides nothing.
@@ -10491,6 +10675,9 @@ export interface components {
             /** Format: uuid */
             id: string;
             display_name: string;
+        };
+        Unread: {
+            unread: number;
         };
         UpcomingSession: {
             /** Format: uuid */
@@ -13569,6 +13756,188 @@ export interface operations {
             };
         };
     };
+    me_notification_preferences_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notification_preferences_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferencesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only unread alerts */
+                unread?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNotificationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_read_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Unread"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Unread"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_onboarding_complete_create: {
         parameters: {
             query?: never;
@@ -15618,6 +15987,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgendaItem"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_announcements_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sent"];
                 };
             };
             /** @description Error envelope */

@@ -18,6 +18,7 @@ from rest_framework.response import Response
 
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
+from notifications import triggers
 from organizations.access import require_permission
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
@@ -204,6 +205,7 @@ class SessionInvitationViewSet(viewsets.GenericViewSet):
             [SessionInvitation(session=session, user=user, invited_by=request.user) for user in users],
             ignore_conflicts=True,
         )
+        triggers.session_invited(session, members)
         return Response(self.get_serializer(self.get_queryset(), many=True).data)
 
     @extend_schema(request=AttendanceSerializer, responses={200: SessionInvitationSerializer})

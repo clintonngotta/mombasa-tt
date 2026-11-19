@@ -34,6 +34,8 @@ import { SodaGamesPage } from "@/pages/play/SodaGamesPage"
 import { EventsPage } from "@/pages/events/EventsPage"
 import { ClubEventsPage } from "@/pages/events/ClubEventsPage"
 import { ReviewEventsPage } from "@/pages/events/ReviewEventsPage"
+import { NotificationsPage } from "@/pages/NotificationsPage"
+import { AnnouncePage } from "@/pages/club/AnnouncePage"
 import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
@@ -122,6 +124,7 @@ function App() {
             <Route path="/events" element={<EventsPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/play" element={<PlayPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/play/soda" element={<SodaGamesPage />} />
               <Route path="/tournaments/:id" element={<TournamentPage />} />
               <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
@@ -158,6 +161,7 @@ function App() {
               <Route path="/club/sessions" element={<ClubSessionsPage />} />
               <Route path="/club/sessions/:id" element={<ClubSessionPage />} />
               <Route path="/club/activities" element={<ActivitiesPage />} />
+              <Route path="/club/announce" element={<AnnouncePage />} />
               <Route path="/club/external-events" element={<ClubEventsPage />} />
               <Route path="/events/review" element={<ReviewEventsPage />} />
               <Route path="/club/schedule" element={<ClubSchedulePage />} />

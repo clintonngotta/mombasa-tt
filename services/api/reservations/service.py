@@ -188,6 +188,9 @@ def dispatch(
     match.table = table
     match.dispatched_at = reservation.created_at
     match.save(update_fields=["table", "dispatched_at"])
+    from notifications import triggers
+
+    triggers.called_to_table(match, reservation, [user.pk for user in people])
     return reservation
 
 
@@ -312,7 +315,11 @@ def recall(match: Match, actor, reason: str) -> None:
     if reservation is None:
         raise Blocked("not_on_table", "This match isn't on a table.")
     lock()
+    players = list(reservation.holds.filter(user__isnull=False).values_list("user_id", flat=True))
     release(reservation, actor, Reservation.Ending.RECALLED, reason)
+    from notifications import triggers
+
+    triggers.taken_off_table(match, players, reason)
     _off_the_table(match)
     look_for_the_next(match.draw.event.tournament, actor)
 

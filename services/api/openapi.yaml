@@ -2809,6 +2809,165 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/notification-preferences/:
+    get:
+      operationId: me_notification_preferences_retrieve
+      description: Which categories of alerts the player gets. Being called to a table
+        can't be switched off.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: me_notification_preferences_update
+      description: Which categories of alerts the player gets. Being called to a table
+        can't be switched off.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/notifications/:
+    get:
+      operationId: me_notifications_list
+      description: The signed-in player's alerts, newest first.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: unread
+        schema:
+          type: boolean
+        description: Only unread alerts
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/notifications/{id}/read/:
+    post:
+      operationId: me_notifications_read_create
+      description: The signed-in player's alerts, newest first.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/notifications/read-all/:
+    post:
+      operationId: me_notifications_read_all_create
+      description: The signed-in player's alerts, newest first.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unread'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/notifications/unread-count/:
+    get:
+      operationId: me_notifications_unread_count_retrieve
+      description: The signed-in player's alerts, newest first.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unread'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/onboarding/complete/:
     post:
       operationId: me_onboarding_complete_create
@@ -4942,6 +5101,42 @@ paths:
       responses:
         '204':
           description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/announcements/:
+    post:
+      operationId: organizations_announcements_create
+      description: |-
+        Send an announcement to an explicit audience: the organization's members, the players of one of
+        its events, or named members. Needs announcements.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sent'
+          description: ''
         4XX:
           description: Error envelope
           content:
@@ -13123,6 +13318,41 @@ components:
           nullable: true
       required:
       - title
+    AnnouncementAudienceEnum:
+      enum:
+      - members
+      - event
+      - people
+      type: string
+      description: |-
+        * `members` - members
+        * `event` - event
+        * `people` - people
+    AnnouncementRequest:
+      type: object
+      description: A message from the organization to an explicit audience.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 140
+        body:
+          type: string
+          maxLength: 500
+        audience:
+          $ref: '#/components/schemas/AnnouncementAudienceEnum'
+        event_id:
+          type: string
+          format: uuid
+        user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 500
+      required:
+      - audience
+      - title
     AnswerAnswerEnum:
       enum:
       - attending
@@ -13880,32 +14110,6 @@ components:
         * `women` - Women
         * `open` - Open
         * `para` - Para
-    CategoryEnum:
-      enum:
-      - serve
-      - receive
-      - footwork
-      - topspin
-      - block
-      - short_game
-      - multiball
-      - match_play
-      - warm_up
-      - off_table
-      - cool_down
-      type: string
-      description: |-
-        * `serve` - Serve
-        * `receive` - Receive
-        * `footwork` - Footwork
-        * `topspin` - Topspin
-        * `block` - Block
-        * `short_game` - Short Game
-        * `multiball` - Multiball
-        * `match_play` - Match Play
-        * `warm_up` - Warm Up
-        * `off_table` - Off Table
-        * `cool_down` - Cool Down
     Ceremony:
       type: object
       properties:
@@ -15516,7 +15720,7 @@ components:
           maxLength: 200
         category:
           oneOf:
-          - $ref: '#/components/schemas/CategoryEnum'
+          - $ref: '#/components/schemas/DrillCategoryEnum'
           - $ref: '#/components/schemas/BlankEnum'
         level:
           oneOf:
@@ -15578,6 +15782,32 @@ components:
       - title
       - updated_at
       - video_url
+    DrillCategoryEnum:
+      enum:
+      - serve
+      - receive
+      - footwork
+      - topspin
+      - block
+      - short_game
+      - multiball
+      - match_play
+      - warm_up
+      - off_table
+      - cool_down
+      type: string
+      description: |-
+        * `serve` - Serve
+        * `receive` - Receive
+        * `footwork` - Footwork
+        * `topspin` - Topspin
+        * `block` - Block
+        * `short_game` - Short Game
+        * `multiball` - Multiball
+        * `match_play` - Match Play
+        * `warm_up` - Warm Up
+        * `off_table` - Off Table
+        * `cool_down` - Cool Down
     DrillRecommendation:
       type: object
       description: A drill suggested for a plan's goal, with the goal skills it teaches.
@@ -15621,7 +15851,7 @@ components:
           maxLength: 200
         category:
           oneOf:
-          - $ref: '#/components/schemas/CategoryEnum'
+          - $ref: '#/components/schemas/DrillCategoryEnum'
           - $ref: '#/components/schemas/BlankEnum'
         level:
           oneOf:
@@ -18760,6 +18990,71 @@ components:
           format: uuid
       required:
       - membership_id
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/NotificationCategoryEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        link:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        read:
+          type: boolean
+          readOnly: true
+        superseded:
+          type: boolean
+          readOnly: true
+      required:
+      - body
+      - category
+      - created_at
+      - id
+      - link
+      - read
+      - superseded
+      - title
+    NotificationCategoryEnum:
+      enum:
+      - up_next
+      - table_call
+      - assignment
+      - registration
+      - announcement
+      - training
+      - activity
+      - soda
+      - booking
+      - dues
+      - events
+      type: string
+      description: |-
+        * `up_next` - Up next
+        * `table_call` - Called to table
+        * `assignment` - Changed or cancelled assignment
+        * `registration` - Registration decisions
+        * `announcement` - Announcements and awards
+        * `training` - Training sessions
+        * `activity` - Club activities
+        * `soda` - Soda games
+        * `booking` - Bookings
+        * `dues` - Dues and payments
+        * `events` - Events listing
     NullEnum:
       enum:
       - null
@@ -19947,6 +20242,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MyVisit'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
     PaginatedOpenSessionList:
       type: object
       required:
@@ -20482,7 +20802,7 @@ components:
           maxLength: 200
         category:
           oneOf:
-          - $ref: '#/components/schemas/CategoryEnum'
+          - $ref: '#/components/schemas/DrillCategoryEnum'
           - $ref: '#/components/schemas/BlankEnum'
         level:
           oneOf:
@@ -21731,6 +22051,53 @@ components:
           nullable: true
       required:
       - name
+    Preference:
+      type: object
+      properties:
+        category:
+          $ref: '#/components/schemas/NotificationCategoryEnum'
+        label:
+          type: string
+          readOnly: true
+        enabled:
+          type: boolean
+        locked:
+          type: boolean
+          readOnly: true
+          description: Can't be switched off.
+      required:
+      - category
+      - enabled
+      - label
+      - locked
+    PreferenceRequest:
+      type: object
+      properties:
+        category:
+          $ref: '#/components/schemas/NotificationCategoryEnum'
+        enabled:
+          type: boolean
+      required:
+      - category
+      - enabled
+    Preferences:
+      type: object
+      properties:
+        preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/Preference'
+      required:
+      - preferences
+    PreferencesRequest:
+      type: object
+      properties:
+        preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreferenceRequest'
+      required:
+      - preferences
     Problem:
       type: object
       properties:
@@ -23548,6 +23915,13 @@ components:
         * `rating` - Rating
         * `manual` - Manual
         * `none` - None
+    Sent:
+      type: object
+      properties:
+        sent:
+          type: integer
+      required:
+      - sent
     SentEventRequest:
       type: object
       description: |-
@@ -25057,6 +25431,13 @@ components:
       required:
       - display_name
       - id
+    Unread:
+      type: object
+      properties:
+        unread:
+          type: integer
+      required:
+      - unread
     UpcomingSession:
       type: object
       properties:

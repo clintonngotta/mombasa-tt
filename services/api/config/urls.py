@@ -13,6 +13,8 @@ from facilities.urls import finder_urls
 from facilities.urls import my_urls as facility_my_urls
 from guests.urls import club_urlpatterns as club_guests
 from guests.urls import me_urlpatterns as my_guest_claims
+from notifications.urls import club_urls as notification_club_urls
+from notifications.urls import my_urls as notification_my_urls
 from profiles.views import PlayerDetailView, PlayerDirectoryView
 from ratings.views import ClubRankingView, GeographyRankingView, PlayerRatingsView, RankingView
 from regions.urls import body_urlpatterns as regional_bodies
@@ -36,6 +38,7 @@ api_v1 = [
     path("me/", include("training.urls")),
     path("me/", include(facility_my_urls)),
     path("me/", include(soda_my_urls)),
+    path("me/", include(notification_my_urls)),
     path("me/", include(my_region)),
     path("me/", include(my_coaching)),
     path("me/", include(my_guest_claims)),
@@ -45,6 +48,7 @@ api_v1 = [
     path("organizations/<uuid:organization_pk>/", include("facilities.urls")),
     path("organizations/<uuid:organization_pk>/", include("activities.urls")),
     path("organizations/<uuid:organization_pk>/", include(soda_club_urls)),
+    path("organizations/<uuid:organization_pk>/", include(notification_club_urls)),
     path("organizations/<uuid:organization_pk>/", include(event_club_urls)),
     path("", include("events.urls")),
     path("organizations/<uuid:organization_pk>/", include(organization_tournaments)),
