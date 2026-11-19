@@ -6992,6 +6992,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/campaigns/{id}/dues/:
+    get:
+      operationId: organizations_finance_campaigns_dues_retrieve
+      description: Every due the campaign made, with each one's status, and the totals
+        still owed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - overdue
+          - paid
+          - partial
+          - pending
+          - waived
+        description: Only these
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignDues'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/campaigns/{id}/remind/:
+    post:
+      operationId: organizations_finance_campaigns_remind_create
+      description: Remind everyone overdue on the campaign. Pressing it again the
+        same day sends nothing more.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reminded'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/finance/campaigns/{id}/terms/:
     post:
       operationId: organizations_finance_campaigns_terms_create
@@ -14981,6 +15062,27 @@ components:
       description: |-
         * `all` - All active members
         * `selected` - Selected members
+    CampaignDues:
+      type: object
+      properties:
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Dues per status.
+        outstanding_minor:
+          type: integer
+        overdue_minor:
+          type: integer
+        dues:
+          type: array
+          items:
+            $ref: '#/components/schemas/Charge'
+      required:
+      - counts
+      - dues
+      - outstanding_minor
+      - overdue_minor
     CampaignRequest:
       type: object
       properties:
@@ -19679,6 +19781,35 @@ components:
       - organization_name
       - resolved_at
       - status
+    MyDueSummary:
+      type: object
+      description: 'One campaign as the member sees it: their own dues only.'
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        cadence:
+          type: string
+        currency:
+          type: string
+        outstanding_minor:
+          type: integer
+        overdue_minor:
+          type: integer
+        next_due_on:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - cadence
+      - campaign_id
+      - currency
+      - next_due_on
+      - outstanding_minor
+      - overdue_minor
+      - title
     MyEntry:
       type: object
       description: One of the caller's own entries, with the event and tournament
@@ -19779,9 +19910,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Balance'
+        dues:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyDueSummary'
       required:
       - balances
       - charges
+      - dues
       - payments
     MyGuestInvitation:
       type: object
@@ -24186,6 +24322,13 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    Reminded:
+      type: object
+      properties:
+        sent:
+          type: integer
+      required:
+      - sent
     ReorderRequest:
       type: object
       properties:

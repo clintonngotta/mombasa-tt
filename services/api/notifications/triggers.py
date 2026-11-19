@@ -172,3 +172,23 @@ def booking_news(booking) -> None:
         link="/profile/bookings",
         organization=booking.venue.organization,
     )
+
+
+def due_reminder(charge, state: str, outstanding_minor: int, version: str | None = None) -> int:
+    """A contribution due that falls today ("due") or has passed unpaid ("overdue"). Each is sent once;
+    a staff nudge carries its own version, so it goes at most once a day."""
+    amount = f"{charge.currency} {outstanding_minor / 100:,.0f}"
+    title = (
+        f"{charge.purpose}: {amount} due today"
+        if state == "due"
+        else f"{charge.purpose}: {amount} is overdue since {charge.due_on:%d %b}"
+    )
+    return notify(
+        [charge.member_id],
+        Category.DUES,
+        title,
+        subject=f"due:{charge.id}",
+        version=version or state,
+        link="/club/my-payments",
+        organization=charge.organization,
+    )

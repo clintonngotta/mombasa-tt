@@ -8,7 +8,7 @@ import { errorMessage } from "@/lib/api"
 import { can, listMembers, useActiveMembership } from "@/lib/clubs"
 import { useAdminAccessLost } from "@/lib/clubAdmin"
 import { formatMoney } from "@/lib/coaching"
-import { CADENCE_LABEL, CLUB_OPERATIONS, campaignKeys, closeCampaign, createCampaign, financeKeys, listCampaigns, setCampaignTerm, toMinor, updateCampaign, type Campaign } from "@/lib/finance"
+import { CADENCE_LABEL, CLUB_OPERATIONS, campaignDuesKey, campaignKeys, closeCampaign, createCampaign, financeKeys, listCampaignDues, listCampaigns, remindCampaign, setCampaignTerm, STATUS_LABEL, toMinor, updateCampaign, type Campaign } from "@/lib/finance"
 
 const SELECT = "h-12 rounded-md border bg-background px-3"
 
@@ -177,6 +177,7 @@ function CampaignCard({ orgId, campaign: c, manage }: { orgId: string; campaign:
           ))}
         </ul>
       )}
+      <Dues orgId={orgId} campaign={c} manage={manage} />
       {error && <FormAlert>{errorMessage(error)}</FormAlert>}
       {manage && !c.closed && (
         <>
@@ -215,5 +216,70 @@ function CampaignCard({ orgId, campaign: c, manage }: { orgId: string; campaign:
         </>
       )}
     </article>
+  )
+}
+
+const DUE_TABS = [
+  { value: "overdue", label: "Overdue" },
+  { value: "partial", label: "Part paid" },
+  { value: "pending", label: "Owed" },
+  { value: "paid", label: "Paid" },
+  { value: "", label: "All" },
+]
+
+/** Who owes what on the campaign, by status, and a once-a-day reminder to those overdue. */
+function Dues({ orgId, campaign: c, manage }: { orgId: string; campaign: Campaign; manage: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState("overdue")
+  const dues = useQuery({ queryKey: campaignDuesKey(orgId, c.id, tab), queryFn: () => listCampaignDues(orgId, c.id, tab), enabled: open })
+  const remind = useMutation({ mutationFn: () => remindCampaign(orgId, c.id) })
+  if (!open) {
+    return (
+      <Button variant="ghost" className="self-start" onClick={() => setOpen(true)}>
+        See dues
+      </Button>
+    )
+  }
+  const data = dues.data
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border p-3">
+      {data && (
+        <p className="text-sm">
+          {formatMoney(data.outstanding_minor, c.currency)} still owed, {formatMoney(data.overdue_minor, c.currency)} of it overdue
+        </p>
+      )}
+      <div role="group" aria-label="Which dues" className="flex flex-wrap gap-1">
+        {DUE_TABS.map((t) => (
+          <Button key={t.value} variant={tab === t.value ? "default" : "outline"} aria-pressed={tab === t.value} onClick={() => setTab(t.value)}>
+            {t.label}
+            {data && t.value && data.counts[t.value] ? ` (${data.counts[t.value]})` : ""}
+          </Button>
+        ))}
+      </div>
+      {dues.isError && <FormAlert>{errorMessage(dues.error)}</FormAlert>}
+      {data && data.dues.length === 0 && <p className="text-sm text-muted-foreground">None.</p>}
+      <ul className="flex flex-col gap-1 text-sm">
+        {(data?.dues ?? []).map((d) => (
+          <li key={d.id} className="flex justify-between gap-2">
+            <span>
+              {d.member_name} · {d.period}
+            </span>
+            <span className="text-muted-foreground">
+              {STATUS_LABEL[d.status] ?? d.status}
+              {d.outstanding_minor > 0 && ` · ${formatMoney(d.outstanding_minor, d.currency)} left`}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {manage && !c.closed && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" disabled={remind.isPending} onClick={() => remind.mutate()}>
+            Remind everyone overdue
+          </Button>
+          {remind.isSuccess && <span className="text-sm text-muted-foreground">{remind.data.sent ? `Reminded ${remind.data.sent}.` : "Everyone overdue was already reminded today."}</span>}
+          {remind.isError && <FormAlert>{errorMessage(remind.error)}</FormAlert>}
+        </div>
+      )}
+    </div>
   )
 }

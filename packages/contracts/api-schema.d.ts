@@ -2996,6 +2996,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/dues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every due the campaign made, with each one's status, and the totals still owed. */
+        get: operations["organizations_finance_campaigns_dues_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/remind/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Remind everyone overdue on the campaign. Pressing it again the same day sends nothing more. */
+        post: operations["organizations_finance_campaigns_remind_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/terms/": {
         parameters: {
             query?: never;
@@ -6372,6 +6406,15 @@ export interface components {
          * @enum {string}
          */
         CampaignAudienceEnum: "all" | "selected";
+        CampaignDues: {
+            /** @description Dues per status. */
+            counts: {
+                [key: string]: number;
+            };
+            outstanding_minor: number;
+            overdue_minor: number;
+            dues: components["schemas"]["Charge"][];
+        };
         CampaignRequest: {
             title: string;
             description?: string;
@@ -8186,6 +8229,18 @@ export interface components {
             /** Format: date-time */
             resolved_at: string | null;
         };
+        /** @description One campaign as the member sees it: their own dues only. */
+        MyDueSummary: {
+            /** Format: uuid */
+            campaign_id: string;
+            title: string;
+            cadence: string;
+            currency: string;
+            outstanding_minor: number;
+            overdue_minor: number;
+            /** Format: date */
+            next_due_on: string | null;
+        };
         /** @description One of the caller's own entries, with the event and tournament it is for. */
         MyEntry: {
             /** Format: uuid */
@@ -8216,6 +8271,7 @@ export interface components {
             charges: components["schemas"]["Charge"][];
             payments: components["schemas"]["Payment"][];
             balances: components["schemas"]["Balance"][];
+            dues: components["schemas"]["MyDueSummary"][];
         };
         /** @description An invitation to the signed-in player: who they were entered as, and where. */
         MyGuestInvitation: {
@@ -10150,6 +10206,9 @@ export interface components {
             amount_minor: number;
             /** @default KES */
             currency: string;
+        };
+        Reminded: {
+            sent: number;
         };
         ReorderRequest: {
             positions: string[];
@@ -18271,6 +18330,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_dues_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Only these */
+                status?: "overdue" | "paid" | "partial" | "pending" | "waived";
+            };
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignDues"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_remind_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reminded"];
                 };
             };
             /** @description Error envelope */

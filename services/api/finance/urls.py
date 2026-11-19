@@ -31,6 +31,16 @@ urlpatterns = [
         views.CampaignTermView.as_view(),
         name="organization-campaign-terms",
     ),
+    path(
+        "finance/campaigns/<uuid:pk>/dues/",
+        views.CampaignDuesView.as_view(),
+        name="organization-campaign-dues",
+    ),
+    path(
+        "finance/campaigns/<uuid:pk>/remind/",
+        views.RemindCampaignView.as_view(),
+        name="organization-campaign-remind",
+    ),
     path("finance/balances/", views.BalancesView.as_view(), name="organization-balances"),
     path("my-finances/", views.MyFinancesView.as_view(), name="organization-my-finances"),
 ]

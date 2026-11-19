@@ -5,7 +5,7 @@ import { errorMessage } from "@/lib/api"
 import { useActiveMembership } from "@/lib/clubs"
 import { ROW } from "@/lib/clubAdmin"
 import { formatMoney } from "@/lib/coaching"
-import { financeKeys, getMyFinances, METHOD_LABEL, STATUS_LABEL } from "@/lib/finance"
+import { CADENCE_LABEL, financeKeys, getMyFinances, METHOD_LABEL, STATUS_LABEL, type Campaign } from "@/lib/finance"
 
 /** What the member owes this organization and what they have paid (REQ-022). Only their own. */
 export function MyFinancesPage() {
@@ -29,6 +29,26 @@ export function MyFinancesPage() {
                 {b.credit_minor > 0 && ` · ${formatMoney(b.credit_minor, b.currency)} credit`}
               </p>
             ))
+          )}
+          {data.dues.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-xl font-semibold">Dues</h2>
+              <ul className="flex flex-col gap-2">
+                {data.dues.map((d) => (
+                  <li key={d.campaign_id} className={ROW}>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="font-semibold">{d.title}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {CADENCE_LABEL[d.cadence as Campaign["cadence"]] ?? d.cadence}
+                        {d.outstanding_minor > 0 ? ` · ${formatMoney(d.outstanding_minor, d.currency)} to pay` : " · all paid"}
+                        {d.overdue_minor > 0 && ` · ${formatMoney(d.overdue_minor, d.currency)} overdue`}
+                        {d.next_due_on && ` · next due ${d.next_due_on}`}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
           <section className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">Charges</h2>

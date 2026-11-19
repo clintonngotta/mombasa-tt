@@ -352,7 +352,15 @@ The privacy matrix covers every route.
 - Closing stops new dues, and `generate_dues` run twice catches up once.
 - Members can't read or set up campaigns.
 
-The privacy matrix covers the campaign routes. Reminders and the member's dues view are TASK-039.
+The privacy matrix covers the campaign routes.
+
+*Built in TASK-039 (2026-11-19).* `tests/test_finance_reminders.py` checks the following:
+- After payments, the staff dues roster's counts, outstanding total and overdue filter match the ledger records.
+- The member's dues summary shows only their own dues, with the right outstanding and overdue amounts.
+- A due is announced once on its day and once more when overdue, and the overdue alert supersedes the first; repeat runs send nothing new.
+- Paid dues are not chased.
+- The staff reminder reaches each overdue due once a day, and members can't send it.
+- Members who switched off dues alerts get none from `generate_dues`.
 
 ### EVAL-024
 
