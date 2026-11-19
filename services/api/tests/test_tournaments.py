@@ -71,6 +71,9 @@ def test_events_of_every_type_and_format_are_configured_in_a_draft(staff, club, 
         "name": "Makadara Hall",
         "town": "Mombasa",
         "address": "",
+        "directions": "",
+        "latitude": None,
+        "longitude": None,
     }
     assert tournament["organization"] == {
         "id": str(club.id),

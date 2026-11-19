@@ -60,3 +60,34 @@ def validate_location(attrs, instance=None, *, city_field="city", legacy_town=Fa
         if known is None:
             raise serializers.ValidationError({"region": "Choose a region from the list."})
         attrs["region"] = known.name
+
+
+DIRECTIONS_MAX = 500
+
+
+def directions_field():
+    """How to find a place on the ground: its closest landmark and the way from the main road or stage."""
+    return serializers.CharField(
+        max_length=DIRECTIONS_MAX, trim_whitespace=True, allow_blank=True, required=False
+    )
+
+
+def coordinate_field(limit):
+    return serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        min_value=-limit,
+        max_value=limit,
+        coerce_to_string=False,
+        allow_null=True,
+        required=False,
+    )
+
+
+def validate_coordinates(attrs, instance=None):
+    """Latitude and longitude come as a pair: both set or both cleared."""
+    latitude = attrs.get("latitude", getattr(instance, "latitude", None))
+    longitude = attrs.get("longitude", getattr(instance, "longitude", None))
+    if (latitude is None) != (longitude is None):
+        missing = "longitude" if longitude is None else "latitude"
+        raise serializers.ValidationError({missing: "Enter both latitude and longitude, or neither."})

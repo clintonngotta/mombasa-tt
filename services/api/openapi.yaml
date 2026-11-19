@@ -10092,6 +10092,21 @@ components:
         region:
           type: string
           maxLength: 100
+        directions:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -10099,8 +10114,11 @@ components:
           maxLength: 64
       required:
       - country
+      - directions
       - id
       - kind
+      - latitude
+      - longitude
       - name
       - region
       - timezone
@@ -10155,6 +10173,21 @@ components:
         region:
           type: string
           maxLength: 100
+        directions:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -10931,6 +10964,21 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        directions:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
     PatchedPersonalMatchRequest:
       type: object
       properties:
@@ -11181,6 +11229,21 @@ components:
         address:
           type: string
           maxLength: 200
+        directions:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
         active:
           type: boolean
     PatternStep:
@@ -14096,6 +14159,21 @@ components:
         address:
           type: string
           maxLength: 200
+        directions:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
         active:
           type: boolean
         tables:
@@ -14106,7 +14184,10 @@ components:
       required:
       - active
       - address
+      - directions
       - id
+      - latitude
+      - longitude
       - name
       - tables
       - town
@@ -14125,6 +14206,21 @@ components:
         address:
           type: string
           maxLength: 200
+        directions:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
         active:
           type: boolean
       required:
@@ -14132,7 +14228,8 @@ components:
       - town
     VenueSummary:
       type: object
-      description: What anyone who can see a tournament sees of its venue.
+      description: What anyone who can see a tournament sees of its venue, including
+        how to find it.
       properties:
         id:
           type: string
@@ -14147,11 +14244,46 @@ components:
         address:
           type: string
           readOnly: true
+        directions:
+          type: string
+          readOnly: true
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
       required:
       - address
+      - directions
       - id
+      - latitude
+      - longitude
       - name
       - town
+    VenueSummaryRequest:
+      type: object
+      description: What anyone who can see a tournament sees of its venue, including
+        how to find it.
+      properties:
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
     VersionSlot:
       type: object
       properties:

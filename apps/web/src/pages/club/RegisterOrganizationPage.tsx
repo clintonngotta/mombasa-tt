@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { LocationFields } from "@/components/forms/LocationFields"
+import { PlaceFinderFields } from "@/components/forms/PlaceFinderFields"
+import { placeFinderBody, placeFinderErrors, placeFinderFrom } from "@/lib/place"
 import { ApiError, errorMessage } from "@/lib/api"
 import { KIND_LABEL, clubKeys, createOrganization, setActiveOrganization, type OrganizationInput, type OrganizationKind } from "@/lib/clubs"
 import { locationErrors } from "@/lib/geography"
@@ -15,10 +17,11 @@ const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).map((value)
 export function RegisterOrganizationPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [form, setForm] = useState<OrganizationInput>({ name: "", town: "", country: "", region: "", kind: "club" })
+  const [form, setForm] = useState<Omit<OrganizationInput, "directions" | "latitude" | "longitude">>({ name: "", town: "", country: "", region: "", kind: "club" })
+  const [finder, setFinder] = useState(placeFinderFrom())
   const [submitted, setSubmitted] = useState(false)
   const location = { country: form.country, region: form.region, city: form.town }
-  const missingLocation = locationErrors(location)
+  const missingLocation = { ...locationErrors(location), ...placeFinderErrors(finder) }
 
   const create = useMutation({
     mutationFn: createOrganization,
@@ -33,7 +36,7 @@ export function RegisterOrganizationPage() {
     e.preventDefault()
     setSubmitted(true)
     if (Object.keys(missingLocation).length > 0) return
-    create.mutate({ ...form, name: form.name.trim(), town: form.town.trim() })
+    create.mutate({ ...form, name: form.name.trim(), town: form.town.trim(), ...placeFinderBody(finder) })
   }
 
   const fields = create.error instanceof ApiError ? create.error.fieldErrors() : {}
@@ -62,6 +65,7 @@ export function RegisterOrganizationPage() {
           errors={submitted ? { ...fields, ...missingLocation } : fields}
           cityLimit={80}
         />
+        <PlaceFinderFields value={finder} onChange={setFinder} errors={submitted ? { ...fields, ...missingLocation } : fields} place={form.kind === "facility" ? "facility" : "club"} />
         <ChoiceGroup
           legend="Type"
           columns={3}
