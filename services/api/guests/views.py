@@ -62,6 +62,7 @@ class GuestViewSet(_ClubScoped, viewsets.GenericViewSet):
                 Prefetch("invitations", queryset=GuestInvitation.objects.filter(status="pending"))
             )
             .annotate(entries=Count("user__entry_places", filter=Q(user__entry_places__live=True)))
+            .order_by("user__display_name", "created_at", "pk")  # an aggregate drops Meta.ordering
         )
 
     @extend_schema(
