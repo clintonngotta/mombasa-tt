@@ -1,13 +1,14 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, MapPin, Plus, Search, ShieldCheck, Store, Trophy, Users } from "lucide-react"
+import { CalendarClock, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, Users } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
 import { PlaceDirections, PlaceFinderFields } from "@/components/forms/PlaceFinderFields"
 import { placeFinderBody, placeFinderErrors, placeFinderFrom } from "@/lib/place"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
+import { RegionFeed } from "@/components/region/RegionFeed"
 import { ApiError, errorMessage } from "@/lib/api"
 import {
   can,
@@ -90,6 +91,7 @@ export function ClubPage() {
       )}
 
       {active && <ActiveOrganization key={active.organization.id} membership={active} />}
+      {active && !active.managedOnly && active.organization.kind !== "regional_body" && <RegionFeed />}
 
       {pendingRequests.length > 0 && (
         <section aria-labelledby="my-requests-heading" className="flex flex-col gap-3">
@@ -176,9 +178,19 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           )}
         </nav>
       )}
+      {membership.organization.kind === "regional_body" && (
+        <AdminLink to="/region" icon={<Map aria-hidden className="size-5 text-brand-blue" />}>
+          Region: agenda, clubs, articles, meetings, sponsorships and approvals
+        </AdminLink>
+      )}
       <AdminLink to="/club/committee" icon={<Landmark aria-hidden className="size-5 text-brand-blue" />}>
         {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
       </AdminLink>
+      {!membership.managedOnly && (
+        <AdminLink to="/club/meetings" icon={<CalendarClock aria-hidden className="size-5 text-brand-blue" />}>
+          Meetings
+        </AdminLink>
+      )}
       {!membership.managedOnly && <MyClubDetails membershipId={membership.id} />}
       {manageMembers && (
         <>

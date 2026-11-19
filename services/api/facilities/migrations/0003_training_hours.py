@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('facilities', '0002_place_directions'),
-        ('organizations', '0011_club_description'),
+        ('organizations', '0012_club_description'),
     ]
 
     operations = [

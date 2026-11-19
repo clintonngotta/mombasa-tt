@@ -35,9 +35,23 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "town", "country", "region", "directions", "latitude", "longitude"]
         fields += ["description", "kind", "timezone"]
 
+    def validate_kind(self, value):
+        """A regional body is set up by its region's official (POST /regional-bodies/), never by picking
+        the kind, and no organization changes into or out of one."""
+        body = Organization.Kind.REGIONAL_BODY
+        if value == body and not (self.instance and self.instance.is_body):
+            raise serializers.ValidationError("Choose club, facility or both.")
+        if self.instance and self.instance.is_body and value != body:
+            raise serializers.ValidationError("A regional body stays a regional body.")
+        return value
+
     def validate(self, attrs):
         validate_location(attrs, self.instance, city_field="town", legacy_town=True)
         validate_coordinates(attrs, self.instance)
+        if self.instance and self.instance.is_body:
+            for name in ("country", "region"):
+                if name in attrs and attrs[name] != getattr(self.instance, name):
+                    raise serializers.ValidationError({name: "A regional body's region doesn't change."})
         return attrs
 
 

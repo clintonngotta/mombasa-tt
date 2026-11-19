@@ -16,6 +16,7 @@ from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
 
 from .access import (
+    OVERSIGHT,
     effective_permissions,
     ensure_admin_remains,
     lock_organization,
@@ -373,7 +374,7 @@ class MyManagedOrganizationsView(APIView):
                 else "country"
                 if official_for(request.user, organization, country_only=True)
                 else "regional",
-                "permissions": sorted(ALL_PERMISSIONS),
+                "permissions": sorted(ALL_PERMISSIONS if platform else OVERSIGHT),
             }
             for organization in managed_organizations(request.user)
         ]
