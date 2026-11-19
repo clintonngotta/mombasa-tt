@@ -1549,6 +1549,128 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/guest-claims/:
+    get:
+      operationId: me_guest_claims_list
+      description: The signed-in player's claims and how each ended.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyClaimList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/guest-invitations/:
+    get:
+      operationId: me_guest_invitations_list
+      description: Open guest invitations to the signed-in player's verified address.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyGuestInvitationList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/guest-invitations/{id}/accept/:
+    post:
+      operationId: me_guest_invitations_accept_create
+      description: Open guest invitations to the signed-in player's verified address.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this guest invitation.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyClaim'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/guest-invitations/{id}/decline/:
+    post:
+      operationId: me_guest_invitations_decline_create
+      description: Open guest invitations to the signed-in player's verified address.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this guest invitation.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/honours/:
     get:
       operationId: me_honours_list
@@ -4176,6 +4298,341 @@ paths:
       responses:
         '204':
           description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guest-claims/:
+    get:
+      operationId: organizations_guest_claims_list
+      description: Claims of a club's guests, with their audit trail. A claim in `conflict`
+        waits for staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - conflict
+          - merged
+          - rejected
+        description: Only these.
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGuestClaimList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guest-claims/{id}/reject/:
+    post:
+      operationId: organizations_guest_claims_reject_create
+      description: Claims of a club's guests, with their audit trail. A claim in `conflict`
+        waits for staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this guest claim.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimNoteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestClaim'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guest-claims/{id}/retry/:
+    post:
+      operationId: organizations_guest_claims_retry_create
+      description: Claims of a club's guests, with their audit trail. A claim in `conflict`
+        waits for staff.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this guest claim.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimNoteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestClaim'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/:
+    get:
+      operationId: organizations_guests_list
+      description: 'A club''s guests: players its staff entered before they had an
+        account.'
+      parameters:
+      - in: query
+        name: claimed
+        schema:
+          type: boolean
+        description: Only claimed (true) or unclaimed (false) guests.
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Part of the guest's name.
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGuestList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_guests_create
+      description: 'A club''s guests: players its staff entered before they had an
+        account.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestWriteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/{id}/:
+    patch:
+      operationId: organizations_guests_partial_update
+      description: 'A club''s guests: players its staff entered before they had an
+        account.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this guest.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGuestWriteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/{id}/invite/:
+    post:
+      operationId: organizations_guests_invite_create
+      description: 'A club''s guests: players its staff entered before they had an
+        account.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this guest.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestInviteRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/{id}/revoke-invitation/:
+    post:
+      operationId: organizations_guests_revoke_invitation_create
+      description: 'A club''s guests: players its staff entered before they had an
+        account.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this guest.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guest'
+          description: ''
         4XX:
           description: Error envelope
           content:
@@ -9596,32 +10053,6 @@ components:
       - id
       - received_at
       - sequence
-    ActionEnum:
-      enum:
-      - published
-      - approval_requested
-      - approval_rejected
-      - updated
-      - started
-      - completed
-      - cancelled
-      - event_started
-      - event_completed
-      - event_cancelled
-      - event_removed
-      type: string
-      description: |-
-        * `published` - Published
-        * `approval_requested` - Approval Requested
-        * `approval_rejected` - Approval Rejected
-        * `updated` - Updated
-        * `started` - Started
-        * `completed` - Completed
-        * `cancelled` - Cancelled
-        * `event_started` - Event Started
-        * `event_completed` - Event Completed
-        * `event_cancelled` - Event Cancelled
-        * `event_removed` - Event Removed
     Activity:
       type: object
       description: |-
@@ -10683,6 +11114,35 @@ components:
       required:
       - conflicts
       - warnings
+    ClaimEvent:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/GuestClaimActionEnum'
+        actor_name:
+          type: string
+          readOnly: true
+        note:
+          type: string
+          maxLength: 500
+        at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - actor_name
+      - at
+      - note
+    ClaimNoteRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - note
     ClubProfile:
       type: object
       properties:
@@ -12409,6 +12869,167 @@ components:
       - number
       - qualifiers
       - rows
+    Guest:
+      type: object
+      description: A club's guest, for its staff. `id` is the player's id, the one
+        entries and matches use.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        claimed_at:
+          type: string
+          format: date-time
+          nullable: true
+        claimed_by_name:
+          type: string
+          readOnly: true
+        invitation:
+          allOf:
+          - $ref: '#/components/schemas/GuestInvitation'
+          nullable: true
+          readOnly: true
+        entries:
+          type: integer
+          readOnly: true
+          default: 0
+      required:
+      - claimed_at
+      - claimed_by_name
+      - created_at
+      - display_name
+      - entries
+      - id
+      - invitation
+    GuestClaim:
+      type: object
+      description: A claim for staff, with its audit trail.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        guest_id:
+          type: string
+          format: uuid
+          readOnly: true
+        guest_name:
+          type: string
+          readOnly: true
+        claimant_name:
+          type: string
+          readOnly: true
+        invited_email:
+          type: string
+          format: email
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/GuestClaimStatusEnum'
+        clashes:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaimEvent'
+          readOnly: true
+      required:
+      - claimant_name
+      - clashes
+      - created_at
+      - events
+      - guest_id
+      - guest_name
+      - id
+      - invited_email
+      - resolved_at
+      - status
+    GuestClaimActionEnum:
+      enum:
+      - accepted
+      - merged
+      - conflict
+      - retried
+      - rejected
+      type: string
+      description: |-
+        * `accepted` - Accepted
+        * `merged` - Merged
+        * `conflict` - Conflict
+        * `retried` - Retried
+        * `rejected` - Rejected
+    GuestClaimStatusEnum:
+      enum:
+      - merged
+      - conflict
+      - rejected
+      type: string
+      description: |-
+        * `merged` - Merged
+        * `conflict` - Conflict
+        * `rejected` - Rejected
+    GuestInvitation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        status:
+          $ref: '#/components/schemas/InvitationStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - email
+      - expires_at
+      - id
+      - status
+    GuestInviteRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    GuestWriteRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required:
+      - display_name
     HandEnum:
       enum:
       - right
@@ -12698,7 +13319,7 @@ components:
           readOnly: true
         action:
           allOf:
-          - $ref: '#/components/schemas/ActionEnum'
+          - $ref: '#/components/schemas/LifecycleEntryActionEnum'
           readOnly: true
         event_name:
           type: string
@@ -12724,6 +13345,32 @@ components:
       - id
       - reason
       - snapshot
+    LifecycleEntryActionEnum:
+      enum:
+      - published
+      - approval_requested
+      - approval_rejected
+      - updated
+      - started
+      - completed
+      - cancelled
+      - event_started
+      - event_completed
+      - event_cancelled
+      - event_removed
+      type: string
+      description: |-
+        * `published` - Published
+        * `approval_requested` - Approval Requested
+        * `approval_rejected` - Approval Rejected
+        * `updated` - Updated
+        * `started` - Started
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `event_started` - Event Started
+        * `event_completed` - Event Completed
+        * `event_cancelled` - Event Cancelled
+        * `event_removed` - Event Removed
     LineupRequestRequest:
       type: object
       description: |-
@@ -13549,6 +14196,44 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    MyClaim:
+      type: object
+      description: 'What came of accepting: merged, or waiting for the club to sort
+        out a clash.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        guest_name:
+          type: string
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/GuestClaimStatusEnum'
+        clashes:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - clashes
+      - created_at
+      - guest_name
+      - id
+      - organization_name
+      - resolved_at
+      - status
     MyEntry:
       type: object
       description: One of the caller's own entries, with the event and tournament
@@ -13634,6 +14319,38 @@ components:
       - team_name
       - tournament
       - withdrawn_at
+    MyGuestInvitation:
+      type: object
+      description: 'An invitation to the signed-in player: who they were entered as,
+        and where.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        guest_name:
+          type: string
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        invited_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - expires_at
+      - guest_name
+      - id
+      - invited_by_name
+      - organization_name
     MyInvitation:
       type: object
       description: 'The invitee''s view: which organization, and who invited them
@@ -14306,6 +15023,56 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Entry'
+    PaginatedGuestClaimList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuestClaim'
+    PaginatedGuestList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Guest'
     PaginatedInvitationList:
       type: object
       required:
@@ -14431,6 +15198,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Membership'
+    PaginatedMyClaimList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyClaim'
     PaginatedMyEntryList:
       type: object
       required:
@@ -14456,6 +15248,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MyEntry'
+    PaginatedMyGuestInvitationList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyGuestInvitation'
     PaginatedMyInvitationList:
       type: object
       required:
@@ -14913,6 +15730,13 @@ components:
           nullable: true
           description: 'Team events: rubbers a team must win to take the tie; at most
             half of them, rounded up, so a tie always has a winner. Null otherwise.'
+    PatchedGuestWriteRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
     PatchedMeetingRequest:
       type: object
       description: |-

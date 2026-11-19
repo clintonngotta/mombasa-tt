@@ -86,6 +86,18 @@ Hand-worked from the clauses in spec.md, not taken from the code under test. The
 
 **Authentication/guest claim — integration and end-to-end.** Setup: unverified user, expired reset, G1 with recorded match, PWA with pending scores. Steps: verify, sign in/out in browser/home-screen app, reset password, retry revoked session, let session expire offline then reauthenticate, claim G1 twice/from another account. Pass: valid flow works; expired/reused credentials fail; reset revokes sessions; pending scores survive reauthentication as the same user; CSRF enforced; verified claim retains identity; no arbitrary name merge or account enumeration. Evidence: sanitized API assertions and PWA journey. Native refresh-token cases are added in TASK-070.
 
+*Guests (TASK-011, 2026-11-19).* `tests/test_guests.py` covers several cases:
+- nobody can sign in as a guest, and outsiders are refused;
+- only the host's staff enter the host's guests, and guests get no mail;
+- a verified invitee claims a guest, which keeps the same entry and match rows, deactivates the guest, uses up the invitation and blocks re-inviting;
+- an unverified account or a stranger is refused;
+- a clash (the same event) moves nothing until staff withdraw the duplicate and retry, with the full trail;
+- staff can reject a claim, after which only a new invitation goes on;
+- revoke and decline work;
+- a rated guest is queued for re-rating.
+
+The guest routes are in the privacy matrix.
+
 ### EVAL-004
 
 **Organizations — integration.** Setup: P1 with A/B memberships, pending membership and public event at C. Steps: create organization, request/approve join, switch context, enter C event without joining C. Pass: creator is admin; membership status and switching are correct; entering public event does not fabricate membership. Outsider cannot approve self. Evidence: API and ownership assertions.

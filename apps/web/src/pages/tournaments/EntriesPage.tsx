@@ -263,6 +263,7 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
           fixed={fixed}
           max={ROSTER_SIZE[event.kind]}
           error={fieldErrors.player_ids}
+          guestsOf={staff ? t.organization.id : undefined}
           onChange={setPicked}
         />
       ) : (

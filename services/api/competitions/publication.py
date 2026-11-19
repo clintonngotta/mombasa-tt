@@ -200,6 +200,8 @@ def notify(payload: dict) -> None:
         version.reason, "the organizers changed the schedule"
     )
     for user, lines in lines_for.items():
+        if not user.can_receive_email:  # a guest: club staff pass the news on
+            continue
         body = (
             f"The schedule of {tournament.name} has changed because {why}. Your matches:\n\n"
             + "\n".join(lines)
