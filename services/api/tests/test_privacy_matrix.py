@@ -62,6 +62,7 @@ from profiles.models import PlayerProfile
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
+from training.models import Drill, Equipment, PlanItem, TrainingPlan
 
 from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
@@ -106,6 +107,28 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-managed-organizations": {"get": OWNER},
     "me-membership-leave": {"post": OWNER},
     "me-membership-fields": {"get": OWNER, "patch": OWNER},  # member-visible fields only
+    # Training (REQ-026, REQ-027): equipment, personal drills and plans are the player's own.
+    "my-equipment": {"get": OWNER, "put": OWNER},
+    "my-training-sessions": {"get": OWNER},
+    "my-drill-list": {"get": OWNER, "post": OWNER},
+    "my-drill-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
+    "training-plan-list": {"get": OWNER, "post": OWNER},
+    "training-plan-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
+    "training-plan-recommendations": {"get": OWNER},
+    "training-plan-items": {"post": OWNER},  # someone else's plan id is a 404, see test_training
+    "training-plan-item": {"patch": OWNER, "delete": OWNER},
+    # A club's drills: members read them, training staff change them.
+    "organization-drills": {"get": MEMBER, "post": STAFF},
+    "organization-drill": {"patch": STAFF, "delete": STAFF},
+    # The drill library: the standard drills, your own and your clubs'. Another club's drill is a 404.
+    "drill-library-list": {"get": SIGNED_IN},
+    "drill-library-detail": {"get": SIGNED_IN},
+    # A club's training plans: members read them, training staff write them and get recommendations.
+    "organization-training-plans": {"get": MEMBER, "post": STAFF},
+    "organization-training-plan": {"get": MEMBER, "patch": STAFF, "delete": STAFF},
+    "organization-training-plan-recommendations": {"get": STAFF},
+    "organization-training-plan-items": {"post": STAFF},
+    "organization-training-plan-item": {"patch": STAFF, "delete": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     "organization-permissions": {"get": SIGNED_IN},
@@ -282,6 +305,12 @@ BODIES = {
     ("organization-member-field-list", "post"): {"label": "Locker", "kind": "text"},
     ("organization-member-field", "patch"): {"label": "Renamed field"},
     ("organization-venues", "post"): {"name": "Second hall", "town": "Mombasa"},
+    ("organization-drills", "post"): {"title": "Ghost serve", "instructions": "Short and low."},
+    ("organization-drill", "patch"): {"focus": "Footwork"},
+    ("organization-training-plans", "post"): {"title": "Week", "period": "week", "starts_on": "2026-11-30"},
+    ("organization-training-plan", "patch"): {"goal": "Footwork"},
+    ("organization-training-plan-items", "post"): {"kind": "checklist", "title": "Shadow play"},
+    ("organization-training-plan-item", "patch"): {"completed": True},
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
@@ -438,6 +467,25 @@ class World:
         self.retired_field = field(
             "MARK-FIELD-RETIRED", visibility=MemberField.Visibility.MEMBER, retired_at=timezone.now()
         )
+        # Training: Baraka's equipment, drill and plan are his alone; Coast's drill is for its members.
+        Equipment.objects.create(user=self.baraka, blade="MARK-BARAKA-BLADE")
+        self.baraka_drill = Drill.objects.create(
+            owner=self.baraka, title="MARK-BARAKA-DRILL", instructions="Private"
+        )
+        self.baraka_plan = TrainingPlan.objects.create(owner=self.baraka, title="MARK-BARAKA-PLAN")
+        self.baraka_item = PlanItem.objects.create(
+            plan=self.baraka_plan, kind=PlanItem.Kind.CHECKLIST, title="MARK-BARAKA-ITEM"
+        )
+        self.club_drill = Drill.objects.create(
+            organization=self.coast, title="MARK-CLUB-DRILL", instructions="For members"
+        )
+        self.club_plan = TrainingPlan.objects.create(
+            organization=self.coast, title="MARK-CLUB-PLAN", goal_skills=["footwork"]
+        )
+        self.club_item = PlanItem.objects.create(
+            plan=self.club_plan, kind=PlanItem.Kind.CHECKLIST, title="MARK-CLUB-ITEM"
+        )
+        self.spare_club_plan = TrainingPlan.objects.create(organization=self.coast, title="Spare club plan")
         # The committee (REQ-045): Faith holds a seat that grants a staff-only role; Grace held it before.
         # One committee field members see and one for governance staff, each with a value on the seat.
         self.position = CommitteePosition.objects.create(
@@ -653,6 +701,15 @@ class World:
             "me-invitation-decline": self.invitation.id,
             "me-membership-leave": self.baraka_membership.id,
             "me-membership-fields": self.baraka_membership.id,
+            "my-drill-detail": self.baraka_drill.id,
+            "training-plan-detail": self.baraka_plan.id,
+            "training-plan-item": self.baraka_item.id,
+            "organization-drill": self.club_drill.id,
+            "drill-library-detail": self.club_drill.id,
+            "training-plan-recommendations": self.baraka_plan.id,
+            "organization-training-plan": self.spare_club_plan.id,
+            "organization-training-plan-recommendations": self.club_plan.id,
+            "organization-training-plan-item": self.club_item.id,
             # Faith's, because the staff checks remove Baraka before they reach this route.
             "organization-member-fields": self.faith_membership.id,
             "organization-member-field": self.staff_field.id,
@@ -721,6 +778,9 @@ class World:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
             found["pk"] = pk[name]
+        if "plan_pk" in names:
+            club = name.startswith("organization-training-plan")
+            found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
         if name.startswith("tournament-schedule"):
@@ -789,6 +849,10 @@ class World:
             "committee_fields": sorted(CommitteeField.objects.values_list("label", "retired_at")),
             "committee_values": sorted(CommitteeFieldValue.objects.values_list("field__label", "value")),
             "venues": sorted(Venue.objects.values_list("name", "town", "active")),
+            "equipment": sorted(Equipment.objects.values_list("user__email", "blade")),
+            "drills": sorted(Drill.objects.values_list("title", "focus", "repetitions")),
+            "training_plans": sorted(TrainingPlan.objects.values_list("title", "goal")),
+            "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
             "tables": sorted(Table.objects.values_list("label", "active")),
             "tournaments": sorted(Tournament.objects.values_list("name", "status", "cancel_reason")),
             "events": sorted(Event.objects.values_list("name", "status", "capacity", "cancel_reason")),
@@ -1007,6 +1071,13 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},
         "MARK-FAITH-BIO": {"faith"},  # unpublished
+        "MARK-BARAKA-BLADE": {"baraka"},
+        "MARK-BARAKA-DRILL": {"baraka"},
+        "MARK-BARAKA-PLAN": {"baraka"},
+        "MARK-BARAKA-ITEM": {"baraka"},
+        "MARK-CLUB-DRILL": {"amina", "baraka", "faith", "grace"},
+        "MARK-CLUB-PLAN": {"amina", "baraka", "faith", "grace"},
+        "MARK-CLUB-ITEM": {"amina", "baraka", "faith", "grace"},
         # Controls: a listed player's published detail and picture reach every signed-in viewer, which
         # shows the crawl really reads the pages where a leak would appear.
         "MARK-FAITH-STYLE": set(world.viewers),

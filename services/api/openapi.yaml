@@ -281,6 +281,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/drills/:
+    get:
+      operationId: drills_list
+      description: 'GET /drills/: every drill the player may use, standard ones first;
+        GET /drills/{id}/ one of them.'
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+      - in: query
+        name: level
+        schema:
+          type: string
+      - in: query
+        name: library
+        schema:
+          type: string
+          enum:
+          - club
+          - personal
+          - standard
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Title or focus
+      tags:
+      - drills
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/drills/{id}/:
+    get:
+      operationId: drills_retrieve
+      description: 'GET /drills/: every drill the player may use, standard ones first;
+        GET /drills/{id}/ one of them.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this drill.
+        required: true
+      tags:
+      - drills
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/geography/countries/:
     get:
       operationId: geography_countries_list
@@ -469,6 +545,186 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/drills/:
+    get:
+      operationId: me_drills_list
+      description: The player's personal drill library, private to them.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDrillList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_drills_create
+      description: The player's personal drill library, private to them.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrillRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/drills/{id}/:
+    get:
+      operationId: me_drills_retrieve
+      description: The player's personal drill library, private to them.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this drill.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: me_drills_update
+      description: The player's personal drill library, private to them.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this drill.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrillRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: me_drills_partial_update
+      description: The player's personal drill library, private to them.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this drill.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDrillRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_drills_destroy
+      description: The player's personal drill library, private to them.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this drill.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/entries/:
     get:
       operationId: me_entries_list
@@ -497,6 +753,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMyEntryList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/equipment/:
+    get:
+      operationId: me_equipment_retrieve
+      description: 'GET/PUT /me/equipment/: the player''s own equipment, private to
+        them.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: me_equipment_update
+      description: 'GET/PUT /me/equipment/: the player''s own equipment, private to
+        them.'
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquipmentRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipment'
           description: ''
         4XX:
           description: Error envelope
@@ -1149,6 +1453,363 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMyScorecardList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/training-plans/:
+    get:
+      operationId: me_training_plans_list
+      description: The player's own training plans with their items and progress.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTrainingPlanList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_training_plans_create
+      description: The player's own training plans with their items and progress.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingPlanRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/training-plans/{id}/:
+    get:
+      operationId: me_training_plans_retrieve
+      description: The player's own training plans with their items and progress.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this training plan.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: me_training_plans_update
+      description: The player's own training plans with their items and progress.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this training plan.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingPlanRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: me_training_plans_partial_update
+      description: The player's own training plans with their items and progress.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this training plan.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTrainingPlanRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_training_plans_destroy
+      description: The player's own training plans with their items and progress.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this training plan.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/training-plans/{id}/recommendations/:
+    get:
+      operationId: me_training_plans_recommendations_list
+      description: The player's own training plans with their items and progress.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this training plan.
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDrillRecommendationList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/training-plans/{plan_pk}/items/:
+    post:
+      operationId: me_training_plans_items_create
+      description: |-
+        Items of one of the player's own plans. Sessions are checked against the player's calendar;
+        ticking an item off (`completed`) is all a checklist item ever does.
+      parameters:
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanItemRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/training-plans/{plan_pk}/items/{id}/:
+    patch:
+      operationId: me_training_plans_items_partial_update
+      description: |-
+        Items of one of the player's own plans. Sessions are checked against the player's calendar;
+        ticking an item off (`completed`) is all a checklist item ever does.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanItemRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_training_plans_items_destroy
+      description: |-
+        Items of one of the player's own plans. Sessions are checked against the player's calendar;
+        ticking an item off (`completed`) is all a checklist item ever does.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/training-sessions/:
+    get:
+      operationId: me_training_sessions_list
+      description: 'GET /me/training-sessions/: the player''s sessions that haven''t
+        ended yet, soonest first.'
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UpcomingSession'
           description: ''
         4XX:
           description: Error envelope
@@ -1883,6 +2544,141 @@ paths:
               schema:
                 $ref: '#/components/schemas/Committee'
           description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/drills/:
+    get:
+      operationId: organizations_drills_list
+      description: 'A club''s drill library: every active member reads it; training
+        staff add, change and delete.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_drills_create
+      description: 'A club''s drill library: every active member reads it; training
+        staff add, change and delete.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrillRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/drills/{id}/:
+    patch:
+      operationId: organizations_drills_partial_update
+      description: 'A club''s drill library: every active member reads it; training
+        staff add, change and delete.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDrillRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Drill'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_drills_destroy
+      description: 'A club''s drill library: every active member reads it; training
+        staff add, change and delete.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
         4XX:
           description: Error envelope
           content:
@@ -2757,6 +3553,364 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-plans/:
+    get:
+      operationId: organizations_training_plans_list
+      description: |-
+        A club's training plans for a day, a week, a month or any dates: members read them, newest period
+        first; training staff create, change and delete them.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTrainingPlanList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_training_plans_create
+      description: |-
+        A club's training plans for a day, a week, a month or any dates: members read them, newest period
+        first; training staff create, change and delete them.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingPlanRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-plans/{id}/:
+    get:
+      operationId: organizations_training_plans_retrieve
+      description: |-
+        A club's training plans for a day, a week, a month or any dates: members read them, newest period
+        first; training staff create, change and delete them.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_training_plans_partial_update
+      description: |-
+        A club's training plans for a day, a week, a month or any dates: members read them, newest period
+        first; training staff create, change and delete them.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTrainingPlanRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_training_plans_destroy
+      description: |-
+        A club's training plans for a day, a week, a month or any dates: members read them, newest period
+        first; training staff create, change and delete them.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-plans/{id}/recommendations/:
+    get:
+      operationId: organizations_training_plans_recommendations_list
+      description: 'For the club''s training staff building the plan: standard drills
+        and the club''s own.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDrillRecommendationList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-plans/{plan_pk}/items/:
+    post:
+      operationId: organizations_training_plans_items_create
+      description: Items of a club plan, for its training staff. Drills come from
+        the standard library and the club's.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanItemRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-plans/{plan_pk}/items/{id}/:
+    patch:
+      operationId: organizations_training_plans_items_partial_update
+      description: Items of a club plan, for its training staff. Drills come from
+        the standard library and the club's.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanItemRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_training_plans_items_destroy
+      description: Items of a club plan, for its training staff. Drills come from
+        the standard library and the club's.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: plan_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPlan'
           description: ''
         4XX:
           description: Error envelope
@@ -5868,6 +7022,53 @@ components:
         * `event_completed` - Event Completed
         * `event_cancelled` - Event Cancelled
         * `event_removed` - Event Removed
+    Activity:
+      type: object
+      description: |-
+        One part of a session's running order: a warm-up, a drill on the table, work off it, match play or
+        the cool-down. A drill fills in the title when none is given.
+      properties:
+        phase:
+          $ref: '#/components/schemas/PhaseEnum'
+        title:
+          type: string
+          maxLength: 80
+        minutes:
+          type: integer
+          maximum: 240
+          minimum: 1
+          nullable: true
+        drill:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - drill
+      - minutes
+      - phase
+      - title
+    ActivityRequest:
+      type: object
+      description: |-
+        One part of a session's running order: a warm-up, a drill on the table, work off it, match play or
+        the cool-down. A drill fills in the title when none is given.
+      properties:
+        phase:
+          $ref: '#/components/schemas/PhaseEnum'
+        title:
+          type: string
+          maxLength: 80
+        minutes:
+          type: integer
+          maximum: 240
+          minimum: 1
+          nullable: true
+        drill:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - phase
     AdminHandover:
       type: object
       properties:
@@ -6202,6 +7403,32 @@ components:
       required:
       - display_name
       - id
+    CategoryEnum:
+      enum:
+      - serve
+      - receive
+      - footwork
+      - topspin
+      - block
+      - short_game
+      - multiball
+      - match_play
+      - warm_up
+      - off_table
+      - cool_down
+      type: string
+      description: |-
+        * `serve` - Serve
+        * `receive` - Receive
+        * `footwork` - Footwork
+        * `topspin` - Topspin
+        * `block` - Block
+        * `short_game` - Short Game
+        * `multiball` - Multiball
+        * `match_play` - Match Play
+        * `warm_up` - Warm Up
+        * `off_table` - Off Table
+        * `cool_down` - Cool Down
     Change:
       type: object
       properties:
@@ -6535,6 +7762,16 @@ components:
       - conflicts
       - version
       - warnings
+    DepthEnum:
+      enum:
+      - short
+      - half
+      - long
+      type: string
+      description: |-
+        * `short` - short
+        * `half` - half
+        * `long` - long
     Device:
       type: object
       description: Which device is scoring the sheet. `here` compares with the caller's
@@ -6744,6 +7981,183 @@ components:
         * `preview` - Preview
         * `published` - Published
         * `superseded` - Superseded
+    Drill:
+      type: object
+      description: A drill. Instructions are required; everything else is optional.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 80
+        instructions:
+          type: string
+          maxLength: 2000
+        focus:
+          type: string
+          maxLength: 80
+        duration_minutes:
+          type: integer
+          maximum: 600
+          minimum: 1
+          nullable: true
+        repetitions:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          nullable: true
+        equipment:
+          type: string
+          maxLength: 200
+        category:
+          oneOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        level:
+          oneOf:
+          - $ref: '#/components/schemas/DrillLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        coaching_points:
+          type: string
+          maxLength: 2000
+        description:
+          type: string
+        video_url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+        pattern:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatternStep'
+          maxItems: 12
+        library:
+          allOf:
+          - $ref: '#/components/schemas/LibraryEnum'
+          readOnly: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        organization_name:
+          type: string
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - category
+      - coaching_points
+      - description
+      - duration_minutes
+      - equipment
+      - focus
+      - id
+      - instructions
+      - level
+      - library
+      - organization
+      - organization_name
+      - pattern
+      - repetitions
+      - skills
+      - title
+      - updated_at
+      - video_url
+    DrillLevelEnum:
+      enum:
+      - beginner
+      - intermediate
+      - advanced
+      type: string
+      description: |-
+        * `beginner` - Beginner
+        * `intermediate` - Intermediate
+        * `advanced` - Advanced
+    DrillRecommendation:
+      type: object
+      description: A drill suggested for a plan's goal, with the goal skills it teaches.
+      properties:
+        drill:
+          $ref: '#/components/schemas/Drill'
+        matched:
+          type: array
+          items:
+            type: string
+      required:
+      - drill
+      - matched
+    DrillRequest:
+      type: object
+      description: A drill. Instructions are required; everything else is optional.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        instructions:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        focus:
+          type: string
+          maxLength: 80
+        duration_minutes:
+          type: integer
+          maximum: 600
+          minimum: 1
+          nullable: true
+        repetitions:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          nullable: true
+        equipment:
+          type: string
+          maxLength: 200
+        category:
+          oneOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        level:
+          oneOf:
+          - $ref: '#/components/schemas/DrillLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        coaching_points:
+          type: string
+          maxLength: 2000
+        description:
+          type: string
+        video_url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+        pattern:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatternStepRequest'
+          maxItems: 12
+      required:
+      - instructions
+      - title
     EmailOnlyRequest:
       type: object
       properties:
@@ -6963,6 +8377,39 @@ components:
       - starts_on
       - status
       - timezone
+    Equipment:
+      type: object
+      properties:
+        blade:
+          type: string
+          maxLength: 100
+        forehand:
+          type: string
+          maxLength: 100
+        backhand:
+          type: string
+          maxLength: 100
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - backhand
+      - blade
+      - forehand
+      - updated_at
+    EquipmentRequest:
+      type: object
+      properties:
+        blade:
+          type: string
+          maxLength: 100
+        forehand:
+          type: string
+          maxLength: 100
+        backhand:
+          type: string
+          maxLength: 100
     Event:
       type: object
       properties:
@@ -7260,7 +8707,7 @@ components:
         discipline:
           $ref: '#/components/schemas/SinglesOrDoublesEnum'
         level:
-          $ref: '#/components/schemas/LevelEnum'
+          $ref: '#/components/schemas/GeographyRankingLevelEnum'
         processing:
           type: boolean
         rows:
@@ -7272,6 +8719,16 @@ components:
       - level
       - processing
       - rows
+    GeographyRankingLevelEnum:
+      enum:
+      - country
+      - region
+      - city
+      type: string
+      description: |-
+        * `country` - country
+        * `region` - region
+        * `city` - city
     GeographyRankingRow:
       type: object
       properties:
@@ -7371,6 +8828,14 @@ components:
       description: |-
         * `right` - Right
         * `left` - Left
+    HitterEnum:
+      enum:
+      - you
+      - partner
+      type: string
+      description: |-
+        * `you` - you
+        * `partner` - partner
     Holder:
       type: object
       description: 'Who holds a position: display name only.'
@@ -7527,16 +8992,16 @@ components:
       - lost
       - played
       - won
-    LevelEnum:
+    LibraryEnum:
       enum:
-      - country
-      - region
-      - city
+      - standard
+      - personal
+      - club
       type: string
       description: |-
-        * `country` - country
-        * `region` - region
-        * `city` - city
+        * `standard` - standard
+        * `personal` - personal
+        * `club` - club
     LifecycleEntry:
       type: object
       properties:
@@ -8807,6 +10272,56 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DirectoryPlayer'
+    PaginatedDrillList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Drill'
+    PaginatedDrillRecommendationList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrillRecommendation'
     PaginatedEntryList:
       type: object
       required:
@@ -9157,6 +10672,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Tournament'
+    PaginatedTrainingPlanList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingPlan'
     PasswordResetConfirmRequest:
       type: object
       properties:
@@ -9223,6 +10763,63 @@ components:
           $ref: '#/components/schemas/MemberFieldVisibilityEnum'
         applies_to:
           $ref: '#/components/schemas/AppliesToEnum'
+    PatchedDrillRequest:
+      type: object
+      description: A drill. Instructions are required; everything else is optional.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        instructions:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        focus:
+          type: string
+          maxLength: 80
+        duration_minutes:
+          type: integer
+          maximum: 600
+          minimum: 1
+          nullable: true
+        repetitions:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          nullable: true
+        equipment:
+          type: string
+          maxLength: 200
+        category:
+          oneOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        level:
+          oneOf:
+          - $ref: '#/components/schemas/DrillLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        coaching_points:
+          type: string
+          maxLength: 2000
+        description:
+          type: string
+        video_url:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+        pattern:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatternStepRequest'
+          maxItems: 12
     PatchedEventRequest:
       type: object
       properties:
@@ -9362,6 +10959,39 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GameRequest'
+    PatchedPlanItemRequest:
+      type: object
+      description: A checklist item (no times) or a session (start and end). Its kind
+        is fixed once created.
+      properties:
+        kind:
+          $ref: '#/components/schemas/PlanItemKindEnum'
+        title:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 500
+        drill:
+          type: string
+          format: uuid
+          nullable: true
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed:
+          type: boolean
+          writeOnly: true
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityRequest'
+          maxItems: 20
     PatchedPositionInputRequest:
       type: object
       properties:
@@ -9512,6 +11142,30 @@ components:
           minimum: 0
           description: A published match moved by more than this, or to another table,
             is news for its people.
+    PatchedTrainingPlanRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        goal:
+          type: string
+          maxLength: 280
+        goal_skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+        period:
+          $ref: '#/components/schemas/PeriodEnum'
+        starts_on:
+          type: string
+          format: date
+          nullable: true
+        ends_on:
+          type: string
+          format: date
+          nullable: true
     PatchedVenueRequest:
       type: object
       description: A venue with its tables in playing order.
@@ -9529,6 +11183,62 @@ components:
           maxLength: 200
         active:
           type: boolean
+    PatternStep:
+      type: object
+      description: One shot of a drill on the virtual table; see Drill.pattern.
+      properties:
+        hitter:
+          $ref: '#/components/schemas/HitterEnum'
+        stroke:
+          type: string
+          maxLength: 40
+        x:
+          $ref: '#/components/schemas/XEnum'
+        depth:
+          $ref: '#/components/schemas/DepthEnum'
+        note:
+          type: string
+          maxLength: 80
+      required:
+      - depth
+      - hitter
+      - note
+      - stroke
+      - x
+    PatternStepRequest:
+      type: object
+      description: One shot of a drill on the virtual table; see Drill.pattern.
+      properties:
+        hitter:
+          $ref: '#/components/schemas/HitterEnum'
+        stroke:
+          type: string
+          minLength: 1
+          maxLength: 40
+        x:
+          $ref: '#/components/schemas/XEnum'
+        depth:
+          $ref: '#/components/schemas/DepthEnum'
+        note:
+          type: string
+          maxLength: 80
+      required:
+      - depth
+      - hitter
+      - stroke
+      - x
+    PeriodEnum:
+      enum:
+      - day
+      - week
+      - month
+      - custom
+      type: string
+      description: |-
+        * `day` - Day
+        * `week` - Week
+        * `month` - Month
+        * `custom` - Custom
     PermissionEnum:
       enum:
       - members.manage
@@ -9676,6 +11386,20 @@ components:
       - games
       - label
       - played_on
+    PhaseEnum:
+      enum:
+      - warm_up
+      - on_table
+      - off_table
+      - match_play
+      - cool_down
+      type: string
+      description: |-
+        * `warm_up` - Warm-up
+        * `on_table` - On the table
+        * `off_table` - Off the table
+        * `match_play` - Match play
+        * `cool_down` - Cool-down
     Place:
       type: object
       properties:
@@ -9702,6 +11426,106 @@ components:
       required:
       - entries
       - label
+    PlanItem:
+      type: object
+      description: A checklist item (no times) or a session (start and end). Its kind
+        is fixed once created.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/PlanItemKindEnum'
+        title:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 500
+        drill:
+          type: string
+          format: uuid
+          nullable: true
+        drill_title:
+          type: string
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+          maxItems: 20
+      required:
+      - activities
+      - completed_at
+      - drill
+      - drill_title
+      - ends_at
+      - id
+      - kind
+      - notes
+      - order
+      - starts_at
+      - title
+    PlanItemKindEnum:
+      enum:
+      - checklist
+      - session
+      type: string
+      description: |-
+        * `checklist` - Checklist
+        * `session` - Session
+    PlanItemRequest:
+      type: object
+      description: A checklist item (no times) or a session (start and end). Its kind
+        is fixed once created.
+      properties:
+        kind:
+          $ref: '#/components/schemas/PlanItemKindEnum'
+        title:
+          type: string
+          maxLength: 120
+        notes:
+          type: string
+          maxLength: 500
+        drill:
+          type: string
+          format: uuid
+          nullable: true
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed:
+          type: boolean
+          writeOnly: true
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityRequest'
+          maxItems: 20
+      required:
+      - kind
     Player:
       type: object
       description: |-
@@ -9975,6 +11799,16 @@ components:
       - published_details
       - region
       - style
+    Progress:
+      type: object
+      properties:
+        done:
+          type: integer
+        total:
+          type: integer
+      required:
+      - done
+      - total
     ProgressEnum:
       enum:
       - decided
@@ -11546,6 +13380,40 @@ components:
       description: |-
         * `singles` - Singles
         * `doubles` - Doubles
+    SkillEnum:
+      enum:
+      - footwork
+      - placement
+      - forehand
+      - backhand
+      - third_ball
+      - serve
+      - receive
+      - short_game
+      - topspin
+      - blocking
+      - consistency
+      - transition
+      - reading_spin
+      - fitness
+      - flexibility
+      type: string
+      description: |-
+        * `footwork` - Footwork
+        * `placement` - Placement
+        * `forehand` - Forehand
+        * `backhand` - Backhand
+        * `third_ball` - Third-ball attack
+        * `serve` - Serve
+        * `receive` - Receive
+        * `short_game` - Short game
+        * `topspin` - Topspin
+        * `blocking` - Blocking
+        * `consistency` - Consistency
+        * `transition` - Forehand-backhand transition
+        * `reading_spin` - Reading spin
+        * `fitness` - Fitness
+        * `flexibility` - Flexibility
     SlotEnum:
       enum:
       - a1
@@ -12050,6 +13918,89 @@ components:
         * `in_progress` - In Progress
         * `completed` - Completed
         * `cancelled` - Cancelled
+    TrainingPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 80
+        goal:
+          type: string
+          maxLength: 280
+        goal_skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+        period:
+          $ref: '#/components/schemas/PeriodEnum'
+        starts_on:
+          type: string
+          format: date
+          nullable: true
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+        organization:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanItem'
+          readOnly: true
+        progress:
+          allOf:
+          - $ref: '#/components/schemas/Progress'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - ends_on
+      - goal
+      - goal_skills
+      - id
+      - items
+      - organization
+      - period
+      - progress
+      - starts_on
+      - title
+    TrainingPlanRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        goal:
+          type: string
+          maxLength: 280
+        goal_skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillEnum'
+        period:
+          $ref: '#/components/schemas/PeriodEnum'
+        starts_on:
+          type: string
+          format: date
+          nullable: true
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - title
     Umpire:
       type: object
       properties:
@@ -12061,6 +14012,44 @@ components:
       required:
       - display_name
       - id
+    UpcomingSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        plan:
+          type: string
+          format: uuid
+        plan_title:
+          type: string
+        title:
+          type: string
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - completed_at
+      - ends_at
+      - id
+      - plan
+      - plan_title
+      - starts_at
+      - title
     User:
       type: object
       properties:
@@ -12187,6 +14176,16 @@ components:
       - scheduled_at
       - table
       - title
+    XEnum:
+      enum:
+      - left
+      - center
+      - right
+      type: string
+      description: |-
+        * `left` - left
+        * `center` - center
+        * `right` - right
     ApiError:
       type: object
       description: Envelope of every API error (REQ-032); see core.exceptions.api_exception_handler.

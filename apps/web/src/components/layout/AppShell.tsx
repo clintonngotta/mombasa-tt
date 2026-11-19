@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { House, Swords, Trophy, Users, UserRound, type LucideIcon } from "lucide-react"
+import { BatIcon } from "@/components/brand/BatIcon"
 import { cn } from "@/lib/utils"
 import { Wordmark } from "@/components/brand/Wordmark"
 import { OrganizationSwitcher } from "@/components/clubs/OrganizationSwitcher"
@@ -10,6 +11,7 @@ type NavItem = { to: string; label: string; icon: LucideIcon }
 const NAV_ITEMS: NavItem[] = [
   { to: "/home", label: "Home", icon: House },
   { to: "/play", label: "Play", icon: Swords },
+  { to: "/training", label: "Training", icon: BatIcon },
   { to: "/rankings", label: "Rankings", icon: Trophy },
   { to: "/club", label: "Club", icon: Users },
   { to: "/profile", label: "Profile", icon: UserRound },
@@ -40,7 +42,7 @@ export function AppShell() {
 
         <nav
           aria-label="Main"
-          className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-6 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
           {NAV_ITEMS.map((item) => (
             <TabLink key={item.to} item={item} />
