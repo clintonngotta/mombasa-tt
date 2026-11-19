@@ -70,3 +70,38 @@ class PersonalGame(models.Model):
 
     def __str__(self):
         return f"Set {self.number}: {self.my_points}-{self.opponent_points}"
+
+
+class MatchNote(models.Model):
+    """A player's private notes on one match they played (REQ-025): what they observed, what to work on.
+    Linked to an official match (umpire-scored, whose sets and result stay read-only to the player) or to
+    one of their own recorded matches. Only the owner reads or edits it: club roles, coaches, opponents
+    and public pages never see it. A coach's notes for a player are their own, under REQ-047."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="match_notes")
+    match = models.ForeignKey(
+        "competitions.Match", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
+    personal_match = models.ForeignKey(
+        PersonalMatch, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
+    observations = models.TextField(max_length=4000, blank=True)
+    goals = models.TextField(max_length=2000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(match__isnull=False, personal_match__isnull=True)
+                | models.Q(match__isnull=True, personal_match__isnull=False),
+                name="match_note_links_one_match",
+            ),
+            models.UniqueConstraint(fields=["owner", "match"], name="one_note_per_official_match"),
+            models.UniqueConstraint(fields=["owner", "personal_match"], name="one_note_per_own_match"),
+        ]
+
+    def __str__(self):
+        return f"Note by {self.owner_id} on {self.match_id or self.personal_match_id}"

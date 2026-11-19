@@ -1846,6 +1846,176 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/match-notes/:
+    get:
+      operationId: me_match_notes_list
+      description: |-
+        The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+        of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+        is never changed here.
+      parameters:
+      - in: query
+        name: match
+        schema:
+          type: string
+        description: Only the note on this official match.
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: personal_match
+        schema:
+          type: string
+        description: Only the note on this recorded match.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchNoteList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_match_notes_create
+      description: |-
+        The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+        of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+        is never changed here.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchNoteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchNote'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/match-notes/{id}/:
+    get:
+      operationId: me_match_notes_retrieve
+      description: |-
+        The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+        of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+        is never changed here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this match note.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchNote'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: me_match_notes_partial_update
+      description: |-
+        The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+        of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+        is never changed here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this match note.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMatchNoteChangeRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchNote'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: me_match_notes_destroy
+      description: |-
+        The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+        of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+        is never changed here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this match note.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/matches/:
     get:
       operationId: me_matches_list
@@ -13939,6 +14109,89 @@ components:
             type: string
       required:
       - labels
+    MatchNote:
+      type: object
+      description: The owner's notes on one match, with enough about the match to
+        find it again (REQ-025).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        match_id:
+          type: string
+          format: uuid
+          nullable: true
+        personal_match_id:
+          type: string
+          format: uuid
+          nullable: true
+        kind:
+          type: string
+          readOnly: true
+          description: 'official: an umpire-scored match; own: self-recorded.'
+        title:
+          type: string
+          readOnly: true
+          description: 'The match, in words: sides, or label and opponent.'
+        tournament_id:
+          type: string
+          nullable: true
+          readOnly: true
+        event_id:
+          type: string
+          nullable: true
+          readOnly: true
+        tournament_name:
+          type: string
+          nullable: true
+          readOnly: true
+        observations:
+          type: string
+          maxLength: 4000
+        goals:
+          type: string
+          maxLength: 2000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - event_id
+      - goals
+      - id
+      - kind
+      - match_id
+      - observations
+      - personal_match_id
+      - title
+      - tournament_id
+      - tournament_name
+      - updated_at
+    MatchNoteRequest:
+      type: object
+      description: The owner's notes on one match, with enough about the match to
+        find it again (REQ-025).
+      properties:
+        match_id:
+          type: string
+          format: uuid
+          nullable: true
+        personal_match_id:
+          type: string
+          format: uuid
+          nullable: true
+        observations:
+          type: string
+          maxLength: 4000
+        goals:
+          type: string
+          maxLength: 2000
     MatchOutcomeEnum:
       enum:
       - played
@@ -15399,6 +15652,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LifecycleEntry'
+    PaginatedMatchNoteList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchNote'
     PaginatedMemberList:
       type: object
       required:
@@ -16002,6 +16280,16 @@ components:
         title:
           type: string
           maxLength: 80
+    PatchedMatchNoteChangeRequest:
+      type: object
+      description: 'Editing keeps the note on its match: only what it says changes.'
+      properties:
+        observations:
+          type: string
+          maxLength: 4000
+        goals:
+          type: string
+          maxLength: 2000
     PatchedMeetingRequest:
       type: object
       description: |-

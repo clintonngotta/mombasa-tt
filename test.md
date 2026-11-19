@@ -247,6 +247,13 @@ During the registration window, verify that open admission accepts an eligible e
 
 **Private analysis — integration.** Setup: P1 note linked to competitive/casual match. Steps: create/edit/read as P1, attempt same as opponent, captain, club admin, outsider through API/search/export. Pass: only owner has normal product access; match publication does not publish note. Evidence: negative access matrix.
 
+*Built in TASK-041 (2026-11-19).* `tests/test_match_notes.py`:
+- the owner writes, edits, reads and deletes a note on an official match, the match's status, sides and winner stay unchanged, and a second note is refused;
+- the opponent, the club's admin and an outsider can't list, read, edit or delete it, and the match page doesn't carry it;
+- notes go only on a match the player played or recorded.
+
+The privacy matrix covers `match-note-list` and `match-note-detail`.
+
 ### EVAL-026
 
 **Equipment/drills — integration/UI.** Setup: private drill, club drill, training editor and member. Steps: save optional equipment, skip it, edit each drill under differing roles, inspect public profile. Pass: optional completion works; correct owner/club editor can edit; private drills/equipment remain private absent publishing choice; required instructions persist. Evidence: permissions and field validation tests.

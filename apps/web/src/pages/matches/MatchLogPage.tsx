@@ -5,6 +5,7 @@ import { ChevronRight, Lock, Plus } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { LabelPill, MatchSides, ResultBadge, SetScores } from "@/components/matches/MatchSides"
+import { OfficialMatchNotes } from "@/components/matches/OfficialMatchNotes"
 import { errorMessage } from "@/lib/api"
 import {
   RESULT_LABEL,
@@ -104,6 +105,7 @@ export function MatchLogPage() {
           </Button>
         )}
       </section>
+      <OfficialMatchNotes />
     </div>
   )
 }
