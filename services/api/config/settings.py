@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "organizations",
     "outbox",
     "ratings",
+    "regions",
     "reservations",
     "scoring",
     "training",

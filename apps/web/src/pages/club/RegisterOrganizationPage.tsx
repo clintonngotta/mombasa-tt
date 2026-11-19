@@ -12,7 +12,8 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { KIND_LABEL, clubKeys, createOrganization, setActiveOrganization, type OrganizationInput, type OrganizationKind } from "@/lib/clubs"
 import { locationErrors } from "@/lib/geography"
 
-const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).map((value) => ({ value, label: KIND_LABEL[value] }))
+// A regional body is set up by its region's official, not registered here.
+const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).filter((value) => value !== "regional_body").map((value) => ({ value, label: KIND_LABEL[value] }))
 
 export function RegisterOrganizationPage() {
   const navigate = useNavigate()

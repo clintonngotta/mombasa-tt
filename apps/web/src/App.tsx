@@ -30,6 +30,8 @@ import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
 import { AdminNominationsPage } from "@/pages/club/AdminNominationsPage"
 import { MembersPage } from "@/pages/club/MembersPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
+import { ArticlePage, RegionPage } from "@/pages/region/RegionPage"
+import { MeetingPage, MeetingsPage } from "@/pages/region/MeetingPages"
 import { ClubPlanPage, PlanPage, TraineePlanPage } from "@/pages/training/PlanPage"
 import { CoachesPage } from "@/pages/coaching/CoachesPage"
 import { CoachPage } from "@/pages/coaching/CoachPage"
@@ -133,6 +135,10 @@ function App() {
               <Route path="/profile/edit" element={<ProfileEditPage />} />
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/training" element={<TrainingPage />} />
+              <Route path="/region" element={<RegionPage />} />
+              <Route path="/news/:orgId/:id" element={<ArticlePage />} />
+              <Route path="/club/meetings" element={<MeetingsPage />} />
+              <Route path="/meetings/:orgId/:id" element={<MeetingPage />} />
               <Route path="/training/plans/:id" element={<PlanPage />} />
               <Route path="/training/club-plans/:id" element={<ClubPlanPage />} />
               <Route path="/coaches" element={<CoachesPage />} />
