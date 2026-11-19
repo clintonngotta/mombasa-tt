@@ -47,6 +47,7 @@ from competitions.models import (
     Tournament,
 )
 from events.models import ExternalEvent, LinkReport
+from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
@@ -140,6 +141,13 @@ ACCESS: dict[str, dict[str, str]] = {
     "my-equipment": {"get": OWNER, "put": OWNER},
     "my-training-sessions": {"get": OWNER},
     "my-facility-visit-list": {"get": OWNER},
+    # Table bookings (REQ-021): the requester's own; the venue's facility staff decide.
+    "my-table-booking-list": {"get": OWNER, "post": OWNER},
+    "my-table-booking-cancel": {"post": OWNER},
+    "organization-bookings": {"get": STAFF},
+    "organization-booking-approve": {"post": STAFF},
+    "organization-booking-reject": {"post": STAFF},
+    "organization-booking-cancel": {"post": STAFF},
     # Soda games (REQ-040): the two players' own; a club sees only what both shared.
     "my-soda-settings": {"get": OWNER},
     # The notification inbox (REQ-019): the player's own alerts and preferences.
@@ -564,6 +572,7 @@ BODIES = {
         "method": "cash",
     },
     ("organization-venue-visit-reverse", "post"): {"reason": "Recorded by mistake"},
+    ("organization-booking-reject", "post"): {"reason": "Closed for a tournament"},
     ("organization-venue-hours", "put"): {
         "hours": [{"weekday": 0, "opens": "08:00", "closes": "20:00"}],
         "closures": [],
@@ -871,6 +880,23 @@ class World:
         self.table = Table.objects.create(venue=self.venue, label="Table 1")
         Table.objects.create(venue=self.venue, label="MARK-TABLE-OFF", position=1, active=False)
         Venue.objects.create(organization=self.coast, name="MARK-VENUE-OFF", town="Mombasa", active=False)
+        # Baraka asked to book Table 1; another request to decline and one to cancel.
+        soon = timezone.now() + timedelta(days=5)
+
+        def booking(note):
+            made = TableBooking.objects.create(
+                venue=self.venue,
+                requester=self.baraka,
+                starts_at=soon,
+                ends_at=soon + timedelta(hours=1),
+                note=note,
+            )
+            made.tables.set([self.table])
+            return made
+
+        self.booking = booking("MARK-TABLE-BOOKING")
+        self.booking_to_reject = booking("Second")
+        self.booking_to_cancel = booking("Third")
         # Door visits (REQ-044): a walk-in whose name stays with the facility's staff, and Baraka's own.
         self.day_pass = Pass.objects.create(venue=self.venue, name="Day pass", kind="day", amount_minor=20000)
         today = timezone.localdate()
@@ -1244,6 +1270,10 @@ class World:
             "organization-venue-tables": self.venue.id,
             "organization-venue-table": self.venue.id,
             "organization-venue-hours": self.venue.id,
+            "my-table-booking-cancel": self.booking.id,
+            "organization-booking-approve": self.booking.id,
+            "organization-booking-reject": self.booking_to_reject.id,
+            "organization-booking-cancel": self.booking_to_cancel.id,
             "organization-venue-pass": self.day_pass.id,
             "organization-venue-visit-reverse": self.walk_in.id,
             "facility-detail": self.venue.id,
@@ -1423,6 +1453,7 @@ class World:
             "venues": sorted(Venue.objects.values_list("name", "town", "active", "profile")),
             "opening_hours": sorted(OpeningHour.objects.values_list("venue__name", "weekday", "opens")),
             "passes": sorted(Pass.objects.values_list("name", "amount_minor", "active")),
+            "table_bookings": sorted(TableBooking.objects.values_list("note", "status", "fee_minor")),
             "visits": sorted(
                 (str(v), w, r is None)
                 for v, w, r in Visit.objects.values_list("id", "walk_in_name", "reversed_at")
@@ -1737,6 +1768,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-SODA-STAKE": set(),  # stakes stay hidden from everyone while the policy gate is off
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
+        "MARK-TABLE-BOOKING": {"amina", "baraka"},  # the requester and the venue's staff
         "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},

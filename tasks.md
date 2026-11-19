@@ -143,7 +143,13 @@ Phase dependencies: Foundation → 1 → 2 → 3. Phase 4 depends on Phase 1 and
 
 ## Phase 2: reservations and finances
 
-- [ ] **TASK-036** — Implement opening hours, closures, booking requests, approval/rejection/cancellation and views. Depends: TASK-027, TASK-033. REQ-021 / EVAL-021. Done: approvals race safely against matches and other bookings.
+- [x] **TASK-036** — Implement opening hours, closures, booking requests, approval/rejection/cancellation and views. Depends: TASK-027, TASK-033. REQ-021 / EVAL-021. Done: approvals race safely against matches and other bookings. Implemented 2026-11-19:
+  - **Hours and closures** are TASK-101's, per venue.
+  - **Requests.** A player asks for tables at a venue they can find, or one of their clubs' venues (`/me/table-bookings/`, or the Book a table form on a facility profile). The slot must fall inside the opening hours, not on a closure day, and not in the past. **A request holds nothing.**
+  - **Approval** (`facilities.manage`, `/club/bookings`) locks the tables and refuses (`table_unavailable`, with the clashes) when a tournament, training session or another approved booking holds them. Approving twice changes nothing, and approved bookings now block training and tournament day sessions too. Staff may record a fee; nothing is charged.
+  - **Decline** needs a reason. **Cancelling** by the player or staff frees the slot; a booking that has ended stays in the history.
+  - The player is notified of each decision.
+  - **Route:** this lives at `/me/table-bookings/`, because coaching already serves `/me/bookings/`.
 - [ ] **TASK-037** — Implement charges, manual payments, allocations, excess credit and reversals. Depends: TASK-013, TASK-018, TASK-036. REQ-022 / EVAL-022. Done: ledger arithmetic reconciles and currency mismatches are rejected.
 - [ ] **TASK-038** — Implement contribution campaigns, period generation, assignments and waivers. Depends: TASK-037, TASK-007. REQ-023 / EVAL-023. Done: retries/month-end/leap-year cases create exactly one correct due per period; the weekly/monthly "Club operations" template creates all-member dues with overrides/waivers and none for periods before joining or after leaving.
 - [ ] **TASK-039** — Implement contribution member/staff views and reminders. Depends: TASK-038, TASK-033. REQ-023 / EVAL-023. Done: pending/partial/overdue status and visibility match records.

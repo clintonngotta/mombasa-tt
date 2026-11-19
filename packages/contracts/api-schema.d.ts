@@ -1757,6 +1757,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/table-bookings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's booking requests. */
+        get: operations["me_table_bookings_list"];
+        put?: never;
+        /** @description The signed-in player's booking requests. */
+        post: operations["me_table_bookings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/table-bookings/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's booking requests. */
+        post: operations["me_table_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/": {
         parameters: {
             query?: never;
@@ -2387,6 +2422,86 @@ export interface paths {
         put?: never;
         /** @description POST /organizations/{body}/articles/{id}/publish/: send it to its clubs. */
         post: operations["organizations_articles_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        get: operations["organizations_bookings_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/{id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        post: operations["organizations_bookings_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        post: operations["organizations_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        post: operations["organizations_bookings_reject_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5732,6 +5847,9 @@ export interface components {
          * @enum {string}
          */
         ApprovalStatusEnum: "not_requested" | "pending" | "approved" | "rejected";
+        ApproveTableBookingRequest: {
+            fee_minor?: number | null;
+        };
         Article: {
             /** Format: uuid */
             readonly id: string;
@@ -6991,6 +7109,7 @@ export interface components {
             readonly closures: components["schemas"]["Closure"][];
             readonly closed_today: components["schemas"]["Closure"] | null;
             readonly passes: components["schemas"]["Pass"][];
+            readonly bookable_tables: components["schemas"]["Table"][];
         };
         /**
          * @description * `W` - W
@@ -8597,6 +8716,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["PersonalMatch"][];
+        };
+        PaginatedTableBookingList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["TableBooking"][];
         };
         PaginatedTournamentList: {
             /** @example 123 */
@@ -10373,6 +10507,53 @@ export interface components {
             readonly position: number;
             active: boolean;
         };
+        /** @description A table booking, as its requester and the venue's staff see it. */
+        TableBooking: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            venue_id: string;
+            readonly venue_name: string;
+            readonly organization_name: string;
+            readonly tables: string[];
+            readonly requester_name: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            note: string;
+            readonly status: components["schemas"]["TableBookingStatusEnum"];
+            readonly fee_minor: number | null;
+            readonly fee_currency: string;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            readonly ended: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        TableBookingReasonRequest: {
+            reason?: string;
+        };
+        /** @description A table booking, as its requester and the venue's staff see it. */
+        TableBookingRequest: {
+            /** Format: uuid */
+            venue_id: string;
+            table_ids: string[];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            note?: string;
+        };
+        /**
+         * @description * `requested` - Requested
+         *     * `approved` - Approved
+         *     * `rejected` - Rejected
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        TableBookingStatusEnum: "requested" | "approved" | "rejected" | "cancelled";
         TableDelayRequest: {
             note?: string;
             /** Format: uuid */
@@ -14577,6 +14758,106 @@ export interface operations {
             };
         };
     };
+    me_table_bookings_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTableBookingList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_table_bookings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableBookingRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_table_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this booking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TableBookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_trainees_plans_items_create: {
         parameters: {
             query?: never;
@@ -16212,6 +16493,147 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                status?: "approved" | "cancelled" | "rejected" | "requested";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTableBookingList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApproveTableBookingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TableBookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TableBookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
                 };
             };
             /** @description Error envelope */

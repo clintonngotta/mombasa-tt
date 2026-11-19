@@ -3575,6 +3575,100 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/table-bookings/:
+    get:
+      operationId: me_table_bookings_list
+      description: The signed-in player's booking requests.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTableBookingList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: me_table_bookings_create
+      description: The signed-in player's booking requests.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableBookingRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableBooking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/table-bookings/{id}/cancel/:
+    post:
+      operationId: me_table_bookings_cancel_create
+      description: The signed-in player's booking requests.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this booking.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableBookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableBooking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/:
     post:
       operationId: me_trainees_plans_items_create
@@ -5339,6 +5433,180 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Article'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/bookings/:
+    get:
+      operationId: organizations_bookings_list
+      description: |-
+        Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+        approved are shown apart; nothing pending holds a table.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - approved
+          - cancelled
+          - rejected
+          - requested
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTableBookingList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/bookings/{id}/approve/:
+    post:
+      operationId: organizations_bookings_approve_create
+      description: |-
+        Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+        approved are shown apart; nothing pending holds a table.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveTableBookingRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableBooking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/bookings/{id}/cancel/:
+    post:
+      operationId: organizations_bookings_cancel_create
+      description: |-
+        Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+        approved are shown apart; nothing pending holds a table.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableBookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableBooking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/bookings/{id}/reject/:
+    post:
+      operationId: organizations_bookings_reject_create
+      description: |-
+        Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+        approved are shown apart; nothing pending holds a table.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableBookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableBooking'
           description: ''
         4XX:
           description: Error envelope
@@ -13401,6 +13669,14 @@ components:
         * `pending` - Pending
         * `approved` - Approved
         * `rejected` - Rejected
+    ApproveTableBookingRequest:
+      type: object
+      properties:
+        fee_minor:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          nullable: true
     Article:
       type: object
       properties:
@@ -16714,9 +16990,15 @@ components:
           items:
             $ref: '#/components/schemas/Pass'
           readOnly: true
+        bookable_tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/Table'
+          readOnly: true
       required:
       - address
       - amenities
+      - bookable_tables
       - closed_today
       - closures
       - country
@@ -20367,6 +20649,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PersonalMatch'
+    PaginatedTableBookingList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableBooking'
     PaginatedTournamentList:
       type: object
       required:
@@ -24670,6 +24977,130 @@ components:
       - kind
       - label
       - position
+    TableBooking:
+      type: object
+      description: A table booking, as its requester and the venue's staff see it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        venue_id:
+          type: string
+          format: uuid
+        venue_name:
+          type: string
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        tables:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        requester_name:
+          type: string
+          readOnly: true
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          maxLength: 300
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TableBookingStatusEnum'
+          readOnly: true
+        fee_minor:
+          type: integer
+          readOnly: true
+          nullable: true
+        fee_currency:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ended:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - decided_at
+      - ended
+      - ends_at
+      - fee_currency
+      - fee_minor
+      - id
+      - note
+      - organization_name
+      - reason
+      - requester_name
+      - starts_at
+      - status
+      - tables
+      - venue_id
+      - venue_name
+    TableBookingReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 300
+    TableBookingRequest:
+      type: object
+      description: A table booking, as its requester and the venue's staff see it.
+      properties:
+        venue_id:
+          type: string
+          format: uuid
+        table_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          maxItems: 20
+          minItems: 1
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          maxLength: 300
+      required:
+      - ends_at
+      - starts_at
+      - table_ids
+      - venue_id
+    TableBookingStatusEnum:
+      enum:
+      - requested
+      - approved
+      - rejected
+      - cancelled
+      type: string
+      description: |-
+        * `requested` - Requested
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `cancelled` - Cancelled
     TableDelayRequest:
       type: object
       properties:
