@@ -169,6 +169,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-campaign": {"get": STAFF, "patch": STAFF},
     "organization-campaign-close": {"post": STAFF},
     "organization-campaign-terms": {"post": STAFF},
+    "organization-campaign-dues": {"get": STAFF},
+    "organization-campaign-remind": {"post": STAFF},
     "organization-my-finances": {"get": MEMBER},
     "soda-game-list": {"get": OWNER, "post": OWNER},
     "soda-game-detail": {"get": OWNER},
@@ -1408,6 +1410,8 @@ class World:
             "organization-campaign": self.campaign.id,
             "organization-campaign-close": self.campaign_to_close.id,
             "organization-campaign-terms": self.campaign.id,
+            "organization-campaign-dues": self.campaign.id,
+            "organization-campaign-remind": self.campaign.id,
             "organization-external-event": self.external.id,
             "organization-external-event-live": self.external.id,
             "external-event-approve": self.external.id,
@@ -1668,6 +1672,8 @@ ALSO_STAFF = {
             "organization-campaign",
             "organization-campaign-close",
             "organization-campaign-terms",
+            "organization-campaign-dues",
+            "organization-campaign-remind",
         ]
     },
     # ...and announcements, which include submitting external events.

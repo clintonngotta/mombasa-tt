@@ -112,10 +112,34 @@ class BalanceSerializer(serializers.Serializer):
     credit_minor = serializers.IntegerField()
 
 
+class MyDueSummarySerializer(serializers.Serializer):
+    """One campaign as the member sees it: their own dues only."""
+
+    campaign_id = serializers.UUIDField()
+    title = serializers.CharField()
+    cadence = serializers.CharField()
+    currency = serializers.CharField()
+    outstanding_minor = serializers.IntegerField()
+    overdue_minor = serializers.IntegerField()
+    next_due_on = serializers.DateField(allow_null=True)
+
+
 class MyFinancesSerializer(serializers.Serializer):
     charges = ChargeSerializer(many=True)
     payments = PaymentSerializer(many=True)
     balances = BalanceSerializer(many=True)
+    dues = MyDueSummarySerializer(many=True)
+
+
+class CampaignDuesSerializer(serializers.Serializer):
+    counts = serializers.DictField(child=serializers.IntegerField(), help_text="Dues per status.")
+    outstanding_minor = serializers.IntegerField()
+    overdue_minor = serializers.IntegerField()
+    dues = ChargeSerializer(many=True)
+
+
+class RemindedSerializer(serializers.Serializer):
+    sent = serializers.IntegerField()
 
 
 class CampaignTermSerializer(serializers.Serializer):

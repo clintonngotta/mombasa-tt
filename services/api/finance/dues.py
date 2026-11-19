@@ -20,6 +20,7 @@ from django.utils import timezone
 from organizations.committee import local_today
 from organizations.models import Membership
 
+from . import ledger
 from .models import Campaign, Charge
 
 MONTHS = {Campaign.Cadence.MONTHLY: 1, Campaign.Cadence.QUARTERLY: 3, Campaign.Cadence.YEARLY: 12}
@@ -111,6 +112,38 @@ def generate(campaign: Campaign, today: date) -> int:
     before = campaign.dues.count()
     Charge.objects.bulk_create(made, ignore_conflicts=True)
     return campaign.dues.count() - before
+
+
+def outstanding_dues(queryset, today: date):
+    """(due, what is left, status) for each campaign due that still owes something by `today`."""
+    for charge in queryset.filter(campaign__isnull=False, waived_at__isnull=True, due_on__lte=today):
+        left = ledger.outstanding(charge)
+        if left > 0:
+            yield charge, left, ledger.status(charge, today)
+
+
+def remind(organization, today: date) -> int:
+    """Tell each member of a due falling today, and once more when it passes unpaid. Sending again on
+    the same day, or any day after, repeats nothing."""
+    from notifications import triggers
+
+    dues = Charge.objects.filter(organization=organization).select_related("organization")
+    return sum(
+        triggers.due_reminder(charge, "due" if charge.due_on == today else "overdue", left)
+        for charge, left, _ in outstanding_dues(dues, today)
+    )
+
+
+def nudge(campaign: Campaign, today: date) -> int:
+    """Staff remind everyone overdue on the campaign; at most once a day each."""
+    from notifications import triggers
+
+    dues = campaign.dues.select_related("organization")
+    return sum(
+        triggers.due_reminder(charge, "overdue", left, version=f"nudge:{today.isoformat()}")
+        for charge, left, state in outstanding_dues(dues, today)
+        if state == "overdue"
+    )
 
 
 def catch_up(organization, today: date | None = None) -> int:

@@ -49,3 +49,8 @@ export const CLUB_OPERATIONS = {
   description: "Hall and table hire, balls, nets, repairs and utilities.",
   audience: "all" as const,
 }
+
+export const campaignDuesKey = (orgId: string, id: string, status: string) => ["finance", "ledger", orgId, "campaign-dues", id, status] as const
+export const listCampaignDues = (orgId: string, id: string, status: string) =>
+  api<Schemas["CampaignDues"]>(`${base(orgId)}campaigns/${id}/dues/${status ? `?status=${status}` : ""}`)
+export const remindCampaign = (orgId: string, id: string) => api<Schemas["Reminded"]>(`${base(orgId)}campaigns/${id}/remind/`, { body: {} })

@@ -23,6 +23,7 @@ from .models import Campaign, CampaignMember, Charge
 from .serializers import (
     AllocateSerializer,
     BalanceSerializer,
+    CampaignDuesSerializer,
     CampaignSerializer,
     CampaignTermSerializer,
     CampaignUpdateSerializer,
@@ -30,6 +31,7 @@ from .serializers import (
     FinanceReasonSerializer,
     MyFinancesSerializer,
     PaymentSerializer,
+    RemindedSerializer,
 )
 
 VIEW = (Permission.FINANCES_VIEW, Permission.FINANCES_MANAGE)
@@ -205,8 +207,37 @@ class MyFinancesView(APIView):
         dues.catch_up(organization)
         charges = charges_of(organization).filter(member=request.user)
         payments = payments_of(organization).filter(payer=request.user)
-        data = {"charges": charges, "payments": payments, "balances": balances(charges, payments)}
-        return Response(MyFinancesSerializer(data).data)
+        today = local_today(organization)
+        data = {
+            "charges": charges,
+            "payments": payments,
+            "balances": balances(charges, payments),
+            "dues": my_dues(charges, today),
+        }
+        return Response(MyFinancesSerializer(data, context={"today": today}).data)
+
+
+def my_dues(charges, today) -> list[dict]:
+    """Per campaign, what the member still owes on it and how much of that is overdue."""
+    rows = {}
+    for charge in charges.filter(campaign__isnull=False).select_related("campaign"):
+        row = rows.setdefault(
+            charge.campaign_id,
+            {
+                "campaign_id": charge.campaign_id,
+                "title": charge.campaign.title,
+                "cadence": charge.campaign.cadence,
+                "currency": charge.currency,
+                "outstanding_minor": 0,
+                "overdue_minor": 0,
+                "next_due_on": dues.next_period(charge.campaign, today),
+            },
+        )
+        left = ledger.outstanding(charge)
+        row["outstanding_minor"] += left
+        if ledger.status(charge, today) == "overdue":
+            row["overdue_minor"] += left
+    return sorted(rows.values(), key=lambda r: r["title"].lower())
 
 
 def _campaign_out(campaign, organization, status_code=status.HTTP_200_OK):
@@ -310,3 +341,48 @@ class CampaignTermView(_CampaignAction):
         dues.generate(campaign, local_today(organization))
         CampaignMember.objects.update_or_create(campaign=campaign, member=member, defaults=data)
         return _campaign_out(get_object_or_404(_campaigns(organization), pk=pk), organization)
+
+
+class CampaignDuesView(_CampaignAction):
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "status",
+                str,
+                enum=["pending", "partial", "paid", "overdue", "waived"],
+                description="Only these",
+            )
+        ],
+        responses={200: CampaignDuesSerializer},
+    )
+    def get(self, request, organization_pk, pk):
+        """Every due the campaign made, with each one's status, and the totals still owed."""
+        organization, campaign = self._get(request, organization_pk, pk, *VIEW)
+        today = local_today(organization)
+        dues.generate(campaign, today)
+        rows = [
+            (charge, ledger.status(charge, today), ledger.outstanding(charge))
+            for charge in campaign.dues.select_related("member")
+            .prefetch_related("allocations__payment")
+            .order_by("-period", "member__display_name")
+        ]
+        counts = {}
+        for _, state, _ in rows:
+            counts[state] = counts.get(state, 0) + 1
+        wanted = request.query_params.get("status")
+        shown = [charge for charge, state, _ in rows if not wanted or state == wanted]
+        data = {
+            "counts": counts,
+            "outstanding_minor": sum(left for _, _, left in rows),
+            "overdue_minor": sum(left for _, state, left in rows if state == "overdue"),
+            "dues": shown,
+        }
+        return Response(CampaignDuesSerializer(data, context={"today": today}).data)
+
+
+class RemindCampaignView(_CampaignAction):
+    @extend_schema(request=None, responses={200: RemindedSerializer})
+    def post(self, request, organization_pk, pk):
+        """Remind everyone overdue on the campaign. Pressing it again the same day sends nothing more."""
+        organization, campaign = self._get(request, organization_pk, pk, MANAGE)
+        return Response({"sent": dues.nudge(campaign, local_today(organization))})
