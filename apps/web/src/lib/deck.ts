@@ -108,6 +108,9 @@ const transport: Transport<Scorecard> = {
   classify(error) {
     if (error instanceof ApiError) {
       if (error.status === 404) return { kind: "gone" }
+      // This version of the app is too old for the API (REQ-035): the actions are fine, the app isn't.
+      // They wait in the journal, untouched, and the updated app sends them.
+      if (error.status === 426) return { kind: "offline" }
       if (error.code === "stale_assignment") return { kind: "stale", message: error.serverMessage }
       if (error.status >= 400 && error.status < 500 && error.status !== 429) return { kind: "refused", message: error.serverMessage }
     }
@@ -185,6 +188,24 @@ export async function unsentScoreActions(userId: string): Promise<number> {
     }
   } catch {
     return 0
+  }
+}
+
+/**
+ * Whether this device is in the middle of scoring (REQ-035): a match open on the deck in any tab, or
+ * score actions of any account not yet on the server. A new version of the app waits until neither.
+ */
+export async function scoringOnDevice(): Promise<{ scoring: number; unsent: number }> {
+  try {
+    const journal = await Journal.open()
+    try {
+      return { scoring: await journal.scoringNow(), unsent: await journal.unsentOnDevice() }
+    } finally {
+      journal.close()
+    }
+  } catch {
+    // No storage: nothing can be waiting on this device.
+    return { scoring: 0, unsent: 0 }
   }
 }
 
