@@ -7,6 +7,7 @@ from organizations.models import Organization
 
 MAX_ACTIVE_VENUES = 20
 MAX_ACTIVE_TABLES = 60
+MAX_TRAINING_HOURS = 42
 
 
 class Venue(models.Model):
@@ -65,3 +66,29 @@ class Table(models.Model):
 
     def __str__(self):
         return f"{self.label} ({self.venue_id})"
+
+
+class TrainingHour(models.Model):
+    """A weekly time when the club trains, in the organization's timezone. Signed-in players looking for a
+    club see these; training plans and sessions stay with members. Slots may overlap (juniors and seniors
+    on different tables)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="training_hours")
+    weekday = models.PositiveSmallIntegerField()  # 0 = Monday
+    starts = models.TimeField()
+    ends = models.TimeField()
+    label = models.CharField(max_length=80, blank=True)  # who it is for, e.g. "Juniors" or "Open play"
+    venue = models.ForeignKey(Venue, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["weekday", "starts", "ends"]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(weekday__lte=6), name="training_hour_weekday"),
+            models.CheckConstraint(
+                condition=models.Q(ends__gt=models.F("starts")), name="training_hour_ends_after_start"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.organization_id} {self.weekday} {self.starts}-{self.ends}"

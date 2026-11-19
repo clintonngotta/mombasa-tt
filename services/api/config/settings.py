@@ -195,6 +195,7 @@ SPECTACULAR_SETTINGS = {
         "MemberFieldKindEnum": "organizations.models.MemberField.Kind",
         "MemberFieldVisibilityEnum": "organizations.models.MemberField.Visibility",
         "TournamentStatusEnum": "competitions.models.Tournament.Status",
+        "TournamentScopeEnum": "competitions.models.Tournament.Scope",
         "EventStatusEnum": "competitions.models.Event.Status",
         "EventKindEnum": "competitions.models.Event.Kind",
         "SinglesOrDoublesEnum": "competitions.models.Rubber.Kind",

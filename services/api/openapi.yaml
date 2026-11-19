@@ -2853,6 +2853,27 @@ paths:
       operationId: organizations_list
       description: Search, view and register organizations (REQ-004).
       parameters:
+      - in: query
+        name: city
+        schema:
+          type: string
+        description: City or town, any letter case
+      - in: query
+        name: country
+        schema:
+          type: string
+        description: Country code, e.g. KE
+      - in: query
+        name: kind
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - club
+            - club_facility
+            - facility
+        description: Only these kinds
       - name: page
         required: false
         in: query
@@ -2866,10 +2887,15 @@ paths:
         schema:
           type: integer
       - in: query
+        name: region
+        schema:
+          type: string
+        description: Region, any letter case
+      - in: query
         name: search
         schema:
           type: string
-        description: Name or town
+        description: Name, town or region
       tags:
       - organizations
       security:
@@ -4591,6 +4617,75 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-hours/:
+    get:
+      operationId: organizations_training_hours_list
+      description: |-
+        The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+        holders of training.manage replace the whole list.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingHour'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: organizations_training_hours_update
+      description: |-
+        The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+        holders of training.manage replace the whole list.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingHourListRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingHour'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/training-plans/:
     get:
       operationId: organizations_training_plans_list
@@ -5200,6 +5295,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{id}/profile/:
+    get:
+      operationId: organizations_profile_retrieve
+      description: 'GET /organizations/{id}/profile/: any signed-in player, member
+        or not.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubProfile'
           description: ''
         4XX:
           description: Error envelope
@@ -8712,6 +8836,80 @@ components:
       required:
       - conflicts
       - warnings
+    ClubProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        directions:
+          type: string
+          readOnly: true
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+        description:
+          type: string
+          readOnly: true
+        timezone:
+          type: string
+          readOnly: true
+        venues:
+          type: array
+          items:
+            $ref: '#/components/schemas/VenueSummary'
+          readOnly: true
+        training_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingHour'
+          readOnly: true
+        upcoming_tournaments:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpcomingTournament'
+          readOnly: true
+      required:
+      - country
+      - description
+      - directions
+      - id
+      - kind
+      - latitude
+      - longitude
+      - name
+      - region
+      - timezone
+      - town
+      - training_hours
+      - upcoming_tournaments
+      - venues
     ClubRanking:
       type: object
       properties:
@@ -11644,6 +11842,9 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        description:
+          type: string
+          maxLength: 2000
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -11651,6 +11852,7 @@ components:
           maxLength: 64
       required:
       - country
+      - description
       - directions
       - id
       - kind
@@ -11725,6 +11927,9 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        description:
+          type: string
+          maxLength: 2000
         kind:
           $ref: '#/components/schemas/KindEnum'
         timezone:
@@ -12520,6 +12725,8 @@ components:
             nullable: true
     PatchedOrganizationLocationRequest:
       type: object
+      description: 'The club''s settings that roles.manage edits: where it is and
+        what it is about.'
       properties:
         country:
           type: string
@@ -12548,6 +12755,9 @@ components:
           maximum: 180
           minimum: -180
           nullable: true
+        description:
+          type: string
+          maxLength: 2000
     PatchedPersonalMatchRequest:
       type: object
       properties:
@@ -15683,6 +15893,78 @@ components:
       - played
       - rating
       - won
+    TrainingHour:
+      type: object
+      description: A weekly training time. `venue` is one of the organization's venues
+        in use, or none.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        label:
+          type: string
+          maxLength: 80
+        venue:
+          type: string
+          format: uuid
+          nullable: true
+        venue_name:
+          type: string
+          readOnly: true
+      required:
+      - ends
+      - id
+      - label
+      - starts
+      - venue
+      - venue_name
+      - weekday
+    TrainingHourListRequest:
+      type: object
+      properties:
+        hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingHourRequest'
+      required:
+      - hours
+    TrainingHourRequest:
+      type: object
+      description: A weekly training time. `venue` is one of the organization's venues
+        in use, or none.
+      properties:
+        weekday:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        starts:
+          type: string
+          format: time
+        ends:
+          type: string
+          format: time
+        label:
+          type: string
+          maxLength: 80
+        venue:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - ends
+      - starts
+      - weekday
     TrainingPlan:
       type: object
       properties:
@@ -15826,6 +16108,43 @@ components:
       - plan_title
       - starts_at
       - title
+    UpcomingTournament:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        starts_on:
+          type: string
+          format: date
+          readOnly: true
+        ends_on:
+          type: string
+          format: date
+          readOnly: true
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/TournamentScopeEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TournamentStatusEnum'
+          readOnly: true
+        venue_name:
+          type: string
+          readOnly: true
+      required:
+      - ends_on
+      - id
+      - name
+      - scope
+      - starts_on
+      - status
+      - venue_name
     User:
       type: object
       properties:

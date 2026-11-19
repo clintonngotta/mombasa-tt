@@ -71,6 +71,7 @@ def test_search_by_name_or_town(player, club):
         "directions": "",
         "latitude": None,
         "longitude": None,
+        "description": "",
         "kind": "club_facility",
         "timezone": "Africa/Nairobi",
     }

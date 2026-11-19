@@ -50,6 +50,8 @@ The PWA uses secure HttpOnly session cookies with CSRF protection. Revoke sessio
 
 **Organizations — Phase 1.** Register club, facility, or both. Creator becomes first admin. Players can join multiple organizations. Join requests are pending/approved/rejected; invited members explicitly accept. Public tournament entry is independent of host membership. Organization switching changes operational context, not the global player identity. Platform operator authority is separate from club roles.
 
+*Finding a club (user decision, 2026-11-19).* Signed-in players find clubs by name, country, region and city, and open a club's profile before joining: location and directions, its venues in use, a description, weekly training hours and its published tournaments that have not ended. Nothing else (members, roles, training plans, drills, finances) is shown until they join. Club staff with roles.manage edit the description; training.manage edits the training hours.
+
 ### REQ-005
 
 **Governance — Phase 1.** Editable admin/captain/assistant captain/committee/member templates plus custom role names and permission bundles. Permission domains: members, roles, competitions, results, assigned scoring, facilities, finances, announcements, training, welfare projects, club activities, and later media/billing. Users may hold multiple roles; effective grants are the union within that organization. Granting authority cannot exceed the acting user's delegable permissions. Keep one active admin. Enforce checks on API reads/writes, live events, files, and UI actions.

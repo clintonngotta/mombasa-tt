@@ -33,6 +33,11 @@ export type CommitteeField = Schemas["CommitteeField"]
 export type CommitteeFieldInput = Schemas["PatchedCommitteeFieldRequest"]
 export type PositionInput = Schemas["PatchedPositionInputRequest"]
 export type PastHolder = Schemas["PastHolder"]
+export type ClubProfile = Schemas["ClubProfile"]
+export type TrainingHour = Schemas["TrainingHour"]
+export type TrainingHourInput = Schemas["TrainingHourRequest"]
+/** Filters for finding clubs: a name and/or an area. Empty strings mean "any". */
+export type ClubSearch = { name: string; country: string; region: string; city: string }
 
 /** Whether the membership's effective permissions include any of `perms` (REQ-005). The server checks
  * every request; this only decides which actions the app offers. */
@@ -64,6 +69,9 @@ export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {
 export const clubKeys = {
   all: ["clubs"] as const,
   search: (term: string) => ["clubs", "search", term] as const,
+  find: (filters: ClubSearch) => ["clubs", "find", filters] as const,
+  profile: (orgId: string) => ["clubs", orgId, "profile"] as const,
+  trainingHours: (orgId: string) => ["clubs", orgId, "training-hours"] as const,
   memberships: ["clubs", "memberships"] as const,
   management: ["clubs", "management"] as const,
   myInvitations: ["clubs", "my-invitations"] as const,
@@ -91,6 +99,19 @@ const orgPath = (id: string) => `/organizations/${id}`
 
 export const searchOrganizations = (query: string) =>
   api<Schemas["PaginatedOrganizationList"]>(`/organizations/?search=${encodeURIComponent(query)}`)
+/** Clubs (and club facilities) by name and area, for players looking for a club to join. */
+export const findClubs = ({ name, country, region, city }: ClubSearch) => {
+  const params = new URLSearchParams({ page_size: "50" })
+  for (const [key, value] of Object.entries({ search: name, country, region, city })) if (value.trim()) params.set(key, value.trim())
+  params.append("kind", "club")
+  params.append("kind", "club_facility")
+  return api<Schemas["PaginatedOrganizationList"]>(`/organizations/?${params}`)
+}
+/** What any signed-in player sees of a club before joining. */
+export const getClubProfile = (orgId: string) => api<ClubProfile>(`${orgPath(orgId)}/profile/`)
+export const listTrainingHours = (orgId: string) => api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`)
+export const saveTrainingHours = (orgId: string, hours: TrainingHourInput[]) =>
+  api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`, { method: "PUT", body: { hours } })
 export const requestToJoin = (organizationId: string) => api<MyJoinRequest>(`${orgPath(organizationId)}/join-requests/`, { body: {} })
 
 // A player belongs to a handful of organizations, so the first page (50) covers the switcher.
@@ -259,4 +280,22 @@ export function useActiveMembership() {
   const stored = useSyncExternalStore(subscribe, readActive, () => null)
   const active = all.find((m) => m.organization.id === stored) ?? all[0]
   return { memberships: query, all, active }
+}
+
+/** Where the player stands with a club: already in it, waiting for staff, free to ask, or not known yet. */
+export type JoinState = "member" | "pending" | "can-ask" | "unknown"
+
+/** The player's memberships and open join requests, as a lookup by organization. */
+export function useJoinState() {
+  const memberships = useMemberships()
+  const myRequests = useQuery({ queryKey: clubKeys.myJoinRequests, queryFn: listMyJoinRequests })
+  const memberOf = new Set(memberships.results.filter((m) => !m.managedOnly).map((m) => m.organization.id))
+  const pending = new Set(myRequests.data?.results.filter((r) => r.status === "pending").map((r) => r.organization.id))
+  // Until both lists load we can't tell "member" or "pending" from "can ask", so offer no join button.
+  const known = memberships.query.isSuccess && myRequests.isSuccess
+  return {
+    failed: memberships.query.isError || myRequests.isError,
+    of: (orgId: string): JoinState =>
+      memberOf.has(orgId) ? "member" : pending.has(orgId) ? "pending" : known ? "can-ask" : "unknown",
+  }
 }
