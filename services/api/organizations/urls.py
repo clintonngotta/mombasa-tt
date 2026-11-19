@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from . import views
+from . import handover, views
 
 router = SimpleRouter()
 router.register("", views.OrganizationViewSet, basename="organization")
@@ -83,6 +83,26 @@ urlpatterns = [
         "<uuid:organization_pk>/member-fields/<uuid:pk>/restore/",
         views.MemberFieldViewSet.as_view({"post": "restore"}),
         name="organization-member-field-restore",
+    ),
+    path(
+        "<uuid:organization_pk>/admin/",
+        handover.OrganizationAdminView.as_view(),
+        name="organization-admin",
+    ),
+    path(
+        "<uuid:organization_pk>/admin/nominate/",
+        handover.NominateAdminView.as_view(),
+        name="organization-admin-nominate",
+    ),
+    path(
+        "<uuid:organization_pk>/admin/cancel/",
+        handover.CancelNominationView.as_view(),
+        name="organization-admin-cancel",
+    ),
+    path(
+        "<uuid:organization_pk>/admin/appoint/",
+        handover.AppointAdminView.as_view(),
+        name="organization-admin-appoint",
     ),
     *router.urls,
 ]

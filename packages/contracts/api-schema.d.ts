@@ -244,6 +244,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/admin-nominations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        get: operations["me_admin_nominations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/admin-nominations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        post: operations["me_admin_nominations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/admin-nominations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        post: operations["me_admin_nominations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/avatar/": {
         parameters: {
             query?: never;
@@ -597,6 +648,71 @@ export interface paths {
         put?: never;
         /** @description Search, view and register organizations (REQ-004). */
         post: operations["organizations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/admin/: any member sees who the admin is. */
+        get: operations["organizations_admin_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/appoint/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_appoint_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/nominate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_nominate_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2403,12 +2519,47 @@ export interface components {
          * @enum {string}
          */
         ActionEnum: "published" | "approval_requested" | "approval_rejected" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
+        AdminHandover: {
+            /** Format: uuid */
+            readonly id: string;
+            organization: components["schemas"]["OrganizationRef"];
+            readonly kind: components["schemas"]["AdminHandoverKindEnum"];
+            /** @default pending */
+            readonly status: components["schemas"]["AdminHandoverStatusEnum"];
+            from_user: components["schemas"]["Person"] | null;
+            to_user: components["schemas"]["Person"];
+            created_by: components["schemas"]["Person"] | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+        };
+        /**
+         * @description * `nomination` - Nomination
+         *     * `appointment` - Appointment
+         * @enum {string}
+         */
+        AdminHandoverKindEnum: "nomination" | "appointment";
+        /**
+         * @description * `pending` - Pending
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        AdminHandoverStatusEnum: "pending" | "accepted" | "declined" | "cancelled";
         /**
          * @description * `open` - Open
          *     * `closed` - Closed
          * @enum {string}
          */
         AdmissionEnum: "open" | "closed";
+        AppointRequest: {
+            /** Format: uuid */
+            membership_id: string;
+            reason: string;
+        };
         /**
          * @description * `not_requested` - Not requested
          *     * `pending` - Pending
@@ -3384,6 +3535,10 @@ export interface components {
             readonly confirmed_at: string | null;
             readonly device: components["schemas"]["Device"];
         };
+        NominateRequest: {
+            /** Format: uuid */
+            membership_id: string;
+        };
         /** @enum {unknown} */
         NullEnum: null;
         /** @description One version of the official result of a match, or of one rubber of a tie. */
@@ -3446,6 +3601,17 @@ export interface components {
             kind: components["schemas"]["KindEnum"];
             timezone: string;
         };
+        /** @description Who the admin is and any open nomination; the history only for those who manage roles. */
+        OrganizationAdmin: {
+            admin: components["schemas"]["Person"] | null;
+            pending: components["schemas"]["AdminHandover"] | null;
+            history: components["schemas"]["AdminHandover"][] | null;
+        };
+        OrganizationRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         OrganizationRequest: {
             name: string;
             town: string;
@@ -3468,6 +3634,21 @@ export interface components {
          * @enum {string}
          */
         OverridesEnum: "check_in" | "rest";
+        PaginatedAdminHandoverList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["AdminHandover"][];
+        };
         PaginatedDirectoryPlayerList: {
             /** @example 123 */
             count: number;
@@ -3813,12 +3994,18 @@ export interface components {
          *     * `training.manage` - Plan training sessions and coaching groups
          *     * `welfare.manage` - Run welfare projects
          *     * `activities.manage` - Plan club activities such as nights out
+         *     * `governance.manage` - Set the committee, nominate representatives and run meetings
          * @enum {string}
          */
-        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage";
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage";
         PermissionInfo: {
             code: components["schemas"]["PermissionEnum"];
             label: string;
+        };
+        Person: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
         };
         PersonalMatch: {
             /** Format: uuid */
@@ -5266,6 +5453,101 @@ export interface operations {
             };
         };
     };
+    me_admin_nominations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAdminHandoverList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this admin handover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this admin handover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_avatar_update: {
         parameters: {
             query?: never;
@@ -6106,6 +6388,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationAdmin"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_appoint_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_nominate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NominateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
                 };
             };
             /** @description Error envelope */

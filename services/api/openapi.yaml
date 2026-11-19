@@ -329,6 +329,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/admin-nominations/:
+    get:
+      operationId: me_admin_nominations_list
+      description: Open nominations naming the signed-in player as an organization's
+        next admin.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAdminHandoverList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/admin-nominations/{id}/accept/:
+    post:
+      operationId: me_admin_nominations_accept_create
+      description: Open nominations naming the signed-in player as an organization's
+        next admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this admin handover.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/admin-nominations/{id}/decline/:
+    post:
+      operationId: me_admin_nominations_decline_create
+      description: Open nominations naming the signed-in player as an organization's
+        next admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this admin handover.
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/avatar/:
     put:
       operationId: me_avatar_update
@@ -1119,6 +1214,128 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/:
+    get:
+      operationId: organizations_admin_retrieve
+      description: 'GET /organizations/{id}/admin/: any member sees who the admin
+        is.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationAdmin'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/appoint/:
+    post:
+      operationId: organizations_admin_appoint_create
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/cancel/:
+    post:
+      operationId: organizations_admin_cancel_create
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/nominate/:
+    post:
+      operationId: organizations_admin_nominate_create
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NominateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
           description: ''
         4XX:
           description: Error envelope
@@ -5105,6 +5322,77 @@ components:
         * `event_completed` - Event Completed
         * `event_cancelled` - Event Cancelled
         * `event_removed` - Event Removed
+    AdminHandover:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          $ref: '#/components/schemas/OrganizationRef'
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/AdminHandoverKindEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AdminHandoverStatusEnum'
+          readOnly: true
+          default: pending
+        from_user:
+          allOf:
+          - $ref: '#/components/schemas/Person'
+          nullable: true
+        to_user:
+          $ref: '#/components/schemas/Person'
+        created_by:
+          allOf:
+          - $ref: '#/components/schemas/Person'
+          nullable: true
+        reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - decided_at
+      - from_user
+      - id
+      - kind
+      - organization
+      - reason
+      - status
+      - to_user
+    AdminHandoverKindEnum:
+      enum:
+      - nomination
+      - appointment
+      type: string
+      description: |-
+        * `nomination` - Nomination
+        * `appointment` - Appointment
+    AdminHandoverStatusEnum:
+      enum:
+      - pending
+      - accepted
+      - declined
+      - cancelled
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `accepted` - Accepted
+        * `declined` - Declined
+        * `cancelled` - Cancelled
     AdmissionEnum:
       enum:
       - open
@@ -5113,6 +5401,19 @@ components:
       description: |-
         * `open` - Open
         * `closed` - Closed
+    AppointRequest:
+      type: object
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - membership_id
+      - reason
     ApprovalStatusEnum:
       enum:
       - not_requested
@@ -7445,6 +7746,14 @@ components:
       - table
       - tournament_id
       - tournament_name
+    NominateRequest:
+      type: object
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+      required:
+      - membership_id
     NullEnum:
       enum:
       - null
@@ -7621,6 +7930,39 @@ components:
       - region
       - timezone
       - town
+    OrganizationAdmin:
+      type: object
+      description: Who the admin is and any open nomination; the history only for
+        those who manage roles.
+      properties:
+        admin:
+          allOf:
+          - $ref: '#/components/schemas/Person'
+          nullable: true
+        pending:
+          allOf:
+          - $ref: '#/components/schemas/AdminHandover'
+          nullable: true
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminHandover'
+          nullable: true
+      required:
+      - admin
+      - history
+      - pending
+    OrganizationRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     OrganizationRequest:
       type: object
       properties:
@@ -7680,6 +8022,31 @@ components:
       description: |-
         * `check_in` - check_in
         * `rest` - rest
+    PaginatedAdminHandoverList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminHandover'
     PaginatedDirectoryPlayerList:
       type: object
       required:
@@ -8348,6 +8715,7 @@ components:
       - training.manage
       - welfare.manage
       - activities.manage
+      - governance.manage
       type: string
       description: |-
         * `members.manage` - Invite members, decide join requests and remove members
@@ -8362,6 +8730,7 @@ components:
         * `training.manage` - Plan training sessions and coaching groups
         * `welfare.manage` - Run welfare projects
         * `activities.manage` - Plan club activities such as nights out
+        * `governance.manage` - Set the committee, nominate representatives and run meetings
     PermissionInfo:
       type: object
       properties:
@@ -8372,6 +8741,17 @@ components:
       required:
       - code
       - label
+    Person:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
     PersonalMatch:
       type: object
       properties:

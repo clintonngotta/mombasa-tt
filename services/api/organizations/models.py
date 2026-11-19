@@ -237,6 +237,49 @@ class Invitation(models.Model):
         return self.status == self.Status.PENDING and self.expires_at > timezone.now()
 
 
+class AdminHandover(models.Model):
+    """Who is an organization's one admin, and how that changed (REQ-045). The admin nominates a member,
+    who must accept; a platform super admin can appoint one directly with a reason. Every row is kept."""
+
+    class Kind(models.TextChoices):
+        NOMINATION = "nomination"
+        APPOINTMENT = "appointment"
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        ACCEPTED = "accepted"
+        DECLINED = "declined"
+        CANCELLED = "cancelled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="admin_handovers")
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.NOMINATION)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    reason = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization"],
+                condition=models.Q(status="pending"),
+                name="org_one_pending_admin_handover",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.organization_id}: {self.from_user_id} -> {self.to_user_id} ({self.status})"
+
+
 class MemberField(models.Model):
     """A custom detail an organization keeps about its members (REQ-005), e.g. a membership number or
     shirt size. Member-visible fields are shown to, and filled in by, the member they describe; staff-only

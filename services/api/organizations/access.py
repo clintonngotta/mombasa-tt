@@ -100,7 +100,7 @@ def ensure_admin_remains(organization: Organization, losing: Membership) -> None
     if losing.roles.filter(key=RoleKey.ADMIN).exists() and not others.exists():
         raise ApiException(
             "last_admin",
-            "An organization needs at least one admin. Make someone else an admin first.",
+            "An organization needs its admin. Nominate a successor, who accepts, before leaving.",
             409,
         )
 

@@ -15,6 +15,7 @@ import {
   leaveOrganization,
   listInvitations,
   listJoinRequests,
+  listMyAdminNominations,
   listMyInvitations,
   listMyJoinRequests,
   revokeInvitation,
@@ -38,6 +39,8 @@ export function ClubPage() {
   const { memberships, active } = useActiveMembership()
   const myInvitations = useQuery({ queryKey: clubKeys.myInvitations, queryFn: listMyInvitations })
   const invitationCount = myInvitations.data?.count ?? 0
+  const myNominations = useQuery({ queryKey: clubKeys.myAdminNominations, queryFn: listMyAdminNominations })
+  const nominationCount = myNominations.data?.count ?? 0
   const myRequests = useQuery({ queryKey: clubKeys.myJoinRequests, queryFn: listMyJoinRequests })
   const pendingRequests = myRequests.data?.results.filter((r) => r.status === "pending") ?? []
 
@@ -62,6 +65,15 @@ export function ClubPage() {
         >
           <Mail aria-hidden className="size-5 text-brand-blue" />
           You have {invitationCount} invitation{invitationCount > 1 && "s"} to join a club. Review
+        </Link>
+      )}
+      {nominationCount > 0 && (
+        <Link
+          to="/club/admin-nominations"
+          className="flex items-center gap-3 rounded-xl border border-brand-blue bg-surface-selected p-4 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <ShieldCheck aria-hidden className="size-5 text-brand-blue" />
+          You're nominated as a club admin. Review
         </Link>
       )}
       {myInvitations.isError && <FormAlert>{errorMessage(myInvitations.error, "We couldn't check for club invitations.")}</FormAlert>}

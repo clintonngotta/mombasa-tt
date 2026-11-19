@@ -11,6 +11,8 @@ export type Membership = Schemas["Membership"] & { authority?: Management["autho
 export type JoinRequest = Schemas["JoinRequest"]
 export type Invitation = Schemas["Invitation"]
 export type MyInvitation = Schemas["MyInvitation"]
+export type AdminHandover = Schemas["AdminHandover"]
+export type OrganizationAdmin = Schemas["OrganizationAdmin"]
 export type MyJoinRequest = Schemas["MyJoinRequest"]
 export type JoinDecision = "approve" | "reject"
 // The timezone is left to the server default (Africa/Nairobi) when registering.
@@ -60,6 +62,8 @@ export const clubKeys = {
   management: ["clubs", "management"] as const,
   myInvitations: ["clubs", "my-invitations"] as const,
   myJoinRequests: ["clubs", "my-join-requests"] as const,
+  myAdminNominations: ["clubs", "my-admin-nominations"] as const,
+  admin: (orgId: string) => ["clubs", orgId, "admin"] as const,
   joinRequests: (orgId: string) => ["clubs", orgId, "join-requests"] as const,
   invitations: (orgId: string) => ["clubs", orgId, "invitations"] as const,
   roles: (orgId: string) => ["clubs", orgId, "roles"] as const,
@@ -90,6 +94,15 @@ export const declineInvitation = (id: string) => api<MyInvitation>(`/me/invitati
 export const createOrganization = (input: OrganizationInput) => api<Organization>("/organizations/", { body: input })
 export const updateOrganizationLocation = (id: string, input: Schemas["PatchedOrganizationLocationRequest"]) =>
   api<Organization>(`/organizations/${id}/`, { method: "PATCH", body: input })
+
+// One admin per organization, handed over by nomination (REQ-045).
+export const getOrganizationAdmin = (orgId: string) => api<OrganizationAdmin>(`${orgPath(orgId)}/admin/`)
+export const nominateAdmin = (orgId: string, membershipId: string) =>
+  api<AdminHandover>(`${orgPath(orgId)}/admin/nominate/`, { body: { membership_id: membershipId } })
+export const cancelAdminNomination = (orgId: string) => api<AdminHandover>(`${orgPath(orgId)}/admin/cancel/`, { body: {} })
+export const listMyAdminNominations = () => api<Schemas["PaginatedAdminHandoverList"]>("/me/admin-nominations/")
+export const answerAdminNomination = (id: string, accept: boolean) =>
+  api<AdminHandover>(`/me/admin-nominations/${id}/${accept ? "accept" : "decline"}/`, { body: {} })
 
 export const listJoinRequests = (orgId: string) => api<Schemas["PaginatedJoinRequestList"]>(`${orgPath(orgId)}/join-requests/`)
 export const decideJoinRequest = (orgId: string, id: string, outcome: JoinDecision) =>

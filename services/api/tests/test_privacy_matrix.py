@@ -42,6 +42,7 @@ from competitions.models import (
 from facilities.models import Table, Venue
 from matchlog.models import PersonalMatch
 from organizations.models import (
+    AdminHandover,
     Invitation,
     JoinRequest,
     MemberField,
@@ -111,6 +112,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-invitation-revoke": {"post": STAFF},
     "organization-roles": {"get": STAFF, "post": STAFF},
     "organization-role": {"patch": STAFF, "delete": STAFF},
+    # REQ-045: members see who the admin is; only the admin nominates or cancels; the nominee answers.
+    "organization-admin": {"get": MEMBER},
+    "organization-admin-nominate": {"post": STAFF},
+    "organization-admin-cancel": {"post": STAFF},
+    "organization-admin-appoint": {"post": APPROVER},  # platform super admins only, see test_admin_handover
+    "me-admin-nomination-list": {"get": OWNER},
+    "me-admin-nomination-accept": {"post": OWNER},
+    "me-admin-nomination-decline": {"post": OWNER},
     "organization-members": {"get": STAFF},
     "organization-member-roles": {"put": STAFF},
     "organization-member-remove": {"post": STAFF},
@@ -210,6 +219,7 @@ ACCESS: dict[str, dict[str, str]] = {
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
+FAITH_MEMBERSHIP = "00000000-0000-4000-8000-0000000000fa"  # Faith, for the admin nomination bodies
 # Entries with known ids, so a result can name its winner.
 ENTERED_WINNER = "00000000-0000-4000-8000-0000000000b1"
 CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
@@ -231,6 +241,8 @@ BODIES = {
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
     ("organization-member-roles", "put"): {"roles": []},
+    ("organization-admin-nominate", "post"): {"membership_id": FAITH_MEMBERSHIP},
+    ("organization-admin-appoint", "post"): {"membership_id": FAITH_MEMBERSHIP, "reason": "Test"},
     ("personal-match-detail", "patch"): {"label": "Changed"},
     ("me-membership-fields", "patch"): {"values": {}},
     ("organization-member-fields", "patch"): {"values": {}},
@@ -339,7 +351,12 @@ class World:
             self.coast.roles.get(key=RoleKey.COMMITTEE)
         )
         Membership.objects.create(organization=self.coast, user=self.hamisi, status=Membership.Status.LEFT)
-        self.faith_membership = Membership.objects.create(organization=self.coast, user=self.faith)
+        self.faith_membership = Membership.objects.create(
+            id=FAITH_MEMBERSHIP, organization=self.coast, user=self.faith
+        )
+        self.nomination = AdminHandover.objects.create(
+            organization=self.coast, from_user=self.amina, to_user=self.baraka, created_by=self.amina
+        )
         self.custom_role = Role.objects.create(organization=self.coast, name="Tea committee")
 
         # Baraka is not in the directory: nothing of his profile is for anyone else.
@@ -565,6 +582,8 @@ class World:
             "attachment-link": self.baraka_avatar.id,
             "attachment-content": self.baraka_avatar.id,
             "personal-match-detail": self.match.id,
+            "me-admin-nomination-accept": self.nomination.id,
+            "me-admin-nomination-decline": self.nomination.id,
             "me-invitation-accept": self.invitation.id,
             "me-invitation-decline": self.invitation.id,
             "me-membership-leave": self.baraka_membership.id,
@@ -681,6 +700,7 @@ class World:
             "member_roles": sorted(Membership.roles.through.objects.values_list("membership_id", "role_id")),
             "roles": sorted(Role.objects.values_list("organization__name", "name", "permissions")),
             "invitations": sorted(Invitation.objects.values_list("email", "status")),
+            "admin_handovers": sorted(AdminHandover.objects.values_list("to_user__email", "status")),
             "join_requests": sorted(JoinRequest.objects.values_list("user__email", "status")),
             "matches": sorted(PersonalMatch.objects.values_list("id", "label", "notes")),
             "avatars": sorted(PlayerProfile.objects.values_list("user__email", "avatar_id")),
