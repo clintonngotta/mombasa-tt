@@ -158,6 +158,14 @@ During the registration window, verify that open admission accepts an eligible e
 
 **Casual games — integration/device.** Setup: global ratings and available table snapshot. Steps: score offline as guest, save as authenticated player, retry save and inspect competitive history. Pass: casual record labeled separately, no changes to Elo/standings/reservations, another player's identity/profile cannot be edited by recorder. Evidence: before/after data and UI recording.
 
+*Built in TASK-031 (2026-11-19).* `/quick-score` is full screen and open signed out. It replays the shared scoring engine over events kept in the device's storage, so a guest can score offline and through a reload. Names are free text and link to no profile. `tests/test_quick_score.py` checks four things:
+- A signed-in player's save is stored as `source=quick_score`.
+- A retried save with the same `client_ref` returns the first record with 200 and makes no second one, while the same id from another player is a separate record.
+- Ratings, rating events, reservations, official results and matches are unchanged by a save.
+- An edit can't change how the record was made.
+
+The match page says "Scored by you with Quick Score · private to you · never rated". The device UI recording is still to do, with TASK-062.
+
 ### EVAL-018
 
 **Recaps/awards — integration/visual.** Setup: completed tournament, pending rating projection and selected award. Steps: inspect recap/card before/after projection, publish/unpublish announcement, attempt unauthorized award edit. Pass: values match official record, pending value is not fabricated, award publication is permissioned, shared card contains no private fields. Evidence: generated card and source-record comparison.

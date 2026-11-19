@@ -1024,8 +1024,8 @@ export interface paths {
         get: operations["me_matches_list"];
         put?: never;
         /**
-         * @description The signed-in player's own match log (REQ-037). The queryset is always scoped to the
-         *     requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+         * @description Record a match. A Quick Score save sends its client_ref: saving the same game again (a retry
+         *     after the connection dropped) returns the record already made, with 200, and changes nothing.
          */
         post: operations["me_matches_create"];
         delete?: never;
@@ -6338,7 +6338,7 @@ export interface components {
             winner: string;
             outcome: components["schemas"]["MatchOutcomeEnum"];
             games: number[][];
-            source: components["schemas"]["SourceEnum"];
+            source: components["schemas"]["OfficialResultSourceEnum"];
             /** @description Why it was corrected. */
             reason: string;
             recorded_by: string;
@@ -6351,6 +6351,13 @@ export interface components {
             /** @description What follows from it is still being worked out. */
             processing: boolean;
         };
+        /**
+         * @description * `umpire` - Umpire
+         *     * `staff` - Staff
+         *     * `correction` - Correction
+         * @enum {string}
+         */
+        OfficialResultSourceEnum: "umpire" | "staff" | "correction";
         /** @description The match is on a table: the table and its players are held until the result is official. */
         OnTable: {
             table: string;
@@ -6993,6 +7000,18 @@ export interface components {
             partner_name?: string;
             venue?: string;
             notes?: string;
+            /**
+             * @description manual: typed in afterwards; quick_score: scored live in Quick Score.
+             *
+             *     * `manual` - Entered by hand
+             *     * `quick_score` - Quick Score
+             */
+            source?: components["schemas"]["PersonalMatchSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The device's id for the game. Saving again with the same id returns the record already saved.
+             */
+            client_ref?: string | null;
             games?: components["schemas"]["GameRequest"][];
         };
         /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
@@ -7167,6 +7186,18 @@ export interface components {
             partner_name: string;
             venue: string;
             notes: string;
+            /**
+             * @description manual: typed in afterwards; quick_score: scored live in Quick Score.
+             *
+             *     * `manual` - Entered by hand
+             *     * `quick_score` - Quick Score
+             */
+            source: components["schemas"]["PersonalMatchSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The device's id for the game. Saving again with the same id returns the record already saved.
+             */
+            client_ref: string | null;
             games: components["schemas"]["Game"][];
             readonly games_won: number;
             readonly games_lost: number;
@@ -7185,8 +7216,26 @@ export interface components {
             partner_name?: string;
             venue?: string;
             notes?: string;
+            /**
+             * @description manual: typed in afterwards; quick_score: scored live in Quick Score.
+             *
+             *     * `manual` - Entered by hand
+             *     * `quick_score` - Quick Score
+             */
+            source?: components["schemas"]["PersonalMatchSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The device's id for the game. Saving again with the same id returns the record already saved.
+             */
+            client_ref?: string | null;
             games: components["schemas"]["GameRequest"][];
         };
+        /**
+         * @description * `manual` - Entered by hand
+         *     * `quick_score` - Quick Score
+         * @enum {string}
+         */
+        PersonalMatchSourceEnum: "manual" | "quick_score";
         /**
          * @description * `warm_up` - Warm-up
          *     * `on_table` - On the table
@@ -8087,13 +8136,6 @@ export interface components {
         SlotsRequest: {
             slots: components["schemas"]["SlotRequest"][];
         };
-        /**
-         * @description * `umpire` - Umpire
-         *     * `staff` - Staff
-         *     * `correction` - Correction
-         * @enum {string}
-         */
-        SourceEnum: "umpire" | "staff" | "correction";
         /** @description An accepted sponsorship as everyone who sees the tournament sees it. */
         Sponsor: {
             /** Format: uuid */
@@ -10760,6 +10802,14 @@ export interface operations {
             };
         };
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalMatch"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;

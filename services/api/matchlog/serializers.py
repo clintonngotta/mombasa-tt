@@ -41,6 +41,8 @@ class PersonalMatchSerializer(serializers.ModelSerializer):
             "partner_name",
             "venue",
             "notes",
+            "source",
+            "client_ref",
             "games",
             "games_won",
             "games_lost",
@@ -49,6 +51,13 @@ class PersonalMatchSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {
+            "source": {"help_text": "manual: typed in afterwards; quick_score: scored live in Quick Score."},
+            "client_ref": {
+                "help_text": "The device's id for the game. Saving again with the same id returns the "
+                "record already saved."
+            },
+        }
 
     def get_games_won(self, obj) -> int:
         return obj.tally()[0]
@@ -79,6 +88,9 @@ class PersonalMatchSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         games = validated_data.pop("games", None)
+        # How a record was made stays as it was made.
+        validated_data.pop("source", None)
+        validated_data.pop("client_ref", None)
         instance = super().update(instance, validated_data)
         if games is not None:
             instance.games.all().delete()

@@ -65,6 +65,7 @@ import { DispatchBoardPage } from "@/pages/tournaments/DispatchBoardPage"
 import { SchedulePage } from "@/pages/tournaments/SchedulePage"
 import { CorrectionsPage } from "@/pages/tournaments/CorrectionsPage"
 import { ScoringDeckRoute } from "@/pages/scoring/ScoringDeckPage"
+import { QuickScorePage } from "@/pages/play/QuickScorePage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -94,6 +95,8 @@ function App() {
           <Route path="/onboarding/complete" element={<CompletionPage />} />
 
           {/* The scoring deck is full screen, outside the app's navigation (REQ-002). */}
+          {/* Quick Score is full screen too, and open to anyone: a guest can score without an account (REQ-017). */}
+          <Route path="/quick-score" element={<QuickScorePage />} />
           <Route element={<RequireAuth />}>
             <Route path="/score/:id" element={<ScoringDeckRoute />} />
           </Route>
