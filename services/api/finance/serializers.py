@@ -11,8 +11,8 @@ from .models import Campaign, Charge, Expense, Payment
 
 
 class ChargeSerializer(serializers.ModelSerializer):
-    member_id = serializers.UUIDField()
-    member_name = serializers.CharField(source="member.display_name", read_only=True)
+    member_id = serializers.UUIDField(allow_null=True, help_text="None for a facility walk-in")
+    member_name = serializers.SerializerMethodField()
     purpose = serializers.CharField(max_length=120, trim_whitespace=True)
     amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000)
     currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
@@ -42,6 +42,9 @@ class ChargeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "period", "waive_reason", "created_at"]
 
+    def get_member_name(self, charge) -> str:
+        return charge.member.display_name if charge.member_id else f"{charge.walk_in_name} (walk-in)"
+
     def get_paid_minor(self, charge) -> int:
         return ledger.paid_towards(charge)
 
@@ -53,8 +56,8 @@ class ChargeSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    payer_id = serializers.UUIDField()
-    payer_name = serializers.CharField(source="payer.display_name", read_only=True)
+    payer_id = serializers.UUIDField(allow_null=True, help_text="None for a facility walk-in")
+    payer_name = serializers.SerializerMethodField()
     amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000)
     currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
     reference = serializers.CharField(
@@ -86,6 +89,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "reversal_reason", "created_at"]
+
+    def get_payer_name(self, payment) -> str:
+        return payment.payer.display_name if payment.payer_id else f"{payment.walk_in_name} (walk-in)"
 
     def get_allocated_minor(self, payment) -> int:
         return 0 if payment.reversed_at else ledger.allocated_from(payment)
