@@ -7,7 +7,7 @@ const TEMPLATE = import.meta.dirname + "/pwa/service-worker.js"
 const PUBLIC_SHELL = ["/index.html", "/manifest.webmanifest", "/favicon-32.png", "/favicon.png", "/apple-touch-icon.png", "/logo-mark.png", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/maskable-512.png"]
 
 /** The release's build number: APP_BUILD when CI sets it, else the build time (UTC, to the minute). */
-export const APP_BUILD = process.env.APP_BUILD ?? new Date().toISOString().slice(0, 16).replace(/\D/g, "")
+export const APP_BUILD = process.env.APP_BUILD || new Date().toISOString().slice(0, 16).replace(/\D/g, "")
 
 /**
  * Write /sw.js into the production build (REQ-035): the template in pwa/ with this release's build

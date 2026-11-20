@@ -5,7 +5,7 @@ import { reservationKeys } from "@/lib/reservations"
 import { scoringKeys } from "@/lib/scoring"
 import { tournamentKeys } from "@/lib/tournaments"
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1"
 const MAX_WAIT = 30_000
 
 type Changed = { type: "changed"; topic: "scores" | "results"; event: string | null }
