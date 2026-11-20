@@ -25045,6 +25045,11 @@ components:
           format: uuid
         display_name:
           type: string
+        avatar:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          nullable: true
+          description: 'The player''s photo: only for listed players and yourself.'
         processing:
           type: boolean
         summaries:
@@ -25076,6 +25081,7 @@ components:
           items:
             $ref: '#/components/schemas/RatingChange'
       required:
+      - avatar
       - count
       - discipline
       - display_name
@@ -25527,6 +25533,11 @@ components:
           description: The player has a page in the directory.
         is_me:
           type: boolean
+        avatar:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          nullable: true
+          description: 'The player''s photo: only for listed players and yourself.'
         rating:
           type: number
           format: double
@@ -25545,6 +25556,7 @@ components:
           format: double
           nullable: true
       required:
+      - avatar
       - clubs
       - display_name
       - form

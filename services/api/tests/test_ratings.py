@@ -11,7 +11,7 @@ from profiles.models import PlayerProfile
 from ratings import elo, service
 from ratings.models import Rating, RatingEvent
 
-from .helpers import logged_in, make_user
+from .helpers import image_upload, logged_in, make_user
 from .test_official_results import GAMES, LOST, correct, enter, fresh, hall, knockout  # noqa: F401
 from .test_reservations import person, started
 from .test_ties import begin, cup, decide, tie  # noqa: F401
@@ -282,6 +282,36 @@ def test_the_ranking_names_its_discipline_and_scope_and_shows_form(staff, club, 
     assert refused.status_code == 403
     mine = staff.get(f"/api/v1/rankings/?organization={club.id}").json()
     assert (mine["scope"], mine["organization_name"]) == ("club", club.name)
+
+
+def test_rankings_show_photos_of_listed_players_and_your_own(staff, club, hall):  # noqa: F811
+    game = knockout(staff, club, hall)
+    first, second = game["semis"]
+    enter(staff, game, first, first.entry_a, games=GAMES)
+    enter(staff, game, second, second.entry_a, games=GAMES)
+    work()
+    listed = first.entry_a.players.first().user
+    hidden = second.entry_a.players.first().user
+    for user, opt_in in ((listed, True), (hidden, False)):
+        photo = image_upload("PNG", (64, 64), "me.png")
+        assert (
+            logged_in(user).put("/api/v1/me/avatar/", {"file": photo}, format="multipart").status_code == 200
+        )
+        PlayerProfile.objects.filter(user=user).update(directory_opt_in=opt_in)
+    viewer = logged_in(make_user("viewer@example.com", display_name="Viewer"))
+
+    def photos(client, path="/api/v1/rankings/"):
+        return {row["user_id"]: row["avatar"] for row in client.get(path).json()["rows"]}
+
+    seen = photos(viewer)
+    assert seen[str(listed.id)]["url"].startswith("/api/v1/attachments/")
+    assert seen[str(hidden.id)] is None  # not listed: no photo, as the directory would show it
+    assert viewer.get(seen[str(listed.id)]["url"]).status_code == 200
+    assert photos(logged_in(hidden))[str(hidden.id)] is not None  # your own, listed or not
+    # The player's ratings page follows the same rule.
+    assert viewer.get(f"/api/v1/players/{listed.id}/ratings/").json()["avatar"] is not None
+    assert viewer.get(f"/api/v1/players/{hidden.id}/ratings/").json()["avatar"] is None
+    assert logged_in(hidden).get(f"/api/v1/players/{hidden.id}/ratings/").json()["avatar"] is not None
 
 
 def test_club_rankings_sum_current_ratings_of_active_members_by_discipline():
