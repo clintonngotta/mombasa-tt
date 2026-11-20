@@ -60,6 +60,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/invitations/{token}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description An invitation link (`/join/<token>`), open to whoever holds it: the link is the proof. */
+        get: operations["auth_invitations_retrieve"];
+        put?: never;
+        /**
+         * @description Create the invitee's account from the guest. Signed in at once when the email or phone they
+         *     chose is the one the invitation went to; otherwise their email needs verifying first.
+         */
+        post: operations["auth_invitations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/invitations/{token}/claim/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A signed-in player with an invitation link claims the guest for their own account. */
+        post: operations["auth_invitations_claim_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login/": {
         parameters: {
             query?: never;
@@ -109,7 +147,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["auth_me_partial_update"];
         trace?: never;
     };
     "/api/v1/auth/password-reset/": {
@@ -3306,7 +3344,10 @@ export interface paths {
         /** @description A club's guests: players its staff entered before they had an account. */
         get: operations["organizations_guests_list"];
         put?: never;
-        /** @description A club's guests: players its staff entered before they had an account. */
+        /**
+         * @description A new guest. With an email or phone they are invited at once, and `invite_link` is the link
+         *     to share with them (shown this once).
+         */
         post: operations["organizations_guests_create"];
         delete?: never;
         options?: never;
@@ -3340,7 +3381,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description A club's guests: players its staff entered before they had an account. */
+        /** @description Invite by email (we send the link), phone (share `invite_link` yourself) or both. */
         post: operations["organizations_guests_invite_create"];
         delete?: never;
         options?: never;
@@ -7972,23 +8013,27 @@ export interface components {
          * @enum {string}
          */
         GuestClaimStatusEnum: "merged" | "conflict" | "rejected";
+        /** @description A new guest; with an email or phone, they are invited at once. */
+        GuestCreateRequest: {
+            display_name: string;
+            email?: string;
+            phone?: string | null;
+        };
         GuestInvitation: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: email */
             email: string;
+            phone: string;
             status: components["schemas"]["InvitationStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             expires_at: string;
         };
+        /** @description Where to reach the player: an email (we send the link), a phone (staff share the link), or both. */
         GuestInviteRequest: {
-            /** Format: email */
-            email: string;
-        };
-        GuestWriteRequest: {
-            display_name: string;
+            email?: string;
+            phone?: string | null;
         };
         /**
          * @description * `right` - Right
@@ -8053,6 +8098,45 @@ export interface components {
             email: string;
         };
         /**
+         * @description What an invitation link shows the person who opens it: who they were entered as, where, by whom,
+         *     and the tournaments they are in. The contact details are the ones staff typed for them.
+         */
+        InvitationDetail: {
+            guest_name: string;
+            organization_name: string;
+            invited_by_name: string | null;
+            email: string;
+            phone: string;
+            /** Format: date-time */
+            expires_at: string;
+            entries: components["schemas"]["InvitationEntry"][];
+        };
+        InvitationEntry: {
+            /** Format: uuid */
+            tournament_id: string;
+            tournament_name: string;
+            event_name: string;
+            /** Format: date */
+            starts_on: string;
+        };
+        /** @description The invitee's own details for their new account: email, phone or both to sign in with. */
+        InvitationJoinRequest: {
+            display_name: string;
+            email?: string;
+            phone?: string | null;
+            password: string;
+            country?: string;
+            region?: string;
+            city?: string;
+        };
+        /**
+         * @description `signed_in`: the account is ready and this browser is signed in. Otherwise the email the player
+         *     chose needs verifying first (a link is on its way).
+         */
+        InvitationJoined: {
+            signed_in: boolean;
+        };
+        /**
          * @description * `pending` - Pending
          *     * `accepted` - Accepted
          *     * `declined` - Declined
@@ -8062,6 +8146,21 @@ export interface components {
         InvitationStatusEnum: "pending" | "accepted" | "declined" | "revoked";
         InviteRequest: {
             user_ids: string[];
+        };
+        /** @description A guest just invited, with the link to share. The link is shown this once: only its hash is kept. */
+        InvitedGuest: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            claimed_at: string | null;
+            readonly claimed_by_name: string;
+            readonly invitation: components["schemas"]["GuestInvitation"] | null;
+            /** @default 0 */
+            readonly entries: number;
+            readonly invite_link: string;
         };
         Invitee: {
             /** Format: uuid */
@@ -8249,9 +8348,10 @@ export interface components {
             url: string;
             title?: string;
         };
+        /** @description Sign in with an email address or a phone number. `email` is the older name for `login`. */
         LogInRequest: {
-            /** Format: email */
-            email: string;
+            login?: string;
+            email?: string;
             password: string;
         };
         ManagementOrganization: {
@@ -9585,6 +9685,11 @@ export interface components {
             /** Format: date */
             ended_on: string;
             end_reason: components["schemas"]["EndReasonEnum"];
+        };
+        /** @description What players change about their own account. A new phone number starts unconfirmed. */
+        PatchedAccountUpdateRequest: {
+            display_name?: string;
+            phone?: string | null;
         };
         PatchedAgendaItemRequest: {
             kind?: components["schemas"]["AgendaItemKindEnum"];
@@ -11815,14 +11920,17 @@ export interface components {
             readonly status: components["schemas"]["TournamentStatusEnum"];
             readonly venue_name: string;
         };
+        /** @description The signed-in player's own account. `email` is null for an account that signs in by phone only. */
         User: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: email */
-            readonly email: string;
+            readonly email: string | null;
+            readonly phone: string | null;
             readonly display_name: string;
             /** Format: date-time */
             readonly email_verified_at: string | null;
+            /** Format: date-time */
+            readonly phone_verified_at: string | null;
             /** Format: date-time */
             readonly date_joined: string;
         };
@@ -12153,6 +12261,100 @@ export interface operations {
             };
         };
     };
+    auth_invitations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auth_invitations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationJoinRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationJoined"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auth_invitations_claim_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaim"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     auth_login_create: {
         parameters: {
             query?: never;
@@ -12220,6 +12422,38 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auth_me_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAccountUpdateRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -19659,7 +19893,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GuestWriteRequest"];
+                "application/json": components["schemas"]["GuestCreateRequest"];
             };
         };
         responses: {
@@ -19668,7 +19902,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Guest"];
+                    "application/json": components["schemas"]["InvitedGuest"];
                 };
             };
             /** @description Error envelope */
@@ -19729,7 +19963,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["GuestInviteRequest"];
             };
@@ -19740,7 +19974,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Guest"];
+                    "application/json": components["schemas"]["InvitedGuest"];
                 };
             };
             /** @description Error envelope */

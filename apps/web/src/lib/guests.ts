@@ -6,6 +6,10 @@ export type Guest = Schemas["Guest"]
 export type GuestClaim = Schemas["GuestClaim"]
 export type MyGuestInvitation = Schemas["MyGuestInvitation"]
 export type MyClaim = Schemas["MyClaim"]
+export type InvitedGuest = Schemas["InvitedGuest"]
+export type InvitationDetail = Schemas["InvitationDetail"]
+/** Where to reach a player: we email the link, and staff share it by phone (WhatsApp or SMS). */
+export type Contact = { email?: string; phone?: string }
 
 export const guestKeys = {
   all: ["guests"] as const,
@@ -25,10 +29,12 @@ export const listGuests = (orgId: string, term = "", claimed?: boolean) => {
   const tail = query.size ? `?${query}` : ""
   return api<Schemas["PaginatedGuestList"]>(`${club(orgId)}${tail}`)
 }
-export const createGuest = (orgId: string, displayName: string) => api<Guest>(club(orgId), { body: { display_name: displayName } })
+/** With an email or phone the new guest is invited at once, and `invite_link` is the link to share. */
+export const createGuest = (orgId: string, displayName: string, contact: Contact = {}) =>
+  api<InvitedGuest>(club(orgId), { body: { display_name: displayName, ...contact } })
 export const renameGuest = (orgId: string, id: string, displayName: string) =>
   api<Guest>(`${club(orgId)}${id}/`, { method: "PATCH", body: { display_name: displayName } })
-export const inviteGuest = (orgId: string, id: string, email: string) => api<Guest>(`${club(orgId)}${id}/invite/`, { body: { email } })
+export const inviteGuest = (orgId: string, id: string, contact: Contact) => api<InvitedGuest>(`${club(orgId)}${id}/invite/`, { body: contact })
 export const revokeGuestInvitation = (orgId: string, id: string) => api<Guest>(`${club(orgId)}${id}/revoke-invitation/`, { body: {} })
 
 export const listGuestClaims = (orgId: string) => api<Schemas["PaginatedGuestClaimList"]>(claimsOf(orgId))
@@ -46,4 +52,18 @@ export const CLAIM_ACTION: Record<Schemas["GuestClaimActionEnum"], string> = {
   conflict: "Clashed, nothing moved",
   retried: "Staff tried again",
   rejected: "Staff rejected the claim",
+}
+
+// Invitation links (/join/:token): the link is the proof, so these work signed out.
+export const invitationKeys = { detail: (token: string) => ["invitation", token] as const }
+export const getInvitation = (token: string) => api<InvitationDetail>(`/auth/invitations/${encodeURIComponent(token)}/`)
+export const joinFromInvitation = (token: string, input: Schemas["InvitationJoinRequest"]) =>
+  api<Schemas["InvitationJoined"]>(`/auth/invitations/${encodeURIComponent(token)}/`, { body: input })
+export const claimByLink = (token: string) => api<MyClaim>(`/auth/invitations/${encodeURIComponent(token)}/claim/`, { body: {} })
+
+/** A WhatsApp share link for an invitation, to the player's number when staff have it. */
+export function whatsappLink(link: string, name: string, club: string | undefined, phone?: string | null) {
+  const text = `Hi ${name}, ${club || "an organizer"} has entered you on Coast TT. Join here to see your entries and check your details: ${link}`
+  const to = phone ? phone.replace(/^\+/, "") : ""
+  return `https://wa.me/${to}?text=${encodeURIComponent(text)}`
 }

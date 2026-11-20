@@ -1,5 +1,11 @@
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+
+from accounts.models import User
+from accounts.serializers import EmailField, PhoneField
+from core.geography import CountryField, validate_location
 
 from .models import Guest, GuestClaim, GuestClaimEvent, GuestInvitation
 
@@ -7,7 +13,7 @@ from .models import Guest, GuestClaim, GuestClaimEvent, GuestInvitation
 class GuestInvitationSerializer(serializers.ModelSerializer):
     class Meta:
         model = GuestInvitation
-        fields = ["id", "email", "status", "created_at", "expires_at"]
+        fields = ["id", "email", "phone", "status", "created_at", "expires_at"]
 
 
 class GuestSerializer(serializers.ModelSerializer):
@@ -43,7 +49,31 @@ class GuestWriteSerializer(serializers.Serializer):
 
 
 class GuestInviteSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    """Where to reach the player: an email (we send the link), a phone (staff share the link), or both."""
+
+    email = EmailField(required=False, allow_blank=True)
+    phone = PhoneField(required=False, allow_blank=True, allow_null=True)
+
+    def validate(self, attrs):
+        if not attrs.get("email") and not attrs.get("phone"):
+            raise serializers.ValidationError({"email": "Give an email address or a phone number."})
+        return attrs
+
+
+class GuestCreateSerializer(GuestWriteSerializer):
+    """A new guest; with an email or phone, they are invited at once."""
+
+    email = EmailField(required=False, allow_blank=True)
+    phone = PhoneField(required=False, allow_blank=True, allow_null=True)
+
+
+class InvitedGuestSerializer(GuestSerializer):
+    """A guest just invited, with the link to share. The link is shown this once: only its hash is kept."""
+
+    invite_link = serializers.CharField(read_only=True)
+
+    class Meta(GuestSerializer.Meta):
+        fields = [*GuestSerializer.Meta.fields, "invite_link"]
 
 
 class ClaimEventSerializer(serializers.ModelSerializer):
@@ -107,3 +137,55 @@ class MyClaimSerializer(serializers.ModelSerializer):
     class Meta:
         model = GuestClaim
         fields = ["id", "guest_name", "organization_name", "status", "clashes", "created_at", "resolved_at"]
+
+
+class InvitationEntrySerializer(serializers.Serializer):
+    tournament_id = serializers.UUIDField()
+    tournament_name = serializers.CharField()
+    event_name = serializers.CharField()
+    starts_on = serializers.DateField()
+
+
+class InvitationDetailSerializer(serializers.Serializer):
+    """What an invitation link shows the person who opens it: who they were entered as, where, by whom,
+    and the tournaments they are in. The contact details are the ones staff typed for them."""
+
+    guest_name = serializers.CharField()
+    organization_name = serializers.CharField()
+    invited_by_name = serializers.CharField(allow_null=True)
+    email = serializers.CharField()
+    phone = serializers.CharField()
+    expires_at = serializers.DateTimeField()
+    entries = InvitationEntrySerializer(many=True)
+
+
+class InvitationJoinSerializer(serializers.Serializer):
+    """The invitee's own details for their new account: email, phone or both to sign in with."""
+
+    display_name = serializers.CharField(max_length=80, trim_whitespace=True)
+    email = EmailField(required=False, allow_blank=True)
+    phone = PhoneField(required=False, allow_blank=True, allow_null=True)
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+    country = CountryField(max_length=2, required=False)
+    region = serializers.CharField(max_length=100, required=False)
+    city = serializers.CharField(max_length=100, required=False)
+
+    def validate(self, attrs):
+        if not attrs.get("email") and not attrs.get("phone"):
+            raise serializers.ValidationError(
+                {"email": "Give an email address or a phone number to log in with."}
+            )
+        validate_location(attrs)
+        candidate = User(email=attrs.get("email") or "", display_name=attrs["display_name"])
+        try:
+            password_validation.validate_password(attrs["password"], candidate)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": exc.messages}) from exc
+        return attrs
+
+
+class InvitationJoinedSerializer(serializers.Serializer):
+    """`signed_in`: the account is ready and this browser is signed in. Otherwise the email the player
+    chose needs verifying first (a link is on its way)."""
+
+    signed_in = serializers.BooleanField()

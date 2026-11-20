@@ -98,6 +98,17 @@ Hand-worked from the clauses in spec.md, not taken from the code under test. The
 
 The guest routes are in the privacy matrix.
 
+*Adding players and phone sign-in (TASK-120, 2026-11-20).* `tests/test_player_invites.py` covers:
+- phone numbers in their typed forms are stored as one E.164 value, and malformed ones are refused;
+- an organizer adds a player with a phone, enters them, and the shared link shows the entries. Joining from it makes the guest the account (same id, the entry untouched), signs them in, and logs in again by phone. The link then answers 404, and only its hash is stored;
+- an emailed invitation sends the link, and joining with that email and a phone lets the player log in with either;
+- a different email must be verified before the account signs in;
+- an email or phone on another account is refused without using up the link, and that account claims the entries by the link once logged in;
+- inviting needs an email or phone; a new invitation kills the old link; outsiders are refused;
+- players add, change and remove a sign-in phone, and numbers stay unique. A phone-only account keeps its phone until it has a verified email. The old `email` login field still works.
+
+The invitation routes are in the privacy matrix: `auth-invitation` is public (the link is the proof), and `auth-invitation-claim` and `PATCH auth-me` are the caller's own.
+
 ### EVAL-004
 
 **Organizations — integration.** Setup: P1 with A/B memberships, pending membership and public event at C. Steps: create organization, request/approve join, switch context, enter C event without joining C. Pass: creator is admin; membership status and switching are correct; entering public event does not fabricate membership. Outsider cannot approve self. Evidence: API and ownership assertions.
