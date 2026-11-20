@@ -12,7 +12,7 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
 import {
   coachingKeys,
-  getMyCoachProfile,
+  getMyCoachProfileOrNull,
   saveAvailability,
   saveCoachProfile,
   WEEKDAYS,
@@ -26,7 +26,7 @@ import { LEVEL_LABEL, SKILL_LABEL, SKILLS, type Skill } from "@/lib/training"
 export function CoachProfilePage() {
   const profile = useQuery({
     queryKey: coachingKeys.profile,
-    queryFn: () => getMyCoachProfile().catch((error) => (error instanceof ApiError && error.status === 404 ? null : Promise.reject(error))),
+    queryFn: getMyCoachProfileOrNull,
   })
   return (
     <div className="flex max-w-[720px] flex-col gap-6">

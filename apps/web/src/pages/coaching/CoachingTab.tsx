@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CalendarDays, ChevronLeft, ChevronRight, GraduationCap, Search, UserRound } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
-import { ApiError, errorMessage } from "@/lib/api"
+import { errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
 import {
   answerBooking,
@@ -12,7 +12,7 @@ import {
   BOOKING_STATUS_LABEL,
   coachingKeys,
   getCalendar,
-  getMyCoachProfile,
+  getMyCoachProfileOrNull,
   listBookings,
   listCoachings,
   weekOf,
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils"
 export function CoachingTab() {
   const profile = useQuery({
     queryKey: coachingKeys.profile,
-    queryFn: () => getMyCoachProfile().catch((error) => (error instanceof ApiError && error.status === 404 ? null : Promise.reject(error))),
+    queryFn: getMyCoachProfileOrNull,
   })
   const coachings = useQuery({ queryKey: coachingKeys.coachings, queryFn: listCoachings })
   const bookings = useQuery({ queryKey: coachingKeys.bookings, queryFn: listBookings })

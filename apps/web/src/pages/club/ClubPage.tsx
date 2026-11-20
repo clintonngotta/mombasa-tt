@@ -1,7 +1,9 @@
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, Bell, CalendarCheck, CalendarClock, CalendarDays, Megaphone, PartyPopper, ChevronRight, ClipboardList, Clock, KeyRound, Landmark, LogOut, Mail, Map, MapPin, Plus, Search, ShieldCheck, Store, Trophy, UserRoundPlus, Users } from "lucide-react"
+import { Building2, Clock, LogOut, Mail, Plus, Search, ShieldCheck } from "lucide-react"
+import { OrganizationLinks, OrgLinkRow } from "@/components/clubs/OrganizationLinks"
+import { actsAsFacility } from "@/lib/navigation"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
@@ -128,13 +130,8 @@ function PageNote({ shown, count, hint }: { shown: number; count: number; hint: 
 
 function ActiveOrganization({ membership }: { membership: Membership }) {
   const orgId = membership.organization.id
-  const isAdmin = membership.roles.some((role) => role.key === "admin")
   const manageMembers = can(membership, "members.manage")
-  const manageRoles = can(membership, "roles.manage")
-  const manageCompetitions = can(membership, "competitions.manage")
-  const manageFacilities = can(membership, "facilities.manage")
-  const manageTraining = can(membership, "training.manage")
-  const seeFinances = can(membership, "finances.view", "finances.manage")
+  const isAdmin = membership.roles.some((role) => role.key === "admin")
   return (
     <>
       <OrganizationCard organization={membership.organization}>
@@ -144,109 +141,13 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
         </span>
       </OrganizationCard>
       <PlaceDirections place={membership.organization} className="-mt-2 px-1" />
-      {manageRoles && <ClubLocation organization={membership.organization} />}
-      {(manageMembers || manageRoles || manageCompetitions || manageFacilities || manageTraining || seeFinances) && (
-        <nav aria-label="Club administration" className="flex flex-col gap-2">
-          {(manageRoles || manageTraining) && (
-            <AdminLink to="/club/profile" icon={<Store aria-hidden className="size-5 text-brand-blue" />}>
-              Club profile and training hours
-            </AdminLink>
-          )}
-          {manageTraining && (
-            <AdminLink to="/club/sessions" icon={<CalendarClock aria-hidden className="size-5 text-brand-blue" />}>
-              Training sessions: invitations and attendance
-            </AdminLink>
-          )}
-          {manageCompetitions && (
-            <AdminLink to="/club/tournaments" icon={<Trophy aria-hidden className="size-5 text-brand-blue" />}>
-              Tournaments
-            </AdminLink>
-          )}
-          {manageFacilities && (
-            <AdminLink to="/club/bookings" icon={<CalendarCheck aria-hidden className="size-5 text-brand-blue" />}>
-              Table bookings
-            </AdminLink>
-          )}
-          {manageFacilities && (
-            <AdminLink to="/club/venues" icon={<MapPin aria-hidden className="size-5 text-brand-blue" />}>
-              Venues and tables
-            </AdminLink>
-          )}
-          {(membership.organization.kind === "facility" || membership.organization.kind === "club_facility") && seeFinances && (
-            <AdminLink to="/club/takings" icon={<Banknote aria-hidden className="size-5 text-brand-blue" />}>
-              Door takings
-            </AdminLink>
-          )}
-          {seeFinances && (
-            <AdminLink to="/club/finance" icon={<Banknote aria-hidden className="size-5 text-brand-blue" />}>
-              Finances: charges, payments and balances
-            </AdminLink>
-          )}
-          {(manageMembers || manageRoles) && (
-            <AdminLink to="/club/members" icon={<Users aria-hidden className="size-5 text-brand-blue" />}>
-              Members and their roles
-            </AdminLink>
-          )}
-          {(manageMembers || manageCompetitions) && (
-            <AdminLink to="/club/guests" icon={<UserRoundPlus aria-hidden className="size-5 text-brand-blue" />}>
-              Guests and their claims
-            </AdminLink>
-          )}
-          {manageRoles && (
-            <AdminLink to="/club/roles" icon={<KeyRound aria-hidden className="size-5 text-brand-blue" />}>
-              Roles and permissions
-            </AdminLink>
-          )}
-          {manageMembers && (
-            <AdminLink to="/club/fields" icon={<ClipboardList aria-hidden className="size-5 text-brand-blue" />}>
-              Member fields
-            </AdminLink>
-          )}
-        </nav>
+      {can(membership, "roles.manage") && <ClubLocation organization={membership.organization} />}
+      {actsAsFacility(membership) && (
+        <OrgLinkRow to="/facility" icon={<Building2 aria-hidden className="size-5 text-brand-blue" />}>
+          Open the facility desk
+        </OrgLinkRow>
       )}
-      {membership.organization.kind === "regional_body" && (
-        <AdminLink to="/region" icon={<Map aria-hidden className="size-5 text-brand-blue" />}>
-          Region: agenda, clubs, articles, meetings, sponsorships and approvals
-        </AdminLink>
-      )}
-      <AdminLink to="/club/committee" icon={<Landmark aria-hidden className="size-5 text-brand-blue" />}>
-        {can(membership, "governance.manage") ? "Committee and its positions" : "Committee"}
-      </AdminLink>
-      {!membership.managedOnly && (
-        <AdminLink to="/club/welfare" icon={<Users aria-hidden className="size-5 text-brand-blue" />}>
-          Welfare projects
-        </AdminLink>
-      )}
-      {!membership.managedOnly && (
-        <AdminLink to="/club/my-payments" icon={<Banknote aria-hidden className="size-5 text-brand-blue" />}>
-          My payments
-        </AdminLink>
-      )}
-      {!membership.managedOnly && (
-        <AdminLink to="/club/schedule" icon={<CalendarDays aria-hidden className="size-5 text-brand-blue" />}>
-          Club schedule: activities, tournaments and training
-        </AdminLink>
-      )}
-      {can(membership, "announcements.manage") && (
-        <AdminLink to="/club/announce" icon={<Bell aria-hidden className="size-5 text-brand-blue" />}>
-          Announce to members
-        </AdminLink>
-      )}
-      {can(membership, "announcements.manage") && (
-        <AdminLink to="/club/external-events" icon={<Megaphone aria-hidden className="size-5 text-brand-blue" />}>
-          Events elsewhere: list a tournament run outside Coast TT
-        </AdminLink>
-      )}
-      {can(membership, "activities.manage") && (
-        <AdminLink to="/club/activities" icon={<PartyPopper aria-hidden className="size-5 text-brand-blue" />}>
-          Activities: nights out, fun days and visits
-        </AdminLink>
-      )}
-      {!membership.managedOnly && (
-        <AdminLink to="/club/meetings" icon={<CalendarClock aria-hidden className="size-5 text-brand-blue" />}>
-          Meetings
-        </AdminLink>
-      )}
+      <OrganizationLinks membership={membership} variant={membership.organization.kind === "facility" ? "facility" : "club"} />
       {!membership.managedOnly && <MyClubDetails membershipId={membership.id} />}
       {manageMembers && (
         <>
@@ -338,16 +239,6 @@ function MyClubDetails({ membershipId }: { membershipId: string }) {
         />
       </div>
     </section>
-  )
-}
-
-function AdminLink({ to, icon, children }: { to: string; icon: ReactNode; children: ReactNode }) {
-  return (
-    <Link to={to} className={cn(ROW, "min-h-12 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
-      {icon}
-      <span className="flex-1">{children}</span>
-      <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
-    </Link>
   )
 }
 

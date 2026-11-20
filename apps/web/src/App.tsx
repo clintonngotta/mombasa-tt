@@ -89,6 +89,11 @@ import { SchedulePage } from "@/pages/tournaments/SchedulePage"
 import { CorrectionsPage } from "@/pages/tournaments/CorrectionsPage"
 import { ScoringDeckRoute } from "@/pages/scoring/ScoringDeckPage"
 import { QuickScorePage } from "@/pages/play/QuickScorePage"
+import { HomeRoute, PersonOnly } from "@/components/auth/PersonOnly"
+import { FacilityHomePage } from "@/pages/facilities/FacilityHomePage"
+import { CoachingPage } from "@/pages/coaching/CoachingPage"
+import { RegionalPage } from "@/pages/region/RegionalPage"
+import { MorePage } from "@/pages/MorePage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -126,13 +131,37 @@ function App() {
 
           <Route element={<AppShell />}>
             {/* Domain screens land here as their Stitch references are implemented. */}
-            <Route path="/home" element={null} />
+            <Route path="/home" element={<HomeRoute />} />
             {/* The events listing is public (REQ-042). */}
             <Route path="/events" element={<EventsPage />} />
             <Route element={<RequireAuth />}>
-              <Route path="/play" element={<PlayPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/play/soda" element={<SodaGamesPage />} />
+              <Route element={<PersonOnly />}>
+                <Route path="/play" element={<PlayPage />} />
+                <Route path="/play/soda" element={<SodaGamesPage />} />
+                <Route path="/rankings" element={<RankingsPage />} />
+                <Route path="/training" element={<TrainingPage />} />
+                <Route path="/training/plans/:id" element={<PlanPage />} />
+                <Route path="/training/club-plans/:id" element={<ClubPlanPage />} />
+                <Route path="/coaches" element={<CoachesPage />} />
+                <Route path="/coaches/:id" element={<CoachPage />} />
+                <Route path="/coaching/profile" element={<CoachProfilePage />} />
+                <Route path="/coaching/trainees/:id" element={<TraineePage />} />
+                <Route path="/coaching/trainees/:coachingId/plans/:id" element={<TraineePlanPage />} />
+                <Route path="/training/drills" element={<Navigate to="/training?tab=drills" replace />} />
+                <Route path="/training/drills/new" element={<DrillEditPage />} />
+                <Route path="/training/drills/:id" element={<DrillDetailPage />} />
+                <Route path="/training/drills/:id/edit" element={<DrillEditPage />} />
+                <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
+                <Route path="/matches" element={<MatchLogPage />} />
+                <Route path="/matches/new" element={<MatchFormPage />} />
+                <Route path="/matches/:id" element={<MatchDetailPage />} />
+                <Route path="/matches/:id/edit" element={<MatchFormPage />} />
+                <Route path="/coaching" element={<CoachingPage />} />
+              </Route>
+              <Route path="/facility" element={<FacilityHomePage />} />
+              <Route path="/regional" element={<RegionalPage />} />
+              <Route path="/more" element={<MorePage />} />
               <Route path="/tournaments/:id" element={<TournamentPage />} />
               <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
               <Route path="/tournaments/:id/scoring" element={<ScoringOverviewPage />} />
@@ -193,30 +222,12 @@ function App() {
               <Route path="/profile/claims" element={<GuestClaimsPage />} />
               <Route path="/profile/visits" element={<MyVisitsPage />} />
               <Route path="/profile/bookings" element={<MyBookingsPage />} />
-              <Route path="/rankings" element={<RankingsPage />} />
-              <Route path="/training" element={<TrainingPage />} />
               <Route path="/region" element={<RegionPage />} />
               <Route path="/news/:orgId/:id" element={<ArticlePage />} />
               <Route path="/club/meetings" element={<MeetingsPage />} />
               <Route path="/meetings/:orgId/:id" element={<MeetingPage />} />
-              <Route path="/training/plans/:id" element={<PlanPage />} />
-              <Route path="/training/club-plans/:id" element={<ClubPlanPage />} />
-              <Route path="/coaches" element={<CoachesPage />} />
-              <Route path="/coaches/:id" element={<CoachPage />} />
-              <Route path="/coaching/profile" element={<CoachProfilePage />} />
-              <Route path="/coaching/trainees/:id" element={<TraineePage />} />
-              <Route path="/coaching/trainees/:coachingId/plans/:id" element={<TraineePlanPage />} />
-              <Route path="/training/drills" element={<Navigate to="/training?tab=drills" replace />} />
-              <Route path="/training/drills/new" element={<DrillEditPage />} />
-              <Route path="/training/drills/:id" element={<DrillDetailPage />} />
-              <Route path="/training/drills/:id/edit" element={<DrillEditPage />} />
-              <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/players/:id" element={<PlayerPage />} />
-              <Route path="/matches" element={<MatchLogPage />} />
-              <Route path="/matches/new" element={<MatchFormPage />} />
-              <Route path="/matches/:id" element={<MatchDetailPage />} />
-              <Route path="/matches/:id/edit" element={<MatchFormPage />} />
             </Route>
             {import.meta.env.DEV && <Route path="/dev/gallery" element={<GalleryPage />} />}
           </Route>

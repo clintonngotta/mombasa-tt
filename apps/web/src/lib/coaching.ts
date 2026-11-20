@@ -1,4 +1,4 @@
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 import type { PlanApi, Recommendation, TrainingPlan } from "@/lib/training"
 
@@ -39,6 +39,9 @@ export const coachingKeys = {
 }
 
 export const getMyCoachProfile = () => api<CoachProfile>("/me/coach-profile/")
+/** The signed-in player's coach profile, or null when they don't coach (the API answers 404). */
+export const getMyCoachProfileOrNull = () =>
+  getMyCoachProfile().catch((error) => (error instanceof ApiError && error.status === 404 ? null : Promise.reject(error)))
 export const saveCoachProfile = (body: Partial<CoachProfileInput>) => api<CoachProfile>("/me/coach-profile/", { method: "PUT", body })
 export const saveAvailability = (windows: Schemas["AvailabilityRequest"][]) =>
   api<Availability[]>("/me/coach-availability/", { method: "PUT", body: { windows } })
