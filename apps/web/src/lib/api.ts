@@ -1,7 +1,7 @@
 import type { Schemas } from "@/lib/schema"
 import { APP_BUILD, markOutdated } from "@/lib/pwa"
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1"
 
 export class ApiError extends Error {
   readonly status: number

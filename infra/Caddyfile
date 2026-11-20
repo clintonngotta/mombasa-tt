@@ -1,0 +1,46 @@
+# The production proxy (deployment.md): one origin, APP_DOMAIN, for the PWA and the API, so session and
+# CSRF cookies need no cross-site setup. Caddy gets and renews the certificate itself.
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# Uploads are capped at 5 MB by the API; stop anything much bigger here, before it is sent in full.
+	request_body {
+		max_size 6MB
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		-Server
+		# HSTS comes after every host is checked over HTTPS (deployment.md); don't preload early.
+	}
+
+	# The API, its live updates (/api/v1/ws/) and Django admin. Host and the HTTPS scheme are forwarded.
+	@django path /api/* /admin/* /health/*
+	handle @django {
+		reverse_proxy api:8000
+	}
+
+	# Django's own static files (admin, API browser), collected into the image.
+	handle /static/* {
+		root * /srv
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
+	# The PWA. Hashed assets never change; the shell, manifest and service worker are checked every time
+	# so an update reaches installed apps (REQ-035). Any other path is a client-side route.
+	handle {
+		root * /srv/app
+		try_files {path} /index.html
+		# Header matchers see the path as requested, before try_files, so "not hashed" covers client routes.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@other not path /assets/*
+		header @other Cache-Control "no-cache"
+		file_server
+	}
+
+	log
+}
