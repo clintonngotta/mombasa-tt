@@ -51,6 +51,14 @@ def _listed(user_ids) -> set:
     return set(listed.values_list("user_id", flat=True))
 
 
+def _avatars(user_ids, listed: set, me) -> dict:
+    """Each player's photo, where the viewer may see it: listed players' and their own (as attachment
+    access allows, attachments/access.py)."""
+    shown = [user_id for user_id in user_ids if user_id in listed or user_id == me]
+    with_photo = PlayerProfile.objects.filter(user_id__in=shown, avatar__isnull=False)
+    return dict(with_photo.values_list("user_id", "avatar_id"))
+
+
 def _form(discipline: str, user_ids) -> dict:
     """Each player's latest rated matches, newest first, and the latest delta."""
     found: dict = {user_id: [] for user_id in user_ids}
@@ -105,6 +113,7 @@ class RankingView(APIView):
         top = list(rated.select_related("user").order_by("-rating", "user__display_name")[:RANKING_LIMIT])
         user_ids = [rating.user_id for rating in top]
         form, listed = _form(discipline, user_ids), _listed(user_ids)
+        avatars = _avatars(user_ids, listed, request.user.id)
         clubs: dict = {}
         # Clubs are shown as the directory shows them: only for players who chose to be listed.
         active = Membership.objects.active().filter(user_id__in=listed).select_related("organization")
@@ -123,6 +132,7 @@ class RankingView(APIView):
                     "clubs": clubs.get(rating.user_id, []),
                     "listed": rating.user_id in listed,
                     "is_me": rating.user_id == request.user.id,
+                    "avatar": avatars.get(rating.user_id),
                     "rating": rating.rating,
                     "played": rating.played,
                     "won": rating.won,
@@ -268,6 +278,7 @@ class PlayerRatingsView(APIView):
         shown = {
             "user_id": player.id,
             "display_name": player.display_name,
+            "avatar": _avatars([player.id], _listed([player.id]), request.user.id).get(player.id),
             "processing": service.pending(),
             "summaries": summaries,
             "discipline": discipline,

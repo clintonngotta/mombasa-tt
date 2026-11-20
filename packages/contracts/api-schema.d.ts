@@ -10311,6 +10311,8 @@ export interface components {
             /** Format: uuid */
             user_id: string;
             display_name: string;
+            /** @description The player's photo: only for listed players and yourself. */
+            avatar: components["schemas"]["AttachmentLink"] | null;
             processing: boolean;
             summaries: components["schemas"]["RatingSummary"][];
             /**
@@ -10517,6 +10519,8 @@ export interface components {
             /** @description The player has a page in the directory. */
             listed: boolean;
             is_me: boolean;
+            /** @description The player's photo: only for listed players and yourself. */
+            avatar: components["schemas"]["AttachmentLink"] | null;
             /**
              * Format: double
              * @description Full precision; round only to show it.
