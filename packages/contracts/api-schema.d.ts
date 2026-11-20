@@ -2196,6 +2196,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/cost-share/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Share the cost among those going (REQ-039 Phase 2): a one-time due for each, through the
+         *     ledger. Takes activities.manage and finances.manage, since it makes members owe.
+         */
+        post: operations["organizations_activities_cost_share_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/activities/{id}/invitees/": {
         parameters: {
             query?: never;
@@ -6908,6 +6928,7 @@ export interface components {
             readonly my_waitlisted: boolean;
             /** @description In the audience (a member, and the activity is for all members or invites them) and open. */
             readonly can_answer: boolean;
+            readonly cost_share: components["schemas"]["CostShare"] | null;
             /** Format: date-time */
             readonly published_at: string | null;
         };
@@ -7225,6 +7246,20 @@ export interface components {
             /** @description "Anonymous" for those who asked */
             name: string;
             amount_minor: number;
+        };
+        /**
+         * @description The shared cost: what each pays and by when, the viewer's own share, and (finance staff only)
+         *     received, spent and remaining.
+         */
+        CostShare: {
+            amount_minor: number;
+            currency: string;
+            /** Format: date */
+            due_on: string;
+            my_share: components["schemas"]["MyShare"] | null;
+            received_minor: number | null;
+            spent_minor: number | null;
+            remaining_minor: number | null;
         };
         CounterRequest: {
             /** Format: date-time */
@@ -8648,6 +8683,10 @@ export interface components {
             readonly attended: boolean | null;
             readonly session: components["schemas"]["MySession"];
         };
+        MyShare: {
+            outstanding_minor: number;
+            status: components["schemas"]["OwedStatusEnum"];
+        };
         MySodaSettings: {
             /** @description Whether stake fields apply for this player. */
             stakes_available: boolean;
@@ -8680,16 +8719,8 @@ export interface components {
             outstanding_minor: number;
             /** Format: date */
             due_on: string;
-            status: components["schemas"]["MyWelfareDueStatusEnum"];
+            status: components["schemas"]["OwedStatusEnum"];
         };
-        /**
-         * @description * `paid` - paid
-         *     * `partial` - partial
-         *     * `pending` - pending
-         *     * `overdue` - overdue
-         * @enum {string}
-         */
-        MyWelfareDueStatusEnum: "paid" | "partial" | "pending" | "overdue";
         NominateRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -8884,6 +8915,14 @@ export interface components {
          * @enum {string}
          */
         OverridesEnum: "check_in" | "rest";
+        /**
+         * @description * `paid` - paid
+         *     * `partial` - partial
+         *     * `pending` - pending
+         *     * `overdue` - overdue
+         * @enum {string}
+         */
+        OwedStatusEnum: "paid" | "partial" | "pending" | "overdue";
         PaginatedAdminHandoverList: {
             /** @example 123 */
             count: number;
@@ -11049,6 +11088,15 @@ export interface components {
         };
         SessionTableRequest: {
             label: string;
+        };
+        /** @description An amount each, or a total split evenly among those going (rounded up to whole units). */
+        ShareCostRequest: {
+            amount_minor?: number;
+            total_minor?: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            due_on: string;
         };
         ShareRequest: {
             share: boolean;
@@ -16825,6 +16873,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CancelActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_cost_share_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareCostRequest"];
             };
         };
         responses: {

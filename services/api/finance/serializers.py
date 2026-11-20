@@ -7,6 +7,7 @@ from rest_framework import serializers
 from attachments.serializers import AttachmentLinkSerializer
 
 from . import dues, ledger, welfare
+from .ledger import OWED_STATUSES
 from .models import Campaign, Charge, Expense, Payment, WelfareProject
 
 
@@ -323,7 +324,7 @@ class MyWelfareDueSerializer(serializers.Serializer):
     amount_minor = serializers.IntegerField()
     outstanding_minor = serializers.IntegerField()
     due_on = serializers.DateField()
-    status = serializers.ChoiceField(choices=["paid", "partial", "pending", "overdue"])
+    status = serializers.ChoiceField(choices=OWED_STATUSES)
 
 
 class WelfareVisitSerializer(serializers.Serializer):

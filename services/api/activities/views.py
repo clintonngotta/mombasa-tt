@@ -17,10 +17,12 @@ from rest_framework.views import APIView
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
 from notifications import triggers
-from organizations.access import require_membership, require_permission
+from organizations.access import effective_permissions, require_membership, require_permission
+from organizations.committee import local_today
 from organizations.models import Membership, Organization
+from organizations.permissions import Permission
 
-from . import service
+from . import costs, service
 from .models import Activity, Rsvp
 from .serializers import (
     AttendeeSerializer,
@@ -28,6 +30,7 @@ from .serializers import (
     ClubActivitySerializer,
     RsvpRequestSerializer,
     ScheduleItemSerializer,
+    ShareCostSerializer,
 )
 
 WHEN = OpenApiParameter("when", str, enum=["upcoming", "past"])
@@ -65,6 +68,11 @@ class ActivityViewSet(
             return context
         organization = self.organization()
         context["member"] = service.is_member(self.request.user, organization)
+        context["today"] = local_today(organization)
+        context["finance_staff"] = bool(
+            effective_permissions(self.request.user, organization)
+            & {Permission.FINANCES_VIEW, Permission.FINANCES_MANAGE}
+        )
         context["invited"] = set(
             Activity.invitees.through.objects.filter(
                 user_id=self.request.user.pk, activity__organization=organization
@@ -203,6 +211,19 @@ class ActivityViewSet(
             activity.save(update_fields=["status", "cancel_reason", "cancelled_at"])
             if activity.published_at:
                 triggers.activity_news(activity, "cancelled")
+        return self._reply(activity)
+
+    @extend_schema(request=ShareCostSerializer, responses={200: ClubActivitySerializer})
+    @action(detail=True, methods=["post"], url_path="cost-share")
+    def cost_share(self, request, *args, **kwargs):
+        """Share the cost among those going (REQ-039 Phase 2): a one-time due for each, through the
+        ledger. Takes activities.manage and finances.manage, since it makes members owe."""
+        organization = self._staff()
+        require_permission(request.user, organization, Permission.FINANCES_MANAGE)
+        activity = get_object_or_404(Activity, pk=kwargs["pk"], organization=organization)
+        body = ShareCostSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        costs.share(activity, request.user, local_today(organization), **body.validated_data)
         return self._reply(activity)
 
     @extend_schema(request=RsvpRequestSerializer, responses={200: ClubActivitySerializer})

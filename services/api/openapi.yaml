@@ -4835,6 +4835,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/cost-share/:
+    post:
+      operationId: organizations_activities_cost_share_create
+      description: |-
+        Share the cost among those going (REQ-039 Phase 2): a one-time due for each, through the
+        ledger. Takes activities.manage and finances.manage, since it makes members owe.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareCostRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/activities/{id}/invitees/:
     get:
       operationId: organizations_activities_invitees_retrieve
@@ -16403,6 +16445,11 @@ components:
           description: In the audience (a member, and the activity is for all members
             or invites them) and open.
           readOnly: true
+        cost_share:
+          allOf:
+          - $ref: '#/components/schemas/CostShare'
+          nullable: true
+          readOnly: true
         published_at:
           type: string
           format: date-time
@@ -16414,6 +16461,7 @@ components:
       - cancel_reason
       - capacity
       - cost_note
+      - cost_share
       - description
       - ends_at
       - going
@@ -17282,6 +17330,40 @@ components:
       required:
       - amount_minor
       - name
+    CostShare:
+      type: object
+      description: |-
+        The shared cost: what each pays and by when, the viewer's own share, and (finance staff only)
+        received, spent and remaining.
+      properties:
+        amount_minor:
+          type: integer
+        currency:
+          type: string
+        due_on:
+          type: string
+          format: date
+        my_share:
+          allOf:
+          - $ref: '#/components/schemas/MyShare'
+          nullable: true
+        received_minor:
+          type: integer
+          nullable: true
+        spent_minor:
+          type: integer
+          nullable: true
+        remaining_minor:
+          type: integer
+          nullable: true
+      required:
+      - amount_minor
+      - currency
+      - due_on
+      - my_share
+      - received_minor
+      - remaining_minor
+      - spent_minor
     CounterRequest:
       type: object
       properties:
@@ -20963,6 +21045,16 @@ components:
       - responded_at
       - session
       - status
+    MyShare:
+      type: object
+      properties:
+        outstanding_minor:
+          type: integer
+        status:
+          $ref: '#/components/schemas/OwedStatusEnum'
+      required:
+      - outstanding_minor
+      - status
     MySodaSettings:
       type: object
       properties:
@@ -21059,24 +21151,12 @@ components:
           type: string
           format: date
         status:
-          $ref: '#/components/schemas/MyWelfareDueStatusEnum'
+          $ref: '#/components/schemas/OwedStatusEnum'
       required:
       - amount_minor
       - due_on
       - outstanding_minor
       - status
-    MyWelfareDueStatusEnum:
-      enum:
-      - paid
-      - partial
-      - pending
-      - overdue
-      type: string
-      description: |-
-        * `paid` - paid
-        * `partial` - partial
-        * `pending` - pending
-        * `overdue` - overdue
     NominateRequest:
       type: object
       properties:
@@ -21612,6 +21692,18 @@ components:
       description: |-
         * `check_in` - check_in
         * `rest` - rest
+    OwedStatusEnum:
+      enum:
+      - paid
+      - partial
+      - pending
+      - overdue
+      type: string
+      description: |-
+        * `paid` - paid
+        * `partial` - partial
+        * `pending` - pending
+        * `overdue` - overdue
     PaginatedAdminHandoverList:
       type: object
       required:
@@ -26438,6 +26530,29 @@ components:
           maxLength: 40
       required:
       - label
+    ShareCostRequest:
+      type: object
+      description: An amount each, or a total split evenly among those going (rounded
+        up to whole units).
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        total_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        due_on:
+          type: string
+          format: date
+      required:
+      - due_on
     ShareRequest:
       type: object
       properties:

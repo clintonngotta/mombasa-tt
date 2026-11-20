@@ -121,6 +121,10 @@ def waive(charge: Charge, actor, reason: str) -> Charge:
     return charge
 
 
+# What a member's own due can show: never "waived", since waived dues aren't shown as owed.
+OWED_STATUSES = [("paid", "paid"), ("partial", "partial"), ("pending", "pending"), ("overdue", "overdue")]
+
+
 def status(charge: Charge, today) -> str:
     """paid, partial, pending, overdue (a partly paid charge past its date is overdue) or waived."""
     if charge.waived_at:

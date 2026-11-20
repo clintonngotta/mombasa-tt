@@ -24,6 +24,11 @@ urlpatterns = [
         name="organization-activity-cancel",
     ),
     path(
+        "activities/<uuid:pk>/cost-share/",
+        activities.as_view({"post": "cost_share"}),
+        name="organization-activity-cost-share",
+    ),
+    path(
         "activities/<uuid:pk>/rsvp/", activities.as_view({"post": "rsvp"}), name="organization-activity-rsvp"
     ),
     path(

@@ -50,6 +50,11 @@ class Activity(models.Model):
     public = models.BooleanField(default=False)
     # Phase 1 only says what it costs; nothing is collected or marked paid here.
     cost_note = models.CharField(max_length=200, blank=True)
+    # Phase 2 cost sharing (REQ-039): a one-time REQ-023 campaign billing those going their share, with
+    # the activity's spending as REQ-024 expenses on it. Without one, `cost_note` is only text.
+    campaign = models.OneToOneField(
+        "finance.Campaign", on_delete=models.PROTECT, null=True, blank=True, related_name="activity"
+    )
     # A planned visit or support activity for a welfare project (REQ-038): never public, and hidden from
     # members with the project.
     welfare_project = models.ForeignKey(

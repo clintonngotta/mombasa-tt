@@ -408,6 +408,12 @@ The privacy matrix covers every route, including the receipt upload.
 - A published visit shows on the project with who is going, only to people invited to it. An activities officer can still change its time and place, but not its link or its public setting.
 - When the beneficiary hides the project, its visits leave member views: the activity, the list and answering.
 
+`tests/test_activity_costs.py` covers REQ-039 cost sharing:
+- A cost note alone bills nobody. Sharing takes activities.manage and finances.manage together, and only members going with a place owe (not the waitlist, not maybe).
+- A total is split evenly and rounded up. A paid share and an expense on the campaign reconcile to a deficit on the activity and in the purpose totals.
+- The amount and due date are checked. Drafts and activities with nobody going can't share a cost.
+- A welfare visit's share has a neutral title.
+
 The privacy matrix covers every route.
 
 ### EVAL-041

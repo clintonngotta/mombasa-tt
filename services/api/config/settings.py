@@ -206,6 +206,8 @@ SPECTACULAR_SETTINGS = {
         "SodaChallengeStatusEnum": "soda.models.Challenge.Status",
         "ScheduleKindEnum": "activities.serializers.SCHEDULE_KINDS",
         "ActivityStatusEnum": "activities.models.Activity.Status",
+        # A welfare due's and an activity share's standing for the member who owes it.
+        "OwedStatusEnum": "finance.ledger.OWED_STATUSES",
         "SessionInvitationStatusEnum": "training.models.SessionInvitation.Status",
         "CoachLevelEnum": "coaching.models.Level",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
