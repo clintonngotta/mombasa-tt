@@ -49,8 +49,11 @@ class Attachment(models.Model):
     class Purpose(models.TextChoices):
         AVATAR = "avatar"
         RECEIPT = "receipt"  # an expense's receipt (REQ-024), for finance staff only
+        # A tournament's cover picture and its documents (REQ-007): whoever may see the tournament.
+        TOURNAMENT_COVER = "tournament_cover"
+        TOURNAMENT_DOCUMENT = "tournament_document"
 
-    EXTENSIONS = {"image/webp": ".webp"}
+    EXTENSIONS = {"image/webp": ".webp", "application/pdf": ".pdf"}
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="attachments")

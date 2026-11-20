@@ -24,6 +24,7 @@ import {
 import { formatDay, formatDayRange, formatInstant } from "@/lib/dates"
 import { LOCAL_TIME_ZONE } from "@/lib/training"
 import { cn } from "@/lib/utils"
+import { OrganizeTournament } from "@/components/coaching/OrganizeTournament"
 
 /** Coaching (REQ-047): requests waiting for you, the people you coach and your week as a coach, and the
  * coaches you train with and the sessions you booked. */
@@ -74,6 +75,7 @@ export function CoachingTab() {
           </Link>
         </section>
       )}
+      {profile.data && <OrganizeTournament profile={profile.data} />}
 
       <section aria-labelledby="my-coaches-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

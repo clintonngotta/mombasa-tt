@@ -53,6 +53,7 @@ function ProfileForm({ profile }: { profile: CoachProfile | null }) {
   const [specialties, setSpecialties] = useState<Skill[]>((profile?.specialties ?? []) as Skill[])
   const [rate, setRate] = useState(profile?.rate_minor != null ? String(profile.rate_minor / 100) : "")
   const [town, setTown] = useState(profile?.town ?? "")
+  const [firm, setFirm] = useState(profile?.firm_name ?? "")
   const [region, setRegion] = useState(profile?.region ?? "")
   const [accepting, setAccepting] = useState(profile?.accepting ?? true)
   const [orgIds, setOrgIds] = useState<string[]>(profile?.organizations.map((o) => o.id) ?? [])
@@ -70,6 +71,7 @@ function ProfileForm({ profile }: { profile: CoachProfile | null }) {
         rate_minor: amount,
         town: town.trim(),
         region: region.trim(),
+        firm_name: firm.trim(),
         accepting,
         organization_ids: orgIds,
       })
@@ -104,6 +106,16 @@ function ProfileForm({ profile }: { profile: CoachProfile | null }) {
         error={fields.headline}
         placeholder="e.g. ITTF level 1 coach, juniors and footwork"
         hint="One line players see in the list of coaches."
+      />
+      <Field
+        label="Company, firm or academy"
+        optional
+        maxLength={120}
+        value={firm}
+        onChange={(e) => setFirm(e.target.value)}
+        error={fields.firm_name}
+        placeholder="e.g. Coast Spin Academy"
+        hint="If you coach through a company, you can organize tournaments in its name."
       />
       <TextAreaField label="About you" optional rows={4} maxLength={2000} value={bio} onChange={(e) => setBio(e.target.value)} error={fields.bio} />
       <ChoiceGroup

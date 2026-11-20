@@ -10,6 +10,8 @@ from django.utils import timezone
 
 from competitions.models import Match
 from core.exceptions import ApiException
+from organizations.models import Membership, Organization, seed_roles
+from organizations.permissions import RoleKey
 from training import service as training
 
 from .models import Availability, Coaching, CoachProfile
@@ -110,3 +112,40 @@ def free_slots(profile: CoachProfile, first: date, days: int, minutes: int) -> l
 def plan_progress(plan) -> dict:
     items = list(plan.items.all())
     return {"done": sum(1 for i in items if i.completed_at), "total": len(items)}
+
+
+def organizer_name(profile: CoachProfile, presented_as: str) -> str:
+    """The coach's own name, or their firm's when they organize as the firm."""
+    if presented_as == "firm":
+        if not profile.firm_name:
+            raise ApiException("no_firm", "Add your firm's name to your coach profile first.", 400)
+        return profile.firm_name
+    return profile.user.display_name
+
+
+def open_organizer(profile: CoachProfile, presented_as: str) -> Organization:
+    """The coach's organizing desk, made on first use with the coach as its admin and placed where the
+    coach is (their player profile's country, region and city, else their coach profile's). Opening it
+    again renames it to the name chosen. Call inside a transaction with the profile locked."""
+    name = organizer_name(profile, presented_as)
+    desk = profile.organizer
+    if desk is not None:
+        if desk.name != name:
+            desk.name = name
+            desk.save(update_fields=["name"])
+        return desk
+    player = getattr(profile.user, "profile", None)
+    desk = Organization.objects.create(
+        name=name,
+        kind=Organization.Kind.COACHING,
+        country=getattr(player, "country", ""),
+        region=getattr(player, "region", "") or profile.region,
+        town=getattr(player, "city", "") or profile.town,
+        timezone=profile.timezone,
+        created_by=profile.user,
+    )
+    roles = seed_roles(desk)
+    Membership.objects.create(organization=desk, user=profile.user).roles.add(roles[RoleKey.ADMIN])
+    profile.organizer = desk
+    profile.save(update_fields=["organizer"])
+    return desk

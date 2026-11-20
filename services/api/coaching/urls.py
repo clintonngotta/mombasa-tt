@@ -6,6 +6,7 @@ items = views.TraineePlanItemViewSet
 
 me_urlpatterns = [
     path("coach-profile/", views.MyCoachProfileView.as_view(), name="my-coach-profile"),
+    path("coach-profile/organizer/", views.MyOrganizerView.as_view(), name="my-coach-organizer"),
     path("coach-availability/", views.MyAvailabilityView.as_view(), name="my-coach-availability"),
     path("coach-calendar/", views.CoachCalendarView.as_view(), name="my-coach-calendar"),
     path("coach-notes/", views.MyCoachNotesView.as_view(), name="my-coach-notes"),

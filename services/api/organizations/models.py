@@ -24,6 +24,9 @@ class Organization(models.Model):
         # The table tennis body of one catalogue region (REQ-045, REQ-048): it runs regional tournaments,
         # meetings, the yearly agenda, articles to the region's clubs and sponsorships.
         REGIONAL_BODY = "regional_body"
+        # A coach's own organizing desk (REQ-047): set up from their coach profile so they can run
+        # tournaments under their own name or their firm's. Never listed in the club directory.
+        COACHING = "coaching"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
@@ -70,6 +73,10 @@ class Organization(models.Model):
     @property
     def is_body(self) -> bool:
         return self.kind == self.Kind.REGIONAL_BODY
+
+    @property
+    def is_coaching(self) -> bool:
+        return self.kind == self.Kind.COACHING
 
 
 class Role(models.Model):
