@@ -1,4 +1,4 @@
-"""Django settings for the mombasa-tt API. All environment-specific values come from env vars
+"""Django settings for the Coast TT API. All environment-specific values come from env vars
 (see .env.example and deployment.md "Configuration")."""
 
 import os
@@ -33,6 +33,7 @@ CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 INSTALLED_APPS = [
+    "daphne",  # runserver serves ASGI, WebSockets included
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -42,15 +43,34 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "rest_framework",
     "drf_spectacular",
+    "channels",
     "core",
     "accounts",
+    "activities",
+    "attachments",
+    "competitions",
+    "facilities",
+    "finance",
+    "coaching",
+    "events",
     "matchlog",
+    "notifications",
     "profiles",
     "organizations",
+    "guests",
+    "outbox",
+    "ratings",
+    "realtime",
+    "regions",
+    "reservations",
+    "scoring",
+    "soda",
+    "training",
 ]
 
 MIDDLEWARE = [
     "core.middleware.RequestIdMiddleware",
+    "core.middleware.ClientBuildMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -119,6 +139,20 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Private attachments (REQ-020). Never served directly: content leaves only through signed links that
+# last ATTACHMENT_URL_TTL seconds. Swap the "attachments" backend for S3-compatible storage in
+# production (deployment.md); the API streams from whichever backend is configured.
+ATTACHMENTS_ROOT = Path(os.environ.get("ATTACHMENTS_ROOT", BASE_DIR / "var" / "attachments"))
+ATTACHMENT_URL_TTL = int(os.environ.get("ATTACHMENT_URL_TTL", "300"))
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "attachments": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": ATTACHMENTS_ROOT},
+    },
+}
+
 if os.environ.get("SMTP_HOST"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = os.environ["SMTP_HOST"]
@@ -128,8 +162,8 @@ if os.environ.get("SMTP_HOST"):
     EMAIL_USE_TLS = env_bool("SMTP_USE_TLS", True)
 else:
     # Local development prints emails (verification/reset links) to the runserver console.
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "mombasa-tt <no-reply@localhost>")
+    EMAIL_BACKEND = "core.email.EmailBackend"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Coast TT <no-reply@localhost>")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["core.authentication.SessionAuthentication"],
@@ -144,11 +178,13 @@ REST_FRAMEWORK = {
         "auth_login": os.environ.get("THROTTLE_AUTH_LOGIN", "10/min"),
         "auth_email": os.environ.get("THROTTLE_AUTH_EMAIL", "5/min"),
         "invitations": os.environ.get("THROTTLE_INVITATIONS", "30/hour"),
+        "uploads": os.environ.get("THROTTLE_UPLOADS", "30/hour"),
+        "entries": os.environ.get("THROTTLE_ENTRIES", "30/hour"),
     },
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "mombasa-tt API",
+    "TITLE": "Coast TT API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
@@ -158,18 +194,96 @@ SPECTACULAR_SETTINGS = {
     ],
     # Several models have a `status` field; give each choice set a stable component name.
     "ENUM_NAME_OVERRIDES": {
+        # Campaigns and welfare projects share one audience choice set (all or selected members).
+        "FinanceAudienceEnum": "finance.models.Campaign.Audience",
         "MembershipStatusEnum": "organizations.models.Membership.Status",
+        "SkillEnum": "training.models.Skill",
+        "ClubSessionStatusEnum": "training.models.ClubSession.Status",
+        "RsvpAnswerEnum": "activities.models.Rsvp.Answer",
+        "PaymentMethodEnum": "finance.models.Payment.Method",
+        "VisitMethodEnum": "facilities.models.Visit.Method",
+        "NotificationCategoryEnum": "notifications.models.Category",
+        "SodaChallengeStatusEnum": "soda.models.Challenge.Status",
+        "ScheduleKindEnum": "activities.serializers.SCHEDULE_KINDS",
+        "ActivityStatusEnum": "activities.models.Activity.Status",
+        "SessionInvitationStatusEnum": "training.models.SessionInvitation.Status",
+        "CoachLevelEnum": "coaching.models.Level",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
         "MatchResultEnum": "matchlog.models.MatchResult",
         "InvitationStatusEnum": "organizations.models.Invitation.Status",
+        "GuestClaimStatusEnum": "guests.models.GuestClaim.Status",
+        "GuestClaimActionEnum": "guests.models.GuestClaimEvent.Action",
         "PermissionEnum": "organizations.permissions.Permission",
         "RoleKeyEnum": "organizations.permissions.RoleKey",
+        "KindEnum": "organizations.models.Organization.Kind",
+        "MemberFieldKindEnum": "organizations.models.MemberField.Kind",
+        "MemberFieldVisibilityEnum": "organizations.models.MemberField.Visibility",
+        "TournamentStatusEnum": "competitions.models.Tournament.Status",
+        "TournamentScopeEnum": "competitions.models.Tournament.Scope",
+        "EventStatusEnum": "competitions.models.Event.Status",
+        "EventKindEnum": "competitions.models.Event.Kind",
+        "SinglesOrDoublesEnum": "competitions.models.Rubber.Kind",
+        "ScoringStatusEnum": "scoring.models.ScoringStatus",
+        "EnginePhaseEnum": "scoring.models.EnginePhase",
+        "EntryStatusEnum": "competitions.models.Entry.Status",
+        "DrawStatusEnum": "competitions.models.DrawVersion.Status",
+        "MatchStatusEnum": "competitions.models.Match.Status",
+        "MatchStageEnum": "competitions.models.Match.Stage",
+        "MatchOutcomeEnum": "competitions.models.Match.Outcome",
+        "ScheduleVersionKindEnum": "competitions.models.ScheduleVersion.Kind",
+        "DelayReasonEnum": "competitions.models.ScheduleVersion.Reason",
+        "StreamPlatformEnum": "competitions.models.LiveStream.Platform",
+        "StreamReportReasonEnum": "competitions.models.LiveStreamReport.Reason",
     },
 }
 
+# One JSON object per line (core/logging.py) with the request ID, for the log collector; plain text by
+# default while developing. LOG_FORMAT=json or text overrides either.
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "text" if DEBUG else "json")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "filters": {"request_id": {"()": "core.logging.RequestIdFilter"}},
+    "formatters": {
+        "json": {"()": "core.logging.JsonFormatter"},
+        "text": {"format": "%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "json" if LOG_FORMAT == "json" else "text",
+        }
+    },
     "root": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO")},
+}
+
+# Redis carries Celery's wake-ups and the WebSocket messages between processes. It is optional while
+# developing: without it the outbox is polled by `manage.py work_outbox` and WebSocket messages reach
+# only pages served by the same process. Keep it on a private network (deployment.md).
+REDIS_URL = os.environ.get("REDIS_URL", "")
+
+# The oldest web app build (its APP_BUILD number, e.g. 202611191200) the API still serves (REQ-035).
+# Raise it only when a change breaks older cached apps; 0 serves every build.
+MIN_CLIENT_BUILD = int(os.environ.get("MIN_CLIENT_BUILD", "0") or 0)
+# Soda game stakes (REQ-040) stay off until the legal and policy sign-off is recorded (TASK-078).
+SODA_STAKES_ENABLED = os.environ.get("SODA_STAKES_ENABLED", "").lower() in ("1", "true", "yes")
+
+CELERY_BROKER_URL = REDIS_URL or "memory://"
+CELERY_TASK_IGNORE_RESULT = True
+# A task is acknowledged when it finishes, so one a dying worker held goes to another worker. The work
+# itself is in the outbox table, which makes a repeat harmless.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BEAT_SCHEDULE = {"outbox-sweep": {"task": "outbox.work", "schedule": 5.0}}
+
+CHANNEL_LAYERS = {
+    "default": (
+        {"BACKEND": "channels_redis.core.RedisChannelLayer", "CONFIG": {"hosts": [REDIS_URL]}}
+        if REDIS_URL
+        else {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    )
 }

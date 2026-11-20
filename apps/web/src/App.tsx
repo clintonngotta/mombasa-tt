@@ -19,15 +19,76 @@ import { MatchFormPage } from "@/pages/matches/MatchFormPage"
 import { MatchDetailPage } from "@/pages/matches/MatchDetailPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { ProfileEditPage } from "@/pages/profile/ProfileEditPage"
+import { GuestClaimsPage } from "@/pages/profile/GuestClaimsPage"
+import { ClubSessionsPage } from "@/pages/club/ClubSessionsPage"
+import { ClubSessionPage } from "@/pages/club/ClubSessionPage"
+import { FindFacilityPage } from "@/pages/facilities/FindFacilityPage"
+import { FacilityPage } from "@/pages/facilities/FacilityPage"
+import { DoorPage } from "@/pages/club/DoorPage"
+import { TakingsPage } from "@/pages/club/TakingsPage"
+import { MyVisitsPage } from "@/pages/profile/MyVisitsPage"
+import { ActivitiesPage } from "@/pages/club/ActivitiesPage"
+import { ActivityPage } from "@/pages/club/ActivityPage"
+import { ClubSchedulePage } from "@/pages/club/ClubSchedulePage"
+import { SodaGamesPage } from "@/pages/play/SodaGamesPage"
+import { EventsPage } from "@/pages/events/EventsPage"
+import { ClubEventsPage } from "@/pages/events/ClubEventsPage"
+import { ReviewEventsPage } from "@/pages/events/ReviewEventsPage"
+import { NotificationsPage } from "@/pages/NotificationsPage"
+import { AnnouncePage } from "@/pages/club/AnnouncePage"
+import { MyBookingsPage } from "@/pages/profile/MyBookingsPage"
+import { ClubBookingsPage } from "@/pages/club/ClubBookingsPage"
+import { ClubFinancePage } from "@/pages/club/ClubFinancePage"
+import { CampaignsPage } from "@/pages/club/CampaignsPage"
+import { SpendingPage } from "@/pages/club/SpendingPage"
+import { WelfarePage } from "@/pages/club/WelfarePage"
+import { MyFinancesPage } from "@/pages/club/MyFinancesPage"
+import { GuestsPage } from "@/pages/club/GuestsPage"
 import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
+import { PlayerRatingsPage } from "@/pages/ratings/PlayerRatingsPage"
+import { RankingsPage } from "@/pages/ratings/RankingsPage"
 import { ClubPage } from "@/pages/club/ClubPage"
 import { FindClubPage } from "@/pages/club/FindClubPage"
 import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
 import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
+import { AdminNominationsPage } from "@/pages/club/AdminNominationsPage"
 import { MembersPage } from "@/pages/club/MembersPage"
+import { ClubProfilePage } from "@/pages/club/ClubProfilePage"
+import { ClubProfileEditPage } from "@/pages/club/ClubProfileEditPage"
+import { TrainingPage } from "@/pages/training/TrainingPage"
+import { CeremonyPage } from "@/pages/tournaments/CeremonyPage"
+import { ArticlePage, RegionPage } from "@/pages/region/RegionPage"
+import { MeetingPage, MeetingsPage } from "@/pages/region/MeetingPages"
+import { ClubPlanPage, PlanPage, TraineePlanPage } from "@/pages/training/PlanPage"
+import { CoachesPage } from "@/pages/coaching/CoachesPage"
+import { CoachPage } from "@/pages/coaching/CoachPage"
+import { CoachProfilePage } from "@/pages/coaching/CoachProfilePage"
+import { TraineePage } from "@/pages/coaching/TraineePage"
+import { DrillDetailPage } from "@/pages/training/DrillDetailPage"
+import { DrillEditPage } from "@/pages/training/DrillEditPage"
+import { CommitteePage } from "@/pages/club/CommitteePage"
 import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
+import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
+import { MemberFieldEditPage } from "@/pages/club/MemberFieldEditPage"
+import { VenuesPage } from "@/pages/club/VenuesPage"
+import { VenueEditPage } from "@/pages/club/VenueEditPage"
+import { HostedTournamentsPage } from "@/pages/club/HostedTournamentsPage"
+import { PlayPage } from "@/pages/tournaments/PlayPage"
+import { TournamentPage } from "@/pages/tournaments/TournamentPage"
+import { TournamentFormPage } from "@/pages/tournaments/TournamentFormPage"
+import { EventFormPage } from "@/pages/tournaments/EventFormPage"
+import { EntriesPage } from "@/pages/tournaments/EntriesPage"
+import { DrawPage } from "@/pages/tournaments/DrawPage"
+import { EventPage } from "@/pages/tournaments/EventPage"
+import { MatchPage } from "@/pages/tournaments/MatchPage"
+import { ScoringOverviewPage } from "@/pages/tournaments/ScoringOverviewPage"
+import { DispatchBoardPage } from "@/pages/tournaments/DispatchBoardPage"
+import { SchedulePage } from "@/pages/tournaments/SchedulePage"
+import { CorrectionsPage } from "@/pages/tournaments/CorrectionsPage"
+import { ScoringDeckRoute } from "@/pages/scoring/ScoringDeckPage"
+import { QuickScorePage } from "@/pages/play/QuickScorePage"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,21 +117,100 @@ function App() {
           <Route path="/onboarding/goals" element={<GoalsPage />} />
           <Route path="/onboarding/complete" element={<CompletionPage />} />
 
+          {/* The scoring deck is full screen, outside the app's navigation (REQ-002). */}
+          {/* Quick Score is full screen too, and open to anyone: a guest can score without an account (REQ-017). */}
+          <Route path="/quick-score" element={<QuickScorePage />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/score/:id" element={<ScoringDeckRoute />} />
+          </Route>
+
           <Route element={<AppShell />}>
             {/* Domain screens land here as their Stitch references are implemented. */}
             <Route path="/home" element={null} />
-            <Route path="/play" element={null} />
+            {/* The events listing is public (REQ-042). */}
+            <Route path="/events" element={<EventsPage />} />
             <Route element={<RequireAuth />}>
+              <Route path="/play" element={<PlayPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/play/soda" element={<SodaGamesPage />} />
+              <Route path="/tournaments/:id" element={<TournamentPage />} />
+              <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
+              <Route path="/tournaments/:id/scoring" element={<ScoringOverviewPage />} />
+              <Route path="/tournaments/:id/dispatch" element={<DispatchBoardPage />} />
+              <Route path="/tournaments/:id/schedule-plan" element={<SchedulePage />} />
+              <Route path="/tournaments/:id/corrections" element={<CorrectionsPage />} />
+              <Route path="/tournaments/:id/events/new" element={<EventFormPage />} />
+              <Route path="/tournaments/:id/events/:eventId" element={<EventFormPage />} />
+              <Route path="/tournaments/:id/events/:eventId/entries" element={<EntriesPage />} />
+              <Route path="/tournaments/:id/events/:eventId/draw" element={<DrawPage />} />
+              <Route path="/tournaments/:id/events/:eventId/brackets" element={<EventPage tab="brackets" />} />
+              <Route path="/tournaments/:id/events/:eventId/groups" element={<EventPage tab="groups" />} />
+              <Route path="/tournaments/:id/events/:eventId/schedule" element={<EventPage tab="schedule" />} />
+              <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
+              <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
+              <Route path="/tournaments/:id/ceremony" element={<CeremonyPage />} />
+              <Route path="/club/tournaments" element={<HostedTournamentsPage />} />
+              <Route path="/club/tournaments/new" element={<TournamentFormPage />} />
+              <Route path="/club/venues" element={<VenuesPage />} />
+              <Route path="/club/venues/new" element={<VenueEditPage />} />
+              <Route path="/club/venues/:id" element={<VenueEditPage />} />
+              <Route path="/club/venues/:id/door" element={<DoorPage />} />
+              <Route path="/club/takings" element={<TakingsPage />} />
+              <Route path="/club/bookings" element={<ClubBookingsPage />} />
+              <Route path="/club/finance" element={<ClubFinancePage />} />
+              <Route path="/club/finance/campaigns" element={<CampaignsPage />} />
+              <Route path="/club/finance/spending" element={<SpendingPage />} />
+              <Route path="/club/welfare" element={<WelfarePage />} />
+              <Route path="/club/my-payments" element={<MyFinancesPage />} />
               <Route path="/club" element={<ClubPage />} />
               <Route path="/club/find" element={<FindClubPage />} />
+              <Route path="/club/find/:id" element={<ClubProfilePage />} />
+              <Route path="/club/profile" element={<ClubProfileEditPage />} />
               <Route path="/club/new" element={<RegisterOrganizationPage />} />
               <Route path="/club/invitations" element={<InvitationsInboxPage />} />
+              <Route path="/club/admin-nominations" element={<AdminNominationsPage />} />
               <Route path="/club/members" element={<MembersPage />} />
+              <Route path="/club/guests" element={<GuestsPage />} />
+              <Route path="/club/sessions" element={<ClubSessionsPage />} />
+              <Route path="/club/sessions/:id" element={<ClubSessionPage />} />
+              <Route path="/club/activities" element={<ActivitiesPage />} />
+              <Route path="/club/announce" element={<AnnouncePage />} />
+              <Route path="/club/external-events" element={<ClubEventsPage />} />
+              <Route path="/events/review" element={<ReviewEventsPage />} />
+              <Route path="/club/schedule" element={<ClubSchedulePage />} />
+              <Route path="/activities/:orgId/:id" element={<ActivityPage />} />
+              <Route path="/facilities" element={<FindFacilityPage />} />
+              <Route path="/facilities/:id" element={<FacilityPage />} />
+              <Route path="/club/committee" element={<CommitteePage />} />
               <Route path="/club/roles" element={<RolesPage />} />
               <Route path="/club/roles/new" element={<RoleEditPage />} />
               <Route path="/club/roles/:id" element={<RoleEditPage />} />
+              <Route path="/club/fields" element={<MemberFieldsPage />} />
+              <Route path="/club/fields/new" element={<MemberFieldEditPage />} />
+              <Route path="/club/fields/:id" element={<MemberFieldEditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/profile/claims" element={<GuestClaimsPage />} />
+              <Route path="/profile/visits" element={<MyVisitsPage />} />
+              <Route path="/profile/bookings" element={<MyBookingsPage />} />
+              <Route path="/rankings" element={<RankingsPage />} />
+              <Route path="/training" element={<TrainingPage />} />
+              <Route path="/region" element={<RegionPage />} />
+              <Route path="/news/:orgId/:id" element={<ArticlePage />} />
+              <Route path="/club/meetings" element={<MeetingsPage />} />
+              <Route path="/meetings/:orgId/:id" element={<MeetingPage />} />
+              <Route path="/training/plans/:id" element={<PlanPage />} />
+              <Route path="/training/club-plans/:id" element={<ClubPlanPage />} />
+              <Route path="/coaches" element={<CoachesPage />} />
+              <Route path="/coaches/:id" element={<CoachPage />} />
+              <Route path="/coaching/profile" element={<CoachProfilePage />} />
+              <Route path="/coaching/trainees/:id" element={<TraineePage />} />
+              <Route path="/coaching/trainees/:coachingId/plans/:id" element={<TraineePlanPage />} />
+              <Route path="/training/drills" element={<Navigate to="/training?tab=drills" replace />} />
+              <Route path="/training/drills/new" element={<DrillEditPage />} />
+              <Route path="/training/drills/:id" element={<DrillDetailPage />} />
+              <Route path="/training/drills/:id/edit" element={<DrillEditPage />} />
+              <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/players/:id" element={<PlayerPage />} />
               <Route path="/matches" element={<MatchLogPage />} />

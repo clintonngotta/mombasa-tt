@@ -1,0 +1,62 @@
+{
+  "name": "F-SC3: at 10-10 the game goes to a lead of two and service changes every point",
+  "rules": "2.11.1, 2.13.3",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "abababababababababab",
+      "expect": {
+        "points": [
+          10,
+          10
+        ],
+        "server": "a1",
+        "games": []
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          11,
+          10
+        ],
+        "server": "b1",
+        "games": [],
+        "games_won": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "games": [
+          [
+            12,
+            10
+          ]
+        ],
+        "games_won": [
+          1,
+          0
+        ],
+        "points": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

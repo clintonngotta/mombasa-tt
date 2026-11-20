@@ -1,9 +1,6 @@
 """Permission catalog, role templates/editor and grant restrictions (REQ-005, EVAL-005, TASK-013)."""
 
-import threading
-
 import pytest
-from django.db import connection
 
 from organizations.models import Membership, Organization, Role
 from organizations.permissions import ALL_PERMISSIONS
@@ -263,20 +260,21 @@ def test_role_ids_from_another_organization_are_unknown(admin, club):
     assert not membership.roles.exists()
 
 
-def test_last_admin_cannot_step_down_leave_or_be_removed(admin, club):
+def test_the_admin_cannot_step_down_leave_or_be_removed(admin, club):
     client = logged_in(admin)
     me = Membership.objects.get(user=admin)
     step_down = client.put(member_roles_url(club, me), {"roles": []}, format="json")
-    assert step_down.status_code == 409 and code(step_down) == "last_admin"
+    assert step_down.status_code == 409 and code(step_down) == "admin_by_handover"
     leaving = client.post(f"{MEMBERSHIPS}{me.id}/leave/")
     assert leaving.status_code == 409 and code(leaving) == "last_admin"
     assert client.post(f"{ORGS}{club.id}/members/{me.id}/remove/").status_code == 409
 
-    # With a second admin, either can step down.
-    deputy = make_user("deputy@example.com")
-    add_member(club, deputy, "admin")
-    assert client.put(member_roles_url(club, me), {"roles": []}, format="json").status_code == 200
-    assert Membership.objects.admins(club).get().user == deputy
+    # Nor can the role editor make a second admin (REQ-045).
+    deputy = add_member(club, make_user("deputy@example.com"))
+    admin_role = club.roles.get(key="admin")
+    made = client.put(member_roles_url(club, deputy), {"roles": [str(admin_role.id)]}, format="json")
+    assert made.status_code == 409 and code(made) == "admin_by_handover"
+    assert Membership.objects.admins(club).get().user == admin
 
 
 def test_members_list_shows_names_and_roles_only(admin, club):
@@ -303,42 +301,6 @@ def test_removed_or_departed_members_lose_roles_and_rejoin_without_them(admin, c
     assert not Membership.objects.get(pk=mine.pk).roles.exists()
 
 
-@pytest.mark.django_db(transaction=True)
-def test_two_admins_removing_each_other_concurrently_leave_one_admin():
-    """EVAL-005: concurrently remove the two remaining admins; at least one admin remains."""
-    first, second = make_user("first@example.com"), make_user("second@example.com")
-    club = create_club(first)
-    add_member(club, second, "admin")
-    clients = {first: logged_in(first), second: logged_in(second)}
-    memberships = {user: Membership.objects.get(user=user) for user in (first, second)}
-    barrier = threading.Barrier(2)
-    statuses = []
-
-    def demote(actor, target):
-        try:
-            barrier.wait()
-            response = clients[actor].put(
-                member_roles_url(club, memberships[target]), {"roles": []}, format="json"
-            )
-            statuses.append(response.status_code)
-        finally:
-            connection.close()
-
-    threads = [
-        threading.Thread(target=demote, args=(first, second)),
-        threading.Thread(target=demote, args=(second, first)),
-    ]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-
-    assert Membership.objects.admins(club).count() == 1
-    # The second request runs after the first commits: its actor is no longer an admin (403), or it would
-    # remove the last admin (409). Either way it changes nothing.
-    assert sorted(statuses)[0] == 200 and sorted(statuses)[1] in (403, 409)
-
-
 def test_roles_are_listed_templates_first_then_custom_then_member(admin, club):
     client = logged_in(admin)
     client.post(roles_url(club), {"name": "Treasurer"}, format="json")
@@ -353,13 +315,3 @@ def test_role_update_reports_its_real_member_count(admin, club):
         add_member(club, make_user(f"c{n}@example.com"), captain_role)
     response = logged_in(admin).patch(roles_url(club, captain_role), {"name": "Skipper"}, format="json")
     assert response.json()["member_count"] == 2
-
-
-def test_a_deactivated_admin_does_not_count_as_the_remaining_admin(admin, club):
-    dormant = make_user("dormant@example.com")
-    add_member(club, dormant, "admin")
-    dormant.is_active = False
-    dormant.save(update_fields=["is_active"])
-    me = Membership.objects.get(user=admin)
-    response = logged_in(admin).put(member_roles_url(club, me), {"roles": []}, format="json")
-    assert response.status_code == 409 and code(response) == "last_admin"

@@ -1,20 +1,29 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { BioField } from "@/components/profile/BioField"
 import { errorMessage } from "@/lib/api"
-import { useOnboardingDraft, type ProfileDraft } from "@/lib/onboarding"
-import { EXPERIENCE, GRIPS, HANDS, updateProfile } from "@/lib/profile"
+import { isBlankProfile, useOnboardingDraft, type ProfileDraft } from "@/lib/onboarding"
+import { EXPERIENCE, GRIPS, HANDS, getProfile, profileKeys, updateProfile } from "@/lib/profile"
 
 export function ProfileSetupPage() {
   const navigate = useNavigate()
   const [draft, updateDraft] = useOnboardingDraft()
   const profile = draft.profile
   const [nameError, setNameError] = useState<string>()
+
+  // Resuming on another device, or after this one's storage was cleared: start from what the server
+  // already has (at least the display name from sign-up) instead of an empty form.
+  const saved = useQuery({ queryKey: profileKeys.me, queryFn: getProfile, enabled: isBlankProfile(profile) }).data
+  useEffect(() => {
+    if (!saved || !isBlankProfile(profile)) return
+    const { display_name, nickname, hand, grip, style, experience, bio } = saved
+    updateDraft({ profile: { display_name, nickname, hand, grip, style, experience, bio }, directoryOptIn: saved.directory_opt_in, goals: saved.goals })
+  }, [saved, profile, updateDraft])
 
   const setProfile = (patch: Partial<ProfileDraft>) => updateDraft({ profile: { ...profile, ...patch } })
 

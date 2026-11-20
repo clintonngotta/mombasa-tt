@@ -1,12 +1,15 @@
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 
-export type MatchFormat = Schemas["FormatEnum"]
+export type MatchFormat = Schemas["SinglesOrDoublesEnum"]
 export type MatchResult = Schemas["MatchResultEnum"]
 export type Game = Schemas["Game"]
 export type PersonalMatch = Schemas["PersonalMatch"]
-// The form always sends every field, so treat the optional request fields as present.
-export type PersonalMatchInput = Required<Schemas["PersonalMatchRequest"]>
+type MatchRequest = Schemas["PersonalMatchRequest"]
+type Provenance = "source" | "client_ref"
+// The form always sends every field, so treat the optional request fields as present. How a record was
+// made (source, client_ref) is set only by Quick Score's save.
+export type PersonalMatchInput = Required<Omit<MatchRequest, Provenance>> & Pick<MatchRequest, Provenance>
 export type MatchStats = Schemas["MatchStats"]
 
 const BASE = "/me/matches/"

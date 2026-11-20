@@ -66,8 +66,49 @@ def test_search_by_name_or_town(player, club):
         "id": str(club.id),
         "name": "Coast TT Club",
         "town": "Mombasa",
+        "country": "",
+        "region": "",
+        "directions": "",
+        "latitude": None,
+        "longitude": None,
+        "description": "",
         "kind": "club_facility",
+        "timezone": "Africa/Nairobi",
     }
+
+
+def test_admin_can_set_a_clubs_location_and_members_cannot(admin, player, club):
+    Membership.objects.create(organization=club, user=player)
+    endpoint = f"{ORGS}{club.id}/"
+    location = {"country": "ke", "region": "Mombasa", "town": "Mombasa"}
+    assert logged_in(player).patch(endpoint, location, format="json").status_code == 403
+    saved = logged_in(admin).patch(endpoint, location, format="json")
+    assert saved.status_code == 200
+    assert {key: saved.json()[key] for key in location} == location | {"country": "KE"}
+
+
+def test_a_clubs_directions_and_coordinates(admin, club):
+    endpoint = f"{ORGS}{club.id}/"
+    client = logged_in(admin)
+    place = {
+        "country": "KE",
+        "region": "Mombasa",
+        "town": "Mombasa",
+        "directions": "  Behind Makadara Grounds, 200 m from the Buxton stage.  ",
+        "latitude": -4.0435,
+        "longitude": 39.6682,
+    }
+    saved = client.patch(endpoint, place, format="json").json()
+    assert saved["directions"] == "Behind Makadara Grounds, 200 m from the Buxton stage."
+    assert (saved["latitude"], saved["longitude"]) == (-4.0435, 39.6682)
+
+    # Coordinates come as a pair, inside the globe.
+    half = client.patch(endpoint, {"latitude": None}, format="json")
+    assert half.status_code == 400 and "latitude" in half.json()["fields"]
+    off_globe = client.patch(endpoint, {"latitude": 91, "longitude": 0}, format="json")
+    assert off_globe.status_code == 400 and "latitude" in off_globe.json()["fields"]
+    cleared = client.patch(endpoint, {"latitude": None, "longitude": None}, format="json").json()
+    assert (cleared["latitude"], cleared["longitude"]) == (None, None)
 
 
 def test_join_request_approve_flow(admin, player, club):

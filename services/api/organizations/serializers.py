@@ -1,18 +1,84 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from core.geography import (
+    CountryField,
+    coordinate_field,
+    directions_field,
+    validate_coordinates,
+    validate_location,
+)
+from core.timezones import validate_timezone
+
 from .access import membership_permissions
-from .models import Invitation, JoinRequest, Membership, Organization, Role
+from .member_fields import MAX_OPTIONS
+from .models import Invitation, JoinRequest, MemberField, Membership, Organization, Role
 from .permissions import Permission
+
+
+def description_field():
+    return serializers.CharField(max_length=2000, allow_blank=True, required=False, trim_whitespace=True)
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=120, trim_whitespace=True)
     town = serializers.CharField(max_length=80, trim_whitespace=True)
+    timezone = serializers.CharField(max_length=64, required=False, validators=[validate_timezone])
+    country = CountryField(max_length=2, required=False, allow_blank=True)
+    directions = directions_field()
+    latitude = coordinate_field(90)
+    longitude = coordinate_field(180)
+    description = description_field()
 
     class Meta:
         model = Organization
-        fields = ["id", "name", "town", "kind"]
+        fields = ["id", "name", "town", "country", "region", "directions", "latitude", "longitude"]
+        fields += ["description", "kind", "timezone"]
+
+    def validate_kind(self, value):
+        """A regional body is set up by its region's official (POST /regional-bodies/), never by picking
+        the kind, and no organization changes into or out of one."""
+        body = Organization.Kind.REGIONAL_BODY
+        if value == body and not (self.instance and self.instance.is_body):
+            raise serializers.ValidationError("Choose club, facility or both.")
+        if self.instance and self.instance.is_body and value != body:
+            raise serializers.ValidationError("A regional body stays a regional body.")
+        return value
+
+    def validate(self, attrs):
+        validate_location(attrs, self.instance, city_field="town", legacy_town=True)
+        validate_coordinates(attrs, self.instance)
+        if self.instance and self.instance.is_body:
+            for name in ("country", "region"):
+                if name in attrs and attrs[name] != getattr(self.instance, name):
+                    raise serializers.ValidationError({name: "A regional body's region doesn't change."})
+        return attrs
+
+
+class OrganizationLocationSerializer(serializers.ModelSerializer):
+    """The club's settings that roles.manage edits: where it is and what it is about."""
+
+    country = CountryField(max_length=2)
+    description = description_field()
+    directions = directions_field()
+    latitude = coordinate_field(90)
+    longitude = coordinate_field(180)
+
+    class Meta:
+        model = Organization
+        fields = ["country", "region", "town", "directions", "latitude", "longitude", "description"]
+        extra_kwargs = {"region": {"allow_blank": False, "required": True}}
+
+    def validate(self, attrs):
+        validate_location(attrs, self.instance, city_field="town")
+        validate_coordinates(attrs, self.instance)
+        return attrs
+
+
+class ManagementOrganizationSerializer(serializers.Serializer):
+    organization = OrganizationSerializer()
+    authority = serializers.ChoiceField(choices=["platform", "country", "regional"])
+    permissions = serializers.ListField(child=serializers.ChoiceField(choices=Permission.choices))
 
 
 class RoleSummarySerializer(serializers.ModelSerializer):
@@ -132,3 +198,63 @@ class MyInvitationSerializer(serializers.ModelSerializer):
         model = Invitation
         fields = ["id", "organization", "invited_by_name", "status", "created_at", "expires_at"]
         read_only_fields = fields
+
+
+class MemberFieldSerializer(serializers.ModelSerializer):
+    """A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+    never change meaning; `options` apply to selection fields only."""
+
+    label = serializers.CharField(max_length=80, trim_whitespace=True)
+    options = serializers.ListField(
+        child=serializers.CharField(max_length=60, trim_whitespace=True),
+        required=False,
+        max_length=MAX_OPTIONS,
+    )
+
+    class Meta:
+        model = MemberField
+        fields = ["id", "label", "kind", "options", "required", "visibility", "retired_at"]
+        read_only_fields = ["id", "retired_at"]
+
+    def validate_kind(self, value):
+        if self.instance and value != self.instance.kind:
+            raise serializers.ValidationError("A field's type can't change. Retire it and add a new one.")
+        return value
+
+    def validate(self, attrs):
+        kind = attrs.get("kind") or self.instance.kind
+        if "options" in attrs or not self.instance:
+            # Options differing only by case would be indistinguishable to members; the first one wins.
+            seen: set[str] = set()
+            options = []
+            for option in attrs.get("options", []):
+                if option.lower() not in seen:
+                    seen.add(option.lower())
+                    options.append(option)
+            if kind == MemberField.Kind.CHOICE and len(options) < 2:
+                raise serializers.ValidationError({"options": "Add at least two options."})
+            if kind != MemberField.Kind.CHOICE and options:
+                raise serializers.ValidationError({"options": "Only selection fields have options."})
+            attrs["options"] = options
+        return attrs
+
+
+@extend_schema_field(
+    {"oneOf": [{"type": "string"}, {"type": "number"}, {"type": "boolean"}], "nullable": True}
+)
+class FieldValueField(serializers.JSONField):
+    """Text, selection and ISO date values are strings; number and yes/no values keep their JSON type.
+    Null means no answer."""
+
+
+class MemberFieldEntrySerializer(serializers.Serializer):
+    """One field with the member's value for it."""
+
+    field = MemberFieldSerializer(read_only=True)
+    value = FieldValueField(read_only=True, allow_null=True)
+
+
+class MemberFieldValuesSerializer(serializers.Serializer):
+    """Values to change, keyed by field id. Fields left out keep their value; null clears one."""
+
+    values = serializers.DictField(child=FieldValueField(allow_null=True))

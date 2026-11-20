@@ -1,4 +1,5 @@
 import type { Schemas } from "@/lib/schema"
+import { APP_BUILD, markOutdated } from "@/lib/pwa"
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
 
@@ -45,11 +46,22 @@ async function ensureCsrfToken() {
   return csrfToken()
 }
 
+/** The address of an API path for a plain link, such as a file to download with the session cookie. */
+export const apiUrl = (path: string) => `${API_BASE}${path}`
+
+/** Full address of a path the API hands out (e.g. a signed attachment link, which starts at the API's root). */
+export function apiOriginUrl(path: string) {
+  return /^https?:/.test(API_BASE) ? new URL(path, API_BASE).toString() : path
+}
+
 // Session cookies are HttpOnly (REQ-003); unsafe methods carry Django's CSRF header.
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+// A FormData body is sent as a file upload; anything else as JSON.
+export async function api<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   const method = init.method ?? (init.body === undefined ? "GET" : "POST")
-  const headers: Record<string, string> = { Accept: "application/json" }
-  if (init.body !== undefined) headers["Content-Type"] = "application/json"
+  // The build lets the API turn away a version it no longer supports (REQ-035).
+  const headers: Record<string, string> = { Accept: "application/json", "X-Client-Build": APP_BUILD, ...init.headers }
+  const upload = init.body instanceof FormData
+  if (init.body !== undefined && !upload) headers["Content-Type"] = "application/json"
   if (method !== "GET") {
     const token = await ensureCsrfToken()
     if (token) headers["X-CSRFToken"] = token
@@ -59,7 +71,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     method,
     headers,
     credentials: "include",
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body: init.body === undefined ? undefined : upload ? (init.body as FormData) : JSON.stringify(init.body),
   })
 
   if (res.status === 204) return null as T
@@ -67,15 +79,16 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const data: unknown = isJson ? await res.json().catch(() => null) : null
   // A non-JSON reply means we reached something other than the API (proxy page, dev server).
   if (!isJson) throw new ApiError(502, null)
+  if (res.status === 426) markOutdated()
   if (!res.ok) throw new ApiError(res.status, data)
   return data as T
 }
 
 export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again.") {
-  if (error instanceof TypeError) return "Can't reach mombasa-tt right now. Check your connection and try again."
+  if (error instanceof TypeError) return "Can't reach Coast TT right now. Check your connection and try again."
   if (error instanceof ApiError) {
     if (error.status === 429) return "Too many requests for now. Wait a while and try again."
-    if (error.status >= 500) return "mombasa-tt is unavailable right now. Please try again shortly."
+    if (error.status >= 500) return "Coast TT is unavailable right now. Please try again shortly."
     if (error.serverMessage) return error.serverMessage
   }
   return fallback

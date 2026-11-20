@@ -1,5 +1,7 @@
 # React + TypeScript + Vite
 
+The event form sets admission mode. Open events accept entries automatically while space remains. Closed events send entries to the organizer's entry desk. The API enforces the [registration rules](../../spec.md#req-008).
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

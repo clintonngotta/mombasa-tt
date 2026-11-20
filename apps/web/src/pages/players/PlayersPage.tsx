@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronRight, Search, UserRound } from "lucide-react"
+import { ChevronRight, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FormAlert } from "@/components/forms/Field"
+import { Avatar } from "@/components/profile/Avatar"
 import { errorMessage } from "@/lib/api"
 import { MIN_SEARCH_LENGTH, playerKeys, searchPlayers } from "@/lib/profile"
 
@@ -64,9 +65,7 @@ export function PlayersPage() {
                 to={`/players/${player.id}`}
                 className="flex items-center gap-3 rounded-xl border bg-card p-4 outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-surface-selected">
-                  <UserRound aria-hidden className="size-6 text-brand-blue" />
-                </span>
+                <Avatar link={player.avatar} />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-semibold">
                     {player.display_name}

@@ -1,7 +1,7 @@
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 
-export type SignUpInput = { display_name: string; email: string; password: string }
+export type SignUpInput = Schemas["SignUpRequest"]
 export type LogInInput = { email: string; password: string }
 
 export const signUp = (input: SignUpInput) => api<void>("/auth/signup/", { body: input })

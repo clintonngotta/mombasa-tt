@@ -4,6 +4,46 @@
  */
 
 export interface paths {
+    "/api/v1/attachments/{id}/content/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The file itself. The signed token is the authorization (it was checked when the link was issued),
+         *     so no session is needed and an image tag can load it.
+         */
+        get: operations["attachments_content_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attachments/{id}/url/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Issue a fresh signed link. An attachment the caller may not read answers 404, exactly like one
+         *     that doesn't exist.
+         */
+        get: operations["attachments_url_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/csrf/": {
         parameters: {
             query?: never;
@@ -172,6 +212,738 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/coaches/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /coaches/: coaches taking players, filtered by name, town, region or a skill they teach. */
+        get: operations["coaches_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /coaches/{user id}/: a coach's profile. Their trainees still see it after they stop taking
+         *     new players.
+         */
+        get: operations["coaches_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coaches/{id}/slots/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /coaches/{user id}/slots/: free start times for a session in the next days. */
+        get: operations["coaches_slots_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drills/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /drills/: every drill the player may use, standard ones first; GET /drills/{id}/ one of them. */
+        get: operations["drills_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drills/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /drills/: every drill the player may use, standard ones first; GET /drills/{id}/ one of them. */
+        get: operations["drills_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /events/: the public listing of table tennis events, on Coast TT and elsewhere. */
+        get: operations["events_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["external_events_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["external_events_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/remove-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["external_events_remove_link_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/{id}/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Report an external event's live link. Once per person. */
+        post: operations["external_events_report_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-events/review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description External events waiting for review, and reported links, for the platform's curators. */
+        get: operations["external_events_review_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/facilities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The facility finder (REQ-044): branches of facility organizations whose profile the caller may
+         *     see, by place and by whether they are open now in the facility's own timezone.
+         */
+        get: operations["facilities_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/facilities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The facility finder (REQ-044): branches of facility organizations whose profile the caller may
+         *     see, by place and by whether they are open now in the facility's own timezone.
+         */
+        get: operations["facilities_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/facilities/{id}/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What the branch has coming up, in date order: training slots any player may join, the
+         *     facility's public activities, and tournaments held here.
+         */
+        get: operations["facilities_schedule_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/countries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["geography_countries_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/countries/{code}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["geography_countries_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/admin-nominations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        get: operations["me_admin_nominations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/admin-nominations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        post: operations["me_admin_nominations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/admin-nominations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        post: operations["me_admin_nominations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/agenda/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/agenda/: the agendas of the bodies of your clubs' regions, and of bodies you belong to. */
+        get: operations["me_agenda_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/articles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/articles/: published articles from regional bodies to your clubs, newest first. */
+        get: operations["me_articles_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/avatar/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description The player's own picture (REQ-006). Stored privately; others get it only through the directory. */
+        put: operations["me_avatar_update"];
+        post?: never;
+        /** @description The player's own picture (REQ-006). Stored privately; others get it only through the directory. */
+        delete: operations["me_avatar_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/bookings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/bookings/: sessions booked with or by the caller, upcoming by default. POST asks a coach
+         *     for a session at a free time.
+         */
+        get: operations["me_bookings_list"];
+        put?: never;
+        /**
+         * @description GET /me/bookings/: sessions booked with or by the caller, upcoming by default. POST asks a coach
+         *     for a session at a free time.
+         */
+        post: operations["me_bookings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/bookings/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
+         *     person cancels a booking that hasn't started.
+         */
+        post: operations["me_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/bookings/{id}/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
+         *     person cancels a booking that hasn't started.
+         */
+        post: operations["me_bookings_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/bookings/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
+         *     person cancels a booking that hasn't started.
+         */
+        post: operations["me_bookings_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coach-availability/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PUT /me/coach-availability/: the coach's weekly windows; PUT replaces them all. */
+        get: operations["me_coach_availability_list"];
+        /** @description GET/PUT /me/coach-availability/: the coach's weekly windows; PUT replaces them all. */
+        put: operations["me_coach_availability_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coach-calendar/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/coach-calendar/?from=&to=: the coach's bookings, their own sessions, sessions of plans they
+         *     gave trainees, and the training timetable and tournaments of the clubs where they coach. At most 62
+         *     days; this week by default.
+         */
+        get: operations["me_coach_calendar_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coach-comments/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description PATCH/DELETE /me/coach-comments/{id}/: the coach changes or removes a comment they wrote, while
+         *     they still coach the trainee.
+         */
+        delete: operations["me_coach_comments_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH/DELETE /me/coach-comments/{id}/: the coach changes or removes a comment they wrote, while
+         *     they still coach the trainee.
+         */
+        patch: operations["me_coach_comments_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/coach-notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/coach-notes/: what coaches wrote about the caller's matches, oldest first. Filter by one
+         *     match with `personal_match` or `match`.
+         */
+        get: operations["me_coach_notes_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coach-profile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PUT /me/coach-profile/: the caller's coach profile; PUT switches it on or changes it. */
+        get: operations["me_coach_profile_retrieve"];
+        /** @description GET/PUT /me/coach-profile/: the caller's coach profile; PUT switches it on or changes it. */
+        put: operations["me_coach_profile_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coachings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/coachings/: coachings on either side, open ones first. POST asks a coach to coach you, or,
+         *     as a coach, invites a player.
+         */
+        get: operations["me_coachings_list"];
+        put?: never;
+        /**
+         * @description GET /me/coachings/: coachings on either side, open ones first. POST asks a coach to coach you, or,
+         *     as a coach, invites a player.
+         */
+        post: operations["me_coachings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coachings/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /me/coachings/{id}/{accept|decline|end}/. */
+        post: operations["me_coachings_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coachings/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /me/coachings/{id}/{accept|decline|end}/. */
+        post: operations["me_coachings_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coachings/{id}/end/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /me/coachings/{id}/{accept|decline|end}/. */
+        post: operations["me_coachings_end_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/drills/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's personal drill library, private to them. */
+        get: operations["me_drills_list"];
+        put?: never;
+        /** @description The player's personal drill library, private to them. */
+        post: operations["me_drills_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/drills/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's personal drill library, private to them. */
+        get: operations["me_drills_retrieve"];
+        /** @description The player's personal drill library, private to them. */
+        put: operations["me_drills_update"];
+        post?: never;
+        /** @description The player's personal drill library, private to them. */
+        delete: operations["me_drills_destroy"];
+        options?: never;
+        head?: never;
+        /** @description The player's personal drill library, private to them. */
+        patch: operations["me_drills_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/entries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every entry the caller plays in, newest first, with its event and tournament. */
+        get: operations["me_entries_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/equipment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PUT /me/equipment/: the player's own equipment, private to them. */
+        get: operations["me_equipment_retrieve"];
+        /** @description GET/PUT /me/equipment/: the player's own equipment, private to them. */
+        put: operations["me_equipment_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/facility-visits/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's own visits and passes at facilities, newest first. */
+        get: operations["me_facility_visits_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/goals/": {
         parameters: {
             query?: never;
@@ -181,6 +953,91 @@ export interface paths {
         };
         get?: never;
         put: operations["me_goals_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guest-claims/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's claims and how each ended. */
+        get: operations["me_guest_claims_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guest-invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open guest invitations to the signed-in player's verified address. */
+        get: operations["me_guest_invitations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guest-invitations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open guest invitations to the signed-in player's verified address. */
+        post: operations["me_guest_invitations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guest-invitations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Open guest invitations to the signed-in player's verified address. */
+        post: operations["me_guest_invitations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/honours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/honours/: awards you received at published ceremonies, newest first. */
+        get: operations["me_honours_list"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -256,6 +1113,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/managed-organizations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["me_managed_organizations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/match-notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        get: operations["me_match_notes_list"];
+        put?: never;
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        post: operations["me_match_notes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/match-notes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        get: operations["me_match_notes_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        delete: operations["me_match_notes_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description The signed-in player's private notes on matches they played (REQ-025). Scoped to the owner: a note
+         *     of anyone else's, or a match they didn't play, answers 404. The match itself (sets, score, result)
+         *     is never changed here.
+         */
+        patch: operations["me_match_notes_partial_update"];
+        trace?: never;
+    };
     "/api/v1/me/matches/": {
         parameters: {
             query?: never;
@@ -270,8 +1200,8 @@ export interface paths {
         get: operations["me_matches_list"];
         put?: never;
         /**
-         * @description The signed-in player's own match log (REQ-037). The queryset is always scoped to the
-         *     requester, so anyone else's record IDs resolve to 404 rather than revealing they exist.
+         * @description Record a match. A Quick Score save sends its client_ref: saving the same game again (a retry
+         *     after the connection dropped) returns the record already made, with 200, and changes nothing.
          */
         post: operations["me_matches_create"];
         delete?: never;
@@ -349,6 +1279,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/meetings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/meetings/: meetings you are invited to, upcoming first, with your answer. */
+        get: operations["me_meetings_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/memberships/": {
         parameters: {
             query?: never;
@@ -369,6 +1316,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/memberships/{id}/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The player's own member-visible custom fields here (REQ-005). Staff-only fields never appear
+         *     and can't be written, even by a member who knows their ids.
+         */
+        get: operations["me_memberships_fields_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description The player's own member-visible custom fields here (REQ-005). Staff-only fields never appear
+         *     and can't be written, even by a member who knows their ids.
+         */
+        patch: operations["me_memberships_fields_partial_update"];
+        trace?: never;
+    };
     "/api/v1/me/memberships/{id}/leave/": {
         parameters: {
             query?: never;
@@ -383,6 +1354,92 @@ export interface paths {
          *     and permissions they hold in each. A player can leave, unless they are its last admin.
          */
         post: operations["me_memberships_leave_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notification-preferences/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Which categories of alerts the player gets. Being called to a table can't be switched off. */
+        get: operations["me_notification_preferences_retrieve"];
+        /** @description Which categories of alerts the player gets. Being called to a table can't be switched off. */
+        put: operations["me_notification_preferences_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's alerts, newest first. */
+        get: operations["me_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/{id}/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's alerts, newest first. */
+        post: operations["me_notifications_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/read-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's alerts, newest first. */
+        post: operations["me_notifications_read_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/unread-count/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's alerts, newest first. */
+        get: operations["me_notifications_unread_count_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -421,6 +1478,624 @@ export interface paths {
         patch: operations["me_profile_partial_update"];
         trace?: never;
     };
+    "/api/v1/me/scorecards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Matches the caller is assigned to score and hasn't confirmed, in tournaments still running. */
+        get: operations["me_scorecards_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/session-invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in member's invitations to club sessions, and their answers. */
+        get: operations["me_session_invitations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/session-invitations/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Accept: holds this time in your calendar. Refused when you already have something on, the
+         *     session is full or it was cancelled. Accepting again changes nothing.
+         */
+        post: operations["me_session_invitations_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/session-invitations/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Decline, or withdraw an acceptance: your time is free again. */
+        post: operations["me_session_invitations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        get: operations["me_soda_games_list"];
+        put?: never;
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        post: operations["me_soda_games_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        get: operations["me_soda_games_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The challenged player accepts, matching the stake or not; or the challenger takes the time
+         *     the challenged player proposed.
+         */
+        post: operations["me_soda_games_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        post: operations["me_soda_games_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/counter/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The challenged player proposes another time. */
+        post: operations["me_soda_games_counter_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's soda games, made or received. Nobody else reaches them here. */
+        post: operations["me_soda_games_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/dispute/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Disagree with the recorded games: nothing is owed until it's recorded again and confirmed. */
+        post: operations["me_soda_games_dispute_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/result/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record the games. The other player then confirms or disputes. */
+        post: operations["me_soda_games_result_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/settle/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The winner marks the pledge honoured. No money passes through Coast TT. */
+        post: operations["me_soda_games_settle_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/share/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Let club members see this challenge and its result. Shown only when both players share. */
+        post: operations["me_soda_games_share_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-games/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The challenger withdraws before the challenge is accepted. */
+        post: operations["me_soda_games_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/soda-settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Whether soda games and stakes are available to the signed-in player. */
+        get: operations["me_soda_settings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/table-bookings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The signed-in player's booking requests. */
+        get: operations["me_table_bookings_list"];
+        put?: never;
+        /** @description The signed-in player's booking requests. */
+        post: operations["me_table_bookings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/table-bookings/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The signed-in player's booking requests. */
+        post: operations["me_table_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Items of a plan the coach gave the trainee. Sessions are checked against the trainee's calendar. */
+        post: operations["me_trainees_plans_items_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/trainees/{coaching_pk}/plans/{plan_pk}/items/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Items of a plan the coach gave the trainee. Sessions are checked against the trainee's calendar. */
+        delete: operations["me_trainees_plans_items_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Items of a plan the coach gave the trainee. Sessions are checked against the trainee's calendar. */
+        patch: operations["me_trainees_plans_items_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/trainees/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/trainees/{coaching id}/: a trainee's progress, for their coach. */
+        get: operations["me_trainees_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/trainees/{id}/comments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/trainees/{coaching id}/comments/: comment on one of the trainee's matches. Only the
+         *     trainee and you read it.
+         */
+        post: operations["me_trainees_comments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/trainees/{id}/plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/trainees/{coaching id}/plans/: give the trainee a plan, copied from one of yours or a
+         *     club plan you can read, or a new empty one. The trainee owns it; its sessions go in their calendar.
+         */
+        post: operations["me_trainees_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/trainees/{id}/plans/{plan_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description PATCH/DELETE /me/trainees/{coaching id}/plans/{plan id}/: a plan the coach gave the trainee. */
+        get: operations["me_trainees_plans_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description PATCH/DELETE /me/trainees/{coaching id}/plans/{plan id}/: a plan the coach gave the trainee. */
+        delete: operations["me_trainees_plans_destroy"];
+        options?: never;
+        head?: never;
+        /** @description PATCH/DELETE /me/trainees/{coaching id}/plans/{plan id}/: a plan the coach gave the trainee. */
+        patch: operations["me_trainees_plans_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/trainees/{id}/plans/{plan_pk}/recommendations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/trainees/{coaching id}/plans/{plan id}/recommendations/: drills from the coach's library
+         *     for the plan's goal skills.
+         */
+        get: operations["me_trainees_plans_recommendations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's own training plans with their items and progress. */
+        get: operations["me_training_plans_list"];
+        put?: never;
+        /** @description The player's own training plans with their items and progress. */
+        post: operations["me_training_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's own training plans with their items and progress. */
+        get: operations["me_training_plans_retrieve"];
+        /** @description The player's own training plans with their items and progress. */
+        put: operations["me_training_plans_update"];
+        post?: never;
+        /** @description The player's own training plans with their items and progress. */
+        delete: operations["me_training_plans_destroy"];
+        options?: never;
+        head?: never;
+        /** @description The player's own training plans with their items and progress. */
+        patch: operations["me_training_plans_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/{id}/recommendations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The player's own training plans with their items and progress. */
+        get: operations["me_training_plans_recommendations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/{plan_pk}/items/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Items of one of the player's own plans. Sessions are checked against the player's calendar;
+         *     ticking an item off (`completed`) is all a checklist item ever does.
+         */
+        post: operations["me_training_plans_items_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/training-plans/{plan_pk}/items/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Items of one of the player's own plans. Sessions are checked against the player's calendar;
+         *     ticking an item off (`completed`) is all a checklist item ever does.
+         */
+        delete: operations["me_training_plans_items_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Items of one of the player's own plans. Sessions are checked against the player's calendar;
+         *     ticking an item off (`completed`) is all a checklist item ever does.
+         */
+        patch: operations["me_training_plans_items_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/me/training-sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /me/training-sessions/: the player's sessions that haven't ended yet, soonest first. */
+        get: operations["me_training_sessions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/open-sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Training slots any signed-in player may join (REQ-044): coming up, not cancelled. Joining goes
+         *     through the same check as accepting an invitation: the player's calendar and the places left.
+         */
+        get: operations["open_sessions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/open-sessions/{id}/join/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Join: holds this time in your calendar. Refused when you already have something on or it's
+         *     full. Joining twice changes nothing.
+         */
+        post: operations["open_sessions_join_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/open-sessions/{id}/leave/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Leave: your time is free again. */
+        post: operations["open_sessions_leave_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/": {
         parameters: {
             query?: never;
@@ -433,6 +2108,1235 @@ export interface paths {
         put?: never;
         /** @description Search, view and register organizations (REQ-004). */
         post: operations["organizations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        get: operations["organizations_activities_list"];
+        put?: never;
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        post: operations["organizations_activities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        get: operations["organizations_activities_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description A club's activities. Holders of activities.manage create, edit, publish and cancel them; members
+         *     of the audience see them once published and answer.
+         */
+        patch: operations["organizations_activities_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/attendees/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who is going or might, by display name, for the activity's audience and its staff. */
+        get: operations["organizations_activities_attendees_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Cancel with a reason. The record stays, with the answers it had. */
+        post: operations["organizations_activities_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/invitees/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who a selected-members activity is for, for its staff only. */
+        get: operations["organizations_activities_invitees_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Publish a draft: the audience sees it and can answer. */
+        post: operations["organizations_activities_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/rsvp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Answer going, maybe or not going. Going beyond the capacity puts you on the waiting list. */
+        post: operations["organizations_activities_rsvp_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/admin/: any member sees who the admin is. */
+        get: operations["organizations_admin_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/appoint/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_appoint_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/nominate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_admin_nominate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/agenda/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/POST /organizations/{body}/agenda/: the body's yearly agenda. */
+        get: operations["organizations_agenda_list"];
+        put?: never;
+        /** @description GET/POST /organizations/{body}/agenda/: the body's yearly agenda. */
+        post: operations["organizations_agenda_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/agenda/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description PATCH/DELETE /organizations/{body}/agenda/{id}/. */
+        delete: operations["organizations_agenda_destroy"];
+        options?: never;
+        head?: never;
+        /** @description PATCH/DELETE /organizations/{body}/agenda/{id}/. */
+        patch: operations["organizations_agenda_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/announcements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send an announcement to an explicit audience: the organization's members, the players of one of
+         *     its events, or named members. Needs announcements.manage.
+         */
+        post: operations["organizations_announcements_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/articles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{body}/articles/: announcement staff see drafts too; everyone else sees
+         *     the published articles that reach them.
+         */
+        get: operations["organizations_articles_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{body}/articles/: announcement staff see drafts too; everyone else sees
+         *     the published articles that reach them.
+         */
+        post: operations["organizations_articles_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/articles/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PATCH/DELETE /organizations/{body}/articles/{id}/. */
+        get: operations["organizations_articles_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description GET/PATCH/DELETE /organizations/{body}/articles/{id}/. */
+        delete: operations["organizations_articles_destroy"];
+        options?: never;
+        head?: never;
+        /** @description GET/PATCH/DELETE /organizations/{body}/articles/{id}/. */
+        patch: operations["organizations_articles_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/articles/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /organizations/{body}/articles/{id}/publish/: send it to its clubs. */
+        post: operations["organizations_articles_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        get: operations["organizations_bookings_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/{id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        post: operations["organizations_bookings_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        post: operations["organizations_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/bookings/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Booking requests at the organization's venues, for staff with facilities.manage. Requested and
+         *     approved are shown apart; nothing pending holds a table.
+         */
+        post: operations["organizations_bookings_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The club's training sessions, for its training staff. */
+        get: operations["organizations_club_sessions_list"];
+        put?: never;
+        /** @description The club's training sessions, for its training staff. */
+        post: operations["organizations_club_sessions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The club's training sessions, for its training staff. */
+        get: operations["organizations_club_sessions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description The club's training sessions, for its training staff. */
+        patch: operations["organizations_club_sessions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Cancel the session: its tables and every accepted member's time are free again. */
+        post: operations["organizations_club_sessions_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{session_pk}/invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who is invited to a club session, their answers, and attendance; for the club's training staff. */
+        get: operations["organizations_club_sessions_invitations_list"];
+        put?: never;
+        /** @description Invite active members. Members already invited keep their invitation and answer. */
+        post: operations["organizations_club_sessions_invitations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{session_pk}/invitations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Mark whether the member came. Marking again with the same answer changes nothing. */
+        patch: operations["organizations_club_sessions_invitations_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/committee/: the current committee, for any member. */
+        get: operations["organizations_committee_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/candidates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Active members who can hold a position, for governance staff choosing a holder. */
+        get: operations["organizations_committee_candidates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET (every definition, retired ones too) and POST committee fields, for governance staff. */
+        get: operations["organizations_committee_fields_list"];
+        put?: never;
+        /** @description GET (every definition, retired ones too) and POST committee fields, for governance staff. */
+        post: operations["organizations_committee_fields_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["organizations_committee_fields_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_committee_fields_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/fields/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_committee_fields_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Past holders of every position, newest first, for any member: display names and dates only. */
+        get: operations["organizations_committee_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/: add a position at the end of the committee. */
+        post: operations["organizations_committee_positions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description PATCH /committee/positions/{id}/: rename, set the term or change the granted role. */
+        patch: operations["organizations_committee_positions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/holder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+         *     the current holder's time, as stepping down.
+         */
+        put: operations["organizations_committee_positions_holder_update"];
+        post?: never;
+        /**
+         * @description PUT /committee/positions/{id}/holder/ assigns a holder (replacing the current one); DELETE ends
+         *     the current holder's time, as stepping down.
+         */
+        delete: operations["organizations_committee_positions_holder_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/{id}/retire/: remove a position; its holders stay in the history. */
+        post: operations["organizations_committee_positions_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/{id}/values/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description PATCH /committee/positions/{id}/values/: custom field values of the position and its holder. */
+        patch: operations["organizations_committee_positions_values_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/committee/positions/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /committee/positions/reorder/: every active position's id, in the order to show them. */
+        post: operations["organizations_committee_positions_reorder_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/drills/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        get: operations["organizations_drills_list"];
+        put?: never;
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        post: operations["organizations_drills_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/drills/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        delete: operations["organizations_drills_destroy"];
+        options?: never;
+        head?: never;
+        /** @description A club's drill library: every active member reads it; training staff add, change and delete. */
+        patch: operations["organizations_drills_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/external-events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A club's external event submissions, for its staff with announcements.manage. */
+        get: operations["organizations_external_events_list"];
+        put?: never;
+        /** @description A club's external event submissions, for its staff with announcements.manage. */
+        post: operations["organizations_external_events_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/external-events/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Change a submission: details go back for review; postponing or cancelling doesn't. */
+        patch: operations["organizations_external_events_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/external-events/{id}/live/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The organizer says it's on now (or no longer). */
+        post: operations["organizations_external_events_live_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/facility-takings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What the facility's branches collected in a month (REQ-044), for those who see its finances. */
+        get: operations["organizations_facility_takings_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance-purposes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What members' contributions paid for: each campaign's totals and its spending, without receipts
+         *     or anyone's own payments. Members only.
+         */
+        get: operations["organizations_finance_purposes_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/balances/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every member's outstanding balance and unmatched credit, per currency. */
+        get: operations["organizations_finance_balances_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Contribution campaigns (REQ-023). Finance staff read them; finance managers set them up. */
+        get: operations["organizations_finance_campaigns_list"];
+        put?: never;
+        /** @description Set up a campaign. Its dues to date are generated at once; the rest as their dates come. */
+        post: operations["organizations_finance_campaigns_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_finance_campaigns_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Change the title, description, amount or last date. Dues already generated keep theirs. */
+        patch: operations["organizations_finance_campaigns_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Stop generating dues. Dues already generated stay owed. */
+        post: operations["organizations_finance_campaigns_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/dues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every due the campaign made, with each one's status, and the totals still owed. */
+        get: operations["organizations_finance_campaigns_dues_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/remind/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Remind everyone overdue on the campaign. Pressing it again the same day sends nothing more. */
+        post: operations["organizations_finance_campaigns_remind_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/campaigns/{id}/terms/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Set one member's terms: included, their own amount, or waived with a reason. Periods already
+         *     generated keep their dues; waive one of those on the charge itself.
+         */
+        post: operations["organizations_finance_campaigns_terms_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/charges/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_finance_charges_list"];
+        put?: never;
+        post: operations["organizations_finance_charges_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/charges/{id}/waive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_finance_charges_waive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/expenses/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Spending (REQ-024): finance staff read it with receipts; finance managers record it. */
+        get: operations["organizations_finance_expenses_list"];
+        put?: never;
+        /** @description Record money spent. It may exceed what was received: the purpose then shows a deficit. */
+        post: operations["organizations_finance_expenses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/expenses/{id}/receipt/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Attach (or replace) the receipt photo. Stored privately, re-encoded without metadata. */
+        put: operations["organizations_finance_expenses_receipt_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/expenses/{id}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reverse an expense recorded in error; it stays, with who reversed it and why. */
+        post: operations["organizations_finance_expenses_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/payments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_finance_payments_list"];
+        put?: never;
+        /** @description Record money received. Repeating a request (same request_key) returns the first record. */
+        post: operations["organizations_finance_payments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/payments/{id}/allocate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_finance_payments_allocate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/payments/{id}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_finance_payments_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Per purpose: received, spent and remaining (negative is a deficit), and dues still expected.
+         *     Member balances are under balances/.
+         */
+        get: operations["organizations_finance_summary_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guest-claims/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Claims of a club's guests, with their audit trail. A claim in `conflict` waits for staff. */
+        get: operations["organizations_guest_claims_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guest-claims/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Claims of a club's guests, with their audit trail. A claim in `conflict` waits for staff. */
+        post: operations["organizations_guest_claims_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guest-claims/{id}/retry/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Claims of a club's guests, with their audit trail. A claim in `conflict` waits for staff. */
+        post: operations["organizations_guest_claims_retry_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A club's guests: players its staff entered before they had an account. */
+        get: operations["organizations_guests_list"];
+        put?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        post: operations["organizations_guests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        patch: operations["organizations_guests_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/invite/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        post: operations["organizations_guests_invite_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/revoke-invitation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A club's guests: players its staff entered before they had an account. */
+        post: operations["organizations_guests_revoke_invitation_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -550,6 +3454,232 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/meetings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/meetings/: governance staff see every meeting; others see the
+         *     published meetings they are invited to.
+         */
+        get: operations["organizations_meetings_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/meetings/: governance staff see every meeting; others see the
+         *     published meetings they are invited to.
+         */
+        post: operations["organizations_meetings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+         *     delete a draft; invitees read it.
+         */
+        get: operations["organizations_meetings_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+         *     delete a draft; invitees read it.
+         */
+        delete: operations["organizations_meetings_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/meetings/{id}/. Staff change a meeting until it starts and
+         *     delete a draft; invitees read it.
+         */
+        patch: operations["organizations_meetings_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/answer/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/answer/: attending or apologies, until it ends. */
+        post: operations["organizations_meetings_answer_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/cancel/ with a reason. */
+        post: operations["organizations_meetings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/check-in/: an invitee marks themselves present while it runs. */
+        post: operations["organizations_meetings_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/minutes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/minutes/: record the minutes once the meeting has started. */
+        post: operations["organizations_meetings_minutes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/publish/: invite the audience. */
+        post: operations["organizations_meetings_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/member-fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        get: operations["organizations_member_fields_list"];
+        put?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        post: operations["organizations_member_fields_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/member-fields/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        patch: operations["organizations_member_fields_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/member-fields/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        post: operations["organizations_member_fields_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/member-fields/{id}/retire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Stop using a field. It disappears from members' details; recorded values are kept. */
+        post: operations["organizations_member_fields_retire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/members/": {
         parameters: {
             query?: never;
@@ -568,6 +3698,29 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/members/{id}/fields/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A member's custom field values, staff-only ones included, for holders of members.manage. */
+        get: operations["organizations_members_fields_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Custom member field definitions of one organization (REQ-005). Members holding members.manage
+         *     create, edit, retire and restore them, see them all, and read and write any member's values. Other
+         *     members see only the active member-visible ones, which is what they need to fill in their own details
+         *     (through /me/memberships/{id}/fields/).
+         */
+        patch: operations["organizations_members_fields_partial_update"];
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/members/{id}/remove/": {
@@ -597,6 +3750,43 @@ export interface paths {
         get?: never;
         /** @description Replace a member's roles. Each role added or removed must be within the actor's authority. */
         put: operations["organizations_members_roles_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/my-finances/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What the signed-in member owes and paid the organization. Nobody else's records. */
+        get: operations["organizations_my_finances_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/region-clubs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{body}/region-clubs/: the region's clubs with member counts and upcoming
+         *     tournaments, for the body's members and the region's officials.
+         */
+        get: operations["organizations_region_clubs_list"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -656,6 +3846,572 @@ export interface paths {
         patch: operations["organizations_roles_partial_update"];
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The club schedule for its members: activities, tournaments and training sessions in date order. */
+        get: operations["organizations_schedule_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/schedule.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The same schedule as an .ics file, to add to a phone's calendar. */
+        get: operations["organizations_schedule.ics_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/soda-games/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Soda games of the club's members that both players chose to share: names, time and result only. */
+        get: operations["organizations_soda_games_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/soda-policy/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description An organization's switches for its members' soda games. Changing them needs roles.manage. */
+        get: operations["organizations_soda_policy_retrieve"];
+        /** @description An organization's switches for its members' soda games. Changing them needs roles.manage. */
+        put: operations["organizations_soda_policy_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/sponsorships/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/sponsorships/: what the organization offers tournaments, for its
+         *     competition staff.
+         */
+        get: operations["organizations_sponsorships_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/sponsorships/: what the organization offers tournaments, for its
+         *     competition staff.
+         */
+        post: operations["organizations_sponsorships_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/sponsorships/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /organizations/{org}/sponsorships/{id}/withdraw/: before the host has decided, or after it
+         *     accepted (the sponsor pulls out).
+         */
+        post: operations["organizations_sponsorships_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/tournaments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every tournament an organization hosts, drafts included, for its competition staff. */
+        get: operations["organizations_tournaments_list"];
+        put?: never;
+        /** @description A new draft. The timezone defaults to the organization's. */
+        post: operations["organizations_tournaments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/training-hours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+         *     holders of training.manage replace the whole list.
+         */
+        get: operations["organizations_training_hours_list"];
+        /**
+         * @description The club's weekly training times. Any signed-in player reads them (they are on the club's profile);
+         *     holders of training.manage replace the whole list.
+         */
+        put: operations["organizations_training_hours_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/training-plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A club's training plans for a day, a week, a month or any dates: members read them, newest period
+         *     first; training staff create, change and delete them.
+         */
+        get: operations["organizations_training_plans_list"];
+        put?: never;
+        /**
+         * @description A club's training plans for a day, a week, a month or any dates: members read them, newest period
+         *     first; training staff create, change and delete them.
+         */
+        post: operations["organizations_training_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/training-plans/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A club's training plans for a day, a week, a month or any dates: members read them, newest period
+         *     first; training staff create, change and delete them.
+         */
+        get: operations["organizations_training_plans_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description A club's training plans for a day, a week, a month or any dates: members read them, newest period
+         *     first; training staff create, change and delete them.
+         */
+        delete: operations["organizations_training_plans_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description A club's training plans for a day, a week, a month or any dates: members read them, newest period
+         *     first; training staff create, change and delete them.
+         */
+        patch: operations["organizations_training_plans_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/training-plans/{id}/recommendations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description For the club's training staff building the plan: standard drills and the club's own. */
+        get: operations["organizations_training_plans_recommendations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/training-plans/{plan_pk}/items/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Items of a club plan, for its training staff. Drills come from the standard library and the club's. */
+        post: operations["organizations_training_plans_items_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/training-plans/{plan_pk}/items/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Items of a club plan, for its training staff. Drills come from the standard library and the club's. */
+        delete: operations["organizations_training_plans_items_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Items of a club plan, for its training staff. Drills come from the standard library and the club's. */
+        patch: operations["organizations_training_plans_items_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        get: operations["organizations_venues_list"];
+        put?: never;
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        post: operations["organizations_venues_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        patch: operations["organizations_venues_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/hours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Replace the venue's weekly opening hours and its closures together. */
+        put: operations["organizations_venues_hours_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/tables/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Add a table at the end of the venue's playing order. Replies with the whole venue. */
+        post: operations["organizations_venues_tables_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{id}/tables/{table_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Venues and tables of one organization (REQ-007). Members see the venues in use; holders of
+         *     facilities.manage add, rename and switch venues and tables off or back on, and see them all.
+         */
+        patch: operations["organizations_venues_tables_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/passes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A branch's prices, for its facility staff. Players see the ones in use on the branch profile. */
+        get: operations["organizations_venues_passes_list"];
+        put?: never;
+        /** @description A branch's prices, for its facility staff. Players see the ones in use on the branch profile. */
+        post: operations["organizations_venues_passes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/passes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description A branch's prices, for its facility staff. Players see the ones in use on the branch profile. */
+        patch: operations["organizations_venues_passes_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The door screen of a branch: the day's visits, recording one, and reversing a mistake. */
+        get: operations["organizations_venues_visits_list"];
+        put?: never;
+        /** @description The door screen of a branch: the day's visits, recording one, and reversing a mistake. */
+        post: operations["organizations_venues_visits_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/{id}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reverse a visit recorded by mistake. The original stays, marked reversed with the reason. */
+        post: operations["organizations_venues_visits_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/venues/{venue_pk}/visits/active-pass/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The pass this player holds here that covers today, if any: shown at the door. */
+        get: operations["organizations_venues_visits_active_pass_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Welfare projects (REQ-038). Members see those meant for them; welfare and finance staff see all. */
+        get: operations["organizations_welfare_projects_list"];
+        put?: never;
+        /** @description Set up a project. Its audience hears that it opened, never what it is about. */
+        post: operations["organizations_welfare_projects_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_welfare_projects_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["organizations_welfare_projects_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Close the project: its totals and records stay, read-only. */
+        post: operations["organizations_welfare_projects_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/contributions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every gift with its giver, anonymous ones included: welfare and finance staff only. */
+        get: operations["organizations_welfare_projects_contributions_list"];
+        put?: never;
+        /** @description Record a gift received outside Coast TT. Sending the same request_key again records nothing. */
+        post: operations["organizations_welfare_projects_contributions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/contributions/{contribution_pk}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_welfare_projects_contributions_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/expenses/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_welfare_projects_expenses_list"];
+        put?: never;
+        /** @description Record spending, a visit gift say. It may exceed what was given: the deficit shows. */
+        post: operations["organizations_welfare_projects_expenses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/hide/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hide the project from members: the beneficiary may ask for it themselves. Staff still see
+         *     it, and its ledger stays.
+         */
+        post: operations["organizations_welfare_projects_hide_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{id}/": {
         parameters: {
             query?: never;
@@ -665,6 +4421,24 @@ export interface paths {
         };
         /** @description Search, view and register organizations (REQ-004). */
         get: operations["organizations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Search, view and register organizations (REQ-004). */
+        patch: operations["organizations_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{id}/profile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /organizations/{id}/profile/: any signed-in player, member or not. */
+        get: operations["organizations_profile_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -727,23 +4501,3114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/players/{id}/ratings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One player's ratings in both disciplines and the rating changes of one of them, newest first.
+         *     Ratings come from competition results, which signed-in players can already read in the draws; a
+         *     player who has none and no page in the directory is not found.
+         */
+        get: operations["players_ratings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rankings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The ranking of one discipline: over the whole platform, or among one club's members. */
+        get: operations["rankings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rankings/clubs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Rank clubs by the sum of their active members' ratings for one discipline. */
+        get: operations["rankings_clubs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rankings/geography/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Aggregate player ratings by the location each player provides in their profile. */
+        get: operations["rankings_geography_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/regional-bodies/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
+         *     appointed to a region (or a platform super admin naming one) becomes its first admin.
+         */
+        get: operations["regional_bodies_list"];
+        put?: never;
+        /**
+         * @description GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
+         *     appointed to a region (or a platform super admin naming one) becomes its first admin.
+         */
+        post: operations["regional_bodies_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The assigned umpire's sheets (REQ-012). A sheet exists only for the umpire assigned to it; a
+         *     reassigned umpire loses it at once.
+         */
+        get: operations["scorecards_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The umpire confirms the result, which makes it official: the winner moves on through the
+         *     draw. Refused (`match_not_finished`) unless the accepted events are a finished match.
+         */
+        post: operations["scorecards_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/conflicts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tell the organizers what this device wrote that the server didn't accept. Open to whoever
+         *     holds the sheet or held it before. It changes nothing about the score.
+         */
+        post: operations["scorecards_conflicts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/device/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description This device takes the sheet, so that one device scores a match at a time. A sheet held by
+         *     another device is refused (`other_device`) unless `take_over` is set; taking over issues a new
+         *     assignment id, which cuts the other device off.
+         */
+        post: operations["scorecards_device_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send score events in order. Each is replayed through the server's own scoring rules. Only the
+         *     sheet is locked, not the tournament: points arrive from every table at once and change nothing
+         *     outside their own sheet until it is confirmed. A retry
+         *     of an accepted event is skipped; the first event out of sequence or against the rules stops the
+         *     batch and is reported in `refused`, with everything before it kept.
+         */
+        post: operations["scorecards_events_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Published tournaments, drafts never. `when=upcoming` (soonest first) covers those still to
+         *     finish; `when=past` (latest first) the completed, cancelled and ended ones.
+         */
+        get: operations["tournaments_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        get: operations["tournaments_retrieve"];
+        put?: never;
+        post?: never;
+        /** @description Only a draft can be deleted; once published, a tournament is cancelled instead. */
+        delete: operations["tournaments_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        patch: operations["tournaments_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/approval/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_approval_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/approval/request/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_approval_request_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Terminal and audited. The reason is shown to everyone who can see the tournament. */
+        post: operations["tournaments_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who published, started, completed or cancelled what, and the configuration at that moment. */
+        get: operations["tournaments_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Tournaments (REQ-007). Published tournaments are open to every signed-in player; drafts and all
+         *     changes need competitions.manage in the host organization.
+         */
+        post: operations["tournaments_start_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+         *     draft for the host's competition staff. PUT sets when, where and who hosts it.
+         */
+        get: operations["tournaments_ceremony_retrieve"];
+        /**
+         * @description GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
+         *     draft for the host's competition staff. PUT sets when, where and who hosts it.
+         */
+        put: operations["tournaments_ceremony_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/awards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/ceremony/awards/: an award of the organizers' own, added last. */
+        post: operations["tournaments_ceremony_awards_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+         *     special award's recipient; remove it.
+         */
+        delete: operations["tournaments_ceremony_awards_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/ceremony/awards/{award}/: change the title, prize, presenter or a
+         *     special award's recipient; remove it.
+         */
+        patch: operations["tournaments_ceremony_awards_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/awards/{id}/present/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/ceremony/awards/{award}/present/: mark it handed over (again to undo). When
+         *     every award is presented the ceremony is done.
+         */
+        post: operations["tournaments_ceremony_awards_present_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/generate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/ceremony/generate/: the placement awards of the completed events, third to
+         *     first and the main event last; awards already presented and the organizers' own are kept.
+         */
+        post: operations["tournaments_ceremony_generate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/ceremony/publish/: show the ceremony with everyone who sees the tournament. */
+        post: operations["tournaments_ceremony_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/ceremony/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/ceremony/reorder/ with every award id in the order they are presented. */
+        post: operations["tournaments_ceremony_reorder_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/corrections/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Later matches put in question by corrected results: those waiting for a decision first,
+         *     then those decided.
+         */
+        get: operations["tournaments_corrections_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/corrections/{id}/resolve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Decide one: `keep` the later match as it was played, or `replace` the entry, which strikes
+         *     out what was played there so it can be played again. The event carries on when none is left.
+         */
+        post: operations["tournaments_corrections_resolve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/dispatch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The dispatch board: every table, the ready queue in its fixed order (planned start, then
+         *     longest wait, then id), what keeps each held-up match from a table, and which match is
+         *     suggested for which free table.
+         */
+        get: operations["tournaments_dispatch_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/dispatch/auto/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Switch automatic dispatch on or off. On, ready matches go to free tables in queue order
+         *     without anybody pressing Send; no check is ever set aside for them.
+         */
+        post: operations["tournaments_dispatch_auto_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/dispatch/run/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Let automatic dispatch look now: it sends what it can and leaves the rest. Does nothing
+         *     while automatic dispatch is off. The open board calls this, so a rest that has just ended is
+         *     noticed without waiting for the next result.
+         */
+        post: operations["tournaments_dispatch_run_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The draw of one event (REQ-009). The published draw is open to every signed-in player; the
+         *     preview, and making and publishing draws, are for the host's competition staff.
+         */
+        get: operations["tournaments_events_draw_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Draw the accepted entries (again). Seeds are given best first; the rest is drawn by lot from
+         *     `rng_seed`, so the same request always gives the same draw. Replaces the last preview and
+         *     changes nothing anybody else can see.
+         */
+        post: operations["tournaments_events_draw_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Publish the preview as the event's draw, superseding the one before. Refused when the
+         *     accepted entries have changed since it was drawn (`draw_stale`).
+         */
+        post: operations["tournaments_events_draw_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Accepted entries, plus the caller's own in any status. Competition staff get them all. */
+        get: operations["tournaments_events_entries_list"];
+        put?: never;
+        /**
+         * @description Enter the event during its registration window. Open admission places or waitlists
+         *     the entry. Closed admission sends it to staff for approval. Staff may enter players directly.
+         */
+        post: operations["tournaments_events_entries_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Give the entry a place, from pending or from the waiting list (`event_full` when there is
+         *     none). Its players are told; a promotion from the waiting list says so.
+         */
+        post: operations["tournaments_events_entries_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The entry has arrived. Independent of the fee, which this API doesn't record yet. */
+        post: operations["tournaments_events_entries_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Turn down a pending or waitlisted entry. The reason, if given, is shown to its players. */
+        post: operations["tournaments_events_entries_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/self-check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Entries of one event (REQ-008). Open events admit players automatically within capacity.
+         *     Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+         *     players; staff and the entry's own players can also see its other statuses.
+         */
+        post: operations["tournaments_events_entries_self_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/staff-withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Withdraw an entry on its players' behalf. Its place is free again; nobody is promoted
+         *     automatically.
+         */
+        post: operations["tournaments_events_entries_staff_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/undo-check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Entries of one event (REQ-008). Open events admit players automatically within capacity.
+         *     Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+         *     players; staff and the entry's own players can also see its other statuses.
+         */
+        post: operations["tournaments_events_entries_undo_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/waitlist/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Entries of one event (REQ-008). Open events admit players automatically within capacity.
+         *     Closed events send self-entries to staff for a decision. Accepted entries are visible to signed-in
+         *     players; staff and the entry's own players can also see its other statuses.
+         */
+        post: operations["tournaments_events_entries_waitlist_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description By one of the entry's own players, before the event starts. For anybody else the entry
+         *     doesn't exist here.
+         */
+        post: operations["tournaments_events_entries_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One match of the published draw: sides, games, table and time. A match of a preview or of a
+         *     superseded draw doesn't exist here.
+         */
+        get: operations["tournaments_events_matches_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The recap as a branded square image (SVG) to download or share. */
+        get: operations["tournaments_events_matches_card.svg_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/dispatch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send the match to a table. The table and the players are held from now until the result is
+         *     official or staff call the match back. Refused with the constraint that stands in the way
+         *     (`table_busy`, `player_busy`, `not_checked_in`, `resting`, ...); everything is checked again
+         *     here whatever was shown before.
+         */
+        post: operations["tournaments_events_matches_dispatch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hand in or replace a team's lineup for a tie: by the team's captain or by competition staff,
+         *     until both lineups are in. The other team sees only that it has been handed in. When both are
+         *     in the tie begins and its rubbers are made.
+         */
+        post: operations["tournaments_events_matches_lineup_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/reset/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Competition staff send both teams back to choose again, while no rubber has been decided. */
+        post: operations["tournaments_events_matches_lineup_reset_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recall/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Take the match off its table, with a reason. The table and players are free again; a score
+         *     sheet already started stays as it is.
+         */
+        post: operations["tournaments_events_matches_recall_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recap/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A match's recap for sharing (REQ-018): public for a published tournament, signed in or not. */
+        get: operations["tournaments_events_matches_recap_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/result/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Competition staff record a result themselves: a walkover, a retirement, or a match scored
+         *     on paper. It is official at once: the winner moves on and the table and players are freed.
+         *     A match that already has a result is changed with `correct`.
+         */
+        post: operations["tournaments_events_matches_result_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/result/correct/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Replace the official result of a decided match or rubber, with a reason. The earlier result
+         *     is kept. If the winner changes and the match they went on to has not started, the right entry
+         *     takes that place; if it has started, the event is paused and the organizers decide
+         *     (`corrections`).
+         */
+        post: operations["tournaments_events_matches_result_correct_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/umpire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Give a match, or one rubber of a tie, to an umpire; `user_id` null takes it back. A new
+         *     assignment cuts off the device that held the old one. Points already scored stay.
+         */
+        post: operations["tournaments_events_matches_umpire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/standings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Standings of the published draw: each group ranked under ITTF 3.7.5 with the comparisons
+         *     that separated level members, and the knockout placements decided so far. Empty until a draw is
+         *     published.
+         */
+        get: operations["tournaments_events_standings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/umpires/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The host's members who can be given a match to score: those whose role lets them score, and
+         *     those who run competitions or results.
+         */
+        get: operations["tournaments_events_umpires_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Only while the tournament is a draft; afterwards an event is cancelled, which keeps a record. */
+        delete: operations["tournaments_events_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Change an event's set-up. Once it has started its structure (type, format, best of, seeding,
+         *     groups and qualifiers) is frozen: asking to change it is a 409, never a silent no-op.
+         */
+        patch: operations["tournaments_events_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Events of one tournament (REQ-007), for the host's competition staff. Every reply is the whole
+         *     tournament, so the caller always holds one consistent copy.
+         */
+        post: operations["tournaments_events_start_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/reservations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Matches of this tournament that are on a table, with who is held. */
+        get: operations["tournaments_reservations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Every match of a published draw still to be played and not on a table, with the table and
+         *     start planned for it, and what is wrong with the plan as it stands.
+         */
+        get: operations["tournaments_schedule_retrieve"];
+        /**
+         * @description Keep these tables and starts in the working plan; nobody else sees them until the schedule
+         *     is published. Refused with `schedule_conflicts` and the list of conflicts when a table, a
+         *     player or a match's order wouldn't work; warnings don't stop it.
+         */
+        put: operations["tournaments_schedule_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/check/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description What would be wrong with these changes to the plan, without keeping them. */
+        post: operations["tournaments_schedule_check_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/delay/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description A table starts late or goes out of service: its published matches still to play move on by
+         *     the minutes given, and so does everything that then clashes with them. Published at once, as
+         *     a version of its own, with the same notices as publishing.
+         */
+        post: operations["tournaments_schedule_delay_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Publish the working plan as the next version. Players and umpires of matches that move
+         *     table, or move by more than the notice threshold, are told; nobody else. Refused with
+         *     `schedule_conflicts` while the plan has conflicts, and `nothing_to_publish` without changes.
+         */
+        post: operations["tournaments_schedule_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/recommend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description A start and table for every match, earliest first: nobody plays twice at once or without
+         *     their rest, and no match starts before the ones it waits for end. Nothing is saved: edit it
+         *     and keep it with PUT.
+         */
+        post: operations["tournaments_schedule_recommend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/sessions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The day's sessions, for the host's competition staff. */
+        get: operations["tournaments_schedule_sessions_list"];
+        put?: never;
+        /** @description The day's sessions, for the host's competition staff. */
+        post: operations["tournaments_schedule_sessions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/sessions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description The day's sessions, for the host's competition staff. */
+        delete: operations["tournaments_schedule_sessions_destroy"];
+        options?: never;
+        head?: never;
+        /** @description The day's sessions, for the host's competition staff. */
+        patch: operations["tournaments_schedule_sessions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/versions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every published version, latest first. */
+        get: operations["tournaments_schedule_versions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/versions/{number}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One version: every match as published then, and what changed from the one before. */
+        get: operations["tournaments_schedule_versions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/scoring/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Scoring in one tournament as its competition staff see it (REQ-013): which matches are being
+         *     scored or wait for their umpire's confirmation, who held each sheet on which device, and what
+         *     devices wrote that the server did not accept.
+         */
+        get: operations["tournaments_scoring_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/scoring/conflicts/{id}/resolve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record what was done about a device's unaccepted events. The report stays on record. */
+        post: operations["tournaments_scoring_conflicts_resolve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/sponsors/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /tournaments/{id}/sponsors/: the accepted sponsors, for everyone who can see the tournament. */
+        get: operations["tournaments_sponsors_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/sponsorships/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /tournaments/{id}/sponsorships/: every offer, for the host's competition staff. */
+        get: operations["tournaments_sponsorships_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/sponsorships/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/sponsorships/{offer}/{accept|decline}/: the host club decides. */
+        post: operations["tournaments_sponsorships_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/sponsorships/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/sponsorships/{offer}/{accept|decline}/: the host club decides. */
+        post: operations["tournaments_sponsorships_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/streams/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /tournaments/{id}/streams/: the tournament's watch links (with ?match=, that match's
+         *     and the whole tournament's); staff add one for the tournament or a match.
+         */
+        get: operations["tournaments_streams_list"];
+        put?: never;
+        /**
+         * @description GET/POST /tournaments/{id}/streams/: the tournament's watch links (with ?match=, that match's
+         *     and the whole tournament's); staff add one for the tournament or a match.
+         */
+        post: operations["tournaments_streams_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/streams/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/streams/{stream}/: staff change a link's address or title, or
+         *     remove it (with its reports).
+         */
+        delete: operations["tournaments_streams_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH/DELETE /tournaments/{id}/streams/{stream}/: staff change a link's address or title, or
+         *     remove it (with its reports).
+         */
+        patch: operations["tournaments_streams_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/streams/{id}/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/streams/{stream}/report/: anyone who sees the tournament says what is
+         *     wrong with a link. The host's staff see how many reports it has and decide.
+         */
+        post: operations["tournaments_streams_report_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/tables/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The tournament's tables in use and which are free. A table at a shared venue may be held by
+         *     another tournament's match.
+         */
+        get: operations["tournaments_tables_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/awaiting-approval/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Drafts whose host asked for approval and that the caller may approve: any of them for a
+         *     platform super admin, otherwise those in the caller's jurisdiction and tier.
+         */
+        get: operations["tournaments_awaiting_approval_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptRequest: {
+            /** @default false */
+            match_stake: boolean;
+        };
+        AcceptedEvent: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly sequence: number;
+            event: unknown;
+            /** Format: date-time */
+            readonly device_time: string | null;
+            /** Format: date-time */
+            readonly received_at: string;
+        };
+        /**
+         * @description One part of a session's running order: a warm-up, a drill on the table, work off it, match play or
+         *     the cool-down. A drill fills in the title when none is given.
+         */
+        Activity: {
+            phase: components["schemas"]["PhaseEnum"];
+            title: string;
+            minutes: number | null;
+            /** Format: uuid */
+            drill: string | null;
+        };
+        ActivityInvitees: {
+            invitee_ids: string[];
+        };
+        /**
+         * @description One part of a session's running order: a warm-up, a drill on the table, work off it, match play or
+         *     the cool-down. A drill fills in the title when none is given.
+         */
+        ActivityRequest: {
+            phase: components["schemas"]["PhaseEnum"];
+            title?: string;
+            minutes?: number | null;
+            /** Format: uuid */
+            drill?: string | null;
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        ActivityStatusEnum: "draft" | "published" | "cancelled";
+        AdminHandover: {
+            /** Format: uuid */
+            readonly id: string;
+            organization: components["schemas"]["OrganizationRef"];
+            readonly kind: components["schemas"]["AdminHandoverKindEnum"];
+            /** @default pending */
+            readonly status: components["schemas"]["AdminHandoverStatusEnum"];
+            from_user: components["schemas"]["Person"] | null;
+            to_user: components["schemas"]["Person"];
+            created_by: components["schemas"]["Person"] | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+        };
+        /**
+         * @description * `nomination` - Nomination
+         *     * `appointment` - Appointment
+         * @enum {string}
+         */
+        AdminHandoverKindEnum: "nomination" | "appointment";
+        /**
+         * @description * `pending` - Pending
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        AdminHandoverStatusEnum: "pending" | "accepted" | "declined" | "cancelled";
+        /**
+         * @description * `open` - Open
+         *     * `closed` - Closed
+         * @enum {string}
+         */
+        AdmissionEnum: "open" | "closed";
+        AgendaItem: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrgRef"];
+            kind: components["schemas"]["AgendaItemKindEnum"];
+            title: string;
+            description: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            readonly tournament: components["schemas"]["TournamentRef"] | null;
+        };
+        /**
+         * @description * `tournament` - Tournament
+         *     * `meeting` - Meeting
+         *     * `event` - Event
+         *     * `deadline` - Deadline
+         *     * `other` - Other
+         * @enum {string}
+         */
+        AgendaItemKindEnum: "tournament" | "meeting" | "event" | "deadline" | "other";
+        AgendaItemRequest: {
+            kind?: components["schemas"]["AgendaItemKindEnum"];
+            title: string;
+            description?: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on?: string;
+            /** Format: uuid */
+            tournament_id?: string | null;
+        };
+        AgendaRow: {
+            title: string;
+            /** @default  */
+            presenter: string;
+            /** Format: uuid */
+            tournament: string | null;
+        };
+        AgendaRowRequest: {
+            title: string;
+            /** @default  */
+            presenter: string;
+            /** Format: uuid */
+            tournament?: string | null;
+        };
+        AllocateRequest: {
+            /** Format: uuid */
+            charge_id: string;
+            amount_minor: number;
+        };
+        /**
+         * @description * `members` - members
+         *     * `event` - event
+         *     * `people` - people
+         * @enum {string}
+         */
+        AnnouncementAudienceEnum: "members" | "event" | "people";
+        /** @description A message from the organization to an explicit audience. */
+        AnnouncementRequest: {
+            title: string;
+            body?: string;
+            audience: components["schemas"]["AnnouncementAudienceEnum"];
+            /** Format: uuid */
+            event_id?: string;
+            user_ids?: string[];
+        };
+        /**
+         * @description * `attending` - attending
+         *     * `apologies` - apologies
+         * @enum {string}
+         */
+        AnswerAnswerEnum: "attending" | "apologies";
+        AnswerRequest: {
+            answer: components["schemas"]["AnswerAnswerEnum"];
+        };
+        /**
+         * @description * `position` - Position
+         *     * `holder` - Holder
+         * @enum {string}
+         */
+        AppliesToEnum: "position" | "holder";
+        AppointRequest: {
+            /** Format: uuid */
+            membership_id: string;
+            reason: string;
+        };
+        /**
+         * @description * `not_requested` - Not requested
+         *     * `pending` - Pending
+         *     * `approved` - Approved
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        ApprovalStatusEnum: "not_requested" | "pending" | "approved" | "rejected";
+        ApproveTableBookingRequest: {
+            fee_minor?: number | null;
+        };
+        Article: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrgRef"];
+            title: string;
+            summary: string;
+            body: string;
+            audience: components["schemas"]["ArticleAudienceEnum"];
+            readonly clubs: components["schemas"]["OrgRef"][];
+            readonly status: components["schemas"]["ArticleStatusEnum"];
+            /** Format: date-time */
+            readonly published_at: string | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `region` - Region
+         *     * `chosen` - Chosen
+         * @enum {string}
+         */
+        ArticleAudienceEnum: "region" | "chosen";
+        ArticleRequest: {
+            title: string;
+            summary?: string;
+            body: string;
+            audience?: components["schemas"]["ArticleAudienceEnum"];
+            club_ids?: string[];
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         * @enum {string}
+         */
+        ArticleStatusEnum: "draft" | "published";
+        AssignHolderRequest: {
+            /** Format: uuid */
+            membership_id: string;
+            /** Format: date */
+            started_on?: string | null;
+        };
+        /** @description Give the trainee a copy of one of your plans or of a club plan you can read, or a new empty plan. */
+        AssignPlanRequest: {
+            /** Format: uuid */
+            source_plan_id?: string;
+            title?: string;
+        };
+        /** @description `user_id` null takes the match back from its umpire. `rubber_id` names the rubber of a tie. */
+        AssignUmpireRequest: {
+            /** Format: uuid */
+            user_id: string | null;
+            /** Format: uuid */
+            rubber_id?: string | null;
+        };
+        AssignmentStep: {
+            kind: components["schemas"]["AssignmentStepKindEnum"];
+            umpire: string;
+            actor: string;
+            device_label: string;
+            revision: number;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /**
+         * @description * `assigned` - Assigned
+         *     * `unassigned` - Unassigned
+         *     * `device` - Device
+         *     * `take_over` - Take Over
+         *     * `reset` - Reset
+         * @enum {string}
+         */
+        AssignmentStepKindEnum: "assigned" | "unassigned" | "device" | "take_over" | "reset";
+        /**
+         * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
+         *
+         *     Serializing one issues the link, so only use it where the viewer has already been allowed to read
+         *     the attachment. Give it the attachment id.
+         */
+        AttachmentLink: {
+            /** Format: uuid */
+            id: string;
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        /**
+         * @description A short-lived link to an attachment's content. `url` is a path on the API origin.
+         *
+         *     Serializing one issues the link, so only use it where the viewer has already been allowed to read
+         *     the attachment. Give it the attachment id.
+         */
+        AttachmentLinkRequest: {
+            /** Format: uuid */
+            id: string;
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        /** @description Who answered, as the audience sees it: display names only. */
+        Attendee: {
+            readonly display_name: string;
+            readonly answer: components["schemas"]["RsvpAnswerEnum"];
+            readonly waitlisted: boolean;
+        };
+        /**
+         * @description * `platform` - platform
+         *     * `country` - country
+         *     * `regional` - regional
+         * @enum {string}
+         */
+        AuthorityEnum: "platform" | "country" | "regional";
+        AutoDispatchRequest: {
+            enabled: boolean;
+        };
+        Availability: {
+            weekday: number;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            venue: string;
+        };
+        AvailabilityListRequest: {
+            windows: components["schemas"]["AvailabilityRequest"][];
+        };
+        AvailabilityRequest: {
+            weekday: number;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            venue?: string;
+        };
+        AvatarUploadRequest: {
+            /**
+             * Format: binary
+             * @description JPEG, PNG or WebP, up to 5 MB
+             */
+            file: string;
+        };
+        Award: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly order: number;
+            readonly kind: components["schemas"]["AwardKindEnum"];
+            title: string;
+            /** Format: uuid */
+            readonly event: string | null;
+            readonly event_name: string | null;
+            readonly place: number | null;
+            readonly receives: string;
+            recipient_name: string;
+            prize: string;
+            presenter: string;
+            /** Format: date-time */
+            readonly presented_at: string | null;
+        };
+        /**
+         * @description * `placement` - Placement
+         *     * `special` - Special
+         * @enum {string}
+         */
+        AwardKindEnum: "placement" | "special";
+        AwardOrderRequest: {
+            awards: string[];
+        };
+        AwardRequest: {
+            title: string;
+            /** Format: uuid */
+            recipient_id?: string | null;
+            recipient_name?: string;
+            prize?: string;
+            presenter?: string;
+        };
+        Balance: {
+            /** Format: uuid */
+            member_id: string;
+            member_name: string;
+            currency: string;
+            owed_minor: number;
+            credit_minor: number;
+        };
+        /**
+         * @description * `3` - 3
+         *     * `5` - 5
+         *     * `7` - 7
+         * @enum {integer}
+         */
+        BestOfEnum: 3 | 5 | 7;
         /** @enum {unknown} */
         BlankEnum: "";
-        /** @description Public directory card: name and organizations only. No email, bio, location or other details. */
+        /**
+         * @description The dispatch board: the tables, the queue in its fixed order and what is suggested. A suggestion
+         *     is only that: sending it checks everything again.
+         */
+        Board: {
+            auto_dispatch: boolean;
+            in_play: boolean;
+            tables: components["schemas"]["BoardTable"][];
+            queue: components["schemas"]["QueuedMatch"][];
+            /** @description Matches still waiting for an earlier result. */
+            to_come: number;
+        };
+        /** @description One of the tournament's tables and whether a match holds it right now. */
+        BoardTable: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            free: boolean;
+            /** @description Tournament and event of the match on it. */
+            held_by: string;
+            /** Format: date-time */
+            since: string | null;
+            /** @description This tournament's match on the table. */
+            playing: components["schemas"]["Reservation"] | null;
+            /** Format: uuid */
+            suggested_match_id: string | null;
+            /** @description Why a free table has no match. */
+            idle_reason: string;
+        };
+        Booking: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly coach: components["schemas"]["PersonRef"];
+            readonly trainee: components["schemas"]["PersonRef"];
+            readonly role: string;
+            /** Format: date-time */
+            readonly starts_at: string;
+            /** Format: date-time */
+            readonly ends_at: string;
+            readonly venue: string;
+            readonly note: string;
+            readonly status: components["schemas"]["BookingStatusEnum"];
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        BookingReasonRequest: {
+            reason?: string;
+        };
+        BookingRequestRequest: {
+            /** Format: uuid */
+            coach_id: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            venue?: string;
+            note?: string;
+        };
+        /**
+         * @description * `requested` - Requested
+         *     * `confirmed` - Confirmed
+         *     * `declined` - Declined
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        BookingStatusEnum: "requested" | "confirmed" | "declined" | "cancelled";
+        BranchScheduleItem: {
+            kind: components["schemas"]["ScheduleKindEnum"];
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+        };
+        /**
+         * @description * `once` - One-time
+         *     * `weekly` - Weekly
+         *     * `monthly` - Monthly
+         *     * `quarterly` - Quarterly
+         *     * `yearly` - Yearly
+         * @enum {string}
+         */
+        CadenceEnum: "once" | "weekly" | "monthly" | "quarterly" | "yearly";
+        CalendarEntry: {
+            kind: components["schemas"]["CalendarEntryKindEnum"];
+            /** Format: uuid */
+            id: string;
+            title: string;
+            detail: string;
+            /** Format: date-time */
+            starts_at: string | null;
+            /** Format: date-time */
+            ends_at: string | null;
+            /** Format: date */
+            starts_on: string | null;
+            /** Format: date */
+            ends_on: string | null;
+            status: string;
+            link: string;
+        };
+        /**
+         * @description * `booking` - booking
+         *     * `session` - session
+         *     * `trainee_session` - trainee_session
+         *     * `club_session` - club_session
+         *     * `tournament` - tournament
+         * @enum {string}
+         */
+        CalendarEntryKindEnum: "booking" | "session" | "trainee_session" | "club_session" | "tournament";
+        Campaign: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            description: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            cadence: components["schemas"]["CadenceEnum"];
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string | null;
+            audience: components["schemas"]["FinanceAudienceEnum"];
+            readonly terms: components["schemas"]["CampaignTerm"][];
+            readonly closed: boolean;
+            /** Format: date */
+            readonly next_due_on: string | null;
+            readonly dues_count: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        CampaignDues: {
+            /** @description Dues per status. */
+            counts: {
+                [key: string]: number;
+            };
+            outstanding_minor: number;
+            overdue_minor: number;
+            dues: components["schemas"]["Charge"][];
+        };
+        CampaignRequest: {
+            title: string;
+            description?: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            cadence: components["schemas"]["CadenceEnum"];
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on?: string | null;
+            audience?: components["schemas"]["FinanceAudienceEnum"];
+            /** @description The members a selected-audience campaign bills. */
+            member_ids?: string[];
+        };
+        CampaignTerm: {
+            /** Format: uuid */
+            member_id: string;
+            readonly member_name: string;
+            /** @default true */
+            included: boolean;
+            amount_minor: number | null;
+            /** @default false */
+            waived: boolean;
+            /** @default  */
+            waive_reason: string;
+        };
+        CampaignTermRequest: {
+            /** Format: uuid */
+            member_id: string;
+            /** @default true */
+            included: boolean;
+            amount_minor?: number | null;
+            /** @default false */
+            waived: boolean;
+            /** @default  */
+            waive_reason: string;
+        };
+        CancelActivityRequest: {
+            reason: string;
+        };
+        CancelRequest: {
+            reason: string;
+        };
+        Candidate: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        /**
+         * @description * `singles` - Singles
+         *     * `doubles` - Doubles
+         *     * `team` - Team
+         *     * `juniors` - Juniors
+         *     * `veterans` - Veterans
+         *     * `women` - Women
+         *     * `open` - Open
+         *     * `para` - Para
+         * @enum {string}
+         */
+        CategoriesEnum: "singles" | "doubles" | "team" | "juniors" | "veterans" | "women" | "open" | "para";
+        Ceremony: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            starts_at: string | null;
+            location: string;
+            host: string;
+            notes: string;
+            readonly status: components["schemas"]["CeremonyStatusEnum"];
+            /** Format: date-time */
+            readonly published_at: string | null;
+            readonly awards: components["schemas"]["Award"][];
+        };
+        CeremonyRequest: {
+            /** Format: date-time */
+            starts_at?: string | null;
+            location?: string;
+            host?: string;
+            notes?: string;
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `done` - Done
+         * @enum {string}
+         */
+        CeremonyStatusEnum: "draft" | "published" | "done";
+        /**
+         * @description A challenge as one of its two players sees it. Stake fields appear only while stakes are
+         *     available to these players; anyone else never gets a challenge from this serializer.
+         */
+        Challenge: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly challenger: components["schemas"]["SodaPlayer"];
+            readonly challenged: components["schemas"]["SodaPlayer"];
+            format: components["schemas"]["SinglesOrDoublesEnum"];
+            challenger_partner: string;
+            challenged_partner: string;
+            /** Format: date-time */
+            play_at: string | null;
+            /** Format: date-time */
+            readonly proposed_at: string | null;
+            place: string;
+            best_of: number;
+            message: string;
+            stake_minor: number | null;
+            stake_currency: string;
+            stake_note: string;
+            readonly challenged_staked: boolean;
+            readonly status: components["schemas"]["SodaChallengeStatusEnum"];
+            readonly challenger_shares: boolean;
+            readonly challenged_shares: boolean;
+            readonly result: {
+                [key: string]: unknown;
+            } | null;
+            readonly outcome: {
+                [key: string]: unknown;
+            };
+            /** @description challenger or challenged: which side the viewer is */
+            readonly mine: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description A challenge as one of its two players sees it. Stake fields appear only while stakes are
+         *     available to these players; anyone else never gets a challenge from this serializer.
+         */
+        ChallengeRequest: {
+            /** Format: uuid */
+            challenged_id: string;
+            format?: components["schemas"]["SinglesOrDoublesEnum"];
+            challenger_partner?: string;
+            challenged_partner?: string;
+            /** Format: date-time */
+            play_at?: string | null;
+            place?: string;
+            best_of?: number;
+            message?: string;
+            stake_minor?: number | null;
+            stake_currency?: string;
+            stake_note?: string;
+        };
+        Change: {
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            title: string;
+            before: components["schemas"]["Place"];
+            after: components["schemas"]["Place"];
+            /** @description Its players and umpire are told. */
+            notify: boolean;
+        };
+        Charge: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            member_id: string | null;
+            readonly member_name: string;
+            kind: components["schemas"]["ChargeKindEnum"];
+            /** Format: uuid */
+            readonly campaign_id: string | null;
+            /** Format: date */
+            readonly period: string | null;
+            purpose: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            due_on: string | null;
+            readonly paid_minor: number;
+            readonly outstanding_minor: number;
+            readonly status: string;
+            readonly waive_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `event_fee` - Event fee
+         *     * `booking` - Booking
+         *     * `due` - Due
+         *     * `visit` - Facility visit
+         *     * `welfare` - Welfare contribution
+         *     * `other` - Other
+         * @enum {string}
+         */
+        ChargeKindEnum: "event_fee" | "booking" | "due" | "visit" | "welfare" | "other";
+        ChargeRequest: {
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            member_id: string | null;
+            kind?: components["schemas"]["ChargeKindEnum"];
+            purpose: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            due_on?: string | null;
+        };
+        Checked: {
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
+        };
+        ClaimEvent: {
+            action: components["schemas"]["GuestClaimActionEnum"];
+            readonly actor_name: string;
+            note: string;
+            /** Format: date-time */
+            readonly at: string;
+        };
+        ClaimNoteRequest: {
+            note: string;
+        };
+        Closure: {
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            reason: string;
+        };
+        ClosureRequest: {
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            reason?: string;
+        };
+        /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
+        ClubActivity: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            kind: components["schemas"]["ClubActivityKindEnum"];
+            description: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place: string;
+            audience: components["schemas"]["ClubActivityAudienceEnum"];
+            capacity: number | null;
+            /** Format: date-time */
+            rsvp_deadline: string | null;
+            public: boolean;
+            cost_note: string;
+            readonly status: components["schemas"]["ActivityStatusEnum"];
+            readonly cancel_reason: string;
+            readonly going: number;
+            readonly waitlisted: number;
+            readonly my_answer: string | null;
+            readonly my_waitlisted: boolean;
+            /** @description In the audience (a member, and the activity is for all members or invites them) and open. */
+            readonly can_answer: boolean;
+            /** Format: date-time */
+            readonly published_at: string | null;
+        };
+        /**
+         * @description * `members` - All members
+         *     * `selected` - Selected members
+         * @enum {string}
+         */
+        ClubActivityAudienceEnum: "members" | "selected";
+        /**
+         * @description * `social` - Social night
+         *     * `fun_day` - Fun day
+         *     * `visit` - Group visit
+         *     * `meeting` - Meeting
+         *     * `practice` - Practice night
+         *     * `open_day` - Open day
+         *     * `anniversary` - Anniversary
+         *     * `other` - Other
+         * @enum {string}
+         */
+        ClubActivityKindEnum: "social" | "fun_day" | "visit" | "meeting" | "practice" | "open_day" | "anniversary" | "other";
+        /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
+        ClubActivityRequest: {
+            title: string;
+            kind?: components["schemas"]["ClubActivityKindEnum"];
+            description?: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place?: string;
+            audience?: components["schemas"]["ClubActivityAudienceEnum"];
+            invitee_ids?: string[];
+            capacity?: number | null;
+            /** Format: date-time */
+            rsvp_deadline?: string | null;
+            public?: boolean;
+            cost_note?: string;
+        };
+        ClubProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly kind: components["schemas"]["KindEnum"];
+            readonly country: string;
+            readonly region: string;
+            readonly town: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            readonly description: string;
+            readonly timezone: string;
+            readonly venues: components["schemas"]["VenueSummary"][];
+            readonly training_hours: components["schemas"]["TrainingHour"][];
+            readonly upcoming_tournaments: components["schemas"]["UpcomingTournament"][];
+        };
+        ClubRanking: {
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            processing: boolean;
+            rows: components["schemas"]["ClubRankingRow"][];
+        };
+        ClubRankingRow: {
+            /** @description Clubs with the same total share a rank. */
+            rank: number;
+            /** Format: uuid */
+            organization_id: string;
+            name: string;
+            town: string;
+            /**
+             * Format: double
+             * @description Sum of current ratings of active rated members.
+             */
+            total_points: number;
+            rated_members: number;
+        };
+        ClubRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            town: string;
+        };
+        ClubRefRequest: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            town: string;
+        };
+        /** @description A club session as its training staff see it. */
+        ClubSession: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            notes: string;
+            /** Format: uuid */
+            plan_id: string | null;
+            readonly tables: components["schemas"]["SessionTable"][];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            capacity: number | null;
+            /** Format: uuid */
+            coach_id: string | null;
+            readonly coach_name: string;
+            level: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            fee_minor: number | null;
+            fee_currency: string;
+            open_to_players: boolean;
+            /** Format: uuid */
+            readonly series: string | null;
+            readonly status: components["schemas"]["ClubSessionStatusEnum"];
+            readonly invited: number;
+            readonly accepted: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description A club session as its training staff see it. */
+        ClubSessionRequest: {
+            title: string;
+            notes?: string;
+            /** Format: uuid */
+            plan_id?: string | null;
+            table_ids: string[];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            capacity?: number | null;
+            /** Format: uuid */
+            coach_id?: string | null;
+            level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            fee_minor?: number | null;
+            fee_currency?: string;
+            open_to_players?: boolean;
+            /** @description On creation: make this many weekly sessions at the same time (a series). */
+            repeat_weeks?: number;
+        };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        ClubSessionStatusEnum: "scheduled" | "cancelled";
+        /**
+         * @description * `beginner` - Beginner
+         *     * `intermediate` - Intermediate
+         *     * `advanced` - Advanced
+         * @enum {string}
+         */
+        CoachLevelEnum: "beginner" | "intermediate" | "advanced";
+        /** @description A coach as players see them. `organizations` are the clubs where they coach. */
+        CoachProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly user: components["schemas"]["PersonRef"];
+            headline: string;
+            bio: string;
+            levels: components["schemas"]["CoachLevelEnum"][];
+            specialties: components["schemas"]["SkillEnum"][];
+            rate_minor: number | null;
+            currency: string;
+            region: string;
+            town: string;
+            timezone: string;
+            readonly organizations: components["schemas"]["ClubRef"][];
+            accepting: boolean;
+            readonly availability: components["schemas"]["Availability"][];
+        };
+        /** @description A coach as players see them. `organizations` are the clubs where they coach. */
+        CoachProfileRequest: {
+            headline: string;
+            bio?: string;
+            levels?: components["schemas"]["CoachLevelEnum"][];
+            specialties?: components["schemas"]["SkillEnum"][];
+            rate_minor?: number | null;
+            currency?: string;
+            region?: string;
+            town?: string;
+            timezone?: string;
+            organization_ids?: string[];
+            accepting?: boolean;
+        };
+        /** @description A coaching from the caller's side: `role` is "coach" when they coach the other person. */
+        Coaching: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly coach: components["schemas"]["PersonRef"];
+            readonly trainee: components["schemas"]["PersonRef"];
+            readonly role: string;
+            /** @default requested */
+            readonly status: components["schemas"]["CoachingStatusEnum"];
+            readonly awaiting_me: boolean;
+            readonly message: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly started_at: string | null;
+            /** Format: date-time */
+            readonly ended_at: string | null;
+        };
+        /** @description Ask a coach to coach you (`coach_id`), or, as a coach, invite a player (`trainee_id`). */
+        CoachingRequestRequest: {
+            /** Format: uuid */
+            coach_id?: string;
+            /** Format: uuid */
+            trainee_id?: string;
+            message?: string;
+        };
+        /**
+         * @description * `requested` - Requested
+         *     * `active` - Active
+         *     * `declined` - Declined
+         *     * `ended` - Ended
+         * @enum {string}
+         */
+        CoachingStatusEnum: "requested" | "active" | "declined" | "ended";
+        Comment: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly coach: components["schemas"]["PersonRef"];
+            /** Format: uuid */
+            readonly personal_match: string | null;
+            /** Format: uuid */
+            readonly match: string | null;
+            body: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        CommentInputRequest: {
+            /** Format: uuid */
+            personal_match?: string;
+            /** Format: uuid */
+            match?: string;
+            body: string;
+        };
+        Committee: {
+            can_manage: boolean;
+            positions: components["schemas"]["Position"][];
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        CommitteeField: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options: string[];
+            required: boolean;
+            visibility: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to: components["schemas"]["AppliesToEnum"];
+            /** Format: date-time */
+            readonly retired_at: string | null;
+        };
+        CommitteeFieldEntry: {
+            readonly field: components["schemas"]["CommitteeField"];
+            readonly value: (string | number | boolean) | null;
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        CommitteeFieldRequest: {
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to?: components["schemas"]["AppliesToEnum"];
+        };
+        /**
+         * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
+         *     revision it shows (a result is never confirmed over points still on their way).
+         */
+        ConfirmRequest: {
+            /** Format: uuid */
+            assignment_id: string;
+            revision: number;
+        };
+        ConflictEventRequest: {
+            /** Format: uuid */
+            id: string;
+            /** @description Its place in the stream on the device. */
+            sequence: number;
+            event: unknown;
+            /** Format: date-time */
+            device_time?: string | null;
+        };
+        ConflictReceipt: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description What a device wrote and the server didn't take, sent for the organizers to see. The id is the
+         *     device's own, so sending it twice keeps one report.
+         */
+        ConflictReportRequest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignment_id?: string | null;
+            /** Format: uuid */
+            device_id?: string | null;
+            /** @default  */
+            device_label: string;
+            events: components["schemas"]["ConflictEventRequest"][];
+        };
+        Contributor: {
+            /** @description "Anonymous" for those who asked */
+            name: string;
+            amount_minor: number;
+        };
+        CounterRequest: {
+            /** Format: date-time */
+            play_at: string;
+        };
+        CountryCatalogue: {
+            /** @description Use this catalogue as the source of location choices for this country. */
+            catalogue_only: boolean;
+            readonly regions: components["schemas"]["Region"][];
+        };
+        CountryOption: {
+            value: string;
+            label: string;
+        };
+        DecisionRequest: {
+            /** @default  */
+            reason: string;
+        };
+        DeckPlayer: {
+            slot: components["schemas"]["SlotEnum"];
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        DeckSide: {
+            title: string;
+            players: components["schemas"]["DeckPlayer"][];
+        };
+        /**
+         * @description * `late_start` - Late start
+         *     * `out_of_service` - Table out of service
+         *     * `other` - Other
+         * @enum {string}
+         */
+        DelayReasonEnum: "late_start" | "out_of_service" | "other";
+        Delayed: {
+            version: components["schemas"]["ScheduleVersion"];
+            /** @description What the published schedule still has wrong. */
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
+        };
+        /**
+         * @description * `short` - short
+         *     * `half` - half
+         *     * `long` - long
+         * @enum {string}
+         */
+        DepthEnum: "short" | "half" | "long";
+        /** @description Which device is scoring the sheet. `here` compares with the caller's X-Device-Id header. */
+        Device: {
+            /** @description A device has taken the sheet. */
+            held: boolean;
+            /** @description It is the caller's device. */
+            here: boolean;
+            label: string;
+            /** Format: date-time */
+            since: string | null;
+        };
+        /**
+         * @description Directory card of a listed player: name, picture and organizations only. No email, bio, location
+         *     or other details.
+         */
         DirectoryPlayer: {
             /** Format: uuid */
             id: string;
             display_name: string;
             nickname: string;
+            readonly avatar: components["schemas"]["AttachmentLink"] | null;
             readonly clubs: string[];
+        };
+        /**
+         * @description Send the match to a table. `overrides` sets aside the check-in or rest check, with a reason;
+         *     nothing sets aside that a table and a player are in one place at a time.
+         */
+        DispatchRequest: {
+            /** Format: uuid */
+            table_id: string;
+            overrides?: components["schemas"]["OverridesEnum"][];
+            reason?: string;
+        };
+        DisputeRequest: {
+            reason: string;
+        };
+        /** @description One version of an event's draw: who sits where, and every match with its sides. */
+        Draw: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+            status: components["schemas"]["DrawStatusEnum"];
+            rules_version: string;
+            rng_seed: number;
+            /** @description The accepted entries or the event's format changed since this draw was made. */
+            stale: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            published_at: string | null;
+            groups: components["schemas"]["DrawGroup"][];
+            places: components["schemas"]["DrawPlace"][];
+            matches: components["schemas"]["Match"][];
+        };
+        /** @description An accepted entry as a draw shows it: its name and players. */
+        DrawEntry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly pool: components["schemas"]["PoolEnum"];
+            readonly players: components["schemas"]["EntryPlayer"][];
+            /** @description Whether the caller plays in it, so screens can point out their own matches. */
+            readonly mine: boolean;
+        };
+        DrawGroup: {
+            number: number;
+            name: string;
+        };
+        DrawPlace: {
+            entry: components["schemas"]["DrawEntry"];
+            seed: number | null;
+            group: number | null;
+            group_position: number | null;
+            bracket_position: number | null;
+        };
+        /** @description Seeds in order, best first (accepted entries of the event). `rng_seed` repeats an earlier draw. */
+        DrawRequestRequest: {
+            seeded_entry_ids?: string[];
+            rng_seed?: number;
+        };
+        /**
+         * @description * `preview` - Preview
+         *     * `published` - Published
+         *     * `superseded` - Superseded
+         * @enum {string}
+         */
+        DrawStatusEnum: "preview" | "published" | "superseded";
+        /** @description A drill. Instructions are required; everything else is optional. */
+        Drill: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            instructions: string;
+            focus: string;
+            duration_minutes: number | null;
+            repetitions: number | null;
+            equipment: string;
+            category: components["schemas"]["DrillCategoryEnum"] | components["schemas"]["BlankEnum"];
+            level: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            coaching_points: string;
+            description: string;
+            video_url: string;
+            skills: components["schemas"]["SkillEnum"][];
+            pattern: components["schemas"]["PatternStep"][];
+            readonly library: components["schemas"]["LibraryEnum"];
+            /** Format: uuid */
+            readonly organization: string | null;
+            readonly organization_name: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `serve` - Serve
+         *     * `receive` - Receive
+         *     * `footwork` - Footwork
+         *     * `topspin` - Topspin
+         *     * `block` - Block
+         *     * `short_game` - Short Game
+         *     * `multiball` - Multiball
+         *     * `match_play` - Match Play
+         *     * `warm_up` - Warm Up
+         *     * `off_table` - Off Table
+         *     * `cool_down` - Cool Down
+         * @enum {string}
+         */
+        DrillCategoryEnum: "serve" | "receive" | "footwork" | "topspin" | "block" | "short_game" | "multiball" | "match_play" | "warm_up" | "off_table" | "cool_down";
+        /** @description A drill suggested for a plan's goal, with the goal skills it teaches. */
+        DrillRecommendation: {
+            drill: components["schemas"]["Drill"];
+            matched: string[];
+        };
+        /** @description A drill. Instructions are required; everything else is optional. */
+        DrillRequest: {
+            title: string;
+            instructions: string;
+            focus?: string;
+            duration_minutes?: number | null;
+            repetitions?: number | null;
+            equipment?: string;
+            category?: components["schemas"]["DrillCategoryEnum"] | components["schemas"]["BlankEnum"];
+            level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            coaching_points?: string;
+            description?: string;
+            video_url?: string;
+            skills?: components["schemas"]["SkillEnum"][];
+            pattern?: components["schemas"]["PatternStepRequest"][];
         };
         EmailOnlyRequest: {
             /** Format: email */
             email: string;
+        };
+        /**
+         * @description * `replaced` - Replaced
+         *     * `stepped_down` - Stepped Down
+         *     * `left` - Left
+         *     * `position_retired` - Position Retired
+         * @enum {string}
+         */
+        EndReasonEnum: "replaced" | "stepped_down" | "left" | "position_retired";
+        /**
+         * @description * `not_started` - Not Started
+         *     * `in_progress` - In Progress
+         *     * `completed` - Completed
+         * @enum {string}
+         */
+        EnginePhaseEnum: "not_started" | "in_progress" | "completed";
+        /**
+         * @description An entry as its players, staff and (once accepted) everybody else see it. Deliberately nothing
+         *     about payment: accepted means a place in the event, not a paid fee (REQ-008).
+         */
+        Entry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["EntryStatusEnum"];
+            readonly players: components["schemas"]["EntryPlayer"][];
+            readonly team_name: string;
+            readonly pool: components["schemas"]["PoolEnum"];
+            /** Format: uuid */
+            readonly captain_id: string | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            /** Format: date-time */
+            readonly withdrawn_at: string | null;
+            /** Format: date-time */
+            readonly checked_in_at: string | null;
+            /** Format: date-time */
+            readonly my_check_in_at: string | null;
+            /** @description Whether the caller plays in it, so may withdraw it. */
+            readonly mine: boolean;
+        };
+        EntryEvent: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly kind: components["schemas"]["EventKindEnum"];
+            readonly status: components["schemas"]["EventStatusEnum"];
+        };
+        /** @description A player in an entry: the name they play under, nothing else (REQ-020). */
+        EntryPlayer: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+        };
+        /** @description Who is entering. Left out, `player_ids` is the caller alone and `captain_id` the caller. */
+        EntryRequestRequest: {
+            player_ids?: string[];
+            team_name?: string;
+            /** Format: uuid */
+            captain_id?: string | null;
+            /**
+             * @description Jumbles only: the men's or the women's pool.
+             *
+             *     * `men` - Men
+             *     * `women` - Women
+             */
+            pool?: components["schemas"]["PoolEnum"];
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `accepted` - Accepted
+         *     * `waitlisted` - Waitlisted
+         *     * `rejected` - Rejected
+         *     * `withdrawn` - Withdrawn
+         *     * `pairing` - Pairing
+         * @enum {string}
+         */
+        EntryStatusEnum: "pending" | "accepted" | "waitlisted" | "rejected" | "withdrawn" | "pairing";
+        EntryTournament: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: date */
+            readonly starts_on: string;
+            /** Format: date */
+            readonly ends_on: string;
+            readonly timezone: string;
+            readonly status: components["schemas"]["TournamentStatusEnum"];
+        };
+        Equipment: {
+            blade: string;
+            forehand: string;
+            backhand: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        EquipmentRequest: {
+            blade?: string;
+            forehand?: string;
+            backhand?: string;
+        };
+        Event: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            kind: components["schemas"]["EventKindEnum"];
+            format: components["schemas"]["EventFormatEnum"];
+            capacity: number | null;
+            best_of: components["schemas"]["BestOfEnum"];
+            rest_minutes: number;
+            /** Format: date-time */
+            registration_opens_at: string | null;
+            /** Format: date-time */
+            registration_closes_at: string | null;
+            admission: components["schemas"]["AdmissionEnum"];
+            entry_fee: components["schemas"]["Money"];
+            seeding: components["schemas"]["SeedingEnum"];
+            group_count: number | null;
+            qualifiers_per_group: number | null;
+            /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
+            tie_rubbers: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
+            tie_wins_needed: number | null;
+            /** @description Entries holding a place. Counted here when the caller didn't annotate it. */
+            readonly accepted_count: number;
+            readonly status: components["schemas"]["EventStatusEnum"];
+            readonly revision: number;
+            /** Format: date-time */
+            readonly paused_at: string | null;
+            /** Format: date-time */
+            readonly started_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly cancelled_at: string | null;
+            readonly cancel_reason: string;
+        };
+        /** @description The event's published draw and, for competition staff only, the preview being worked on. */
+        EventDraw: {
+            published: components["schemas"]["Draw"] | null;
+            preview: components["schemas"]["Draw"] | null;
+            recommended_seeds: string[];
+        };
+        /**
+         * @description * `round_robin` - Round Robin
+         *     * `knockout` - Knockout
+         *     * `groups_knockout` - Groups Knockout
+         * @enum {string}
+         */
+        EventFormatEnum: "round_robin" | "knockout" | "groups_knockout";
+        /**
+         * @description * `singles` - Singles
+         *     * `doubles` - Doubles
+         *     * `team` - Team
+         *     * `jumbles` - Jumbles
+         * @enum {string}
+         */
+        EventKindEnum: "singles" | "doubles" | "team" | "jumbles";
+        EventRequest: {
+            name: string;
+            kind: components["schemas"]["EventKindEnum"];
+            format: components["schemas"]["EventFormatEnum"];
+            capacity?: number | null;
+            best_of?: components["schemas"]["BestOfEnum"];
+            rest_minutes?: number;
+            /** Format: date-time */
+            registration_opens_at?: string | null;
+            /** Format: date-time */
+            registration_closes_at?: string | null;
+            admission?: components["schemas"]["AdmissionEnum"];
+            entry_fee?: components["schemas"]["MoneyRequest"];
+            seeding?: components["schemas"]["SeedingEnum"];
+            group_count?: number | null;
+            qualifiers_per_group?: number | null;
+            /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
+            tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
+            tie_wins_needed?: number | null;
+        };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `in_progress` - In Progress
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        EventStatusEnum: "scheduled" | "in_progress" | "completed" | "cancelled";
+        /** @description An expense as finance staff see it, with a short-lived link to its receipt. */
+        Expense: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            campaign_id: string | null;
+            readonly campaign_title: string;
+            description: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            spent_on: string;
+            readonly receipt: components["schemas"]["AttachmentLink"] | null;
+            readonly reversed: boolean;
+            readonly reversal_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description An expense as finance staff see it, with a short-lived link to its receipt. */
+        ExpenseRequest: {
+            /** Format: uuid */
+            campaign_id?: string | null;
+            description: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            spent_on: string;
         };
         /**
          * @description * `new` - New
@@ -753,12 +7618,126 @@ export interface components {
          * @enum {string}
          */
         ExperienceEnum: "new" | "casual" | "club" | "competitive";
+        /** @description An external event as its submitting club's staff and the curators see it. */
+        ExternalEvent: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            organizer: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone: string;
+            venue: string;
+            town: string;
+            country: string;
+            categories: components["schemas"]["CategoriesEnum"][];
+            entry_info: string;
+            info_url: string;
+            live_url: string;
+            readonly live_domain: string;
+            readonly marked_live: boolean;
+            status: components["schemas"]["ExternalEventStatusEnum"];
+            readonly review: components["schemas"]["ReviewEnum"];
+            readonly review_note: string;
+            readonly submitted_by_club: string;
+            readonly report_count: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description An external event as its submitting club's staff and the curators see it. */
+        ExternalEventRequest: {
+            name: string;
+            organizer: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone?: string;
+            venue?: string;
+            town: string;
+            country?: string;
+            categories?: components["schemas"]["CategoriesEnum"][];
+            entry_info?: string;
+            info_url?: string;
+            live_url?: string;
+            status?: components["schemas"]["ExternalEventStatusEnum"];
+        };
         /**
-         * @description * `singles` - Singles
-         *     * `doubles` - Doubles
+         * @description * `scheduled` - Scheduled
+         *     * `postponed` - Postponed
+         *     * `cancelled` - Cancelled
          * @enum {string}
          */
-        FormatEnum: "singles" | "doubles";
+        ExternalEventStatusEnum: "scheduled" | "postponed" | "cancelled";
+        /** @description A facility branch as players find it (REQ-044). */
+        Facility: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly country: string;
+            readonly region: string;
+            readonly town: string;
+            readonly address: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            readonly amenities: string[];
+            readonly open_now: boolean;
+            readonly match_tables: number;
+            readonly training_tables: number;
+        };
+        /** @description The whole published profile of one branch: hours, closures coming up, rules and contact. */
+        FacilityProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly country: string;
+            readonly region: string;
+            readonly town: string;
+            readonly address: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            readonly amenities: string[];
+            readonly open_now: boolean;
+            readonly match_tables: number;
+            readonly training_tables: number;
+            readonly phone: string;
+            readonly rules: string;
+            readonly timezone: string;
+            readonly opening_hours: components["schemas"]["OpeningHour"][];
+            readonly closures: components["schemas"]["Closure"][];
+            readonly closed_today: components["schemas"]["Closure"] | null;
+            readonly passes: components["schemas"]["Pass"][];
+            readonly bookable_tables: components["schemas"]["Table"][];
+        };
+        /**
+         * @description * `all` - All active members
+         *     * `selected` - Selected members
+         * @enum {string}
+         */
+        FinanceAudienceEnum: "all" | "selected";
+        FinanceReasonRequest: {
+            reason: string;
+        };
+        /**
+         * @description * `W` - W
+         *     * `L` - L
+         * @enum {string}
+         */
+        FormEnum: "W" | "L";
         Game: {
             my_points: number;
             opponent_points: number;
@@ -766,6 +7745,28 @@ export interface components {
         GameRequest: {
             my_points: number;
             opponent_points: number;
+        };
+        GeographyRanking: {
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            level: components["schemas"]["GeographyRankingLevelEnum"];
+            processing: boolean;
+            rows: components["schemas"]["GeographyRankingRow"][];
+        };
+        /**
+         * @description * `country` - country
+         *     * `region` - region
+         *     * `city` - city
+         * @enum {string}
+         */
+        GeographyRankingLevelEnum: "country" | "region" | "city";
+        GeographyRankingRow: {
+            rank: number;
+            country: string;
+            region: string;
+            city: string;
+            /** Format: double */
+            total_points: number;
+            rated_players: number;
         };
         Goals: {
             goals: components["schemas"]["GoalsEnum"][];
@@ -790,12 +7791,124 @@ export interface components {
          * @enum {string}
          */
         GripEnum: "shakehand" | "penhold" | "other";
+        GroupStanding: {
+            number: number;
+            name: string;
+            complete: boolean;
+            /** @description How many go through; 0 for a round robin event. */
+            qualifiers: number;
+            rows: components["schemas"]["StandingRow"][];
+        };
+        /** @description A club's guest, for its staff. `id` is the player's id, the one entries and matches use. */
+        Guest: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            claimed_at: string | null;
+            readonly claimed_by_name: string;
+            readonly invitation: components["schemas"]["GuestInvitation"] | null;
+            /** @default 0 */
+            readonly entries: number;
+        };
+        /** @description A claim for staff, with its audit trail. */
+        GuestClaim: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly guest_id: string;
+            readonly guest_name: string;
+            readonly claimant_name: string;
+            /** Format: email */
+            readonly invited_email: string;
+            status: components["schemas"]["GuestClaimStatusEnum"];
+            readonly clashes: string[];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            resolved_at: string | null;
+            readonly events: components["schemas"]["ClaimEvent"][];
+        };
+        /**
+         * @description * `accepted` - Accepted
+         *     * `merged` - Merged
+         *     * `conflict` - Conflict
+         *     * `retried` - Retried
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        GuestClaimActionEnum: "accepted" | "merged" | "conflict" | "retried" | "rejected";
+        /**
+         * @description * `merged` - Merged
+         *     * `conflict` - Conflict
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        GuestClaimStatusEnum: "merged" | "conflict" | "rejected";
+        GuestInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: email */
+            email: string;
+            status: components["schemas"]["InvitationStatusEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        GuestInviteRequest: {
+            /** Format: email */
+            email: string;
+        };
+        GuestWriteRequest: {
+            display_name: string;
+        };
         /**
          * @description * `right` - Right
          *     * `left` - Left
          * @enum {string}
          */
         HandEnum: "right" | "left";
+        /**
+         * @description * `you` - you
+         *     * `partner` - partner
+         * @enum {string}
+         */
+        HitterEnum: "you" | "partner";
+        /** @description Who holds a position: display name only. */
+        Holder: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            membership_id: string;
+            display_name: string;
+            /** Format: date */
+            started_on: string;
+            values: components["schemas"]["CommitteeFieldEntry"][];
+        };
+        /** @description An award a player received at a published ceremony. */
+        Honour: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            place: number | null;
+            prize: string;
+            /** Format: uuid */
+            tournament: string;
+            tournament_name: string;
+            /** Format: date */
+            held_on: string;
+        };
+        InKind: {
+            item: string;
+            quantity: number;
+        };
+        InKindRequest: {
+            item: string;
+            quantity: number;
+        };
         /** @description Staff view of an invitation they sent. */
         Invitation: {
             /** Format: uuid */
@@ -822,6 +7935,25 @@ export interface components {
          * @enum {string}
          */
         InvitationStatusEnum: "pending" | "accepted" | "declined" | "revoked";
+        InviteRequest: {
+            user_ids: string[];
+        };
+        Invitee: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+            readonly club: string | null;
+            readonly answer: components["schemas"]["InviteeAnswerEnum"];
+            /** Format: date-time */
+            readonly checked_in_at: string | null;
+        };
+        /**
+         * @description * `none` - None
+         *     * `attending` - Attending
+         *     * `apologies` - Apologies
+         * @enum {string}
+         */
+        InviteeAnswerEnum: "none" | "attending" | "apologies";
         /** @description Staff view of a request. Shows the requester's display name only, never their email. */
         JoinRequest: {
             /** Format: uuid */
@@ -847,23 +7979,293 @@ export interface components {
          * @description * `club` - Club
          *     * `facility` - Facility
          *     * `club_facility` - Club Facility
+         *     * `regional_body` - Regional Body
          * @enum {string}
          */
-        KindEnum: "club" | "facility" | "club_facility";
+        KindEnum: "club" | "facility" | "club_facility" | "regional_body";
         LabelTally: {
             label: string;
             played: number;
             won: number;
             lost: number;
         };
+        /**
+         * @description * `standard` - standard
+         *     * `personal` - personal
+         *     * `club` - club
+         * @enum {string}
+         */
+        LibraryEnum: "standard" | "personal" | "club";
+        LifecycleEntry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly action: components["schemas"]["LifecycleEntryActionEnum"];
+            readonly event_name: string;
+            /** @default  */
+            readonly actor_name: string;
+            readonly reason: string;
+            readonly snapshot: unknown;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `published` - Published
+         *     * `approval_requested` - Approval Requested
+         *     * `approval_rejected` - Approval Rejected
+         *     * `updated` - Updated
+         *     * `started` - Started
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         *     * `event_started` - Event Started
+         *     * `event_completed` - Event Completed
+         *     * `event_cancelled` - Event Cancelled
+         *     * `event_removed` - Event Removed
+         * @enum {string}
+         */
+        LifecycleEntryActionEnum: "published" | "approval_requested" | "approval_rejected" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
+        /**
+         * @description A team's players for each rubber of the tie, in the template's order: one id for a singles, two
+         *     for a doubles.
+         */
+        LineupRequestRequest: {
+            /** Format: uuid */
+            entry_id: string;
+            picks: string[][];
+        };
+        /**
+         * @description Where one team's lineup stands. `picks` are given to the team itself and to staff until both
+         *     lineups are in; after that the rubbers show who plays.
+         */
+        LineupSide: {
+            submitted: boolean;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** @description The caller may hand in or replace this lineup now. */
+            can_submit: boolean;
+            /** @description Player ids for each rubber of the template, in order. */
+            picks: string[][] | null;
+        };
+        /**
+         * @description * `broken` - Doesn't work
+         *     * `wrong` - Wrong event
+         *     * `inappropriate` - Inappropriate
+         *     * `other` - Other
+         * @enum {string}
+         */
+        LinkReportReasonEnum: "broken" | "wrong" | "inappropriate" | "other";
+        LinkReportRequest: {
+            reason: components["schemas"]["LinkReportReasonEnum"];
+        };
+        /** @description One entry of the public listing: a Coast TT tournament or an external event. */
+        ListedEvent: {
+            kind: components["schemas"]["ListedEventKindEnum"];
+            /** Format: uuid */
+            id: string;
+            name: string;
+            organizer: string;
+            /** Format: uuid */
+            host_id: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone: string;
+            venue: string;
+            town: string;
+            categories: string[];
+            status: components["schemas"]["ListedEventStatusEnum"];
+            /** @description External events: pending shows as awaiting review. */
+            review: string | null;
+            live: boolean;
+            info_url: string;
+            info_domain: string;
+            /** @description External events while live; a Coast TT event links to its page. */
+            live_url: string;
+            live_domain: string;
+            entry_info: string;
+        };
+        /**
+         * @description * `coast` - coast
+         *     * `external` - external
+         * @enum {string}
+         */
+        ListedEventKindEnum: "coast" | "external";
+        /**
+         * @description * `scheduled` - scheduled
+         *     * `postponed` - postponed
+         *     * `cancelled` - cancelled
+         *     * `completed` - completed
+         * @enum {string}
+         */
+        ListedEventStatusEnum: "scheduled" | "postponed" | "cancelled" | "completed";
+        LiveStream: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            match_id: string | null;
+            /** Format: uuid */
+            readonly event_id: string | null;
+            /** @description The match's two sides, as on the draw. */
+            readonly match_label: string | null;
+            url: string;
+            readonly domain: string;
+            readonly platform: components["schemas"]["StreamPlatformEnum"];
+            readonly platform_label: string;
+            title: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** @description Reports so far; staff only, else null. */
+            readonly report_count: number | null;
+        };
+        LiveStreamRequest: {
+            /** Format: uuid */
+            match_id?: string | null;
+            url: string;
+            title?: string;
+        };
         LogInRequest: {
             /** Format: email */
             email: string;
             password: string;
         };
+        ManagementOrganization: {
+            organization: components["schemas"]["Organization"];
+            authority: components["schemas"]["AuthorityEnum"];
+            permissions: components["schemas"]["PermissionEnum"][];
+        };
+        MarkLiveRequest: {
+            live: boolean;
+        };
+        Match: {
+            /** Format: uuid */
+            id: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            group: number | null;
+            round: number;
+            round_name: string;
+            position: number;
+            a: components["schemas"]["MatchSide"];
+            /** @description Null is a bye: `a` goes through without playing. */
+            b: components["schemas"]["MatchSide"] | null;
+            status: components["schemas"]["MatchStatusEnum"];
+            /** @description A match or team rubber is currently being scored. */
+            is_live: boolean;
+            /** Format: uuid */
+            winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description Points of each game as [a, b], in playing order. */
+            games: number[][];
+            /** @description Team ties that have begun: rubbers won as [a, b]. Null otherwise. */
+            tie_score: number[] | null;
+            /** @description The table's label; empty until one is given. */
+            table: string;
+            /**
+             * Format: date-time
+             * @description When it is expected to start: an estimate. Null until it is scheduled.
+             */
+            scheduled_at: string | null;
+            /**
+             * Format: date-time
+             * @description When it was sent to its table. Null while it isn't on one.
+             */
+            dispatched_at: string | null;
+        };
+        /** @description One match of the published draw on its own page. Reading it gives nobody a way to score it. */
+        MatchDetail: {
+            /** Format: uuid */
+            id: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            group: number | null;
+            round: number;
+            round_name: string;
+            position: number;
+            a: components["schemas"]["MatchSide"];
+            /** @description Null is a bye: `a` goes through without playing. */
+            b: components["schemas"]["MatchSide"] | null;
+            status: components["schemas"]["MatchStatusEnum"];
+            /** @description A match or team rubber is currently being scored. */
+            is_live: boolean;
+            /** Format: uuid */
+            winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description Points of each game as [a, b], in playing order. */
+            games: number[][];
+            /** @description Team ties that have begun: rubbers won as [a, b]. Null otherwise. */
+            tie_score: number[] | null;
+            /** @description The table's label; empty until one is given. */
+            table: string;
+            /**
+             * Format: date-time
+             * @description When it is expected to start: an estimate. Null until it is scheduled.
+             */
+            scheduled_at: string | null;
+            /**
+             * Format: date-time
+             * @description When it was sent to its table. Null while it isn't on one.
+             */
+            dispatched_at: string | null;
+            /** @description Empty for a knockout match. */
+            group_name: string;
+            /** @description The round its winner goes on to; empty when nothing follows. */
+            winner_plays_in: string;
+            draw_version: number;
+            /** @description Team events only. */
+            tie: components["schemas"]["Tie"] | null;
+            /** @description Null for a tie: its rubbers are scored. */
+            scoring: components["schemas"]["ScoringSummary"] | null;
+            on_table: components["schemas"]["OnTable"] | null;
+            /** @description The caller may send it to a table or call it back. */
+            can_dispatch: boolean;
+            /** @description The official result that stands. */
+            result: components["schemas"]["OfficialResult"] | null;
+            /** @description Every version, of the match and of its rubbers. Competition staff only. */
+            result_history: components["schemas"]["OfficialResult"][];
+            /** @description The caller may enter or correct its result. */
+            can_record_result: boolean;
+            /** @description A corrected earlier result put its opponent in question; nothing is played until settled. */
+            held_for_correction: boolean;
+        };
         MatchLabels: {
             labels: string[];
         };
+        /** @description The owner's notes on one match, with enough about the match to find it again (REQ-025). */
+        MatchNote: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            match_id: string | null;
+            /** Format: uuid */
+            personal_match_id: string | null;
+            /** @description official: an umpire-scored match; own: self-recorded. */
+            readonly kind: string;
+            /** @description The match, in words: sides, or label and opponent. */
+            readonly title: string;
+            readonly tournament_id: string | null;
+            readonly event_id: string | null;
+            readonly tournament_name: string | null;
+            observations: string;
+            goals: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description The owner's notes on one match, with enough about the match to find it again (REQ-025). */
+        MatchNoteRequest: {
+            /** Format: uuid */
+            match_id?: string | null;
+            /** Format: uuid */
+            personal_match_id?: string | null;
+            observations?: string;
+            goals?: string;
+        };
+        /**
+         * @description * `played` - Played
+         *     * `walkover` - Walkover
+         *     * `retired` - Retired
+         * @enum {string}
+         */
+        MatchOutcomeEnum: "played" | "walkover" | "retired";
         /**
          * @description * `win` - Win
          *     * `loss` - Loss
@@ -871,6 +8273,21 @@ export interface components {
          * @enum {string}
          */
         MatchResultEnum: "win" | "loss" | "draw";
+        /**
+         * @description An entry, or (while `entry` is null) `awaiting` says whose place it is, e.g. "Winner of
+         *     semi-final 1" or "Group A winner".
+         */
+        MatchSide: {
+            entry: components["schemas"]["DrawEntry"] | null;
+            seed: number | null;
+            awaiting: string;
+        };
+        /**
+         * @description * `group` - Group
+         *     * `knockout` - Knockout
+         * @enum {string}
+         */
+        MatchStageEnum: "group" | "knockout";
         MatchStats: {
             played: number;
             won: number;
@@ -883,6 +8300,83 @@ export interface components {
             recent_form: components["schemas"]["MatchResultEnum"][];
             by_label: components["schemas"]["LabelTally"][];
         };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `bye` - Bye
+         *     * `completed` - Completed
+         * @enum {string}
+         */
+        MatchStatusEnum: "scheduled" | "bye" | "completed";
+        /**
+         * @description * `match_points` - match_points
+         *     * `rubbers` - rubbers
+         *     * `games` - games
+         *     * `points` - points
+         *     * `lot` - lot
+         * @enum {string}
+         */
+        MeasureEnum: "match_points" | "rubbers" | "games" | "points" | "lot";
+        /**
+         * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+         *     an invitee sees their own answer as `me`.
+         */
+        Meeting: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrgRef"];
+            title: string;
+            kind: components["schemas"]["MeetingKindEnum"];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            location: string;
+            online_link: string;
+            audience: components["schemas"]["MeetingAudienceEnum"];
+            agenda: components["schemas"]["AgendaRow"][];
+            readonly status: components["schemas"]["ActivityStatusEnum"];
+            readonly minutes: string;
+            /** Format: date-time */
+            readonly minutes_recorded_at: string | null;
+            readonly cancel_reason: string;
+            /** Format: date-time */
+            readonly published_at: string | null;
+            readonly invitees: components["schemas"]["Invitee"][];
+            readonly me: components["schemas"]["Invitee"] | null;
+        };
+        /**
+         * @description * `committee` - Committee
+         *     * `club_admins` - Club Admins
+         *     * `members` - Members
+         *     * `named` - Named
+         * @enum {string}
+         */
+        MeetingAudienceEnum: "committee" | "club_admins" | "members" | "named";
+        /**
+         * @description * `committee` - Committee
+         *     * `general` - General
+         *     * `representatives` - Representatives
+         *     * `special` - Special
+         * @enum {string}
+         */
+        MeetingKindEnum: "committee" | "general" | "representatives" | "special";
+        /**
+         * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+         *     an invitee sees their own answer as `me`.
+         */
+        MeetingRequest: {
+            title: string;
+            kind?: components["schemas"]["MeetingKindEnum"];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            location?: string;
+            online_link?: string;
+            audience?: components["schemas"]["MeetingAudienceEnum"];
+            named_ids?: string[];
+            agenda?: components["schemas"]["AgendaRowRequest"][];
+        };
         /** @description Staff view of a member: display name and roles, never email or contact details. */
         Member: {
             /** Format: uuid */
@@ -894,6 +8388,52 @@ export interface components {
             /** Format: date-time */
             readonly joined_at: string;
         };
+        /**
+         * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+         *     never change meaning; `options` apply to selection fields only.
+         */
+        MemberField: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options: string[];
+            required: boolean;
+            visibility: components["schemas"]["MemberFieldVisibilityEnum"];
+            /** Format: date-time */
+            readonly retired_at: string | null;
+        };
+        /** @description One field with the member's value for it. */
+        MemberFieldEntry: {
+            readonly field: components["schemas"]["MemberField"];
+            readonly value: (string | number | boolean) | null;
+        };
+        /**
+         * @description * `text` - Text
+         *     * `number` - Number
+         *     * `date` - Date
+         *     * `boolean` - Boolean
+         *     * `choice` - Choice
+         * @enum {string}
+         */
+        MemberFieldKindEnum: "text" | "number" | "date" | "boolean" | "choice";
+        /**
+         * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+         *     never change meaning; `options` apply to selection fields only.
+         */
+        MemberFieldRequest: {
+            label: string;
+            kind: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+        };
+        /**
+         * @description * `member` - Member
+         *     * `staff` - Staff
+         * @enum {string}
+         */
+        MemberFieldVisibilityEnum: "member" | "staff";
         MemberRolesRequest: {
             roles: string[];
         };
@@ -917,6 +8457,90 @@ export interface components {
          * @enum {string}
          */
         MembershipStatusEnum: "active" | "left";
+        MinutesRequest: {
+            minutes: string;
+        };
+        /** @description The event's declared entry fee in the REQ-032 money shape. */
+        Money: {
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+        };
+        /** @description The event's declared entry fee in the REQ-032 money shape. */
+        MoneyRequest: {
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+        };
+        /** @description What came of accepting: merged, or waiting for the club to sort out a clash. */
+        MyClaim: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly guest_name: string;
+            readonly organization_name: string;
+            status: components["schemas"]["GuestClaimStatusEnum"];
+            readonly clashes: string[];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            resolved_at: string | null;
+        };
+        /** @description One campaign as the member sees it: their own dues only. */
+        MyDueSummary: {
+            /** Format: uuid */
+            campaign_id: string;
+            title: string;
+            cadence: string;
+            currency: string;
+            outstanding_minor: number;
+            overdue_minor: number;
+            /** Format: date */
+            next_due_on: string | null;
+        };
+        /** @description One of the caller's own entries, with the event and tournament it is for. */
+        MyEntry: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["EntryStatusEnum"];
+            readonly players: components["schemas"]["EntryPlayer"][];
+            readonly team_name: string;
+            readonly pool: components["schemas"]["PoolEnum"];
+            /** Format: uuid */
+            readonly captain_id: string | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            /** Format: date-time */
+            readonly withdrawn_at: string | null;
+            /** Format: date-time */
+            readonly checked_in_at: string | null;
+            /** Format: date-time */
+            readonly my_check_in_at: string | null;
+            /** @description Whether the caller plays in it, so may withdraw it. */
+            readonly mine: boolean;
+            readonly event: components["schemas"]["EntryEvent"];
+            readonly tournament: components["schemas"]["EntryTournament"];
+        };
+        MyFinances: {
+            charges: components["schemas"]["Charge"][];
+            payments: components["schemas"]["Payment"][];
+            balances: components["schemas"]["Balance"][];
+            dues: components["schemas"]["MyDueSummary"][];
+        };
+        /** @description An invitation to the signed-in player: who they were entered as, and where. */
+        MyGuestInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly guest_name: string;
+            readonly organization_name: string;
+            readonly invited_by_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
         /** @description The invitee's view: which organization, and who invited them (display name only). */
         MyInvitation: {
             /** Format: uuid */
@@ -941,19 +8565,398 @@ export interface components {
             /** Format: date-time */
             readonly decided_at: string | null;
         };
+        /** @description One of the caller's assignments in a list: the sheet without its event log. */
+        MyScorecard: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly assignment_id: string;
+            readonly revision: number;
+            status: components["schemas"]["ScoringStatusEnum"];
+            readonly config: components["schemas"]["ScoringConfig"];
+            state: components["schemas"]["ScoringState"];
+            readonly a: components["schemas"]["DeckSide"];
+            readonly b: components["schemas"]["DeckSide"];
+            /** Format: uuid */
+            readonly tournament_id: string;
+            readonly tournament_name: string;
+            /** Format: uuid */
+            readonly event_id: string;
+            readonly event_name: string;
+            /** Format: uuid */
+            readonly match_id: string;
+            readonly label: string;
+            readonly table: string;
+            /** Format: date-time */
+            readonly confirmed_at: string | null;
+            readonly device: components["schemas"]["Device"];
+        };
+        MySession: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly title: string;
+            readonly notes: string;
+            readonly tables: components["schemas"]["SessionTable"][];
+            /** Format: date-time */
+            readonly starts_at: string;
+            /** Format: date-time */
+            readonly ends_at: string;
+            readonly status: components["schemas"]["ClubSessionStatusEnum"];
+            readonly full: boolean;
+        };
+        /** @description A member's own invitation: the session, their answer and whether they were marked present. */
+        MySessionInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["SessionInvitationStatusEnum"];
+            /** Format: date-time */
+            readonly responded_at: string | null;
+            readonly attended: boolean | null;
+            readonly session: components["schemas"]["MySession"];
+        };
+        MySodaSettings: {
+            /** @description Whether stake fields apply for this player. */
+            stakes_available: boolean;
+            games_enabled: boolean;
+        };
+        /** @description The player's own visit or pass at a facility: never anybody else's, never a walk-in name. */
+        MyVisit: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly facility_name: string;
+            /** Format: uuid */
+            readonly venue_id: string;
+            readonly venue_name: string;
+            readonly pass_name: string;
+            readonly pass_kind: string;
+            readonly sessions: number | null;
+            readonly benefits: string[];
+            readonly amount_minor: number;
+            readonly currency: string;
+            readonly method: components["schemas"]["VisitMethodEnum"];
+            /** Format: date */
+            readonly visited_on: string;
+            /** Format: date */
+            readonly valid_until: string;
+            readonly on_pass: boolean;
+            readonly reversed: boolean;
+        };
+        NominateRequest: {
+            /** Format: uuid */
+            membership_id: string;
+        };
+        Notification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly category: components["schemas"]["NotificationCategoryEnum"];
+            readonly title: string;
+            readonly body: string;
+            readonly link: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly read: boolean;
+            readonly superseded: boolean;
+        };
+        /**
+         * @description * `up_next` - Up next
+         *     * `table_call` - Called to table
+         *     * `assignment` - Changed or cancelled assignment
+         *     * `registration` - Registration decisions
+         *     * `announcement` - Announcements and awards
+         *     * `training` - Training sessions
+         *     * `activity` - Club activities
+         *     * `soda` - Soda games
+         *     * `booking` - Bookings
+         *     * `dues` - Dues and payments
+         *     * `events` - Events listing
+         * @enum {string}
+         */
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events";
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description One version of the official result of a match, or of one rubber of a tie. */
+        OfficialResult: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+            /** @description The rubber's position; null for the match. */
+            rubber: number | null;
+            /** Format: uuid */
+            winner_id: string;
+            winner: string;
+            outcome: components["schemas"]["MatchOutcomeEnum"];
+            games: number[][];
+            source: components["schemas"]["OfficialResultSourceEnum"];
+            /** @description Why it was corrected. */
+            reason: string;
+            recorded_by: string;
+            /** Format: date-time */
+            accepted_at: string;
+            /** @description The version that stands. */
+            current: boolean;
+            /** @description Removed without a replacement: played again. */
+            struck_out: boolean;
+            /** @description What follows from it is still being worked out. */
+            processing: boolean;
+        };
+        /**
+         * @description * `umpire` - Umpire
+         *     * `staff` - Staff
+         *     * `correction` - Correction
+         * @enum {string}
+         */
+        OfficialResultSourceEnum: "umpire" | "staff" | "correction";
+        /** @description The match is on a table: the table and its players are held until the result is official. */
+        OnTable: {
+            table: string;
+            /** Format: date-time */
+            since: string;
+            people: string[];
+            /** @description Players of the tie's current rubber who are in use elsewhere (staff only). */
+            waiting_for: string[];
+        };
+        /** @description A training slot any signed-in player may join (REQ-044, TASK-103). */
+        OpenSession: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly title: string;
+            readonly notes: string;
+            readonly tables: components["schemas"]["SessionTable"][];
+            /** Format: date-time */
+            readonly starts_at: string;
+            /** Format: date-time */
+            readonly ends_at: string;
+            readonly coach_name: string;
+            readonly level: components["schemas"]["CoachLevelEnum"];
+            readonly fee_minor: number | null;
+            readonly fee_currency: string;
+            readonly capacity: number | null;
+            readonly places_left: number | null;
+            readonly joined: boolean;
+            readonly status: components["schemas"]["ClubSessionStatusEnum"];
+        };
+        /** @description A match being scored, or finished and not yet confirmed by its umpire. */
+        OpenSheet: {
+            sheet: components["schemas"]["SheetContext"];
+            status: components["schemas"]["ScoringStatusEnum"];
+            umpire: string;
+            device_label: string;
+            revision: number;
+            /** Format: date-time */
+            last_event_at: string | null;
+            games: number[][];
+            points: number[];
+            history: components["schemas"]["AssignmentStep"][];
+        };
+        OpeningHour: {
+            weekday: number;
+            /** Format: time */
+            opens: string;
+            /** Format: time */
+            closes: string;
+        };
+        OpeningHourRequest: {
+            weekday: number;
+            /** Format: time */
+            opens: string;
+            /** Format: time */
+            closes: string;
+        };
+        OptionalReasonRequest: {
+            reason?: string;
+        };
+        OrgRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            town: string;
+        };
+        OrgRefRequest: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            town: string;
+        };
         Organization: {
             /** Format: uuid */
             readonly id: string;
             name: string;
             town: string;
+            country: string;
+            region: string;
+            directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            description: string;
             kind: components["schemas"]["KindEnum"];
+            timezone: string;
+        };
+        /** @description Who the admin is and any open nomination; the history only for those who manage roles. */
+        OrganizationAdmin: {
+            admin: components["schemas"]["Person"] | null;
+            pending: components["schemas"]["AdminHandover"] | null;
+            history: components["schemas"]["AdminHandover"][] | null;
+        };
+        OrganizationRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         OrganizationRequest: {
             name: string;
             town: string;
+            country?: string;
+            region?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            description?: string;
             kind?: components["schemas"]["KindEnum"];
+            timezone?: string;
+        };
+        OrganizationSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
+            readonly country: string;
+            readonly region: string;
+        };
+        /**
+         * @description * `check_in` - check_in
+         *     * `rest` - rest
+         * @enum {string}
+         */
+        OverridesEnum: "check_in" | "rest";
+        PaginatedAdminHandoverList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["AdminHandover"][];
+        };
+        PaginatedAttendeeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Attendee"][];
+        };
+        PaginatedBranchScheduleItemList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["BranchScheduleItem"][];
+        };
+        PaginatedCandidateList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Candidate"][];
+        };
+        PaginatedChallengeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Challenge"][];
+        };
+        PaginatedClubActivityList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["ClubActivity"][];
+        };
+        PaginatedClubSessionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["ClubSession"][];
+        };
+        PaginatedCoachProfileList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["CoachProfile"][];
         };
         PaginatedDirectoryPlayerList: {
             /** @example 123 */
@@ -969,6 +8972,96 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["DirectoryPlayer"][];
+        };
+        PaginatedDrillList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Drill"][];
+        };
+        PaginatedDrillRecommendationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["DrillRecommendation"][];
+        };
+        PaginatedEntryList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Entry"][];
+        };
+        PaginatedFacilityList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Facility"][];
+        };
+        PaginatedGuestClaimList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["GuestClaim"][];
+        };
+        PaginatedGuestList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Guest"][];
         };
         PaginatedInvitationList: {
             /** @example 123 */
@@ -1000,6 +9093,36 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["JoinRequest"][];
         };
+        PaginatedLifecycleEntryList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["LifecycleEntry"][];
+        };
+        PaginatedMatchNoteList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MatchNote"][];
+        };
         PaginatedMemberList: {
             /** @example 123 */
             count: number;
@@ -1029,6 +9152,51 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Membership"][];
+        };
+        PaginatedMyClaimList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyClaim"][];
+        };
+        PaginatedMyEntryList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyEntry"][];
+        };
+        PaginatedMyGuestInvitationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyGuestInvitation"][];
         };
         PaginatedMyInvitationList: {
             /** @example 123 */
@@ -1060,6 +9228,81 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["MyJoinRequest"][];
         };
+        PaginatedMyScorecardList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyScorecard"][];
+        };
+        PaginatedMySessionInvitationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MySessionInvitation"][];
+        };
+        PaginatedMyVisitList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["MyVisit"][];
+        };
+        PaginatedNotificationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Notification"][];
+        };
+        PaginatedOpenSessionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["OpenSession"][];
+        };
         PaginatedOrganizationList: {
             /** @example 123 */
             count: number;
@@ -1074,6 +9317,21 @@ export interface components {
              */
             previous: string | null;
             results: components["schemas"]["Organization"][];
+        };
+        PaginatedPastHolderList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["PastHolder"][];
         };
         PaginatedPersonalMatchList: {
             /** @example 123 */
@@ -1090,21 +9348,359 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["PersonalMatch"][];
         };
+        PaginatedTableBookingList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["TableBooking"][];
+        };
+        PaginatedTournamentList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Tournament"][];
+        };
+        PaginatedTrainingPlanList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["TrainingPlan"][];
+        };
+        /** @description A price at a branch (REQ-044): amounts are integer minor units with their currency. */
+        Pass: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            kind: components["schemas"]["PassKindEnum"];
+            amount_minor: number;
+            currency: string;
+            sessions: number | null;
+            valid_days: number | null;
+            benefits: string[];
+            active: boolean;
+        };
+        /**
+         * @description * `day` - Day pass
+         *     * `week` - Week pass
+         *     * `month` - Month pass
+         *     * `sessions` - Sessions bundle
+         * @enum {string}
+         */
+        PassKindEnum: "day" | "week" | "month" | "sessions";
+        /** @description A price at a branch (REQ-044): amounts are integer minor units with their currency. */
+        PassRequest: {
+            name: string;
+            kind: components["schemas"]["PassKindEnum"];
+            amount_minor: number;
+            currency?: string;
+            sessions?: number | null;
+            valid_days?: number | null;
+            benefits?: string[];
+            active?: boolean;
+        };
         PasswordResetConfirmRequest: {
             uid: string;
             token: string;
             password: string;
         };
+        PastHolder: {
+            /** Format: uuid */
+            id: string;
+            position: string;
+            display_name: string;
+            /** Format: date */
+            started_on: string;
+            /** Format: date */
+            ended_on: string;
+            end_reason: components["schemas"]["EndReasonEnum"];
+        };
+        PatchedAgendaItemRequest: {
+            kind?: components["schemas"]["AgendaItemKindEnum"];
+            title?: string;
+            description?: string;
+            /** Format: date */
+            starts_on?: string;
+            /** Format: date */
+            ends_on?: string;
+            /** Format: uuid */
+            tournament_id?: string | null;
+        };
+        PatchedArticleRequest: {
+            title?: string;
+            summary?: string;
+            body?: string;
+            audience?: components["schemas"]["ArticleAudienceEnum"];
+            club_ids?: string[];
+        };
+        PatchedAttendanceRequest: {
+            /** @description Null clears the mark. */
+            attended?: boolean | null;
+        };
+        PatchedAwardRequest: {
+            title?: string;
+            /** Format: uuid */
+            recipient_id?: string | null;
+            recipient_name?: string;
+            prize?: string;
+            presenter?: string;
+        };
+        /** @description What can change once a campaign runs: the cadence and start stay as they were. */
+        PatchedCampaignUpdateRequest: {
+            title?: string;
+            description?: string;
+            amount_minor?: number;
+            /** Format: date */
+            ends_on?: string | null;
+        };
+        /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
+        PatchedClubActivityRequest: {
+            title?: string;
+            kind?: components["schemas"]["ClubActivityKindEnum"];
+            description?: string;
+            /** Format: date-time */
+            starts_at?: string;
+            /** Format: date-time */
+            ends_at?: string;
+            place?: string;
+            audience?: components["schemas"]["ClubActivityAudienceEnum"];
+            invitee_ids?: string[];
+            capacity?: number | null;
+            /** Format: date-time */
+            rsvp_deadline?: string | null;
+            public?: boolean;
+            cost_note?: string;
+        };
+        /** @description A club session as its training staff see it. */
+        PatchedClubSessionRequest: {
+            title?: string;
+            notes?: string;
+            /** Format: uuid */
+            plan_id?: string | null;
+            table_ids?: string[];
+            /** Format: date-time */
+            starts_at?: string;
+            /** Format: date-time */
+            ends_at?: string;
+            capacity?: number | null;
+            /** Format: uuid */
+            coach_id?: string | null;
+            level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            fee_minor?: number | null;
+            fee_currency?: string;
+            open_to_players?: boolean;
+            /** @description On creation: make this many weekly sessions at the same time (a series). */
+            repeat_weeks?: number;
+        };
+        PatchedCommentRequest: {
+            body?: string;
+        };
+        /** @description A committee field definition. `applies_to` and the type are fixed once created. */
+        PatchedCommitteeFieldRequest: {
+            label?: string;
+            kind?: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+            applies_to?: components["schemas"]["AppliesToEnum"];
+        };
+        /** @description A drill. Instructions are required; everything else is optional. */
+        PatchedDrillRequest: {
+            title?: string;
+            instructions?: string;
+            focus?: string;
+            duration_minutes?: number | null;
+            repetitions?: number | null;
+            equipment?: string;
+            category?: components["schemas"]["DrillCategoryEnum"] | components["schemas"]["BlankEnum"];
+            level?: components["schemas"]["CoachLevelEnum"] | components["schemas"]["BlankEnum"];
+            coaching_points?: string;
+            description?: string;
+            video_url?: string;
+            skills?: components["schemas"]["SkillEnum"][];
+            pattern?: components["schemas"]["PatternStepRequest"][];
+        };
+        PatchedEventRequest: {
+            name?: string;
+            kind?: components["schemas"]["EventKindEnum"];
+            format?: components["schemas"]["EventFormatEnum"];
+            capacity?: number | null;
+            best_of?: components["schemas"]["BestOfEnum"];
+            rest_minutes?: number;
+            /** Format: date-time */
+            registration_opens_at?: string | null;
+            /** Format: date-time */
+            registration_closes_at?: string | null;
+            admission?: components["schemas"]["AdmissionEnum"];
+            entry_fee?: components["schemas"]["MoneyRequest"];
+            seeding?: components["schemas"]["SeedingEnum"];
+            group_count?: number | null;
+            qualifiers_per_group?: number | null;
+            /** @description Team events: the individual matches of a tie in playing order. Empty otherwise. */
+            tie_rubbers?: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Team events: rubbers a team must win to take the tie; at most half of them, rounded up, so a tie always has a winner. Null otherwise. */
+            tie_wins_needed?: number | null;
+        };
+        /** @description An external event as its submitting club's staff and the curators see it. */
+        PatchedExternalEventRequest: {
+            name?: string;
+            organizer?: string;
+            /** Format: date */
+            starts_on?: string;
+            /** Format: date */
+            ends_on?: string;
+            timezone?: string;
+            venue?: string;
+            town?: string;
+            country?: string;
+            categories?: components["schemas"]["CategoriesEnum"][];
+            entry_info?: string;
+            info_url?: string;
+            live_url?: string;
+            status?: components["schemas"]["ExternalEventStatusEnum"];
+        };
+        PatchedGuestWriteRequest: {
+            display_name?: string;
+        };
+        PatchedLiveStreamRequest: {
+            /** Format: uuid */
+            match_id?: string | null;
+            url?: string;
+            title?: string;
+        };
+        /** @description Editing keeps the note on its match: only what it says changes. */
+        PatchedMatchNoteChangeRequest: {
+            observations?: string;
+            goals?: string;
+        };
+        /**
+         * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
+         *     an invitee sees their own answer as `me`.
+         */
+        PatchedMeetingRequest: {
+            title?: string;
+            kind?: components["schemas"]["MeetingKindEnum"];
+            /** Format: date-time */
+            starts_at?: string;
+            /** Format: date-time */
+            ends_at?: string;
+            location?: string;
+            online_link?: string;
+            audience?: components["schemas"]["MeetingAudienceEnum"];
+            named_ids?: string[];
+            agenda?: components["schemas"]["AgendaRowRequest"][];
+        };
+        /**
+         * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
+         *     never change meaning; `options` apply to selection fields only.
+         */
+        PatchedMemberFieldRequest: {
+            label?: string;
+            kind?: components["schemas"]["MemberFieldKindEnum"];
+            options?: string[];
+            required?: boolean;
+            visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
+        };
+        /** @description Values to change, keyed by field id. Fields left out keep their value; null clears one. */
+        PatchedMemberFieldValuesRequest: {
+            values?: {
+                [key: string]: (string | number | boolean) | null;
+            };
+        };
+        /** @description The club's settings that roles.manage edits: where it is and what it is about. */
+        PatchedOrganizationLocationRequest: {
+            country?: string;
+            region?: string;
+            town?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            description?: string;
+        };
+        /** @description A price at a branch (REQ-044): amounts are integer minor units with their currency. */
+        PatchedPassRequest: {
+            name?: string;
+            kind?: components["schemas"]["PassKindEnum"];
+            amount_minor?: number;
+            currency?: string;
+            sessions?: number | null;
+            valid_days?: number | null;
+            benefits?: string[];
+            active?: boolean;
+        };
         PatchedPersonalMatchRequest: {
             /** Format: date */
             played_on?: string;
             label?: string;
-            format?: components["schemas"]["FormatEnum"];
+            format?: components["schemas"]["SinglesOrDoublesEnum"];
             opponent_name?: string;
             partner_name?: string;
             venue?: string;
             notes?: string;
+            /**
+             * @description manual: typed in afterwards; quick_score: scored live in Quick Score.
+             *
+             *     * `manual` - Entered by hand
+             *     * `quick_score` - Quick Score
+             */
+            source?: components["schemas"]["PersonalMatchSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The device's id for the game. Saving again with the same id returns the record already saved.
+             */
+            client_ref?: string | null;
             games?: components["schemas"]["GameRequest"][];
+        };
+        /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
+        PatchedPlanItemRequest: {
+            kind?: components["schemas"]["PlanItemKindEnum"];
+            title?: string;
+            notes?: string;
+            /** Format: uuid */
+            drill?: string | null;
+            /** Format: date-time */
+            starts_at?: string | null;
+            /** Format: date-time */
+            ends_at?: string | null;
+            completed?: boolean;
+            activities?: components["schemas"]["ActivityRequest"][];
+        };
+        PatchedPositionInputRequest: {
+            name?: string;
+            /** Format: date */
+            term_start?: string | null;
+            /** Format: date */
+            term_end?: string | null;
+            /** Format: uuid */
+            grants_role?: string | null;
         };
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         PatchedProfileRequest: {
@@ -1115,6 +9711,9 @@ export interface components {
             style?: string;
             experience?: components["schemas"]["ExperienceEnum"] | components["schemas"]["BlankEnum"];
             bio?: string;
+            country?: string;
+            region?: string;
+            city?: string;
             directory_opt_in?: boolean;
             published_details?: components["schemas"]["PublishedDetailsEnum"][];
         };
@@ -1123,6 +9722,163 @@ export interface components {
             name?: string;
             permissions?: components["schemas"]["PermissionEnum"][];
         };
+        /** @description A block of one day's play. No events means every event. */
+        PatchedSessionRequest: {
+            name?: string;
+            /** Format: date */
+            day?: string;
+            /** Format: time */
+            starts?: string;
+            /** Format: time */
+            ends?: string;
+            /** @description At least one. */
+            table_ids?: string[];
+            event_ids?: string[];
+        };
+        PatchedTableRequest: {
+            label?: string;
+            kind?: components["schemas"]["TableKindEnum"];
+            active?: boolean;
+        };
+        /**
+         * @description A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+         *     is private once the tournament is published, and drafts are served to the host's staff only.
+         */
+        PatchedTournamentRequest: {
+            /** Format: uuid */
+            venue_id?: string | null;
+            name?: string;
+            description?: string;
+            /** Format: date */
+            starts_on?: string;
+            /** Format: date */
+            ends_on?: string;
+            timezone?: string;
+            scope?: components["schemas"]["TournamentScopeEnum"];
+            registration_fee?: components["schemas"]["RegistrationFeeRequest"];
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            schedule_notice_minutes?: number;
+        };
+        PatchedTrainingPlanRequest: {
+            title?: string;
+            goal?: string;
+            goal_skills?: components["schemas"]["SkillEnum"][];
+            period?: components["schemas"]["PeriodEnum"];
+            /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
+            ends_on?: string | null;
+        };
+        /** @description A venue with its tables in playing order, and its branch profile (REQ-044). */
+        PatchedVenueRequest: {
+            name?: string;
+            country?: string;
+            region?: string;
+            town?: string;
+            address?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            phone?: string;
+            rules?: string;
+            amenities?: string[];
+            /**
+             * @description Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+             *
+             *     * `hidden` - Hidden
+             *     * `members` - Members only
+             *     * `public` - Public
+             */
+            profile?: components["schemas"]["ProfileEnum"];
+            active?: boolean;
+        };
+        PatchedWelfareUpdateRequest: {
+            title?: string;
+            description?: string;
+            suggested_minor?: number | null;
+            target_minor?: number | null;
+            /** Format: date */
+            deadline?: string | null;
+            show_contributors?: boolean;
+        };
+        /** @description One shot of a drill on the virtual table; see Drill.pattern. */
+        PatternStep: {
+            hitter: components["schemas"]["HitterEnum"];
+            stroke: string;
+            x: components["schemas"]["XEnum"];
+            depth: components["schemas"]["DepthEnum"];
+            note: string;
+        };
+        /** @description One shot of a drill on the virtual table; see Drill.pattern. */
+        PatternStepRequest: {
+            hitter: components["schemas"]["HitterEnum"];
+            stroke: string;
+            x: components["schemas"]["XEnum"];
+            depth: components["schemas"]["DepthEnum"];
+            note?: string;
+        };
+        Payment: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            payer_id: string | null;
+            readonly payer_name: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            readonly allocated_minor: number;
+            readonly credit_minor: number;
+            readonly reversed: boolean;
+            readonly reversal_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `cash` - Cash
+         *     * `mpesa` - M-Pesa
+         *     * `bank` - Bank transfer
+         *     * `other` - Other
+         * @enum {string}
+         */
+        PaymentMethodEnum: "cash" | "mpesa" | "bank" | "other";
+        PaymentRequest: {
+            /**
+             * Format: uuid
+             * @description None for a facility walk-in
+             */
+            payer_id: string | null;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            /**
+             * Format: uuid
+             * @description A new id per payment recorded; sending it again records nothing new.
+             */
+            request_key: string;
+        };
+        /**
+         * @description * `day` - Day
+         *     * `week` - Week
+         *     * `month` - Month
+         *     * `custom` - Custom
+         * @enum {string}
+         */
+        PeriodEnum: "day" | "week" | "month" | "custom";
         /**
          * @description * `members.manage` - Invite members, decide join requests and remove members
          *     * `roles.manage` - Create and edit roles and assign them to members
@@ -1136,12 +9892,28 @@ export interface components {
          *     * `training.manage` - Plan training sessions and coaching groups
          *     * `welfare.manage` - Run welfare projects
          *     * `activities.manage` - Plan club activities such as nights out
+         *     * `governance.manage` - Set the committee, nominate representatives and run meetings
          * @enum {string}
          */
-        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage";
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage";
         PermissionInfo: {
             code: components["schemas"]["PermissionEnum"];
             label: string;
+        };
+        Person: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        PersonRef: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        PersonRefRequest: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
         };
         PersonalMatch: {
             /** Format: uuid */
@@ -1149,11 +9921,23 @@ export interface components {
             /** Format: date */
             played_on: string;
             label: string;
-            format: components["schemas"]["FormatEnum"];
+            format: components["schemas"]["SinglesOrDoublesEnum"];
             opponent_name: string;
             partner_name: string;
             venue: string;
             notes: string;
+            /**
+             * @description manual: typed in afterwards; quick_score: scored live in Quick Score.
+             *
+             *     * `manual` - Entered by hand
+             *     * `quick_score` - Quick Score
+             */
+            source: components["schemas"]["PersonalMatchSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The device's id for the game. Saving again with the same id returns the record already saved.
+             */
+            client_ref: string | null;
             games: components["schemas"]["Game"][];
             readonly games_won: number;
             readonly games_lost: number;
@@ -1167,12 +9951,87 @@ export interface components {
             /** Format: date */
             played_on: string;
             label: string;
-            format?: components["schemas"]["FormatEnum"];
+            format?: components["schemas"]["SinglesOrDoublesEnum"];
             opponent_name?: string;
             partner_name?: string;
             venue?: string;
             notes?: string;
+            /**
+             * @description manual: typed in afterwards; quick_score: scored live in Quick Score.
+             *
+             *     * `manual` - Entered by hand
+             *     * `quick_score` - Quick Score
+             */
+            source?: components["schemas"]["PersonalMatchSourceEnum"];
+            /**
+             * Format: uuid
+             * @description The device's id for the game. Saving again with the same id returns the record already saved.
+             */
+            client_ref?: string | null;
             games: components["schemas"]["GameRequest"][];
+        };
+        /**
+         * @description * `manual` - Entered by hand
+         *     * `quick_score` - Quick Score
+         * @enum {string}
+         */
+        PersonalMatchSourceEnum: "manual" | "quick_score";
+        /**
+         * @description * `warm_up` - Warm-up
+         *     * `on_table` - On the table
+         *     * `off_table` - Off the table
+         *     * `match_play` - Match play
+         *     * `cool_down` - Cool-down
+         * @enum {string}
+         */
+        PhaseEnum: "warm_up" | "on_table" | "off_table" | "match_play" | "cool_down";
+        Place: {
+            table: components["schemas"]["ScheduleTable"] | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+        };
+        Placement: {
+            label: string;
+            entries: components["schemas"]["DrawEntry"][];
+        };
+        /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
+        PlanItem: {
+            /** Format: uuid */
+            readonly id: string;
+            kind: components["schemas"]["PlanItemKindEnum"];
+            title: string;
+            notes: string;
+            /** Format: uuid */
+            drill: string | null;
+            readonly drill_title: string;
+            readonly order: number;
+            /** Format: date-time */
+            starts_at: string | null;
+            /** Format: date-time */
+            ends_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+            activities: components["schemas"]["Activity"][];
+        };
+        /**
+         * @description * `checklist` - Checklist
+         *     * `session` - Session
+         * @enum {string}
+         */
+        PlanItemKindEnum: "checklist" | "session";
+        /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
+        PlanItemRequest: {
+            kind: components["schemas"]["PlanItemKindEnum"];
+            title?: string;
+            notes?: string;
+            /** Format: uuid */
+            drill?: string | null;
+            /** Format: date-time */
+            starts_at?: string | null;
+            /** Format: date-time */
+            ends_at?: string | null;
+            completed?: boolean;
+            activities?: components["schemas"]["ActivityRequest"][];
         };
         /**
          * @description Public player page: the directory card plus only the extended details the player published.
@@ -1183,6 +10042,7 @@ export interface components {
             id: string;
             display_name: string;
             nickname: string;
+            readonly avatar: components["schemas"]["AttachmentLink"] | null;
             readonly clubs: string[];
             readonly hand: (components["schemas"]["HandEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly grip: (components["schemas"]["GripEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -1190,19 +10050,139 @@ export interface components {
             readonly experience: (components["schemas"]["ExperienceEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly bio: string | null;
         };
+        PlayerRatings: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            processing: boolean;
+            summaries: components["schemas"]["RatingSummary"][];
+            /**
+             * @description The one `history` is of.
+             *
+             *     * `singles` - Singles
+             *     * `doubles` - Doubles
+             */
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            /**
+             * @description The filter applied.
+             *
+             *     * `all` - all
+             *     * `won` - won
+             *     * `lost` - lost
+             */
+            result: components["schemas"]["PlayerRatingsResultEnum"];
+            /** @description Rating changes that match the filters. */
+            count: number;
+            history: components["schemas"]["RatingChange"][];
+        };
+        /**
+         * @description * `all` - all
+         *     * `won` - won
+         *     * `lost` - lost
+         * @enum {string}
+         */
+        PlayerRatingsResultEnum: "all" | "won" | "lost";
+        Policy: {
+            games_enabled: boolean;
+            stakes_enabled: boolean;
+            /** @description False while the platform's stake policy gate is off. */
+            readonly stakes_available: boolean;
+        };
+        PolicyRequest: {
+            games_enabled: boolean;
+            stakes_enabled: boolean;
+        };
+        /**
+         * @description * `men` - Men
+         *     * `women` - Women
+         * @enum {string}
+         */
+        PoolEnum: "men" | "women";
+        Position: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            order: number;
+            /** Format: date */
+            term_start: string | null;
+            /** Format: date */
+            term_end: string | null;
+            /** @description Shown to governance staff only. */
+            grants_role: components["schemas"]["RoleRef"] | null;
+            holder: components["schemas"]["Holder"] | null;
+            values: components["schemas"]["CommitteeFieldEntry"][];
+        };
+        PositionInputRequest: {
+            name: string;
+            /** Format: date */
+            term_start?: string | null;
+            /** Format: date */
+            term_end?: string | null;
+            /** Format: uuid */
+            grants_role?: string | null;
+        };
+        Preference: {
+            category: components["schemas"]["NotificationCategoryEnum"];
+            readonly label: string;
+            enabled: boolean;
+            /** @description Can't be switched off. */
+            readonly locked: boolean;
+        };
+        PreferenceRequest: {
+            category: components["schemas"]["NotificationCategoryEnum"];
+            enabled: boolean;
+        };
+        Preferences: {
+            preferences: components["schemas"]["Preference"][];
+        };
+        PreferencesRequest: {
+            preferences: components["schemas"]["PreferenceRequest"][];
+        };
+        Problem: {
+            /** Format: uuid */
+            match_id: string;
+            code: string;
+            message: string;
+        };
         /** @description The owner's own view of their profile. `display_name` is written through to User. */
         Profile: {
             display_name: string;
+            readonly avatar: components["schemas"]["AttachmentLink"] | null;
             nickname: string;
             hand: components["schemas"]["HandEnum"] | components["schemas"]["BlankEnum"];
             grip: components["schemas"]["GripEnum"] | components["schemas"]["BlankEnum"];
             style: string;
             experience: components["schemas"]["ExperienceEnum"] | components["schemas"]["BlankEnum"];
             bio: string;
+            country: string;
+            region: string;
+            city: string;
             directory_opt_in: boolean;
             published_details: components["schemas"]["PublishedDetailsEnum"][];
             readonly goals: components["schemas"]["GoalsEnum"][];
             readonly onboarding_completed: boolean;
+        };
+        /**
+         * @description * `hidden` - Hidden
+         *     * `members` - Members only
+         *     * `public` - Public
+         * @enum {string}
+         */
+        ProfileEnum: "hidden" | "members" | "public";
+        Progress: {
+            done: number;
+            total: number;
+        };
+        /**
+         * @description * `decided` - decided
+         *     * `on_table` - on_table
+         *     * `being_scored` - being_scored
+         *     * `not_started` - not_started
+         * @enum {string}
+         */
+        ProgressEnum: "decided" | "on_table" | "being_scored" | "not_started";
+        PublishNoteRequest: {
+            note?: string;
         };
         /**
          * @description * `hand` - Hand
@@ -1213,6 +10193,441 @@ export interface components {
          * @enum {string}
          */
         PublishedDetailsEnum: "hand" | "grip" | "style" | "experience" | "bio";
+        PurposeTotal: {
+            /**
+             * Format: uuid
+             * @description None for general running costs
+             */
+            campaign_id: string | null;
+            title: string;
+            currency: string;
+            /** @description Actually received: standing matched payments */
+            received_minor: number;
+            spent_minor: number;
+            /** @description Received less spent; negative is a deficit */
+            remaining_minor: number;
+            /** @description Dues still owed: not received, shown apart */
+            expected_minor: number;
+        };
+        Purposes: {
+            purposes: components["schemas"]["PurposeTotal"][];
+            spending: components["schemas"]["Spending"][];
+        };
+        /**
+         * @description A match in the ready queue. `ready` has a free table suggested; `waiting` could be played but
+         *     waits for a table, for a match ahead of it that shares a player, or for staff; `blocked` can't.
+         */
+        QueuedMatch: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            label: string;
+            a: string;
+            b: string;
+            /** Format: date-time */
+            planned_at: string | null;
+            /** Format: date-time */
+            ready_since: string;
+            state: components["schemas"]["StateEnum"];
+            /** @description Rank among matches playable now. */
+            position: number | null;
+            reasons: components["schemas"]["Reason"][];
+            /** Format: uuid */
+            suggested_table_id: string | null;
+            suggested_table: string;
+        };
+        Ranking: {
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            scope: components["schemas"]["RankingScopeEnum"];
+            /** Format: uuid */
+            organization_id: string | null;
+            organization_name: string;
+            /** @description A result has not reached the ratings yet: the table is provisional. */
+            processing: boolean;
+            /** @description Rated players in this scope. */
+            count: number;
+            rows: components["schemas"]["RankingRow"][];
+        };
+        RankingRow: {
+            /** @description Players with the same rating share a rank. */
+            rank: number;
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            clubs: string[];
+            /** @description The player has a page in the directory. */
+            listed: boolean;
+            is_me: boolean;
+            /**
+             * Format: double
+             * @description Full precision; round only to show it.
+             */
+            rating: number;
+            played: number;
+            won: number;
+            /** @description Latest rated matches, newest first. */
+            form: components["schemas"]["FormEnum"][];
+            /** Format: double */
+            last_delta: number | null;
+        };
+        /**
+         * @description * `platform` - platform
+         *     * `club` - club
+         * @enum {string}
+         */
+        RankingScopeEnum: "platform" | "club";
+        RatingChange: {
+            /** Format: uuid */
+            id: string;
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            /**
+             * Format: date-time
+             * @description When the result first became official.
+             */
+            at: string;
+            won: boolean;
+            /** Format: double */
+            before: number;
+            /** Format: double */
+            after: number;
+            /** Format: double */
+            delta: number;
+            /**
+             * Format: double
+             * @description The expected score, 0 to 1.
+             */
+            expected: number;
+            /**
+             * Format: double
+             * @description The rating compared: the player's, or the pair's average.
+             */
+            own: number;
+            /**
+             * Format: double
+             * @description The opponent's rating, or the other pair's average.
+             */
+            opponent: number;
+            partner: string;
+            opponents: string[];
+            /** @description Points of each game, this player's side first. */
+            games: number[][];
+            /** Format: uuid */
+            tournament_id: string;
+            tournament_name: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            /** @description The rubber's number in a team tie. */
+            rubber: number | null;
+            /** @description The result it comes from replaced an earlier one. */
+            corrected: boolean;
+            /** @description The tournament's time zone, to show `at` in. */
+            timezone: string;
+        };
+        /**
+         * @description * `none` - none
+         *     * `processing` - processing
+         *     * `done` - done
+         *     * `unrated` - unrated
+         * @enum {string}
+         */
+        RatingEnum: "none" | "processing" | "done" | "unrated";
+        RatingSummary: {
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            /**
+             * Format: double
+             * @description Null until a rated match is played.
+             */
+            rating: number | null;
+            played: number;
+            won: number;
+            /** @description On the platform, in this discipline. */
+            rank: number | null;
+            /** @description How many players the rank is among. */
+            ranked: number;
+            form: components["schemas"]["FormEnum"][];
+        };
+        /** @description One thing that keeps a match from a table, in the words a refusal would use. */
+        Reason: {
+            code: string;
+            message: string;
+            /**
+             * Format: date-time
+             * @description For a rest: when it is over.
+             */
+            until: string | null;
+        };
+        ReasonRequest: {
+            reason: string;
+        };
+        RecallRequest: {
+            reason: string;
+        };
+        Recap: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            tournament_id: string;
+            tournament_name: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            side_a: string;
+            side_b: string;
+            official: boolean;
+            outcome: string;
+            winner_side: string | null;
+            games: number[][];
+            players: components["schemas"]["RecapPlayer"][];
+            /**
+             * @description processing: the official result waits for the rating worker; no number is shown yet.
+             *
+             *     * `none` - none
+             *     * `processing` - processing
+             *     * `done` - done
+             *     * `unrated` - unrated
+             */
+            rating: components["schemas"]["RatingEnum"];
+            rating_changes: components["schemas"]["RecapSideChange"][];
+        };
+        RecapPlayer: {
+            side: string;
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+        };
+        RecapSideChange: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            before: number;
+            after: number;
+            delta: number;
+        };
+        ReceiptUploadRequest: {
+            /**
+             * Format: binary
+             * @description A photo of the receipt: JPEG, PNG or WebP, up to 5 MB
+             */
+            file: string;
+        };
+        RecommendRequestRequest: {
+            /**
+             * Format: date-time
+             * @description Not before; defaults to now.
+             */
+            starts_at?: string;
+            /**
+             * Format: time
+             * @default 09:00:00
+             */
+            day_starts: string;
+            /**
+             * Format: time
+             * @default 21:00:00
+             */
+            day_ends: string;
+            /** @description Defaults to every table in use. */
+            table_ids?: string[];
+        };
+        Recommendation: {
+            /** @description A match no session can hold has neither table nor start. */
+            slots: components["schemas"]["RecommendedSlot"][];
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
+        };
+        RecommendedSlot: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            table_id: string | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+            /** @description It doesn't fit in the tournament's days. */
+            beyond_last_day: boolean;
+        };
+        RecordRequest: {
+            /** @description Per game, [challenger's points, challenged's points]. */
+            games: number[][];
+        };
+        RecordVisitRequest: {
+            /** Format: uuid */
+            pass_id?: string | null;
+            /** Format: uuid */
+            player_id?: string | null;
+            walk_in_name?: string;
+            method: components["schemas"]["VisitMethodEnum"];
+            reference?: string;
+        };
+        RefusedEvent: {
+            sequence: number;
+            /** @description A scoring engine code, `sequence_gap`, `sequence_conflict` or `revision_conflict`. */
+            code: string;
+        };
+        Region: {
+            name: string;
+            readonly cities: string[];
+        };
+        RegionClub: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
+            readonly kind: components["schemas"]["KindEnum"];
+            readonly members: number;
+            readonly upcoming_tournaments: number;
+        };
+        /** @description A regional body as anyone signed in may see it. */
+        RegionalBody: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
+            readonly country: string;
+            readonly region: string;
+        };
+        RegionalBodyInputRequest: {
+            name: string;
+            region_id?: number;
+            town?: string;
+        };
+        RegistrationFee: {
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+        };
+        RegistrationFeeRequest: {
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+        };
+        Reminded: {
+            sent: number;
+        };
+        ReorderRequest: {
+            positions: string[];
+        };
+        ReportRequest: {
+            reason: components["schemas"]["StreamReportReasonEnum"];
+            note?: string;
+        };
+        /** @description A match on a table: the table and the people held until its result is official. */
+        Reservation: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            table_id: string;
+            table: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            a: string;
+            b: string;
+            /** Format: date-time */
+            since: string;
+            /** @description Sent by automatic dispatch, not by a person. */
+            automatic: boolean;
+            /** @description Players held with the table. */
+            people: string[];
+            overrides: string[];
+            override_reason: string;
+        };
+        /** @description A later match that had started with an entry a corrected result says should not be there. */
+        Resolution: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            a: string;
+            b: string;
+            side: components["schemas"]["SideEnum"];
+            /** @description Who is in the match now. */
+            old_entry: string;
+            /** @description Who should be; empty when an earlier match is played again first. */
+            new_entry: string;
+            progress: components["schemas"]["ProgressEnum"];
+            /** @description The reason given for the correction. */
+            reason: string;
+            corrected_by: string;
+            /** Format: date-time */
+            created_at: string;
+            choice: components["schemas"]["ResolutionChoiceEnum"] | components["schemas"]["BlankEnum"];
+            note: string;
+            resolved_by: string;
+            /** Format: date-time */
+            resolved_at: string | null;
+        };
+        /**
+         * @description * `keep` - Keep
+         *     * `replace` - Replace
+         *     * `withdrawn` - Withdrawn
+         * @enum {string}
+         */
+        ResolutionChoiceEnum: "keep" | "replace" | "withdrawn";
+        /**
+         * @description * `keep` - keep
+         *     * `replace` - replace
+         * @enum {string}
+         */
+        ResolveChoiceEnum: "keep" | "replace";
+        /** @description What was done about it, for the record. */
+        ResolveConflictRequest: {
+            note: string;
+        };
+        ResolveRequest: {
+            choice: components["schemas"]["ResolveChoiceEnum"];
+            note: string;
+        };
+        /**
+         * @description A result recorded by the organizers. `games` are [a, b] points in playing order: none for a
+         *     walkover, the games played so far for a retirement. For a tie, name the rubber.
+         */
+        ResultCorrectionRequest: {
+            /** Format: uuid */
+            winner_entry_id: string;
+            /** @default played */
+            outcome: components["schemas"]["MatchOutcomeEnum"];
+            games?: number[][];
+            /** Format: uuid */
+            rubber_id?: string | null;
+            reason: string;
+        };
+        /**
+         * @description A result recorded by the organizers. `games` are [a, b] points in playing order: none for a
+         *     walkover, the games played so far for a retirement. For a tie, name the rubber.
+         */
+        ResultEntryRequest: {
+            /** Format: uuid */
+            winner_entry_id: string;
+            /** @default played */
+            outcome: components["schemas"]["MatchOutcomeEnum"];
+            games?: number[][];
+            /** Format: uuid */
+            rubber_id?: string | null;
+        };
+        ReverseVisitRequest: {
+            reason: string;
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `approved` - Approved
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        ReviewEnum: "pending" | "approved" | "rejected";
+        ReviewRequest: {
+            note?: string;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         Role: {
             /** Format: uuid */
@@ -1232,6 +10647,11 @@ export interface components {
          * @enum {string}
          */
         RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "member";
+        RoleRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         RoleRequest: {
             name: string;
@@ -1243,14 +10663,968 @@ export interface components {
             readonly key: components["schemas"]["RoleKeyEnum"];
             readonly name: string;
         };
+        /**
+         * @description * `going` - Going
+         *     * `maybe` - Maybe
+         *     * `not_going` - Not Going
+         * @enum {string}
+         */
+        RsvpAnswerEnum: "going" | "maybe" | "not_going";
+        RsvpRequestRequest: {
+            answer: components["schemas"]["RsvpAnswerEnum"];
+        };
+        /** @description One individual match of a tie. `not_played` means the tie was decided before its turn. */
+        Rubber: {
+            /** Format: uuid */
+            id: string;
+            position: number;
+            kind: components["schemas"]["SinglesOrDoublesEnum"];
+            status: components["schemas"]["RubberStatusEnum"];
+            a_players: components["schemas"]["RubberPlayer"][];
+            b_players: components["schemas"]["RubberPlayer"][];
+            /**
+             * Format: uuid
+             * @description The entry (team) that won it.
+             */
+            winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            games: number[][];
+            scoring: components["schemas"]["ScoringSummary"];
+        };
+        RubberPlayer: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        /**
+         * @description * `scheduled` - Scheduled
+         *     * `completed` - Completed
+         *     * `not_played` - Not Played
+         * @enum {string}
+         */
+        RubberStatusEnum: "scheduled" | "completed" | "not_played";
+        Schedule: {
+            tables: components["schemas"]["ScheduleTable"][];
+            sessions: components["schemas"]["Session"][];
+            rows: components["schemas"]["ScheduleRow"][];
+            conflicts: components["schemas"]["Problem"][];
+            warnings: components["schemas"]["Problem"][];
+            /** @description The latest version's number. */
+            published_version: number | null;
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            notice_minutes: number;
+        };
+        ScheduleItem: {
+            kind: components["schemas"]["ScheduleKindEnum"];
+            /** Format: uuid */
+            id: string;
+            title: string;
+            detail: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place: string;
+            cancelled: boolean;
+        };
+        /**
+         * @description * `activity` - activity
+         *     * `tournament` - tournament
+         *     * `training` - training
+         * @enum {string}
+         */
+        ScheduleKindEnum: "activity" | "tournament" | "training";
+        ScheduleRow: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event: string;
+            /** @description Event, group or round, and match. */
+            label: string;
+            /** @description The two sides, or 'To come'. */
+            title: string;
+            /** @description The estimated length, from the event's best-of. */
+            minutes: number;
+            /**
+             * Format: uuid
+             * @description In the working plan.
+             */
+            table_id: string | null;
+            /**
+             * Format: date-time
+             * @description In the working plan.
+             */
+            scheduled_at: string | null;
+            /**
+             * Format: uuid
+             * @description As everybody sees it.
+             */
+            published_table_id: string | null;
+            /**
+             * Format: date-time
+             * @description As everybody sees it.
+             */
+            published_at: string | null;
+            /** @description The working plan differs from what is published. */
+            unpublished: boolean;
+        };
+        ScheduleTable: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+        };
+        ScheduleVersion: {
+            readonly number: number;
+            readonly kind: components["schemas"]["ScheduleVersionKindEnum"];
+            readonly reason: components["schemas"]["DelayReasonEnum"];
+            readonly note: string;
+            readonly delayed_table: components["schemas"]["ScheduleTable"] | null;
+            readonly delay_minutes: number | null;
+            /** @default  */
+            readonly published_by_name: string;
+            /** Format: date-time */
+            readonly published_at: string;
+            readonly change_count: number;
+            /** @description Matches whose people are told. */
+            readonly notify_count: number;
+            /** Format: date-time */
+            readonly notified_at: string | null;
+            readonly notified_count: number;
+            readonly changes: components["schemas"]["Change"][];
+            readonly slots: components["schemas"]["VersionSlot"][];
+        };
+        /**
+         * @description * `published` - Published
+         *     * `delay` - Delay
+         * @enum {string}
+         */
+        ScheduleVersionKindEnum: "published" | "delay";
+        ScheduleVersionSummary: {
+            readonly number: number;
+            readonly kind: components["schemas"]["ScheduleVersionKindEnum"];
+            readonly reason: components["schemas"]["DelayReasonEnum"];
+            readonly note: string;
+            readonly delayed_table: components["schemas"]["ScheduleTable"] | null;
+            readonly delay_minutes: number | null;
+            /** @default  */
+            readonly published_by_name: string;
+            /** Format: date-time */
+            readonly published_at: string;
+            readonly change_count: number;
+            /** @description Matches whose people are told. */
+            readonly notify_count: number;
+            /** Format: date-time */
+            readonly notified_at: string | null;
+            readonly notified_count: number;
+        };
+        /** @description A device's unaccepted events beside what the server holds at the same places. */
+        ScoreConflict: {
+            /** Format: uuid */
+            id: string;
+            sheet: components["schemas"]["SheetContext"];
+            reported_by: string;
+            device_label: string;
+            /** Format: date-time */
+            created_at: string;
+            events: components["schemas"]["StreamEvent"][];
+            /** @description The official stream at the same sequence numbers. */
+            accepted: components["schemas"]["StreamEvent"][];
+            /** Format: date-time */
+            resolved_at: string | null;
+            resolved_by: string;
+            resolution: string;
+        };
+        /** @description Everything the deck needs to score one match, for the umpire assigned to it. */
+        Scorecard: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly assignment_id: string;
+            readonly revision: number;
+            status: components["schemas"]["ScoringStatusEnum"];
+            readonly config: components["schemas"]["ScoringConfig"];
+            state: components["schemas"]["ScoringState"];
+            readonly a: components["schemas"]["DeckSide"];
+            readonly b: components["schemas"]["DeckSide"];
+            /** Format: uuid */
+            readonly tournament_id: string;
+            readonly tournament_name: string;
+            /** Format: uuid */
+            readonly event_id: string;
+            readonly event_name: string;
+            /** Format: uuid */
+            readonly match_id: string;
+            readonly label: string;
+            readonly table: string;
+            /** Format: date-time */
+            readonly confirmed_at: string | null;
+            readonly device: components["schemas"]["Device"];
+            readonly events: components["schemas"]["AcceptedEvent"][];
+        };
+        ScoringConfig: {
+            best_of: number;
+            doubles: boolean;
+        };
+        /**
+         * @description What the organizers need to see about scoring in one tournament: sheets still open, and what
+         *     devices reported that the server didn't accept.
+         */
+        ScoringOverview: {
+            sheets: components["schemas"]["OpenSheet"][];
+            conflicts: components["schemas"]["ScoreConflict"][];
+            /** @description Matches on a table: the table and players held until the result is official. */
+            reservations: components["schemas"]["Reservation"][];
+        };
+        /** @description The canonical state of the scoring engine (packages/scoring). */
+        ScoringState: {
+            status: components["schemas"]["EnginePhaseEnum"];
+            game_number: number;
+            games: number[][];
+            games_won: number[];
+            points: number[];
+            server: string | null;
+            receiver: string | null;
+            first_server: string | null;
+            first_receiver: string | null;
+            a_end: string | null;
+            decider_changed: boolean;
+            timeouts: boolean[];
+            winner: string | null;
+        };
+        /**
+         * @description * `unassigned` - Unassigned
+         *     * `assigned` - Assigned
+         *     * `in_progress` - In Progress
+         *     * `finished` - Finished
+         *     * `confirmed` - Confirmed
+         * @enum {string}
+         */
+        ScoringStatusEnum: "unassigned" | "assigned" | "in_progress" | "finished" | "confirmed";
+        /**
+         * @description Where the scoring of a match or rubber stands. `can_score` is true only for the umpire assigned
+         *     to it, so nobody else is ever offered a way into the scoring deck (REQ-010).
+         */
+        ScoringSummary: {
+            /**
+             * Format: uuid
+             * @description Given to the assigned umpire only.
+             */
+            scorecard_id: string | null;
+            status: components["schemas"]["ScoringStatusEnum"];
+            umpire_name: string;
+            can_score: boolean;
+            /** @description The caller may assign or change the umpire now. */
+            can_assign: boolean;
+        };
+        /**
+         * @description * `rating` - Rating
+         *     * `manual` - Manual
+         *     * `none` - None
+         * @enum {string}
+         */
+        SeedingEnum: "rating" | "manual" | "none";
+        Sent: {
+            sent: number;
+        };
+        /**
+         * @description One score event from the deck: its own id (so a retry is recognised), its place in the stream,
+         *     the engine event itself, and the device's clock, which is kept but decides nothing.
+         */
+        SentEventRequest: {
+            /** Format: uuid */
+            id: string;
+            sequence: number;
+            event: unknown;
+            /** Format: date-time */
+            device_time?: string | null;
+            /** @description The server revision the device had seen when it sent this. If the server holds less than that, its stream is not the one the device built on, and the event is refused. */
+            expected_revision?: number;
+        };
+        /** @description A block of one day's play. No events means every event. */
+        Session: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            /** Format: date */
+            day: string;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            /** @description At least one. */
+            table_ids: string[];
+            event_ids: string[];
+        };
+        /** @description One invited member, for the club's training staff: answer and attendance. */
+        SessionInvitation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly user_id: string;
+            readonly display_name: string;
+            readonly status: components["schemas"]["SessionInvitationStatusEnum"];
+            /** Format: date-time */
+            readonly responded_at: string | null;
+            readonly attended: boolean | null;
+            /** Format: date-time */
+            readonly attendance_at: string | null;
+        };
+        /**
+         * @description * `invited` - Invited
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         * @enum {string}
+         */
+        SessionInvitationStatusEnum: "invited" | "accepted" | "declined";
+        /** @description A block of one day's play. No events means every event. */
+        SessionRequest: {
+            name?: string;
+            /** Format: date */
+            day: string;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            /** @description At least one. */
+            table_ids: string[];
+            event_ids?: string[];
+        };
+        SessionTable: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            readonly venue_name: string;
+        };
+        SessionTableRequest: {
+            label: string;
+        };
+        ShareRequest: {
+            share: boolean;
+        };
+        /**
+         * @description What club members see of a challenge both players chose to share: who, when, the result. Never a
+         *     stake.
+         */
+        SharedChallenge: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly challenger: components["schemas"]["SodaPlayer"];
+            readonly challenged: components["schemas"]["SodaPlayer"];
+            readonly format: components["schemas"]["SinglesOrDoublesEnum"];
+            /** Format: date-time */
+            readonly play_at: string | null;
+            readonly status: components["schemas"]["SodaChallengeStatusEnum"];
+            readonly games: number[][] | null;
+            readonly state: string;
+            readonly winner_id: string | null;
+        };
+        /** @description Which match a sheet is for, as the organizers' scoring page shows it. */
+        SheetContext: {
+            /** Format: uuid */
+            scorecard_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            a: string;
+            b: string;
+        };
+        /**
+         * @description * `a` - a
+         *     * `b` - b
+         * @enum {string}
+         */
+        SideEnum: "a" | "b";
         SignUpRequest: {
             display_name: string;
             /** Format: email */
             email: string;
             password: string;
+            country?: string;
+            region?: string;
+            city?: string;
+        };
+        /**
+         * @description * `singles` - Singles
+         *     * `doubles` - Doubles
+         * @enum {string}
+         */
+        SinglesOrDoublesEnum: "singles" | "doubles";
+        /**
+         * @description * `footwork` - Footwork
+         *     * `placement` - Placement
+         *     * `forehand` - Forehand
+         *     * `backhand` - Backhand
+         *     * `third_ball` - Third-ball attack
+         *     * `serve` - Serve
+         *     * `receive` - Receive
+         *     * `short_game` - Short game
+         *     * `topspin` - Topspin
+         *     * `blocking` - Blocking
+         *     * `consistency` - Consistency
+         *     * `transition` - Forehand-backhand transition
+         *     * `reading_spin` - Reading spin
+         *     * `fitness` - Fitness
+         *     * `flexibility` - Flexibility
+         * @enum {string}
+         */
+        SkillEnum: "footwork" | "placement" | "forehand" | "backhand" | "third_ball" | "serve" | "receive" | "short_game" | "topspin" | "blocking" | "consistency" | "transition" | "reading_spin" | "fitness" | "flexibility";
+        Slot: {
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            venue: string;
+        };
+        /**
+         * @description * `a1` - a1
+         *     * `a2` - a2
+         *     * `b1` - b1
+         *     * `b2` - b2
+         * @enum {string}
+         */
+        SlotEnum: "a1" | "a2" | "b1" | "b2";
+        SlotRequest: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            table_id: string | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+        };
+        SlotsRequest: {
+            slots: components["schemas"]["SlotRequest"][];
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `countered` - Countered
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `withdrawn` - Withdrawn
+         *     * `played` - Played
+         * @enum {string}
+         */
+        SodaChallengeStatusEnum: "pending" | "countered" | "accepted" | "declined" | "withdrawn" | "played";
+        SodaPlayer: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        SodaPlayerRequest: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        /** @description What a purpose's money paid for, as members see it: no receipts, no names. */
+        Spending: {
+            /** Format: uuid */
+            campaign_id: string | null;
+            description: string;
+            amount_minor: number;
+            currency: string;
+            /** Format: date */
+            spent_on: string;
+        };
+        /** @description An accepted sponsorship as everyone who sees the tournament sees it. */
+        Sponsor: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly sponsor: components["schemas"]["OrgRef"];
+            readonly amount_minor: number | null;
+            readonly currency: string;
+            readonly in_kind: components["schemas"]["InKind"][];
+        };
+        Sponsorship: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly sponsor: components["schemas"]["OrgRef"];
+            readonly tournament: components["schemas"]["TournamentRef"];
+            amount_minor: number | null;
+            readonly currency: string;
+            in_kind: components["schemas"]["InKind"][];
+            conditions: string;
+            /** @default offered */
+            readonly status: components["schemas"]["SponsorshipStatusEnum"];
+            readonly reason: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        SponsorshipRequest: {
+            /** Format: uuid */
+            tournament_id: string;
+            amount_minor?: number | null;
+            in_kind?: components["schemas"]["InKindRequest"][];
+            conditions?: string;
+        };
+        /**
+         * @description * `offered` - Offered
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `withdrawn` - Withdrawn
+         * @enum {string}
+         */
+        SponsorshipStatusEnum: "offered" | "accepted" | "declined" | "withdrawn";
+        StandingRow: {
+            rank: number;
+            entry: components["schemas"]["DrawEntry"];
+            played: number;
+            won: number;
+            lost: number;
+            match_points: number;
+            games_won: number;
+            games_lost: number;
+            points_won: number;
+            points_lost: number;
+            /** @description Not yet separated from a neighbouring row; the group isn't finished. */
+            level: boolean;
+            /** @description Null until the group is finished, and always in a round robin event. */
+            qualified: boolean | null;
+            tie_break: components["schemas"]["TieBreakStep"][];
+        };
+        /** @description Group tables with the reason for every separated tie, and what the knockout has decided. */
+        Standings: {
+            rules_version: string;
+            groups: components["schemas"]["GroupStanding"][];
+            placements: components["schemas"]["Placement"][];
+        };
+        /**
+         * @description * `ready` - ready
+         *     * `waiting` - waiting
+         *     * `blocked` - blocked
+         * @enum {string}
+         */
+        StateEnum: "ready" | "waiting" | "blocked";
+        StreamEvent: {
+            sequence: number;
+            event: unknown;
+        };
+        /**
+         * @description * `youtube` - YouTube
+         *     * `facebook` - Facebook
+         *     * `instagram` - Instagram
+         *     * `tiktok` - TikTok
+         *     * `twitch` - Twitch
+         *     * `x` - X
+         *     * `kick` - Kick
+         *     * `other` - Other site
+         * @enum {string}
+         */
+        StreamPlatformEnum: "youtube" | "facebook" | "instagram" | "tiktok" | "twitch" | "x" | "kick" | "other";
+        /**
+         * @description * `broken` - Doesn't work
+         *     * `wrong` - Wrong match or event
+         *     * `inappropriate` - Inappropriate or unsafe
+         *     * `other` - Something else
+         * @enum {string}
+         */
+        StreamReportReasonEnum: "broken" | "wrong" | "inappropriate" | "other";
+        SubmitEventsRequest: {
+            /** Format: uuid */
+            assignment_id: string;
+            events: components["schemas"]["SentEventRequest"][];
+        };
+        /**
+         * @description What the server now holds. `refused` is the first event that stopped the batch, if any; the
+         *     events before it were accepted.
+         */
+        SubmitResult: {
+            accepted: number;
+            refused: components["schemas"]["RefusedEvent"] | null;
+            revision: number;
+            status: components["schemas"]["ScoringStatusEnum"];
+            state: components["schemas"]["ScoringState"];
+        };
+        Table: {
+            /** Format: uuid */
+            readonly id: string;
+            label: string;
+            kind: components["schemas"]["TableKindEnum"];
+            readonly position: number;
+            active: boolean;
+        };
+        /** @description A table booking, as its requester and the venue's staff see it. */
+        TableBooking: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            venue_id: string;
+            readonly venue_name: string;
+            readonly organization_name: string;
+            readonly tables: string[];
+            readonly requester_name: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            note: string;
+            readonly status: components["schemas"]["TableBookingStatusEnum"];
+            readonly fee_minor: number | null;
+            readonly fee_currency: string;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            readonly ended: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        TableBookingReasonRequest: {
+            reason?: string;
+        };
+        /** @description A table booking, as its requester and the venue's staff see it. */
+        TableBookingRequest: {
+            /** Format: uuid */
+            venue_id: string;
+            table_ids: string[];
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            note?: string;
+        };
+        /**
+         * @description * `requested` - Requested
+         *     * `approved` - Approved
+         *     * `rejected` - Rejected
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        TableBookingStatusEnum: "requested" | "approved" | "rejected" | "cancelled";
+        TableDelayRequest: {
+            note?: string;
+            /** Format: uuid */
+            table_id: string;
+            minutes: number;
+            reason: components["schemas"]["DelayReasonEnum"];
+        };
+        /**
+         * @description * `match` - Match
+         *     * `training` - Training
+         * @enum {string}
+         */
+        TableKindEnum: "match" | "training";
+        TableRequest: {
+            label: string;
+            kind?: components["schemas"]["TableKindEnum"];
+            active?: boolean;
+        };
+        /** @description One of the tournament's tables and whether a match holds it right now. */
+        TableState: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            free: boolean;
+            /** @description Tournament and event of the match on it. */
+            held_by: string;
+            /** Format: date-time */
+            since: string | null;
+        };
+        /** @description This device takes the sheet. `take_over` is needed when another device holds it. */
+        TakeDeviceRequest: {
+            /** Format: uuid */
+            device_id: string;
+            /** @default  */
+            label: string;
+            /** @default false */
+            take_over: boolean;
+        };
+        /** @description A month's takings, reversed visits left out; each total is per currency. */
+        Takings: {
+            /** @description YYYY-MM, in the organization's timezone */
+            month: string;
+            total: components["schemas"]["TakingsRow"][];
+            by_day: components["schemas"]["TakingsDay"][];
+            by_branch: components["schemas"]["TakingsBranch"][];
+            by_method: components["schemas"]["TakingsMethod"][];
+            by_pass: components["schemas"]["TakingsPass"][];
+            /** @description Visits reversed that month, not counted above */
+            reversed: number;
+        };
+        TakingsBranch: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            /** Format: uuid */
+            venue_id: string;
+            venue_name: string;
+        };
+        TakingsDay: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            /** Format: date */
+            day: string;
+        };
+        TakingsMethod: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            method: components["schemas"]["VisitMethodEnum"];
+        };
+        TakingsPass: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+            /** Format: uuid */
+            pass_id: string;
+            pass_name: string;
+        };
+        TakingsRow: {
+            currency: string;
+            amount_minor: number;
+            visits: number;
+        };
+        /** @description A team tie (REQ-011): its format, each team's lineup and, once both are in, its rubbers. */
+        Tie: {
+            wins_needed: number;
+            template: components["schemas"]["SinglesOrDoublesEnum"][];
+            /** @description Both lineups are in and the rubbers exist. */
+            begun: boolean;
+            score: number[];
+            a: components["schemas"]["LineupSide"];
+            b: components["schemas"]["LineupSide"];
+            /** @description The caller may send both teams back to choose again. */
+            can_reset: boolean;
+            rubbers: components["schemas"]["Rubber"][];
+        };
+        /**
+         * @description One comparison made between members who were level, up to the one that separated them (or the
+         *     lot): the entries compared, what on
+         *     (`match_points`, `rubbers`, `games`, `points` won/lost between them, or `lot`) and this row's value.
+         */
+        TieBreakStep: {
+            among: string[];
+            measure: components["schemas"]["MeasureEnum"];
+            value: string;
         };
         TokenRequest: {
             token: string;
+        };
+        /**
+         * @description A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+         *     is private once the tournament is published, and drafts are served to the host's staff only.
+         */
+        Tournament: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["OrganizationSummary"];
+            readonly venue: components["schemas"]["VenueSummary"] | null;
+            name: string;
+            description: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone: string;
+            scope: components["schemas"]["TournamentScopeEnum"];
+            readonly approval_status: components["schemas"]["ApprovalStatusEnum"];
+            registration_fee: components["schemas"]["RegistrationFee"];
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            schedule_notice_minutes: number;
+            readonly status: components["schemas"]["TournamentStatusEnum"];
+            /** Format: date-time */
+            readonly published_at: string | null;
+            /** Format: date-time */
+            readonly started_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly cancelled_at: string | null;
+            readonly cancel_reason: string;
+            readonly events: components["schemas"]["Event"][];
+        };
+        TournamentRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            status: string;
+        };
+        TournamentRefRequest: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            status: string;
+        };
+        /**
+         * @description A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
+         *     is private once the tournament is published, and drafts are served to the host's staff only.
+         */
+        TournamentRequest: {
+            /** Format: uuid */
+            venue_id?: string | null;
+            name: string;
+            description?: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            timezone?: string;
+            scope?: components["schemas"]["TournamentScopeEnum"];
+            registration_fee?: components["schemas"]["RegistrationFeeRequest"];
+            /** @description A published match moved by more than this, or to another table, is news for its people. */
+            schedule_notice_minutes?: number;
+        };
+        /**
+         * @description * `local` - Local
+         *     * `regional` - Regional
+         *     * `national` - National
+         *     * `international` - International
+         * @enum {string}
+         */
+        TournamentScopeEnum: "local" | "regional" | "national" | "international";
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `in_progress` - In Progress
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        TournamentStatusEnum: "draft" | "published" | "in_progress" | "completed" | "cancelled";
+        /**
+         * @description What a coach sees of a trainee: the plans they gave them with progress, recent matches, ratings
+         *     and sessions booked between them.
+         */
+        Trainee: {
+            coaching: components["schemas"]["Coaching"];
+            plans: components["schemas"]["TrainingPlan"][];
+            matches: components["schemas"]["TraineeMatch"][];
+            ratings: components["schemas"]["TraineeRating"][];
+            bookings: components["schemas"]["Booking"][];
+            record: {
+                [key: string]: number;
+            };
+        };
+        /** @description One of the trainee's matches as their coach sees it, with the coach's comments on it. */
+        TraineeMatch: {
+            kind: components["schemas"]["TraineeMatchKindEnum"];
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            played_on: string | null;
+            title: string;
+            opponent: string;
+            result: string;
+            score: string;
+            comments: components["schemas"]["Comment"][];
+        };
+        /**
+         * @description * `personal` - personal
+         *     * `official` - official
+         * @enum {string}
+         */
+        TraineeMatchKindEnum: "personal" | "official";
+        TraineeRating: {
+            discipline: string;
+            /** Format: double */
+            rating: number;
+            played: number;
+            won: number;
+        };
+        /** @description A weekly training time. `venue` is one of the organization's venues in use, or none. */
+        TrainingHour: {
+            /** Format: uuid */
+            readonly id: string;
+            weekday: number;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            label: string;
+            /** Format: uuid */
+            venue: string | null;
+            readonly venue_name: string;
+        };
+        TrainingHourListRequest: {
+            hours: components["schemas"]["TrainingHourRequest"][];
+        };
+        /** @description A weekly training time. `venue` is one of the organization's venues in use, or none. */
+        TrainingHourRequest: {
+            weekday: number;
+            /** Format: time */
+            starts: string;
+            /** Format: time */
+            ends: string;
+            label?: string;
+            /** Format: uuid */
+            venue?: string | null;
+        };
+        TrainingPlan: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            goal: string;
+            goal_skills: components["schemas"]["SkillEnum"][];
+            period: components["schemas"]["PeriodEnum"];
+            /** Format: date */
+            starts_on: string | null;
+            /** Format: date */
+            ends_on: string | null;
+            /** Format: uuid */
+            readonly organization: string | null;
+            /** Format: uuid */
+            readonly coach: string | null;
+            readonly coach_name: string | null;
+            readonly items: components["schemas"]["PlanItem"][];
+            readonly progress: components["schemas"]["Progress"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        TrainingPlanRequest: {
+            title: string;
+            goal?: string;
+            goal_skills?: components["schemas"]["SkillEnum"][];
+            period?: components["schemas"]["PeriodEnum"];
+            /** Format: date */
+            starts_on?: string | null;
+            /** Format: date */
+            ends_on?: string | null;
+        };
+        Umpire: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        Unread: {
+            unread: number;
+        };
+        UpcomingSession: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            plan: string;
+            plan_title: string;
+            readonly title: string;
+            /** Format: date-time */
+            readonly starts_at: string | null;
+            /** Format: date-time */
+            readonly ends_at: string | null;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+        };
+        UpcomingTournament: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: date */
+            readonly starts_on: string;
+            /** Format: date */
+            readonly ends_on: string;
+            readonly scope: components["schemas"]["TournamentScopeEnum"];
+            readonly status: components["schemas"]["TournamentStatusEnum"];
+            readonly venue_name: string;
         };
         User: {
             /** Format: uuid */
@@ -1263,6 +11637,222 @@ export interface components {
             /** Format: date-time */
             readonly date_joined: string;
         };
+        /** @description A venue with its tables in playing order, and its branch profile (REQ-044). */
+        Venue: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            country: string;
+            region: string;
+            town: string;
+            address: string;
+            directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            phone: string;
+            rules: string;
+            amenities: string[];
+            /**
+             * @description Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+             *
+             *     * `hidden` - Hidden
+             *     * `members` - Members only
+             *     * `public` - Public
+             */
+            profile: components["schemas"]["ProfileEnum"];
+            active: boolean;
+            readonly tables: components["schemas"]["Table"][];
+            readonly opening_hours: components["schemas"]["OpeningHour"][];
+            readonly closures: components["schemas"]["Closure"][];
+        };
+        /** @description The whole weekly timetable and list of closures, replaced together. */
+        VenueHoursRequest: {
+            hours: components["schemas"]["OpeningHourRequest"][];
+            closures: components["schemas"]["ClosureRequest"][];
+        };
+        /** @description A venue with its tables in playing order, and its branch profile (REQ-044). */
+        VenueRequest: {
+            name: string;
+            country?: string;
+            region?: string;
+            town: string;
+            address?: string;
+            directions?: string;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            phone?: string;
+            rules?: string;
+            amenities?: string[];
+            /**
+             * @description Who finds this branch in the facility finder: nobody, the organization's members, or every signed-in player.
+             *
+             *     * `hidden` - Hidden
+             *     * `members` - Members only
+             *     * `public` - Public
+             */
+            profile?: components["schemas"]["ProfileEnum"];
+            active?: boolean;
+        };
+        /** @description What anyone who can see a tournament sees of its venue, including how to find it. */
+        VenueSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly town: string;
+            readonly address: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+        };
+        /** @description What anyone who can see a tournament sees of its venue, including how to find it. */
+        VenueSummaryRequest: {
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+        };
+        VersionSlot: {
+            /** Format: uuid */
+            match_id: string;
+            label: string;
+            title: string;
+            table: components["schemas"]["ScheduleTable"] | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+        };
+        /** @description A door visit as the facility's staff see it, walk-in names included. */
+        Visit: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly pass_name: string;
+            readonly pass_kind: string;
+            /** Format: uuid */
+            readonly player_id: string | null;
+            readonly player_name: string;
+            readonly walk_in_name: string;
+            readonly amount_minor: number;
+            readonly currency: string;
+            readonly method: components["schemas"]["VisitMethodEnum"];
+            readonly reference: string;
+            /** Format: date */
+            readonly visited_on: string;
+            /** Format: date */
+            readonly valid_until: string;
+            readonly recorded_by_name: string;
+            /** Format: date-time */
+            readonly recorded_at: string;
+            readonly reversed: boolean;
+            /** Format: date-time */
+            readonly reversed_at: string | null;
+            readonly reversal_reason: string;
+        };
+        /**
+         * @description * `cash` - Cash
+         *     * `mpesa` - M-Pesa
+         *     * `other` - Other
+         *     * `pass` - Covered by a pass
+         * @enum {string}
+         */
+        VisitMethodEnum: "cash" | "mpesa" | "other" | "pass";
+        /** @description A gift as finance and welfare staff see it. */
+        WelfareContribution: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            contributor_id: string;
+            readonly contributor_name: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            /** @default false */
+            anonymous: boolean;
+            readonly reversed: boolean;
+        };
+        /** @description A gift as finance and welfare staff see it. */
+        WelfareContributionRequest: {
+            /** Format: uuid */
+            contributor_id: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            method: components["schemas"]["PaymentMethodEnum"];
+            /** @default  */
+            reference: string;
+            /** Format: date */
+            received_on: string;
+            /** Format: uuid */
+            request_key: string;
+            /** @default false */
+            anonymous: boolean;
+        };
+        /**
+         * @description A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
+         *     and a contributor list only when the club shows one.
+         */
+        WelfareProject: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            description: string;
+            /** Format: uuid */
+            beneficiary_id: string | null;
+            readonly beneficiary_name: string | null;
+            suggested_minor: number | null;
+            /** @default KES */
+            currency: string;
+            target_minor: number | null;
+            /** Format: date */
+            deadline: string | null;
+            audience: components["schemas"]["FinanceAudienceEnum"];
+            show_contributors: boolean;
+            readonly hidden: boolean;
+            readonly closed: boolean;
+            readonly received_minor: number;
+            readonly spent_minor: number;
+            readonly remaining_minor: number;
+            readonly my_contribution_minor: number;
+            readonly contributors: components["schemas"]["Contributor"][] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
+         *     and a contributor list only when the club shows one.
+         */
+        WelfareProjectRequest: {
+            title: string;
+            description?: string;
+            /** Format: uuid */
+            beneficiary_id?: string | null;
+            suggested_minor?: number | null;
+            /** @default KES */
+            currency: string;
+            target_minor?: number | null;
+            /** Format: date */
+            deadline?: string | null;
+            audience?: components["schemas"]["FinanceAudienceEnum"];
+            /** @description The members a selected-audience project is for. */
+            member_ids?: string[];
+            show_contributors?: boolean;
+        };
+        /**
+         * @description * `left` - left
+         *     * `center` - center
+         *     * `right` - right
+         * @enum {string}
+         */
+        XEnum: "left" | "center" | "right";
         /** @description Envelope of every API error (REQ-032); see core.exceptions.api_exception_handler. */
         ApiError: {
             /** @description Stable machine-readable code, e.g. `validation_error` */
@@ -1283,6 +11873,69 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    attachments_content_retrieve: {
+        parameters: {
+            query: {
+                /** @description From a signed link */
+                token: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/webp": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    attachments_url_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentLink"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     auth_csrf_retrieve: {
         parameters: {
             query?: never;
@@ -1553,6 +12206,1641 @@ export interface operations {
             };
         };
     };
+    coaches_list: {
+        parameters: {
+            query?: {
+                level?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                region?: string;
+                /** @description Name, headline or town */
+                search?: string;
+                skill?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCoachProfileList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    coaches_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    coaches_slots_list: {
+        parameters: {
+            query?: {
+                /** @description 1 to 28, default 14 */
+                days?: number;
+                /** @description First day, in the coach's timezone; today by default */
+                from?: string;
+                /** @description Session length, 30 to 180, default 60 */
+                minutes?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Slot"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    drills_list: {
+        parameters: {
+            query?: {
+                category?: string;
+                level?: string;
+                library?: "club" | "personal" | "standard";
+                /** @description Title or focus */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    drills_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    events_list: {
+        parameters: {
+            query?: {
+                category?: string;
+                /** @description Events still on from this day (calendar view) */
+                from?: string;
+                /** @description The host or submitting club's id */
+                host?: string;
+                /** @description Only the caller's clubs */
+                ours?: boolean;
+                /** @description Events starting by this day */
+                to?: string;
+                town?: string;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListedEvent"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_remove_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_report_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkReportRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    external_events_review_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    facilities_list: {
+        parameters: {
+            query?: {
+                /** @description City or town, any letter case */
+                city?: string;
+                /** @description Country code, e.g. KE */
+                country?: string;
+                /** @description Only branches open at this moment */
+                open_now?: boolean;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Region, any letter case */
+                region?: string;
+                /** @description Branch, facility or town */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFacilityList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    facilities_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this venue. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacilityProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    facilities_schedule_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this venue. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedBranchScheduleItemList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    geography_countries_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOption"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    geography_countries_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryCatalogue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAdminHandoverList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this admin handover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_admin_nominations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this admin handover. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_agenda_list: {
+        parameters: {
+            query?: {
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_articles_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_avatar_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["AvatarUploadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_avatar_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_bookings_list: {
+        parameters: {
+            query?: {
+                /** @description Sessions that have ended, newest first */
+                past?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_bookings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookingRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_bookings_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_bookings_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_availability_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Availability"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_availability_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AvailabilityListRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Availability"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_calendar_list: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_comments_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_comments_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCommentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_notes_list: {
+        parameters: {
+            query?: {
+                match?: string;
+                personal_match?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_profile_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_profile_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoachProfileRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coachings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coaching"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coachings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CoachingRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coaching"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coachings_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coaching"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coachings_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coaching"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coachings_end_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coaching"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDrillList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrillRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrillRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_drills_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this drill. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDrillRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_entries_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyEntryList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_equipment_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_equipment_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EquipmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_facility_visits_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyVisitList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_goals_update: {
         parameters: {
             query?: never;
@@ -1572,6 +13860,161 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Goals"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_guest_claims_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyClaimList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_guest_invitations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyGuestInvitationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_guest_invitations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaim"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_guest_invitations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_honours_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Honour"][];
                 };
             };
             /** @description Error envelope */
@@ -1713,6 +14156,199 @@ export interface operations {
             };
         };
     };
+    me_managed_organizations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementOrganization"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_list: {
+        parameters: {
+            query?: {
+                /** @description Only the note on this official match. */
+                match?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only the note on this recorded match. */
+                personal_match?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMatchNoteList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MatchNoteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchNote"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this match note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchNote"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this match note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_match_notes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this match note. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMatchNoteChangeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchNote"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_matches_list: {
         parameters: {
             query?: {
@@ -1761,6 +14397,14 @@ export interface operations {
             };
         };
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalMatch"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1970,6 +14614,34 @@ export interface operations {
             };
         };
     };
+    me_meetings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_memberships_list: {
         parameters: {
             query?: {
@@ -2003,6 +14675,72 @@ export interface operations {
             };
         };
     };
+    me_memberships_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_memberships_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this membership. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldValuesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_memberships_leave_create: {
         parameters: {
             query?: never;
@@ -2021,6 +14759,188 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notification_preferences_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notification_preferences_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferencesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preferences"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only unread alerts */
+                unread?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNotificationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_read_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Unread"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_notifications_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Unread"];
+                };
             };
             /** @description Error envelope */
             "4XX": {
@@ -2120,14 +15040,1459 @@ export interface operations {
             };
         };
     };
-    organizations_list: {
+    me_scorecards_list: {
         parameters: {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                /** @description Name or town */
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyScorecardList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_session_invitations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMySessionInvitationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_session_invitations_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this session invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_session_invitations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this session invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedChallengeList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChallengeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AcceptRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_counter_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CounterRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_dispute_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisputeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_result_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_settle_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_share_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_games_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this challenge. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_soda_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySodaSettings"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_table_bookings_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTableBookingList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_table_bookings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableBookingRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_table_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this booking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TableBookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_items_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coaching_pk: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_items_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coaching_pk: string;
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_items_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coaching_pk: string;
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlanItemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Trainee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_comments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AssignPlanRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTrainingPlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_trainees_plans_recommendations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrillRecommendation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTrainingPlanList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrainingPlanRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrainingPlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTrainingPlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_recommendations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this training plan. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDrillRecommendationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_items_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_items_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_plans_items_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlanItemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_training_sessions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpcomingSession"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    open_sessions_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only this branch */
+                venue?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOpenSessionList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    open_sessions_join_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this club session. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    open_sessions_leave_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this club session. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_list: {
+        parameters: {
+            query?: {
+                /** @description City or town, any letter case */
+                city?: string;
+                /** @description Country code, e.g. KE */
+                country?: string;
+                /** @description Only these kinds */
+                kind?: ("club" | "club_facility" | "facility" | "regional_body")[];
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Region, any letter case */
+                region?: string;
+                /** @description Name, town or region */
                 search?: string;
             };
             header?: never;
@@ -2174,6 +16539,3018 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedClubActivityList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClubActivityRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedClubActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_attendees_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAttendeeList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_invitees_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityInvitees"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_rsvp_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RsvpRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationAdmin"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_appoint_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_nominate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NominateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_list: {
+        parameters: {
+            query?: {
+                year?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgendaItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_agenda_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAgendaItemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaItem"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_announcements_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedArticleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_articles_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Article"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                status?: "approved" | "cancelled" | "rejected" | "requested";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTableBookingList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApproveTableBookingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TableBookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_bookings_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TableBookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableBooking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedClubSessionList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClubSessionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedClubSessionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_invitations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                session_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInvitation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_invitations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                session_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInvitation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_invitations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                session_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAttendanceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_candidates_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Display name */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCandidateList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitteeFieldRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCommitteeFieldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_fields_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_history_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPastHolderList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPositionInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_holder_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignHolderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_holder_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_values_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldValuesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_committee_positions_reorder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Committee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrillRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_drills_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDrillRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drill"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalEventRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedExternalEventRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_external_events_live_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkLiveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalEvent"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_facility_takings_list: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM; this month by default */
+                month?: string;
+                /** @description Only this branch */
+                venue?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Takings"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_purposes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Purposes"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_balances_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Balance"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCampaignUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_dues_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Only these */
+                status?: "overdue" | "paid" | "partial" | "pending" | "waived";
+            };
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignDues"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_remind_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reminded"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_campaigns_terms_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignTermRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Campaign"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_charges_list: {
+        parameters: {
+            query?: {
+                /** @description Only this member's */
+                member?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Charge"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_charges_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChargeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Charge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_charges_waive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Charge"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_expenses_list: {
+        parameters: {
+            query?: {
+                /** @description Only this campaign's */
+                campaign?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_expenses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_expenses_receipt_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReceiptUploadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_expenses_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_allocate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllocateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_payments_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_summary_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurposeTotal"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guest_claims_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Only these. */
+                status?: "conflict" | "merged" | "rejected";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGuestClaimList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guest_claims_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest claim. */
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestClaim"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guest_claims_retry_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this guest claim. */
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestClaim"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_list: {
+        parameters: {
+            query?: {
+                /** @description Only claimed (true) or unclaimed (false) guests. */
+                claimed?: boolean;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Part of the guest's name. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGuestList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedGuestWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_invite_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestInviteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_revoke_invitation_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
                 };
             };
             /** @description Error envelope */
@@ -2430,6 +19807,494 @@ export interface operations {
             };
         };
     };
+    organizations_meetings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMeetingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_answer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_minutes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MinutesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberFieldRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_member_fields_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberField"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_members_list: {
         parameters: {
             query?: {
@@ -2454,6 +20319,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedMemberList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_members_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_members_fields_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMemberFieldValuesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberFieldEntry"][];
                 };
             };
             /** @description Error envelope */
@@ -2519,6 +20450,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Member"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_my_finances_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyFinances"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_region_clubs_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionClub"][];
                 };
             };
             /** @description Error envelope */
@@ -2661,6 +20652,1516 @@ export interface operations {
             };
         };
     };
+    organizations_schedule_list: {
+        parameters: {
+            query?: {
+                kind?: ("activity" | "tournament" | "training")[];
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleItem"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "organizations_schedule.ics_retrieve": {
+        parameters: {
+            query?: {
+                kind?: ("activity" | "tournament" | "training")[];
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_soda_games_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedChallenge"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_soda_policy_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_soda_policy_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PolicyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Policy"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_sponsorships_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_sponsorships_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SponsorshipRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_sponsorships_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_tournaments_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTournamentList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_tournaments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TournamentRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_hours_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingHour"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_hours_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrainingHourListRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingHour"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTrainingPlanList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrainingPlanRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTrainingPlanRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_recommendations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDrillRecommendationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_items_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_items_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_plans_items_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                plan_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlanItemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VenueRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedVenueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_hours_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VenueHoursRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_tables_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_tables_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                table_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTableRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Venue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_passes_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_passes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PassRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_passes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPassRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Pass"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_list: {
+        parameters: {
+            query?: {
+                /** @description The branch's local day; today by default */
+                day?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordVisitRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReverseVisitRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_venues_visits_active_pass_retrieve: {
+        parameters: {
+            query?: {
+                /** @description The player's id */
+                player?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+                venue_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visit"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WelfareProjectRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedWelfareUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_contributions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_contributions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WelfareContributionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_contributions_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contribution_pk: string;
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_expenses_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_expenses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_hide_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_retrieve: {
         parameters: {
             query?: never;
@@ -2679,6 +22180,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this organization. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOrganizationLocationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_profile_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubProfile"];
                 };
             };
             /** @description Error envelope */
@@ -2772,6 +22338,3042 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Player"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    players_ratings_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Default singles. */
+                discipline?: "doubles" | "singles";
+                /** @description Default all. */
+                result?: "all" | "lost" | "won";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerRatings"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rankings_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Default singles. */
+                discipline?: "doubles" | "singles";
+                /** @description A club you belong to: rank its members only. */
+                organization?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ranking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rankings_clubs_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Default singles. */
+                discipline?: "doubles" | "singles";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubRanking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rankings_geography_retrieve: {
+        parameters: {
+            query?: {
+                discipline?: "doubles" | "singles";
+                level?: "city" | "country" | "region";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographyRanking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    regional_bodies_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionalBody"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    regional_bodies_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionalBodyInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionalBody"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scorecard"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scorecard"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_conflicts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConflictReportRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictReceipt"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_device_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TakeDeviceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scorecard"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_events_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitEventsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitResult"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_list: {
+        parameters: {
+            query?: {
+                /** @description Host organization id */
+                organization?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                scope?: "international" | "local" | "national" | "regional";
+                /** @description Tournament, host or town */
+                search?: string;
+                when?: "past" | "upcoming";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTournamentList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTournamentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_approval_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_approval_request_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_history_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedLifecycleEntryList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_start_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CeremonyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_awards_present_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_generate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_ceremony_reorder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardOrderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ceremony"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_corrections_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Resolution"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_corrections_resolve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Resolution"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dispatch_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dispatch_auto_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoDispatchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dispatch_run_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DrawRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                status?: "accepted" | "pairing" | "pending" | "rejected" | "waitlisted" | "withdrawn";
+            };
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedEntryList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EntryRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OptionalReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_self_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_staff_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OptionalReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_undo_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_waitlist_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "tournaments_events_matches_card.svg_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/svg+xml": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_dispatch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DispatchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_lineup_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineupRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_lineup_reset_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_recall_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecallRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_recap_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recap"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_result_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResultEntryRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_result_correct_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResultCorrectionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_umpire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignUmpireRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_standings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Standings"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_umpires_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Umpire"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedEventRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_start_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_reservations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reservation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Schedule"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Schedule"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_check_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Checked"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_delay_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableDelayRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Delayed"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleVersion"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_recommend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RecommendRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recommendation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_sessions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSessionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_versions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleVersionSummary"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_versions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                number: number;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleVersion"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_scoring_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoringOverview"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_scoring_conflicts_resolve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveConflictRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoringOverview"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsors_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsor"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsorships_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsorships_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_sponsorships_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sponsorship"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveStream"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveStreamRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveStream"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLiveStreamRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveStream"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_streams_report_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_tables_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableState"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_awaiting_approval_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTournamentList"];
                 };
             };
             /** @description Error envelope */

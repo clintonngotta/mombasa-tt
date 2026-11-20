@@ -19,5 +19,12 @@ services:
       timeout: 3s
       retries: 10
 
+  # Optional while developing (REDIS_URL=redis://127.0.0.1:6380/0): Celery and cross-process WebSockets.
+  # Bound to loopback only.
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6380:6379"
+
 volumes:
   db-data:

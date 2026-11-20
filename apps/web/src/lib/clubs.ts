@@ -6,17 +6,38 @@ import { useMe } from "@/lib/session"
 
 export type Organization = Schemas["Organization"]
 export type OrganizationKind = Schemas["KindEnum"]
-export type Membership = Schemas["Membership"]
+type Management = Schemas["ManagementOrganization"]
+export type Membership = Schemas["Membership"] & { authority?: Management["authority"]; managedOnly?: boolean }
 export type JoinRequest = Schemas["JoinRequest"]
 export type Invitation = Schemas["Invitation"]
 export type MyInvitation = Schemas["MyInvitation"]
+export type AdminHandover = Schemas["AdminHandover"]
+export type OrganizationAdmin = Schemas["OrganizationAdmin"]
 export type MyJoinRequest = Schemas["MyJoinRequest"]
 export type JoinDecision = "approve" | "reject"
-export type OrganizationInput = Required<Schemas["OrganizationRequest"]>
+// The timezone is left to the server default (Africa/Nairobi) when registering.
+export type OrganizationInput = Required<Omit<Schemas["OrganizationRequest"], "timezone">>
 export type Permission = Schemas["PermissionEnum"]
 export type Role = Schemas["Role"]
 export type RoleInput = Schemas["PatchedRoleRequest"]
 export type Member = Schemas["Member"]
+export type MemberField = Schemas["MemberField"]
+export type MemberFieldKind = Schemas["MemberFieldKindEnum"]
+export type MemberFieldInput = Schemas["PatchedMemberFieldRequest"]
+export type MemberFieldEntry = Schemas["MemberFieldEntry"]
+export type FieldValue = MemberFieldEntry["value"]
+export type FieldValues = Record<string, FieldValue>
+export type Committee = Schemas["Committee"]
+export type CommitteePosition = Schemas["Position"]
+export type CommitteeField = Schemas["CommitteeField"]
+export type CommitteeFieldInput = Schemas["PatchedCommitteeFieldRequest"]
+export type PositionInput = Schemas["PatchedPositionInputRequest"]
+export type PastHolder = Schemas["PastHolder"]
+export type ClubProfile = Schemas["ClubProfile"]
+export type TrainingHour = Schemas["TrainingHour"]
+export type TrainingHourInput = Schemas["TrainingHourRequest"]
+/** Filters for finding clubs: a name and/or an area. Empty strings mean "any". */
+export type ClubSearch = { name: string; country: string; region: string; city: string }
 
 /** Whether the membership's effective permissions include any of `perms` (REQ-005). The server checks
  * every request; this only decides which actions the app offers. */
@@ -34,37 +55,86 @@ export const KIND_LABEL: Record<OrganizationKind, string> = {
   club: "Club",
   facility: "Facility",
   club_facility: "Club and facility",
+  regional_body: "Regional body",
+}
+
+export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {
+  text: "Text",
+  number: "Number",
+  date: "Date",
+  boolean: "Yes or no",
+  choice: "Selection",
 }
 
 // Every club query lives under "clubs", so one invalidation (or removal on sign-out) covers them all.
 export const clubKeys = {
   all: ["clubs"] as const,
   search: (term: string) => ["clubs", "search", term] as const,
+  find: (filters: ClubSearch) => ["clubs", "find", filters] as const,
+  profile: (orgId: string) => ["clubs", orgId, "profile"] as const,
+  trainingHours: (orgId: string) => ["clubs", orgId, "training-hours"] as const,
   memberships: ["clubs", "memberships"] as const,
+  management: ["clubs", "management"] as const,
   myInvitations: ["clubs", "my-invitations"] as const,
   myJoinRequests: ["clubs", "my-join-requests"] as const,
+  myAdminNominations: ["clubs", "my-admin-nominations"] as const,
+  admin: (orgId: string) => ["clubs", orgId, "admin"] as const,
   joinRequests: (orgId: string) => ["clubs", orgId, "join-requests"] as const,
   invitations: (orgId: string) => ["clubs", orgId, "invitations"] as const,
   roles: (orgId: string) => ["clubs", orgId, "roles"] as const,
   members: (orgId: string, term: string) => ["clubs", orgId, "members", term] as const,
   membersAll: (orgId: string) => ["clubs", orgId, "members"] as const,
   permissions: ["clubs", "permissions"] as const,
+  memberFields: (orgId: string) => ["clubs", orgId, "member-fields"] as const,
+  /** Staff view of one member's custom field values. */
+  memberValues: (orgId: string, membershipId: string) => ["clubs", orgId, "member-values", membershipId] as const,
+  committee: (orgId: string) => ["clubs", orgId, "committee"] as const,
+  committeeHistory: (orgId: string) => ["clubs", orgId, "committee", "history"] as const,
+  committeeFields: (orgId: string) => ["clubs", orgId, "committee", "fields"] as const,
+  committeeCandidates: (orgId: string, term: string) => ["clubs", orgId, "committee", "candidates", term] as const,
+  /** The player's own member-visible values. */
+  myFieldValues: (membershipId: string) => ["clubs", "my-fields", membershipId] as const,
 }
 
 const orgPath = (id: string) => `/organizations/${id}`
 
 export const searchOrganizations = (query: string) =>
   api<Schemas["PaginatedOrganizationList"]>(`/organizations/?search=${encodeURIComponent(query)}`)
+/** Clubs (and club facilities) by name and area, for players looking for a club to join. */
+export const findClubs = ({ name, country, region, city }: ClubSearch) => {
+  const params = new URLSearchParams({ page_size: "50" })
+  for (const [key, value] of Object.entries({ search: name, country, region, city })) if (value.trim()) params.set(key, value.trim())
+  params.append("kind", "club")
+  params.append("kind", "club_facility")
+  return api<Schemas["PaginatedOrganizationList"]>(`/organizations/?${params}`)
+}
+/** What any signed-in player sees of a club before joining. */
+export const getClubProfile = (orgId: string) => api<ClubProfile>(`${orgPath(orgId)}/profile/`)
+export const listTrainingHours = (orgId: string) => api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`)
+export const saveTrainingHours = (orgId: string, hours: TrainingHourInput[]) =>
+  api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`, { method: "PUT", body: { hours } })
 export const requestToJoin = (organizationId: string) => api<MyJoinRequest>(`${orgPath(organizationId)}/join-requests/`, { body: {} })
 
 // A player belongs to a handful of organizations, so the first page (50) covers the switcher.
 export const listMyMemberships = () => api<Schemas["PaginatedMembershipList"]>("/me/memberships/?page_size=50")
+const listManagement = () => api<Management[]>("/me/managed-organizations/")
 export const listMyInvitations = () => api<Schemas["PaginatedMyInvitationList"]>("/me/invitations/")
 export const listMyJoinRequests = () => api<Schemas["PaginatedMyJoinRequestList"]>("/me/join-requests/")
 export const acceptInvitation = (id: string) => api<MyInvitation>(`/me/invitations/${id}/accept/`, { body: {} })
 export const declineInvitation = (id: string) => api<MyInvitation>(`/me/invitations/${id}/decline/`, { body: {} })
 
 export const createOrganization = (input: OrganizationInput) => api<Organization>("/organizations/", { body: input })
+export const updateOrganizationLocation = (id: string, input: Schemas["PatchedOrganizationLocationRequest"]) =>
+  api<Organization>(`/organizations/${id}/`, { method: "PATCH", body: input })
+
+// One admin per organization, handed over by nomination (REQ-045).
+export const getOrganizationAdmin = (orgId: string) => api<OrganizationAdmin>(`${orgPath(orgId)}/admin/`)
+export const nominateAdmin = (orgId: string, membershipId: string) =>
+  api<AdminHandover>(`${orgPath(orgId)}/admin/nominate/`, { body: { membership_id: membershipId } })
+export const cancelAdminNomination = (orgId: string) => api<AdminHandover>(`${orgPath(orgId)}/admin/cancel/`, { body: {} })
+export const listMyAdminNominations = () => api<Schemas["PaginatedAdminHandoverList"]>("/me/admin-nominations/")
+export const answerAdminNomination = (id: string, accept: boolean) =>
+  api<AdminHandover>(`/me/admin-nominations/${id}/${accept ? "accept" : "decline"}/`, { body: {} })
 
 export const listJoinRequests = (orgId: string) => api<Schemas["PaginatedJoinRequestList"]>(`${orgPath(orgId)}/join-requests/`)
 export const decideJoinRequest = (orgId: string, id: string, outcome: JoinDecision) =>
@@ -92,6 +162,53 @@ export const setMemberRoles = (orgId: string, membershipId: string, roles: strin
 export const removeMember = (orgId: string, membershipId: string) =>
   api<void>(`${orgPath(orgId)}/members/${membershipId}/remove/`, { body: {} })
 
+// Custom member fields (REQ-005). Staff manage definitions and every member's values; a member sees and
+// fills in only their own member-visible fields.
+export const listMemberFields = (orgId: string) => api<MemberField[]>(`${orgPath(orgId)}/member-fields/`)
+export const createMemberField = (orgId: string, body: Schemas["MemberFieldRequest"]) =>
+  api<MemberField>(`${orgPath(orgId)}/member-fields/`, { body })
+export const updateMemberField = (orgId: string, id: string, body: MemberFieldInput) =>
+  api<MemberField>(`${orgPath(orgId)}/member-fields/${id}/`, { method: "PATCH", body })
+export const setMemberFieldRetired = (orgId: string, id: string, retired: boolean) =>
+  api<MemberField>(`${orgPath(orgId)}/member-fields/${id}/${retired ? "retire" : "restore"}/`, { body: {} })
+export const getMemberValues = (orgId: string, membershipId: string) =>
+  api<MemberFieldEntry[]>(`${orgPath(orgId)}/members/${membershipId}/fields/`)
+export const saveMemberValues = (orgId: string, membershipId: string, values: FieldValues) =>
+  api<MemberFieldEntry[]>(`${orgPath(orgId)}/members/${membershipId}/fields/`, { method: "PATCH", body: { values } })
+export const getMyFieldValues = (membershipId: string) => api<MemberFieldEntry[]>(`/me/memberships/${membershipId}/fields/`)
+export const saveMyFieldValues = (membershipId: string, values: FieldValues) =>
+  api<MemberFieldEntry[]>(`/me/memberships/${membershipId}/fields/`, { method: "PATCH", body: { values } })
+
+// Committees (REQ-045). Every member reads the committee and its history; governance staff change it, and
+// each change answers with the whole committee.
+const committeePath = (orgId: string) => `${orgPath(orgId)}/committee`
+export const getCommittee = (orgId: string) => api<Committee>(`${committeePath(orgId)}/`)
+export const listCommitteeHistory = (orgId: string) => api<Schemas["PaginatedPastHolderList"]>(`${committeePath(orgId)}/history/?page_size=50`)
+export const listCommitteeCandidates = (orgId: string, term: string) =>
+  api<Schemas["PaginatedCandidateList"]>(`${committeePath(orgId)}/candidates/?search=${encodeURIComponent(term)}`)
+export const createPosition = (orgId: string, body: Schemas["PositionInputRequest"]) =>
+  api<Committee>(`${committeePath(orgId)}/positions/`, { body })
+export const updatePosition = (orgId: string, id: string, body: PositionInput) =>
+  api<Committee>(`${committeePath(orgId)}/positions/${id}/`, { method: "PATCH", body })
+export const reorderPositions = (orgId: string, positions: string[]) =>
+  api<Committee>(`${committeePath(orgId)}/positions/reorder/`, { body: { positions } })
+export const retirePosition = (orgId: string, id: string) => api<Committee>(`${committeePath(orgId)}/positions/${id}/retire/`, { body: {} })
+export const assignHolder = (orgId: string, id: string, membershipId: string, startedOn?: string) =>
+  api<Committee>(`${committeePath(orgId)}/positions/${id}/holder/`, {
+    method: "PUT",
+    body: { membership_id: membershipId, ...(startedOn ? { started_on: startedOn } : {}) },
+  })
+export const endHolder = (orgId: string, id: string) => api<Committee>(`${committeePath(orgId)}/positions/${id}/holder/`, { method: "DELETE" })
+export const savePositionValues = (orgId: string, id: string, values: FieldValues) =>
+  api<Committee>(`${committeePath(orgId)}/positions/${id}/values/`, { method: "PATCH", body: { values } })
+export const listCommitteeFields = (orgId: string) => api<CommitteeField[]>(`${committeePath(orgId)}/fields/`)
+export const createCommitteeField = (orgId: string, body: Schemas["CommitteeFieldRequest"]) =>
+  api<CommitteeField>(`${committeePath(orgId)}/fields/`, { body })
+export const updateCommitteeField = (orgId: string, id: string, body: CommitteeFieldInput) =>
+  api<CommitteeField>(`${committeePath(orgId)}/fields/${id}/`, { method: "PATCH", body })
+export const setCommitteeFieldRetired = (orgId: string, id: string, retired: boolean) =>
+  api<CommitteeField>(`${committeePath(orgId)}/fields/${id}/${retired ? "retire" : "restore"}/`, { body: {} })
+
 /**
  * The signed-in player's active memberships. Disabled for signed-out visitors, and `results` is empty
  * whenever the session isn't confirmed, so a cached list never outlives a logout or expired session.
@@ -99,7 +216,23 @@ export const removeMember = (orgId: string, membershipId: string) =>
 export function useMemberships() {
   const me = useMe()
   const query = useQuery({ queryKey: clubKeys.memberships, queryFn: listMyMemberships, enabled: me.isSuccess })
-  return { query, results: me.isSuccess ? (query.data?.results ?? []) : [] }
+  const management = useQuery({ queryKey: clubKeys.management, queryFn: listManagement, enabled: me.isSuccess })
+  const contexts = new Map<string, Membership>()
+  for (const membership of query.data?.results ?? []) contexts.set(membership.organization.id, membership)
+  for (const { organization, authority, permissions } of management.data ?? []) {
+    const member = contexts.get(organization.id)
+    contexts.set(organization.id, member ? { ...member, authority, permissions } : {
+      id: organization.id,
+      organization,
+      permissions,
+      authority,
+      managedOnly: true,
+      roles: [],
+      status: "active",
+      joined_at: "",
+    })
+  }
+  return { query, results: me.isSuccess ? [...contexts.values()] : [] }
 }
 
 // The organization context the player last chose (REQ-004 switcher). Kept per device; the server
@@ -148,4 +281,22 @@ export function useActiveMembership() {
   const stored = useSyncExternalStore(subscribe, readActive, () => null)
   const active = all.find((m) => m.organization.id === stored) ?? all[0]
   return { memberships: query, all, active }
+}
+
+/** Where the player stands with a club: already in it, waiting for staff, free to ask, or not known yet. */
+export type JoinState = "member" | "pending" | "can-ask" | "unknown"
+
+/** The player's memberships and open join requests, as a lookup by organization. */
+export function useJoinState() {
+  const memberships = useMemberships()
+  const myRequests = useQuery({ queryKey: clubKeys.myJoinRequests, queryFn: listMyJoinRequests })
+  const memberOf = new Set(memberships.results.filter((m) => !m.managedOnly).map((m) => m.organization.id))
+  const pending = new Set(myRequests.data?.results.filter((r) => r.status === "pending").map((r) => r.organization.id))
+  // Until both lists load we can't tell "member" or "pending" from "can ask", so offer no join button.
+  const known = memberships.query.isSuccess && myRequests.isSuccess
+  return {
+    failed: memberships.query.isError || myRequests.isError,
+    of: (orgId: string): JoinState =>
+      memberOf.has(orgId) ? "member" : pending.has(orgId) ? "pending" : known ? "can-ask" : "unknown",
+  }
 }

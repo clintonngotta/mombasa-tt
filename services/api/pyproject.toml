@@ -1,13 +1,18 @@
 [project]
 name = "mombasa-tt-api"
 version = "0.1.0"
-description = "mombasa-tt Django API"
+description = "Coast TT Django API"
 requires-python = ">=3.13"
 dependencies = [
+    "celery[redis]>=5.5",
+    "channels>=4.2",
+    "channels-redis>=4.2",
+    "daphne>=4.1",
     "dj-database-url>=3.1.2",
     "django>=5.2,<6.1",
     "djangorestframework>=3.18.1",
     "drf-spectacular>=0.30.0",
+    "pillow>=11",
     "psycopg[binary]>=3.3.6",
 ]
 

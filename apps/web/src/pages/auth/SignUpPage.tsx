@@ -4,12 +4,14 @@ import { useMutation } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { AuthLayout } from "@/components/layout/AuthLayout"
 import { Field, FormAlert, PasswordField } from "@/components/forms/Field"
+import { LocationFields } from "@/components/forms/LocationFields"
 import { ApiError, errorMessage } from "@/lib/api"
 import { MIN_PASSWORD_LENGTH, signUp } from "@/lib/auth"
+import { EMPTY_LOCATION, locationErrors } from "@/lib/geography"
 
 export function SignUpPage() {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ display_name: "", email: "", password: "" })
+  const [form, setForm] = useState({ display_name: "", email: "", password: "", ...EMPTY_LOCATION })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const mutation = useMutation({
@@ -27,7 +29,7 @@ export function SignUpPage() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    const next: Record<string, string> = {}
+    const next = locationErrors(form)
     if (!form.display_name.trim()) next.display_name = "Enter the name other players will see."
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email address."
     if (form.password.length < MIN_PASSWORD_LENGTH) next.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
@@ -39,7 +41,7 @@ export function SignUpPage() {
   return (
     <AuthLayout
       title="Create your account"
-      description="One player profile works across every club and tournament on mombasa-tt."
+      description="One player profile works across every club and tournament on Coast TT."
       footer={
         <>
           Already have an account?{" "}
@@ -76,6 +78,15 @@ export function SignUpPage() {
           error={errors.password}
           hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
         />
+        <LocationFields
+          value={form}
+          onChange={(location) => {
+            setForm((prev) => ({ ...prev, ...location }))
+            setErrors(({ country: _country, region: _region, city: _city, ...rest }) => rest)
+          }}
+          errors={errors}
+        />
+        <p className="text-sm text-muted-foreground">Your location counts toward geographic rankings. Other players won’t see it on your profile.</p>
         <Button type="submit" size="lg" disabled={mutation.isPending}>
           {mutation.isPending ? "Creating account…" : "Create account"}
         </Button>

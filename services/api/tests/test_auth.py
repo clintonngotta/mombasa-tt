@@ -8,9 +8,11 @@ from .conftest import PASSWORD, BrowserClient, link_from
 pytestmark = pytest.mark.django_db
 
 
-def signup(client, email="kofi@example.com", password=PASSWORD):
+def signup(client, email="kofi@example.com", password=PASSWORD, **location):
     return client.post(
-        "/api/v1/auth/signup/", {"display_name": "Kofi", "email": email, "password": password}, format="json"
+        "/api/v1/auth/signup/",
+        {"display_name": "Kofi", "email": email, "password": password, **location},
+        format="json",
     )
 
 
@@ -27,7 +29,7 @@ def test_signup_with_existing_email_looks_identical_and_creates_nothing(client, 
     assert res.status_code == 201
     assert res.json() == signup(BrowserClient(), email="new@example.com").json()
     assert User.objects.filter(email="ama@example.com").count() == 1
-    assert "already have a mombasa-tt account" in mailoutbox[0].subject
+    assert "already have a Coast TT account" in mailoutbox[0].subject
 
 
 def test_signup_rejects_weak_password_with_field_error(client):
@@ -37,6 +39,15 @@ def test_signup_rejects_weak_password_with_field_error(client):
     assert body["code"] == "validation_error"
     assert "password" in body["fields"]
     assert body["request_id"] == res["X-Request-ID"]
+
+
+def test_signup_saves_the_selected_location_and_rejects_a_partial_one(client):
+    refused = signup(client, country="KE", city="Mombasa")
+    assert refused.status_code == 400 and "region" in refused.json()["fields"]
+    created = signup(client, country="ke", region="  Nairobi    City  ", city="Nairobi")
+    assert created.status_code == 201, created.json()
+    profile = User.objects.get(email="kofi@example.com").profile
+    assert (profile.country, profile.region, profile.city) == ("KE", "Nairobi City", "Nairobi")
 
 
 def test_verify_link_verifies_and_logs_in(client, mailoutbox):

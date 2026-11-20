@@ -1,6 +1,6 @@
-# mombasa-tt API
+# Coast TT API
 
-Django + DRF service for the mombasa-tt PWA. Versioned under `/api/v1/`; OpenAPI schema at `/api/v1/schema/`.
+Django + DRF service for the Coast TT PWA. Versioned under `/api/v1/`; OpenAPI schema at `/api/v1/schema/`.
 
 ## Local development
 
@@ -19,8 +19,8 @@ uv run --env-file .env manage.py runserver 8010   # http://127.0.0.1:8010
 The web dev server (`apps/web`, port 5173) proxies `/api` to `127.0.0.1:8010` (8000 is often taken by other local projects), so the browser sees one origin and the
 session/CSRF cookies work without CORS. Override the target with `VITE_API_PROXY_TARGET`.
 
-Emails (verification, password reset) print to the `runserver` console unless `SMTP_HOST` is set. Open the link from
-there.
+Emails (verification, password reset) print readable bodies and copyable links to the `runserver` console unless
+`SMTP_HOST` is set. The local preview backend avoids MIME transfer encoding so long links remain intact.
 
 ### Test logins (`seed_dev`)
 
@@ -33,6 +33,14 @@ there.
 All three belong to "Mombasa Dev TT Club": admin as Admin, umpire as Assistant captain, player as a plain member.
 Re-running the command resets their passwords and club roles. Override the password with `DEV_LOGIN_PASSWORD`. The
 command refuses to run when `DJANGO_DEBUG` is off.
+
+## Attachments
+
+Uploaded files (profile photos so far) are private. They are stored through `STORAGES["attachments"]` (a local
+folder, `ATTACHMENTS_ROOT`, default `var/attachments`) and are never served directly. A client gets a file only
+through a signed link: the API checks the viewer's access (`attachments/access.py`), then issues a link that works
+without a session for `ATTACHMENT_URL_TTL` seconds (default 300). `GET /api/v1/attachments/<id>/url/` issues a
+fresh link. Images are re-encoded on upload, which also removes location and camera metadata.
 
 ## Checks
 
@@ -52,7 +60,7 @@ uv run --env-file .env manage.py spectacular --fail-on-warn --file openapi.yaml
 cd ../../apps/web && pnpm gen:api
 ```
 
-CI (`.github/workflows/ci.yml`) also runs ruff, migration drift, pytest, `pip-audit`, oxlint, the web build,
+CI (`.github/workflows/ci.yml`) also runs ruff, migration drift, pytest, `pip-audit`, oxlint, the web build, the scoring reducer tests (`pnpm test:scoring`, see `packages/scoring/README.md`),
 `pnpm audit --prod` and a gitleaks secret scan on every PR into `dev` and `main`.
 
 ## Auth endpoints (`/api/v1/auth/`)
@@ -75,11 +83,13 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 
 | Method | Path | Notes |
 |---|---|---|
-| GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default), `published_details` (which of hand, grip, style, experience, bio show on the player page; empty by default) |
+| GET, PATCH | `profile/` | Display name (stored on the user), nickname, hand, grip, style, experience, bio, `directory_opt_in` (off by default), `published_details` (which of hand, grip, style, experience, bio show on the player page; empty by default). `avatar` is read-only here: a signed link `{id, url, expires_at}` or null |
+| PUT, DELETE | `avatar/` | Profile photo. `PUT` is a multipart upload with `file` (JPEG, PNG or WebP, up to 5 MB; 400 with a `file` message otherwise) and returns the profile; the image is re-encoded to a 512px WebP without metadata. `DELETE` is 204. Limited by `THROTTLE_UPLOADS` (default `30/hour`) |
 | PUT | `goals/` | `{goals: [...]}` replaces the list. Goals only order Home shortcuts and never grant roles |
 | POST | `onboarding/complete/` | 204. Repeat calls keep the first completion time |
 | GET | `memberships/` | Active memberships with their organization, roles held and effective `permissions` (basis for the club switcher and for which staff actions the app shows); paginated |
 | POST | `memberships/{mid}/leave/` | 204; drops the player's roles. 409 `last_admin` if they are the organization's only admin |
+| GET, PATCH | `memberships/{mid}/fields/` | The player's own member-visible custom fields here, each as `{field, value}`. PATCH `{values: {field id: value}}` changes the ones named (null clears an optional one). Staff-only and retired fields are never listed and their ids are a 400, the same as unknown ids |
 | GET | `join-requests/` | The player's own join requests with the organization (name, town, kind), newest first; paginated |
 | GET | `invitations/` | Open invitations addressed to the player's verified email; paginated |
 | POST | `invitations/{iid}/accept/` or `decline/` | Accepting joins as a member (an existing member keeps their roles) and withdraws the player's open join request to that organization; 404 for anyone else's, answered, revoked or expired invitation |
@@ -105,12 +115,52 @@ Errors share one shape: `{code, message, fields, request_id}`. Login and the ema
 | GET | `/api/v1/organizations/{id}/members/?search=` | Active members (display name and roles, never email); needs `members.manage` or `roles.manage`; paginated |
 | PUT | `/api/v1/organizations/{id}/members/{mid}/roles/` | `{roles: [ids]}` replaces the member's roles; needs `roles.manage`. Every role added or removed must be within the actor's authority; role IDs from another organization or the Member role are a 400; 409 `last_admin` |
 | POST | `/api/v1/organizations/{id}/members/{mid}/remove/` | 204; needs `members.manage` and every permission the member holds; 409 `last_admin` |
-| GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname and clubs, never email or bio |
+| GET | `/api/v1/organizations/{id}/member-fields/` | Custom member fields, not paginated (at most 30 active). Holders of `members.manage` get every field, retired ones included; other members get only active member-visible fields; non-members 403 |
+| POST | `/api/v1/organizations/{id}/member-fields/` | `{label, kind, options, required, visibility}`; needs `members.manage`. `kind` is text, number, date, boolean or choice; `options` (2 to 30) only for choice; `visibility` is member or staff (default). 400 on a duplicate active label; 409 `too_many_fields` |
+| PATCH | `/api/v1/organizations/{id}/member-fields/{fid}/` | Change label, options, required or visibility. `kind` can't change (400); a retired field is 409 `field_retired` |
+| POST | `/api/v1/organizations/{id}/member-fields/{fid}/retire/` or `restore/` | Retiring hides the field everywhere and keeps its values; restoring brings both back. 409 `label_taken` if an active field now uses the label |
+| GET, PATCH | `/api/v1/organizations/{id}/members/{mid}/fields/` | A member's values for every active field, staff-only ones included; needs `members.manage`. Same body and rules as the player's own endpoint |
+| GET | `/api/v1/players/?search=` | Opted-in players only; at least 2 characters. Shows name, nickname, photo link (`avatar`) and clubs, never email or bio |
 | GET | `/api/v1/players/{id}/` | One opted-in player: the directory card plus only the details they published (others null); 404 once they opt out |
+| GET | `/api/v1/attachments/{id}/url/` | A fresh signed link `{id, url, expires_at}` to a private file; 404 for a missing file and for one the caller may not see |
+| GET | `/api/v1/attachments/{id}/content/?token=` | The file. Needs no session, only the token from a signed link; 403 `link_expired` when the token is expired, altered or for another file |
+| GET | `/api/v1/organizations/{id}/venues/` | Venues with their tables, not paginated. Members get the venues and tables in use; holders of `facilities.manage` get them all; non-members 403 |
+| POST | `/api/v1/organizations/{id}/venues/` | `{name, town, address}`; needs `facilities.manage`. 400 when a venue in use has the name; 409 `too_many_venues` (20 in use) |
+| PATCH | `/api/v1/organizations/{id}/venues/{vid}/` | Change name, town, address or `active`. Venues are switched off, never deleted |
+| POST | `/api/v1/organizations/{id}/venues/{vid}/tables/` | `{label}` adds a table at the end of the playing order; replies with the venue. 409 `too_many_tables` (60 in use) |
+| PATCH | `/api/v1/organizations/{id}/venues/{vid}/tables/{tid}/` | Change `label` or `active`; replies with the venue |
+| GET | `/api/v1/tournaments/?search=&organization=&when=` | Published tournaments (never drafts) with their events, for every signed-in player. `when=upcoming` soonest first, `when=past` latest first |
+| GET | `/api/v1/tournaments/{id}/` | One tournament. A draft is 404 unless the caller holds `competitions.manage` in the host organization |
+| GET, POST | `/api/v1/organizations/{id}/tournaments/` | Everything the organization hosts, drafts included, and creating a draft `{name, starts_on, ends_on, venue_id, timezone, description}`; needs `competitions.manage`. `timezone` defaults to the organization's |
+| PATCH, DELETE | `/api/v1/tournaments/{id}/` | Staff of the host. 409 `tournament_closed` once completed or cancelled; the timezone is fixed once started (`structure_frozen`); only a draft can be deleted (`already_published`) |
+| POST | `/api/v1/tournaments/{id}/publish/`, `start/`, `complete/` | draft → published → in progress → completed. 409 `invalid_transition`, `not_ready` (publishing needs a venue and an event) or `events_unfinished` |
+| POST | `/api/v1/tournaments/{id}/cancel/` | `{reason}`, from published or in progress; terminal. Unfinished events are cancelled with it. The reason is public |
+| GET | `/api/v1/tournaments/{id}/history/` | Staff only: who published, started, completed or cancelled what, with the configuration at that moment |
+| POST | `/api/v1/tournaments/{id}/events/` | `{name, kind, format, capacity, best_of, rest_minutes, admission, registration_opens_at, registration_closes_at, entry_fee: {amount_minor, currency}, seeding, group_count, qualifiers_per_group}`. Admission is `open` or `closed` (default). Event calls reply with the whole tournament |
+| PATCH, DELETE | `/api/v1/tournaments/{id}/events/{eid}/` | Each change adds one to `revision`. After the event starts, changing kind, format, best of, seeding, groups or qualifiers is 409 `structure_frozen`. Once the event has standing entries its kind can't change (409 `has_entries`) and its capacity can't go below the accepted count (400 on `capacity`). Delete only in a draft |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/start/`, `complete/`, `cancel/` | scheduled → in progress → completed; start needs the tournament in progress (`tournament_not_started`); cancel takes `{reason}` and needs a published tournament (`not_published`: delete the event of a draft instead) |
+| GET | `/api/v1/tournaments/{id}/events/{eid}/entries/` | Paginated. Accepted entries for every signed-in player, plus the caller's own in any status; competition staff get all. `?status=` filters. An entry carries players (id and name), team name, captain, status, check-in time and `mine`; nothing about payment |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/entries/` | `{player_ids?, team_name?, captain_id?}`. A player's own entry includes them. Singles needs one player, doubles needs two different players, and a team needs a name, 2–10 players, and a captain from the roster. The registration window applies in both modes (`registration_not_open`, `registration_closed`). Open admission sets `accepted` when there is room and `waitlisted` when full. Closed admission sets `pending` for staff approval. Staff can enter players directly until the event starts. 409 codes include `already_entered`, `team_name_taken`, `not_published`, and `entries_closed`. Other players in the entry receive an email. Limited to 30 an hour per caller (`THROTTLE_ENTRIES`) |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/entries/{entry}/accept/`, `waitlist/`, `reject/`, `staff-withdraw/` | Competition staff, before the event starts. `accept` works from pending or the waiting list and rechecks capacity every time (409 `event_full`); nobody is promoted automatically. A change the entry's status doesn't allow is 409 `invalid_transition`. `reject` and `staff-withdraw` take an optional `{reason}` shown to the entry's players. The players are emailed |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/entries/{entry}/check-in/`, `undo-check-in/` | Competition staff, accepted entries only (`not_accepted`), until the event ends. Independent of the entry fee |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/entries/{entry}/withdraw/` | One of the entry's own players, before the event starts; 404 for anybody else |
+| GET | `/api/v1/tournaments/{id}/events/{eid}/draw/` | `{published, preview}`. The published draw (places with seeds, groups and bracket lines; every match with its sides, a bye shown as `b: null`, a side still to come as `awaiting`) is for every signed-in player; `preview` is null except for competition staff. `stale` says the accepted entries changed since it was drawn. 404 for a draft unless the caller is its staff |
+| GET | `/api/v1/tournaments/{id}/events/{eid}/standings/` | Standings of the published draw for every signed-in player (404 for a draft unless staff; empty until a draw is published). Each group ranked under ITTF 3.7.5 with played, won, lost, match points, games and points, `qualified` once the group is finished, `level` for rows nothing separates yet, and `tie_break`: the comparisons made between level members up to the one that separated them (`match_points`, `rubbers`, `games`, `points` between them, or `lot`); empty where nothing has been separated. `placements` lists what the knockout has decided so far |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/draw/preview/` | Competition staff, before the event starts. `{seeded_entry_ids?, rng_seed?}`: seeds best first, the rest by lot from `rng_seed` (chosen and returned when left out), so a request can be repeated exactly. Replaces the last preview. 403 `permission_denied` for anybody else (404 on a draft). 409 `draw_not_possible` (too few entries, too many seeds), `unseeded_event`, `not_published`, `draw_closed` |
+| POST | `/api/v1/tournaments/{id}/events/{eid}/draw/publish/` | Competition staff. The preview becomes the event's draw; the one before is kept as superseded. 403 `permission_denied` for anybody else (404 on a draft). 409 `no_preview`, `draw_stale`, `draw_closed` |
+| GET | `/api/v1/me/entries/` | Paginated. Every entry the caller plays in, newest first, with its event and tournament |
 
 Roles (REQ-005, `organizations/permissions.py`): every organization starts with Admin, Captain, Assistant captain,
 Committee and Member, and can add custom roles. Effective permissions are the union of a member's roles plus the
 Member role, which applies to every active member. Admin always holds every permission. Nobody grants, removes or
 deletes a permission they don't hold. Role changes, removals and leaving lock the organization row, so concurrent
 changes can't remove the last admin; deactivated accounts don't count as admins (`organizations/access.py`).
+
+Custom member fields (REQ-005, `organizations/member_fields.py`): definitions belong to an organization, values to a
+membership. A member-visible field is shown to, and filled in by, the member it describes and by staff; a staff-only
+field and its values exist only for holders of `members.manage`. Other members never see anyone's values. Both
+audiences read and write values through `visible_fields`, so there is one place that decides what a viewer gets. Values are
+checked against the field type; a required field can't be saved blank. Fields are retired, never deleted, and values
+stay in the database when a field is retired or a member leaves.
+
 List endpoints share `core.pagination.StandardPagination` (`page`, `page_size` up to 100) and return `{count, next, previous, results}`.

@@ -1,8 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom"
-import { House, Swords, Users, UserRound, type LucideIcon } from "lucide-react"
+import { House, Swords, Trophy, Users, UserRound, type LucideIcon } from "lucide-react"
+import { BatIcon } from "@/components/brand/BatIcon"
 import { cn } from "@/lib/utils"
 import { Wordmark } from "@/components/brand/Wordmark"
 import { OrganizationSwitcher } from "@/components/clubs/OrganizationSwitcher"
+import { UpdateBanner } from "@/components/layout/UpdateBanner"
+import { NotificationBell } from "@/components/layout/NotificationBell"
 
 type NavItem = { to: string; label: string; icon: LucideIcon }
 
@@ -10,6 +13,8 @@ type NavItem = { to: string; label: string; icon: LucideIcon }
 const NAV_ITEMS: NavItem[] = [
   { to: "/home", label: "Home", icon: House },
   { to: "/play", label: "Play", icon: Swords },
+  { to: "/training", label: "Training", icon: BatIcon },
+  { to: "/rankings", label: "Rankings", icon: Trophy },
   { to: "/club", label: "Club", icon: Users },
   { to: "/profile", label: "Profile", icon: UserRound },
 ]
@@ -18,7 +23,10 @@ export function AppShell() {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="hidden border-r bg-card lg:flex lg:flex-col lg:gap-6 lg:p-4">
-        <Wordmark className="px-3 pt-2" />
+        <div className="flex items-center justify-between gap-2">
+          <Wordmark className="px-3 pt-2" />
+          <NotificationBell />
+        </div>
         <OrganizationSwitcher />
         <nav aria-label="Main" className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (
@@ -30,16 +38,20 @@ export function AppShell() {
       <div className="flex min-h-dvh flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur lg:hidden">
           <Wordmark />
-          <OrganizationSwitcher className="max-w-[55%]" />
+          <div className="flex min-w-0 items-center gap-1">
+            <OrganizationSwitcher className="max-w-[55vw]" />
+            <NotificationBell />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
+          <UpdateBanner className="mb-6" />
           <Outlet />
         </main>
 
         <nav
           aria-label="Main"
-          className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-6 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
           {NAV_ITEMS.map((item) => (
             <TabLink key={item.to} item={item} />

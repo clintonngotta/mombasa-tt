@@ -1,4 +1,4 @@
-# mombasa-tt — deployment and operating runbook
+# Coast TT — deployment and operating runbook
 
 Updated 2026-09-08. Requirements: [spec.md](spec.md#req-034). Tasks: [tasks.md](tasks.md). Acceptance: [EVAL-034](test.md#eval-034), [EVAL-035](test.md#eval-035).
 
@@ -81,8 +81,14 @@ Document a deployment-specific environment file outside source control and reada
 | `APP_DOMAIN`, `API_DOMAIN` | Reverse proxy hostnames |
 | `SMTP_HOST`, `SMTP_PORT`, SMTP credentials | Transactional account/recovery email; configure SPF/DKIM/DMARC |
 | Object storage endpoint/bucket/credentials | Private attachments, separate backup credentials/bucket |
+| `ATTACHMENTS_ROOT` | Private attachment folder while the `attachments` storage is the local filesystem; a persistent volume outside the web root, never served by the proxy. Replaced by the object storage settings above once TASK-058 switches the backend |
+| Reverse proxy request body limit | Cap request bodies at 6 MB (uploads are limited to 5 MB). The API refuses a larger declared body before reading it, but only the proxy stops one being sent |
+| `ATTACHMENT_URL_TTL` | Seconds a signed attachment link stays valid (default 300). Keep it short: a link works without a session until it expires |
 | Push provider credentials | Server only; environment-specific |
-| `VITE_API_URL` | Public HTTPS API base only; never put server tokens here; Expo public URL added only with later native app |
+| `VITE_API_BASE_URL` | Build time, public: the API base the web app calls. Leave unset (`/api/v1`) when Caddy serves the app and API on one origin; set the full HTTPS URL (e.g. `https://api.example.com/api/v1`) for split hosting. Staging builds point at the staging API, production at production. Never put server tokens here; Expo public URL added only with later native app |
+| `APP_BUILD` | Build time, public: the web release's number, `YYYYMMDDHHMM` (CI sets it; a local build uses the build time). The service worker version and the `X-Client-Build` header carry it |
+| `MIN_CLIENT_BUILD` | Server: the oldest `APP_BUILD` the API still serves (default 0, every build). An older cached app gets 426 `client_outdated` and asks to update; its queued scores stay on the device and the new version sends them. Raise only for a change that breaks older apps, after the new web release is live |
+| `SODA_STAKES_ENABLED` | Server: allow soda game stakes (default off). **Leave off in production until the legal and policy sign-off (Kenyan betting and gaming law, age 18+, limits) is recorded in intent.md (TASK-078).** While off, stake fields are refused and hidden, and soda games run without stakes. Clubs can still switch stakes or soda games off for their members |
 | `APP_IMAGE`, `WEB_IMAGE` | Immutable release tag/digest, including previous release in history |
 | Later relay/billing secrets | Provision only when those phases are enabled |
 
@@ -127,9 +133,11 @@ docker compose --env-file .env.production -f infra/compose.production.yml up -d
 docker compose --env-file .env.production -f infra/compose.production.yml ps
 ```
 
-The Compose implementation must arrange for collected static files to be served by the proxy and must perform worker draining before this restart sequence when necessary. Health checks: `/health/live` checks process responsiveness; `/health/ready` checks required DB/broker readiness without exposing credentials. Outbox recovery covers broker interruption.
+The Compose implementation must arrange for collected static files to be served by the proxy and must perform worker draining before this restart sequence when necessary. Health checks: `/health/live` checks process responsiveness; `/health/ready` checks required DB/broker readiness without exposing credentials. Outbox recovery covers broker interruption. The `worker` service runs Celery (`celery -A config worker`) and exactly one `beat` (`celery -A config beat`). A job written to the PostgreSQL outbox wakes a worker once its transaction commits, and beat asks for a sweep every 5 seconds, which picks up retries that are due and any wake-up Redis lost; tasks are acknowledged late, so one a dying worker held goes to another, and the outbox row lock makes the repeat harmless. No job is run inside a web request. Without `REDIS_URL` (local development only) `python manage.py work_outbox` polls the outbox instead. `/health/ready` checks Redis whenever `REDIS_URL` is set. Live updates: `/api/v1/ws/tournaments/{id}/` (Daphne, Channels with the Redis channel layer) tells signed-in pages that may see the tournament that its scores or results changed; the page fetches the data again through the API. The proxy must pass WebSocket upgrades on `/api/v1/ws/`. Logs are one JSON object per line (`LOG_FORMAT=json`, the default when `DJANGO_DEBUG` is off) with `request_id`; request lines carry method, path, status and duration, never query strings, headers or bodies. Ratings are worked out by that worker from official results; `python manage.py rebuild_ratings` writes both ledgers again from nothing (run it once after first deploying ratings, and whenever the ledgers are in doubt).
 
 After deploy: verify HTTPS, login/refresh/CSRF, a public tournament deep link, authenticated WebSocket, test notification, readiness, and a fixture tournament in staging. In production use non-destructive staff smoke checks and an explicitly designated test event if needed. Compare errors/queue age for at least 15 minutes. Record image digests, migration names, backup ID and mobile compatibility in release history.
+
+In staging, check that an eligible open-event entry gets a place automatically and a closed-event entry stays pending until the organizer approves it. Use the cases in [EVAL-008](test.md#eval-008).
 
 ## Namecheap shared-hosting frontend option
 
@@ -204,6 +212,10 @@ TASK-009 provides the manifest, appropriately sized/maskable icons, start URL, s
 Cache a versioned application shell and explicit downloaded-match data only. Keep private API responses, finance/analysis data and credentials out of generic caches. Use account-scoped IndexedDB for acknowledged score events and handle quota/write failures visibly. Persisting storage can be requested where supported but does not guarantee protection from explicit user clearing or browser eviction.
 
 Publish new assets before changing the shell pointer. A new service worker waits while scoring is active or pending events exist; prompt to update once synchronization/resolution is safe. Coordinate multiple tabs and migrate IndexedDB transactionally. Retain prior fingerprinted bundles during compatibility/rollback windows. A web rollback must also consider installed service-worker versions, not just swap index.html.
+
+How it is built (TASK-009): `apps/web/pwa-worker.ts` writes `/sw.js` into each production build from `apps/web/pwa/service-worker.js`, with the release's version and the list of files to keep (the page, its scripts, styles, fonts, icons and manifest). The worker answers pages from the network and falls back to the kept page offline; fingerprinted `/assets/` come from the kept copy; `/api/`, `/media/`, `/admin/`, `/static/` and `/health/` are never cached. A new worker installs and waits; the app shows "A new version of Coast TT is ready" and switches only when no tab holds a match open on the deck and no account on the device has score actions unsent (the journal's sheet owners and acknowledged revisions), then reloads that tab once; other tabs are told to reload. The journal (`coast-tt-scoring` in IndexedDB) is upgraded step by step from the version on the device and never wiped by an update. Install help on the Profile page uses the browser's install prompt where offered (Chrome/Edge/Samsung Internet), Share → Add to Home Screen on iPhone and iPad, and the browser menu elsewhere.
+
+Hosting: serve `index.html`, `sw.js` and `manifest.webmanifest` with `Cache-Control: no-cache` (`sw.js` as `text/javascript`, the manifest as `application/manifest+json`), from the site root so the worker's scope is `/`; give `/assets/*` a long immutable cache. Keep the previous release's `/assets/` files online for at least a week so open and cached apps can still load their chunks. To roll back the web app, publish the previous build again with a newer `APP_BUILD`: its new worker replaces the faulty one through the same safe update.
 
 Validate reopen-offline, expired-session reauthentication, safe worker activation, pending-event migration, push links and cross-origin API access. Record browser versions and observed support. Do not claim unattended background synchronization is universal; retry on app open, connectivity restoration and explicit action.
 
