@@ -111,6 +111,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "auth-logout": {"post": PUBLIC},
     "auth-password-reset": {"post": PUBLIC},
     "auth-password-reset-confirm": {"post": PUBLIC},
+    # The invitation link's secret is the authorization; joining creates the invitee's account.
+    "auth-invitation": {"get": PUBLIC, "post": PUBLIC},
+    "auth-invitation-claim": {"post": OWNER},
     "schema": {"get": PUBLIC},
     "geography-countries": {"get": PUBLIC},
     # The events listing (REQ-042) is public; pending external events reach the submitting club only.
@@ -125,7 +128,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-external-event-live": {"post": STAFF},
     "geography-country": {"get": PUBLIC},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
-    "auth-me": {"get": OWNER},
+    "auth-me": {"get": OWNER, "patch": OWNER},
     "attachment-link": {"get": SIGNED_IN},  # per-attachment policy, see test_attachments.py
     "personal-match-list": {"get": OWNER, "post": OWNER},
     "personal-match-labels": {"get": OWNER},
@@ -1359,6 +1362,11 @@ class World:
             guest=self.guest, email=self.imani.email, invited_by=self.amina
         )
 
+        # A guest invited by phone, whose link only its holder can use.
+        _, self.guest_link = guests.invite(
+            guests.create(self.coast, "Linked Guest", self.amina), "", self.amina, phone="+254700000009"
+        )
+
         def waiting_claim(name):
             guest = guests.create(self.coast, name, self.amina)
             invitation = GuestInvitation.objects.create(
@@ -1569,6 +1577,8 @@ class World:
         found = {}
         if "code" in names:
             found["code"] = "KE"
+        if "token" in names:
+            found["token"] = self.guest_link
         if "organization_pk" in names:
             found["organization_pk"] = self.coast.id
         if "pk" in names:

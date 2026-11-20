@@ -6,6 +6,7 @@ import { WelcomePage } from "@/pages/auth/WelcomePage"
 import { SignUpPage } from "@/pages/auth/SignUpPage"
 import { CheckEmailPage } from "@/pages/auth/CheckEmailPage"
 import { LogInPage } from "@/pages/auth/LogInPage"
+import { JoinPage } from "@/pages/auth/JoinPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
 import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage"
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
@@ -108,6 +109,8 @@ function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/signup/check-email" element={<CheckEmailPage />} />
           <Route path="/login" element={<LogInPage />} />
+          {/* An invitation link: open signed out, the link itself is the proof (REQ-003). */}
+          <Route path="/join/:token" element={<JoinPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />

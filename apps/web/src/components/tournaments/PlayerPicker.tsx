@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FieldError } from "@/components/forms/Field"
 import { MIN_SEARCH_LENGTH, playerKeys, searchPlayers } from "@/lib/profile"
-import { errorMessage } from "@/lib/api"
-import { createGuest, guestKeys, listGuests } from "@/lib/guests"
+import { ApiError, errorMessage } from "@/lib/api"
+import { createGuest, guestKeys, listGuests, type InvitedGuest } from "@/lib/guests"
+import { InviteLink } from "@/components/guests/InviteLink"
+import { Field } from "@/components/forms/Field"
 
 export type Picked = { id: string; display_name: string }
 
 /**
  * Choose players for an entry from the player directory. `fixed` players (the person entering) are
  * shown and can't be removed. Only players who chose to be listed can be found; with `guestsOf`, the
- * host's staff also find that club's guests and can add somebody new as a guest (REQ-003).
+ * host's staff also find that club's guests and can add somebody new before they register, with an
+ * email or phone to send them a link to join and check their details (REQ-003).
  */
 export function PlayerPicker({
   label,
@@ -50,13 +53,24 @@ export function PlayerPicker({
     setInput("")
     setTerm("")
   }
+  const [adding, setAdding] = useState(false)
+  const [contact, setContact] = useState({ email: "", phone: "" })
+  const [invited, setInvited] = useState<InvitedGuest | null>(null)
   const newGuest = useMutation({
-    mutationFn: () => createGuest(guestsOf ?? "", term),
+    mutationFn: () => createGuest(guestsOf ?? "", term, { email: contact.email.trim(), phone: contact.phone.trim() }),
     onSuccess: (guest) => {
       add({ id: guest.id, display_name: `${guest.display_name} (guest)` })
+      setAdding(false)
+      setContact({ email: "", phone: "" })
+      setInvited(guest.invite_link ? guest : null)
       void queryClient.invalidateQueries({ queryKey: guestKeys.all })
     },
   })
+  // Inside the entry form: Enter in these fields must not submit the entry.
+  const keepEnter = (e: { key: string; preventDefault: () => void }) => {
+    if (e.key === "Enter") e.preventDefault()
+  }
+  const contactErrors = newGuest.error instanceof ApiError ? newGuest.error.fieldErrors() : {}
   const chosen = new Set([...fixed, ...picked].map((player) => player.id))
   const full = fixed.length + picked.length >= max
   const found = (results.data?.results ?? []).filter((player) => !chosen.has(player.id))
@@ -152,14 +166,36 @@ export function PlayerPicker({
                 ))}
               </ul>
             )}
-            {guestsOf && results.isSuccess && term.length >= MIN_SEARCH_LENGTH && (
-              <Button type="button" variant="ghost" className="self-start" disabled={newGuest.isPending} onClick={() => newGuest.mutate()}>
-                <Plus aria-hidden className="size-5" /> Enter “{term}” as a guest
+            {guestsOf && results.isSuccess && term.length >= MIN_SEARCH_LENGTH && !adding && (
+              <Button type="button" variant="ghost" className="self-start" onClick={() => setAdding(true)}>
+                <Plus aria-hidden className="size-5" /> Add “{term}”, not on Coast TT yet
               </Button>
             )}
-            {newGuest.isError && <FieldError>{errorMessage(newGuest.error, "We couldn't add the guest.")}</FieldError>}
+            {guestsOf && adding && (
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed p-3">
+                <p className="text-sm">
+                  Add <strong>{term}</strong> now. With an email or phone they get a link to join, see their entries and check their details.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Field label="Email" type="email" optional className="min-w-[200px] flex-1" onKeyDown={keepEnter} value={contact.email} onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))} error={contactErrors.email} />
+                  <Field label="Phone" type="tel" inputMode="tel" optional className="min-w-[160px] flex-1" onKeyDown={keepEnter} value={contact.phone} onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))} error={contactErrors.phone} />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" disabled={newGuest.isPending} onClick={() => newGuest.mutate()}>
+                    {newGuest.isPending ? "Adding…" : contact.email.trim() || contact.phone.trim() ? "Add and invite" : "Add without inviting"}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setAdding(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+            {newGuest.isError && !contactErrors.email && !contactErrors.phone && <FieldError>{errorMessage(newGuest.error, "We couldn't add the player.")}</FieldError>}
           </div>
         </div>
+      )}
+      {invited?.invite_link && (
+        <InviteLink link={invited.invite_link} name={invited.display_name} phone={invited.invitation?.phone} emailed={!!invited.invitation?.email} onDone={() => setInvited(null)} />
       )}
       {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
     </fieldset>

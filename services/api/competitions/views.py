@@ -11,7 +11,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.models import User
+from accounts.models import VERIFIED, User
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
@@ -580,7 +580,7 @@ class EntryViewSet(viewsets.GenericViewSet):
                 entries.ensure_registration_open(event)
             ids = asked.get("player_ids") or [request.user.id]
             # Verified players; and, for the host's staff, the host's own unclaimed guests (REQ-003).
-            enterable = Q(email_verified_at__isnull=False)
+            enterable = VERIFIED
             if staff:
                 enterable |= Q(
                     guest__organization_id=tournament.organization_id, guest__claimed_by__isnull=True

@@ -2,7 +2,8 @@ import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 
 export type SignUpInput = Schemas["SignUpRequest"]
-export type LogInInput = { email: string; password: string }
+/** `login` is an email address or a phone number. */
+export type LogInInput = { login: string; password: string }
 
 export const signUp = (input: SignUpInput) => api<void>("/auth/signup/", { body: input })
 
@@ -23,3 +24,6 @@ export const logOut = () => api<void>("/auth/logout/", { body: {} })
 export const resendVerification = (email: string) => api<void>("/auth/verification/resend/", { body: { email } })
 
 export const MIN_PASSWORD_LENGTH = 10
+
+/** Change the signed-in player's name or sign-in phone (a new phone starts unconfirmed). */
+export const updateAccount = (input: Schemas["PatchedAccountUpdateRequest"]) => api<User>("/auth/me/", { method: "PATCH", body: input })
