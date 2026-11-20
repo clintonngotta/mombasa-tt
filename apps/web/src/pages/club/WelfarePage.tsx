@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
@@ -6,8 +7,10 @@ import { Field, FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
 import { can, listMembers, useActiveMembership } from "@/lib/clubs"
 import { formatMoney } from "@/lib/coaching"
+import { DEFAULT_TIME_ZONE, formatInstant } from "@/lib/dates"
 import {
   closeWelfare,
+  makeWelfareDue,
   createWelfare,
   hideWelfare,
   listContributions,
@@ -28,27 +31,31 @@ import { cn } from "@/lib/utils"
 const SELECT = "h-12 rounded-md border bg-background px-3"
 const today = () => new Date().toISOString().slice(0, 10)
 
-/** Welfare projects (REQ-038): giving is voluntary, so nobody here ever owes or is overdue. Members see
- * totals and their own gift; welfare and finance staff record gifts and spending. */
+/** Welfare projects (REQ-038): giving is voluntary unless staff holding both welfare and finance
+ * permissions make a project a due (REQ-023); only then can anyone owe or be overdue. Members see totals,
+ * their own gift or due, and the planned visits they're invited to; staff record gifts and spending. */
 export function WelfarePage() {
   const { active } = useActiveMembership()
   const orgId = active?.organization.id ?? ""
   const setUp = can(active, "welfare.manage")
   const record = can(active, "welfare.manage", "finances.manage")
   const staff = can(active, "welfare.manage", "finances.view", "finances.manage")
+  const requireDue = setUp && can(active, "finances.manage")
+  const planVisit = setUp && can(active, "activities.manage")
+  const timeZone = active?.organization.timezone ?? DEFAULT_TIME_ZONE
   const projects = useQuery({ queryKey: welfareKeys(orgId), queryFn: () => listWelfare(orgId), enabled: !!orgId })
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <BackLink to="/club">Club</BackLink>
       <h1 className="text-[32px] leading-9 font-bold">Welfare</h1>
-      <p className="text-muted-foreground">Giving is voluntary. A suggested amount is only a suggestion.</p>
+      <p className="text-muted-foreground">Giving is voluntary unless the club makes a project a due. A suggested amount is only a suggestion.</p>
       {projects.isError && <FormAlert>{errorMessage(projects.error)}</FormAlert>}
       {setUp && <NewProject orgId={orgId} />}
       {projects.isSuccess && projects.data.length === 0 && <p className="text-muted-foreground">No welfare projects.</p>}
       <ul className="flex flex-col gap-3">
         {(projects.data ?? []).map((p) => (
           <li key={p.id}>
-            <ProjectCard orgId={orgId} project={p} setUp={setUp} record={record} staff={staff} />
+            <ProjectCard orgId={orgId} timeZone={timeZone} project={p} setUp={setUp} record={record} staff={staff} requireDue={requireDue} planVisit={planVisit} />
           </li>
         ))}
       </ul>
@@ -136,7 +143,11 @@ function NewProject({ orgId }: { orgId: string }) {
   )
 }
 
-function ProjectCard({ orgId, project: p, setUp, record, staff }: { orgId: string; project: WelfareProject; setUp: boolean; record: boolean; staff: boolean }) {
+const DUE_STATUS = { paid: "paid", partial: "part paid", pending: "not paid yet", overdue: "overdue" } as const
+
+type CardProps = { orgId: string; timeZone: string; project: WelfareProject; setUp: boolean; record: boolean; staff: boolean; requireDue: boolean; planVisit: boolean }
+
+function ProjectCard({ orgId, timeZone, project: p, setUp, record, staff, requireDue, planVisit }: CardProps) {
   const me = useMe()
   const hide = useWelfareMutation(orgId, () => hideWelfare(orgId, p.id))
   const close = useWelfareMutation(orgId, () => closeWelfare(orgId, p.id))
@@ -163,6 +174,43 @@ function ProjectCard({ orgId, project: p, setUp, record, staff }: { orgId: strin
         {p.my_contribution_minor > 0 ? `You gave ${formatMoney(p.my_contribution_minor, p.currency)}` : "You haven't given"}
         {p.deadline && ` · until ${p.deadline}`}
       </p>
+      {p.due && (
+        <p className="text-sm">
+          <span className="font-semibold">A due:</span> {formatMoney(p.due.amount_minor, p.currency)} each by {p.due.due_on}
+          {p.my_due && (
+            <span className={cn(p.my_due.status === "overdue" && "font-semibold text-destructive")}>
+              {" "}
+              · yours is {DUE_STATUS[p.my_due.status]}
+              {p.my_due.outstanding_minor > 0 && p.my_due.status !== "pending" && ` (${formatMoney(p.my_due.outstanding_minor, p.currency)} left)`}
+            </span>
+          )}
+          {p.expected_minor != null && ` · ${formatMoney(p.expected_minor, p.currency)} still to come in`}
+        </p>
+      )}
+      {(p.visits.length > 0 || (planVisit && !p.closed)) && (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-semibold">Planned visits</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {p.visits.map((v) => (
+              <li key={v.id}>
+                <Link to={`/activities/${orgId}/${v.id}`} className={cn("font-semibold text-brand-blue underline-offset-4 hover:underline", v.status === "cancelled" && "line-through")}>
+                  {v.title}
+                </Link>
+                {" · "}
+                {formatInstant(v.starts_at, timeZone)}
+                {v.place && ` · ${v.place}`}
+                {v.status === "draft" && " · draft"}
+                <span className="block text-muted-foreground">{v.going.length ? `Going: ${v.going.join(", ")}` : "Nobody going yet"}</span>
+              </li>
+            ))}
+          </ul>
+          {planVisit && !p.closed && (
+            <Link to={`/club/activities?welfare=${p.id}`} className="self-start text-sm font-semibold text-brand-blue underline-offset-4 hover:underline">
+              Plan a visit
+            </Link>
+          )}
+        </div>
+      )}
       {p.contributors && (
         <ul className="text-sm">
           {p.contributors.map((c, i) => (
@@ -190,8 +238,43 @@ function ProjectCard({ orgId, project: p, setUp, record, staff }: { orgId: strin
           </>
         )}
       </div>
+      {requireDue && !p.closed && !p.required && <MakeDue orgId={orgId} project={p} />}
       {staff && <Gifts orgId={orgId} project={p} record={record && !p.closed} />}
     </article>
+  )
+}
+
+/** Make giving required: a one-time due for the project's audience, never the beneficiary. Reminders
+ * call it "Welfare project due", so nothing about the beneficiary reaches them. */
+function MakeDue({ orgId, project: p }: { orgId: string; project: WelfareProject }) {
+  const [open, setOpen] = useState(false)
+  const [amount, setAmount] = useState(p.suggested_minor != null ? String(p.suggested_minor / 100) : "")
+  const [dueOn, setDueOn] = useState(p.deadline ?? today())
+  const make = useWelfareMutation(orgId, () => makeWelfareDue(orgId, p.id, { amount_minor: toMinor(amount) ?? undefined, due_on: dueOn }), () => setOpen(false))
+  if (!open) {
+    return (
+      <Button variant="ghost" className="self-start" onClick={() => setOpen(true)}>
+        Make it a due
+      </Button>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border p-3">
+      <p className="text-sm">Every member the project is for will owe this amount, and show as overdue if it isn't paid by the date. The beneficiary never owes. You can't turn it back into voluntary giving here; finance staff can waive dues.</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <Field label="Each (KES)" type="number" min={0} className="w-36" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Field label="Due by" type="date" className="w-44" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
+      </div>
+      {make.isError && <FormAlert>{errorMessage(make.error)}</FormAlert>}
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={toMinor(amount) == null || !dueOn || make.isPending} onClick={() => make.mutate(undefined)}>
+          Make it a due
+        </Button>
+        <Button variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   )
 }
 

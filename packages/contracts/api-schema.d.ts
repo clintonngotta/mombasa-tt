@@ -4375,6 +4375,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/due/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Make giving required: a one-time due for the project's audience, the beneficiary excepted.
+         *     Needs both welfare.manage and finances.manage, since it makes members owe. It can't be undone
+         *     here; finance staff waive dues or close the campaign as for any other.
+         */
+        post: operations["organizations_welfare_projects_due_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/expenses/": {
         parameters: {
             query?: never;
@@ -6874,6 +6895,11 @@ export interface components {
             rsvp_deadline: string | null;
             public: boolean;
             cost_note: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id: string | null;
             readonly status: components["schemas"]["ActivityStatusEnum"];
             readonly cancel_reason: string;
             readonly going: number;
@@ -6920,6 +6946,11 @@ export interface components {
             rsvp_deadline?: string | null;
             public?: boolean;
             cost_note?: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id?: string | null;
         };
         ClubProfile: {
             /** Format: uuid */
@@ -8644,6 +8675,21 @@ export interface components {
             readonly on_pass: boolean;
             readonly reversed: boolean;
         };
+        MyWelfareDue: {
+            amount_minor: number;
+            outstanding_minor: number;
+            /** Format: date */
+            due_on: string;
+            status: components["schemas"]["MyWelfareDueStatusEnum"];
+        };
+        /**
+         * @description * `paid` - paid
+         *     * `partial` - partial
+         *     * `pending` - pending
+         *     * `overdue` - overdue
+         * @enum {string}
+         */
+        MyWelfareDueStatusEnum: "paid" | "partial" | "pending" | "overdue";
         NominateRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -9496,6 +9542,11 @@ export interface components {
             rsvp_deadline?: string | null;
             public?: boolean;
             cost_note?: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id?: string | null;
         };
         /** @description A club session as its training staff see it. */
         PatchedClubSessionRequest: {
@@ -11796,6 +11847,17 @@ export interface components {
             /** @default false */
             anonymous: boolean;
         };
+        /** @description Make giving required. The amount defaults to the suggested gift, the date to the deadline. */
+        WelfareDueRequest: {
+            amount_minor?: number;
+            /** Format: date */
+            due_on?: string;
+        };
+        WelfareDueTerms: {
+            amount_minor: number;
+            /** Format: date */
+            due_on: string;
+        };
         /**
          * @description A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
          *     and a contributor list only when the club shows one.
@@ -11823,6 +11885,12 @@ export interface components {
             readonly remaining_minor: number;
             readonly my_contribution_minor: number;
             readonly contributors: components["schemas"]["Contributor"][] | null;
+            /** @description Made a due (REQ-023): only then does anyone owe, or show as overdue. */
+            readonly required: boolean;
+            readonly due: components["schemas"]["WelfareDueTerms"] | null;
+            readonly expected_minor: number | null;
+            readonly my_due: components["schemas"]["MyWelfareDue"] | null;
+            readonly visits: components["schemas"]["WelfareVisit"][];
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -11846,6 +11914,26 @@ export interface components {
             member_ids?: string[];
             show_contributors?: boolean;
         };
+        WelfareVisit: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place: string;
+            status: components["schemas"]["WelfareVisitStatusEnum"];
+            /** @description Display names */
+            going: string[];
+        };
+        /**
+         * @description * `draft` - draft
+         *     * `published` - published
+         *     * `cancelled` - cancelled
+         * @enum {string}
+         */
+        WelfareVisitStatusEnum: "draft" | "published" | "cancelled";
         /**
          * @description * `left` - left
          *     * `center` - center
@@ -22052,6 +22140,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_due_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WelfareDueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
                 };
             };
             /** @description Error envelope */

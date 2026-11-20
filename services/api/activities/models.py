@@ -50,6 +50,11 @@ class Activity(models.Model):
     public = models.BooleanField(default=False)
     # Phase 1 only says what it costs; nothing is collected or marked paid here.
     cost_note = models.CharField(max_length=200, blank=True)
+    # A planned visit or support activity for a welfare project (REQ-038): never public, and hidden from
+    # members with the project.
+    welfare_project = models.ForeignKey(
+        "finance.WelfareProject", on_delete=models.PROTECT, null=True, blank=True, related_name="activities"
+    )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     cancel_reason = models.CharField(max_length=300, blank=True)
     created_by = models.ForeignKey(

@@ -103,7 +103,18 @@ class ActivityViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
-        invitees = self._invitees(organization, data.pop("invitee_ids", None))
+        invitee_ids = data.pop("invitee_ids", None)
+        project_id = data.pop("welfare_project_id", None)
+        data["welfare_project"] = service.check_welfare_link(
+            request.user,
+            organization,
+            project_id,
+            changed=project_id is not None,
+            audience=data.get("audience", Activity.Audience.MEMBERS),
+            invitee_ids=invitee_ids,
+            public=data.get("public", False),
+        )
+        invitees = self._invitees(organization, invitee_ids)
         activity = Activity.objects.create(organization=organization, created_by=request.user, **data)
         if invitees is not None and activity.audience == Activity.Audience.SELECTED:
             activity.invitees.set(invitees)
@@ -120,7 +131,22 @@ class ActivityViewSet(
         serializer = self.get_serializer(activity, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
-        invitees = self._invitees(organization, data.pop("invitee_ids", None))
+        invitee_ids = data.pop("invitee_ids", None)
+        project_id = data.pop("welfare_project_id", activity.welfare_project_id)
+        audience = data.get("audience", activity.audience)
+        chosen = invitee_ids
+        if chosen is None and audience == Activity.Audience.SELECTED:
+            chosen = list(activity.invitees.values_list("pk", flat=True))
+        data["welfare_project"] = service.check_welfare_link(
+            request.user,
+            organization,
+            project_id,
+            audience=audience,
+            invitee_ids=chosen,
+            public=data.get("public", activity.public),
+            changed=project_id != activity.welfare_project_id,
+        )
+        invitees = self._invitees(organization, invitee_ids)
         if (
             "capacity" in data
             and data["capacity"] is not None

@@ -10765,6 +10765,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/due/:
+    post:
+      operationId: organizations_welfare_projects_due_create
+      description: |-
+        Make giving required: a one-time due for the project's audience, the beneficiary excepted.
+        Needs both welfare.manage and finances.manage, since it makes members owe. It can't be undone
+        here; finance staff waive dues or close the campaign as for any other.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WelfareDueRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/welfare-projects/{id}/expenses/:
     get:
       operationId: organizations_welfare_projects_expenses_list
@@ -16331,6 +16373,11 @@ components:
         cost_note:
           type: string
           maxLength: 200
+        welfare_project_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The welfare project this visit or support activity is for (REQ-038).
         status:
           allOf:
           - $ref: '#/components/schemas/ActivityStatusEnum'
@@ -16382,6 +16429,7 @@ components:
       - status
       - title
       - waitlisted
+      - welfare_project_id
     ClubActivityAudienceEnum:
       enum:
       - members
@@ -16456,6 +16504,11 @@ components:
         cost_note:
           type: string
           maxLength: 200
+        welfare_project_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The welfare project this visit or support activity is for (REQ-038).
       required:
       - ends_at
       - starts_at
@@ -20995,6 +21048,35 @@ components:
       - venue_id
       - venue_name
       - visited_on
+    MyWelfareDue:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+        outstanding_minor:
+          type: integer
+        due_on:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/MyWelfareDueStatusEnum'
+      required:
+      - amount_minor
+      - due_on
+      - outstanding_minor
+      - status
+    MyWelfareDueStatusEnum:
+      enum:
+      - paid
+      - partial
+      - pending
+      - overdue
+      type: string
+      description: |-
+        * `paid` - paid
+        * `partial` - partial
+        * `pending` - pending
+        * `overdue` - overdue
     NominateRequest:
       type: object
       properties:
@@ -22739,6 +22821,11 @@ components:
         cost_note:
           type: string
           maxLength: 200
+        welfare_project_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The welfare project this visit or support activity is for (REQ-038).
     PatchedClubSessionRequest:
       type: object
       description: A club session as its training staff see it.
@@ -28387,6 +28474,29 @@ components:
       - method
       - received_on
       - request_key
+    WelfareDueRequest:
+      type: object
+      description: Make giving required. The amount defaults to the suggested gift,
+        the date to the deadline.
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        due_on:
+          type: string
+          format: date
+    WelfareDueTerms:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+        due_on:
+          type: string
+          format: date
+      required:
+      - amount_minor
+      - due_on
     WelfareProject:
       type: object
       description: |-
@@ -28456,6 +28566,30 @@ components:
             $ref: '#/components/schemas/Contributor'
           nullable: true
           readOnly: true
+        required:
+          type: boolean
+          description: 'Made a due (REQ-023): only then does anyone owe, or show as
+            overdue.'
+          readOnly: true
+        due:
+          allOf:
+          - $ref: '#/components/schemas/WelfareDueTerms'
+          nullable: true
+          readOnly: true
+        expected_minor:
+          type: integer
+          nullable: true
+          readOnly: true
+        my_due:
+          allOf:
+          - $ref: '#/components/schemas/MyWelfareDue'
+          nullable: true
+          readOnly: true
+        visits:
+          type: array
+          items:
+            $ref: '#/components/schemas/WelfareVisit'
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -28470,16 +28604,21 @@ components:
       - currency
       - deadline
       - description
+      - due
+      - expected_minor
       - hidden
       - id
       - my_contribution_minor
+      - my_due
       - received_minor
       - remaining_minor
+      - required
       - show_contributors
       - spent_minor
       - suggested_minor
       - target_minor
       - title
+      - visits
     WelfareProjectRequest:
       type: object
       description: |-
@@ -28528,6 +28667,47 @@ components:
           type: boolean
       required:
       - title
+    WelfareVisit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        place:
+          type: string
+        status:
+          $ref: '#/components/schemas/WelfareVisitStatusEnum'
+        going:
+          type: array
+          items:
+            type: string
+          description: Display names
+      required:
+      - ends_at
+      - going
+      - id
+      - place
+      - starts_at
+      - status
+      - title
+    WelfareVisitStatusEnum:
+      enum:
+      - draft
+      - published
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - draft
+        * `published` - published
+        * `cancelled` - cancelled
     XEnum:
       enum:
       - left

@@ -314,6 +314,35 @@ class ContributorSerializer(serializers.Serializer):
     amount_minor = serializers.IntegerField()
 
 
+class WelfareDueTermsSerializer(serializers.Serializer):
+    amount_minor = serializers.IntegerField()
+    due_on = serializers.DateField()
+
+
+class MyWelfareDueSerializer(serializers.Serializer):
+    amount_minor = serializers.IntegerField()
+    outstanding_minor = serializers.IntegerField()
+    due_on = serializers.DateField()
+    status = serializers.ChoiceField(choices=["paid", "partial", "pending", "overdue"])
+
+
+class WelfareVisitSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    starts_at = serializers.DateTimeField()
+    ends_at = serializers.DateTimeField()
+    place = serializers.CharField()
+    status = serializers.ChoiceField(choices=["draft", "published", "cancelled"])
+    going = serializers.ListField(child=serializers.CharField(), help_text="Display names")
+
+
+class WelfareDueSerializer(serializers.Serializer):
+    """Make giving required. The amount defaults to the suggested gift, the date to the deadline."""
+
+    amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000, required=False)
+    due_on = serializers.DateField(required=False)
+
+
 class WelfareProjectSerializer(serializers.ModelSerializer):
     """A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
     and a contributor list only when the club shows one."""
@@ -342,6 +371,11 @@ class WelfareProjectSerializer(serializers.ModelSerializer):
     remaining_minor = serializers.SerializerMethodField()
     my_contribution_minor = serializers.SerializerMethodField()
     contributors = serializers.SerializerMethodField()
+    required = serializers.SerializerMethodField()
+    due = serializers.SerializerMethodField()
+    expected_minor = serializers.SerializerMethodField()
+    my_due = serializers.SerializerMethodField()
+    visits = serializers.SerializerMethodField()
 
     class Meta:
         model = WelfareProject
@@ -365,9 +399,17 @@ class WelfareProjectSerializer(serializers.ModelSerializer):
             "remaining_minor",
             "my_contribution_minor",
             "contributors",
+            "required",
+            "due",
+            "expected_minor",
+            "my_due",
+            "visits",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
+
+    def _today(self):
+        return self.context.get("today") or timezone.localdate()
 
     def _totals(self, project):
         cache = self.context.setdefault("totals", {})
@@ -382,7 +424,7 @@ class WelfareProjectSerializer(serializers.ModelSerializer):
         return project.hidden_at is not None
 
     def get_closed(self, project) -> bool:
-        return welfare.is_closed(project, self.context.get("today") or timezone.localdate())
+        return welfare.is_closed(project, self._today())
 
     def get_received_minor(self, project) -> int:
         return self._totals(project)["received_minor"]
@@ -402,6 +444,32 @@ class WelfareProjectSerializer(serializers.ModelSerializer):
         if not project.show_contributors:
             return None
         return ContributorSerializer(welfare.contributor_list(project), many=True).data
+
+    def get_required(self, project) -> bool:
+        """Made a due (REQ-023): only then does anyone owe, or show as overdue."""
+        return project.campaign_id is not None
+
+    @extend_schema_field(WelfareDueTermsSerializer(allow_null=True))
+    def get_due(self, project):
+        if not project.campaign_id:
+            return None
+        return {"amount_minor": project.campaign.amount_minor, "due_on": project.campaign.starts_on}
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_expected_minor(self, project):
+        """Dues not paid yet, for welfare and finance staff; null for everyone else."""
+        return welfare.expected_total(project) if self.context.get("staff") else None
+
+    @extend_schema_field(MyWelfareDueSerializer(allow_null=True))
+    def get_my_due(self, project):
+        return welfare.own_due(project, self.context.get("user"), self._today())
+
+    @extend_schema_field(WelfareVisitSerializer(many=True))
+    def get_visits(self, project):
+        user = self.context.get("user")
+        if user is None:
+            return []
+        return WelfareVisitSerializer(welfare.visits(project, user), many=True).data
 
 
 class WelfareUpdateSerializer(serializers.Serializer):

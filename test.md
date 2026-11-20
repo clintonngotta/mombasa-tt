@@ -398,6 +398,16 @@ The privacy matrix covers every route, including the receipt upload.
 - A closed project refuses gifts, spending and edits.
 - A selected audience is honoured, setup needs the welfare permission, and a repeated gift request records one gift.
 
+*Due and visits built in TASK-075 (2026-11-20).* `tests/test_welfare_dues_visits.py` checks the following:
+- A project is voluntary (no dues, no `my_due`) until someone holding both welfare.manage and finances.manage makes it a due. Either permission alone, or a plain member, gets 403. Doing it a second time gets 409.
+- Every active member then owes once, except the beneficiary. The due is called "Welfare project due" in the member's dues list, so neither the title nor the circumstances appear there.
+- Paid dues and gifts both count towards the project's received total and the member's own amount. Unpaid dues show to staff as still to come in, and to nobody else. The general purpose totals leave the due out, and a general expense can't be charged to its campaign.
+- A member shows as overdue only after the project is made a due. Closing the project closes its campaign.
+- The due's amount is required (it defaults to the suggested gift). Its date can't be in the past, and a selected audience owes only among its own members.
+- Linking a visit takes welfare.manage. A linked visit can't be public, and for a selected project it invites only that project's audience or the beneficiary. A closed project takes no new visits.
+- A published visit shows on the project with who is going, only to people invited to it. An activities officer can still change its time and place, but not its link or its public setting.
+- When the beneficiary hides the project, its visits leave member views: the activity, the list and answering.
+
 The privacy matrix covers every route.
 
 ### EVAL-041

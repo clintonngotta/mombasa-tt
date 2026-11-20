@@ -29,7 +29,9 @@ def purpose_totals(organization, *, campaigns_only=False) -> list[dict]:
     rows = defaultdict(lambda: {"received_minor": 0, "spent_minor": 0, "expected_minor": 0})
     received = (
         Allocation.objects.filter(STANDING_ALLOCATION, charge__organization=organization)
-        .exclude(charge__kind=Charge.Kind.WELFARE)  # welfare projects keep their own totals
+        # Welfare projects keep their own totals, the dues of a required one included.
+        .exclude(charge__kind=Charge.Kind.WELFARE)
+        .exclude(charge__campaign__welfare_project__isnull=False)
         .values("charge__campaign_id", "charge__currency")
         .annotate(total=Sum("amount_minor"))
     )
@@ -42,16 +44,18 @@ def purpose_totals(organization, *, campaigns_only=False) -> list[dict]:
     )
     for r in spent:
         rows[(r["campaign_id"], r["currency"])]["spent_minor"] += r["total"]
-    for charge in Charge.objects.filter(
-        organization=organization, campaign__isnull=False, waived_at__isnull=True
-    ).prefetch_related("allocations__payment"):
+    for charge in (
+        Charge.objects.filter(organization=organization, campaign__isnull=False, waived_at__isnull=True)
+        .exclude(campaign__welfare_project__isnull=False)
+        .prefetch_related("allocations__payment")
+    ):
         left = ledger.outstanding(charge)
         if left:
             rows[(charge.campaign_id, charge.currency)]["expected_minor"] += left
     titles = {}
-    for campaign_id, title, currency in Campaign.objects.filter(organization=organization).values_list(
-        "id", "title", "currency"
-    ):
+    for campaign_id, title, currency in Campaign.objects.filter(
+        organization=organization, welfare_project__isnull=True
+    ).values_list("id", "title", "currency"):
         titles[campaign_id] = title
         if not any(key[0] == campaign_id for key in rows):
             rows[(campaign_id, currency)]  # every campaign shows, even before money moves
@@ -74,7 +78,10 @@ def purpose_totals(organization, *, campaigns_only=False) -> list[dict]:
 def check_campaign(organization, campaign_id) -> Campaign | None:
     if campaign_id is None:
         return None
-    campaign = Campaign.objects.filter(organization=organization, pk=campaign_id).first()
+    # A required welfare project's spending goes on the project itself.
+    campaign = Campaign.objects.filter(
+        organization=organization, pk=campaign_id, welfare_project__isnull=True
+    ).first()
     if campaign is None:
         raise ApiException("bad_campaign", "Choose one of the organization's campaigns.", 400)
     return campaign

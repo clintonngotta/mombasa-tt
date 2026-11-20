@@ -17,6 +17,11 @@ class ClubActivitySerializer(serializers.ModelSerializer):
     invitee_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, write_only=True, max_length=500
     )
+    welfare_project_id = serializers.UUIDField(
+        allow_null=True,
+        required=False,
+        help_text="The welfare project this visit or support activity is for (REQ-038).",
+    )
     going = serializers.SerializerMethodField()
     waitlisted = serializers.SerializerMethodField()
     my_answer = serializers.SerializerMethodField()
@@ -39,6 +44,7 @@ class ClubActivitySerializer(serializers.ModelSerializer):
             "rsvp_deadline",
             "public",
             "cost_note",
+            "welfare_project_id",
             "status",
             "cancel_reason",
             "going",
