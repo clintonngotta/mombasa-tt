@@ -142,6 +142,9 @@ class OrganizationViewSet(
             queryset = queryset.filter(town__iexact=city)
         if kinds := [kind for kind in params.getlist("kind") if kind in Organization.Kind.values]:
             queryset = queryset.filter(kind__in=kinds)
+        else:
+            # A coach's organizing desk isn't a club anyone joins.
+            queryset = queryset.exclude(kind=Organization.Kind.COACHING)
         return queryset
 
     @extend_schema(request=OrganizationLocationSerializer, responses={200: OrganizationSerializer})

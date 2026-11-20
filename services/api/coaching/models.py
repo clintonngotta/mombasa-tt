@@ -45,6 +45,16 @@ class CoachProfile(models.Model):
     # Clubs where the coach works; their club plans and tournaments appear in the coach's calendar.
     organizations = models.ManyToManyField("organizations.Organization", blank=True, related_name="coaches")
     accepting = models.BooleanField(default=True)
+    # The company, firm or academy the coach works through; a tournament can be organized in its name.
+    firm_name = models.CharField(max_length=120, blank=True)
+    # The coach's organizing desk, made the first time they organize a tournament.
+    organizer = models.OneToOneField(
+        "organizations.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="coach_organizer",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
