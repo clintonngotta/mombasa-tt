@@ -3586,6 +3586,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/attendance/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../meetings/{id}/attendance/: mark one invitee present, late, apologies or absent, during the
+         *     meeting or after it. A mark can't change once a penalty has been issued for it.
+         */
+        post: operations["organizations_meetings_attendance_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/meetings/{id}/cancel/": {
         parameters: {
             query?: never;
@@ -3635,6 +3655,47 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/penalties/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../meetings/{id}/penalties/: once the meeting is over, close the attendance record (anyone
+         *     unmarked is absent, or apologies if they sent them) and issue the penalties its rules set. Run again,
+         *     it issues only for invitees who have none yet.
+         */
+        post: operations["organizations_meetings_penalties_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/penalties/{penalty_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH .../meetings/{id}/penalties/{penalty}/: change, waive or mark paid an issued penalty. Only
+         *     the host's admin or a platform super admin; each change is kept in the penalty's history.
+         */
+        patch: operations["organizations_meetings_penalties_partial_update"];
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/meetings/{id}/publish/": {
@@ -6405,12 +6466,6 @@ export interface components {
         AnswerRequest: {
             answer: components["schemas"]["AnswerAnswerEnum"];
         };
-        /**
-         * @description * `position` - Position
-         *     * `holder` - Holder
-         * @enum {string}
-         */
-        AppliesToEnum: "position" | "holder";
         AppointRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -6523,6 +6578,19 @@ export interface components {
             url: string;
             /** Format: date-time */
             expires_at: string;
+        };
+        /**
+         * @description * `present` - present
+         *     * `absent` - absent
+         *     * `late` - late
+         *     * `apologies` - apologies
+         * @enum {string}
+         */
+        AttendanceMarkEnum: "present" | "absent" | "late" | "apologies";
+        AttendanceRequest: {
+            /** Format: uuid */
+            invitee: string;
+            attendance: components["schemas"]["AttendanceMarkEnum"];
         };
         /** @description Who answered, as the audience sees it: display names only. */
         Attendee: {
@@ -7296,10 +7364,16 @@ export interface components {
             options: string[];
             required: boolean;
             visibility: components["schemas"]["MemberFieldVisibilityEnum"];
-            applies_to: components["schemas"]["AppliesToEnum"];
+            applies_to: components["schemas"]["CommitteeFieldAppliesToEnum"];
             /** Format: date-time */
             readonly retired_at: string | null;
         };
+        /**
+         * @description * `position` - Position
+         *     * `holder` - Holder
+         * @enum {string}
+         */
+        CommitteeFieldAppliesToEnum: "position" | "holder";
         CommitteeFieldEntry: {
             readonly field: components["schemas"]["CommitteeField"];
             readonly value: (string | number | boolean) | null;
@@ -7311,7 +7385,7 @@ export interface components {
             options?: string[];
             required?: boolean;
             visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
-            applies_to?: components["schemas"]["AppliesToEnum"];
+            applies_to?: components["schemas"]["CommitteeFieldAppliesToEnum"];
         };
         /**
          * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
@@ -8170,6 +8244,10 @@ export interface components {
             readonly answer: components["schemas"]["InviteeAnswerEnum"];
             /** Format: date-time */
             readonly checked_in_at: string | null;
+            readonly attendance: components["schemas"]["MeetingAttendanceEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date-time */
+            readonly marked_at: string | null;
+            readonly penalty: components["schemas"]["Penalty"] | null;
         };
         /**
          * @description * `none` - None
@@ -8560,6 +8638,8 @@ export interface components {
             online_link: string;
             audience: components["schemas"]["MeetingAudienceEnum"];
             agenda: components["schemas"]["AgendaRow"][];
+            rules: components["schemas"]["Rule"][];
+            readonly secretary: components["schemas"]["Secretary"] | null;
             readonly status: components["schemas"]["ActivityStatusEnum"];
             readonly minutes: string;
             /** Format: date-time */
@@ -8569,7 +8649,20 @@ export interface components {
             readonly published_at: string | null;
             readonly invitees: components["schemas"]["Invitee"][];
             readonly me: components["schemas"]["Invitee"] | null;
+            /** @description You may mark attendance and issue penalties: governance staff or the secretary. */
+            readonly can_take_attendance: boolean;
+            /** @description You may change issued penalties: the host's admin or a platform super admin. */
+            readonly can_edit_penalties: boolean;
         };
+        /**
+         * @description * `` - Unmarked
+         *     * `present` - Present
+         *     * `late` - Late
+         *     * `apologies` - Apologies
+         *     * `absent` - Absent
+         * @enum {string}
+         */
+        MeetingAttendanceEnum: "present" | "late" | "apologies" | "absent";
         /**
          * @description * `committee` - Committee
          *     * `club_admins` - Club Admins
@@ -8587,6 +8680,13 @@ export interface components {
          */
         MeetingKindEnum: "committee" | "general" | "representatives" | "special";
         /**
+         * @description * `issued` - Issued
+         *     * `waived` - Waived
+         *     * `paid` - Paid
+         * @enum {string}
+         */
+        MeetingPenaltyStatusEnum: "issued" | "waived" | "paid";
+        /**
          * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
          *     an invitee sees their own answer as `me`.
          */
@@ -8602,6 +8702,12 @@ export interface components {
             audience?: components["schemas"]["MeetingAudienceEnum"];
             named_ids?: string[];
             agenda?: components["schemas"]["AgendaRowRequest"][];
+            rules?: components["schemas"]["RuleRequest"][];
+            /**
+             * Format: uuid
+             * @description An active member of the host. Defaults to whoever calls the meeting.
+             */
+            secretary_id?: string | null;
         };
         /** @description Staff view of a member: display name and roles, never email or contact details. */
         Member: {
@@ -9778,7 +9884,7 @@ export interface components {
             options?: string[];
             required?: boolean;
             visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
-            applies_to?: components["schemas"]["AppliesToEnum"];
+            applies_to?: components["schemas"]["CommitteeFieldAppliesToEnum"];
         };
         /** @description A drill. Instructions are required; everything else is optional. */
         PatchedDrillRequest: {
@@ -9865,6 +9971,12 @@ export interface components {
             audience?: components["schemas"]["MeetingAudienceEnum"];
             named_ids?: string[];
             agenda?: components["schemas"]["AgendaRowRequest"][];
+            rules?: components["schemas"]["RuleRequest"][];
+            /**
+             * Format: uuid
+             * @description An active member of the host. Defaults to whoever calls the meeting.
+             */
+            secretary_id?: string | null;
         };
         /**
          * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
@@ -9905,6 +10017,12 @@ export interface components {
             valid_days?: number | null;
             benefits?: string[];
             active?: boolean;
+        };
+        PatchedPenaltyUpdateRequest: {
+            penalty?: string;
+            amount_minor?: number | null;
+            status?: components["schemas"]["MeetingPenaltyStatusEnum"];
+            note?: string;
         };
         PatchedPersonalMatchRequest: {
             /** Format: date */
@@ -10127,6 +10245,37 @@ export interface components {
              * @description A new id per payment recorded; sending it again records nothing new.
              */
             request_key: string;
+        };
+        /**
+         * @description * `absent` - absent
+         *     * `late` - late
+         *     * `apologies` - apologies
+         * @enum {string}
+         */
+        PenalizedAttendanceEnum: "absent" | "late" | "apologies";
+        Penalty: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly applies_to: components["schemas"]["PenalizedAttendanceEnum"];
+            readonly penalty: string;
+            readonly amount_minor: number | null;
+            readonly currency: string;
+            readonly status: components["schemas"]["MeetingPenaltyStatusEnum"];
+            readonly note: string;
+            readonly issued_by_name: string | null;
+            /** Format: date-time */
+            readonly issued_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly history: components["schemas"]["PenaltyChange"][];
+        };
+        PenaltyChange: {
+            /** Format: date-time */
+            at: string;
+            by_name: string;
+            changes: {
+                [key: string]: unknown[] | null;
+            };
         };
         /**
          * @description * `day` - Day
@@ -10960,6 +11109,20 @@ export interface components {
          * @enum {string}
          */
         RubberStatusEnum: "scheduled" | "completed" | "not_played";
+        /** @description What missing the meeting costs: one rule each for absent, late and apologies. */
+        Rule: {
+            applies_to: components["schemas"]["PenalizedAttendanceEnum"];
+            penalty: string;
+            /** @description A fine in the smallest unit of KES, when the penalty is one. */
+            amount_minor: number | null;
+        };
+        /** @description What missing the meeting costs: one rule each for absent, late and apologies. */
+        RuleRequest: {
+            applies_to: components["schemas"]["PenalizedAttendanceEnum"];
+            penalty: string;
+            /** @description A fine in the smallest unit of KES, when the penalty is one. */
+            amount_minor?: number | null;
+        };
         Schedule: {
             tables: components["schemas"]["ScheduleTable"][];
             sessions: components["schemas"]["Session"][];
@@ -11173,6 +11336,16 @@ export interface components {
             can_score: boolean;
             /** @description The caller may assign or change the umpire now. */
             can_assign: boolean;
+        };
+        Secretary: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        SecretaryRequest: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
         };
         /**
          * @description * `rating` - Rating
@@ -20458,6 +20631,41 @@ export interface operations {
             };
         };
     };
+    organizations_meetings_attendance_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_meetings_cancel_create: {
         parameters: {
             query?: never;
@@ -20546,6 +20754,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_penalties_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_penalties_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                penalty_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPenaltyUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Penalty"];
                 };
             };
             /** @description Error envelope */
