@@ -197,6 +197,10 @@ SPECTACULAR_SETTINGS = {
         # Campaigns and welfare projects share one audience choice set (all or selected members).
         "FinanceAudienceEnum": "finance.models.Campaign.Audience",
         "MembershipStatusEnum": "organizations.models.Membership.Status",
+        "MeetingAttendanceEnum": "regions.models.MeetingInvitee.Attendance",
+        "AttendanceMarkEnum": "regions.serializers.MARKS",
+        "PenalizedAttendanceEnum": "regions.serializers.PENALIZED",
+        "MeetingPenaltyStatusEnum": "regions.models.MeetingPenalty.Status",
         "SkillEnum": "training.models.Skill",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",

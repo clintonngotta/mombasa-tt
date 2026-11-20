@@ -122,6 +122,13 @@ class Meeting(models.Model):
     named = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
     # The agenda in order: a list of {"title": str, "presenter": str, "tournament": tournament id | null}.
     agenda = models.JSONField(default=list, blank=True)
+    # Penalties for missing it, shown to invitees: a list of {"applies_to": "absent" | "late" |
+    # "apologies", "penalty": str, "amount_minor": int | null}, at most one rule for each.
+    rules = models.JSONField(default=list, blank=True)
+    # Takes attendance and issues the penalties, with the host's governance staff.
+    secretary = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     minutes = models.TextField(max_length=20000, blank=True)
     minutes_recorded_at = models.DateTimeField(null=True, blank=True)
@@ -157,8 +164,22 @@ class MeetingInvitee(models.Model):
     club = models.ForeignKey(
         "organizations.Organization", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
+
+    class Attendance(models.TextChoices):
+        UNMARKED = ""
+        PRESENT = "present"
+        LATE = "late"
+        APOLOGIES = "apologies"
+        ABSENT = "absent"
+
     answer = models.CharField(max_length=10, choices=Answer.choices, default=Answer.NONE)
     checked_in_at = models.DateTimeField(null=True, blank=True)
+    # The record of the meeting: self check-in marks present; the secretary marks the rest.
+    attendance = models.CharField(max_length=10, choices=Attendance.choices, default="", blank=True)
+    marked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    marked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["user__display_name"]
@@ -166,6 +187,39 @@ class MeetingInvitee(models.Model):
 
     def __str__(self):
         return f"{self.user_id} at {self.meeting_id}"
+
+
+class MeetingPenalty(models.Model):
+    """A penalty issued to an invitee under the meeting's rules. The secretary or governance staff issue
+    it; from then on only the host's admin (or a platform super admin) changes it, and every change is kept
+    in `history`. Amounts are a record only: no payment is taken here."""
+
+    class Status(models.TextChoices):
+        ISSUED = "issued"
+        WAIVED = "waived"
+        PAID = "paid"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invitee = models.OneToOneField(MeetingInvitee, on_delete=models.CASCADE, related_name="penalty")
+    applies_to = models.CharField(max_length=10, choices=MeetingInvitee.Attendance.choices)
+    penalty = models.CharField(max_length=200)
+    amount_minor = models.PositiveIntegerField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default="KES")
+    status = models.CharField(max_length=8, choices=Status.choices, default=Status.ISSUED)
+    note = models.CharField(max_length=300, blank=True)
+    # [{"at": iso time, "by": user id, "by_name": str, "changes": {field: [before, after]}}]
+    history = models.JSONField(default=list, blank=True)
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    issued_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["invitee__user__display_name"]
+
+    def __str__(self):
+        return f"{self.penalty} for {self.invitee_id}"
 
 
 class Sponsorship(models.Model):
