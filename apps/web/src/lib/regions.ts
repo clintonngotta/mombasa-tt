@@ -75,6 +75,22 @@ export const answerMeeting = (orgId: string, id: string, answer: "attending" | "
   api<Meeting>(`${org(orgId)}/meetings/${id}/answer/`, { body: { answer } })
 export const recordMinutes = (orgId: string, id: string, minutes: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/minutes/`, { body: { minutes } })
 
+// Meeting rules and penalties (REQ-046): the secretary or governance staff take attendance and issue the
+// penalties the rules set once the meeting is over; only the host's admin changes one after that.
+export type Penalized = Schemas["PenalizedAttendanceEnum"]
+export type AttendanceMark = Schemas["AttendanceMarkEnum"]
+export type MeetingPenalty = Schemas["Penalty"]
+export type MeetingInvitee = Schemas["Invitee"]
+export const PENALIZED: Penalized[] = ["absent", "late", "apologies"]
+export const ATTENDANCE_LABEL: Record<AttendanceMark, string> = { present: "Present", late: "Late", apologies: "Apologies", absent: "Absent" }
+export const RULE_LABEL: Record<Penalized, string> = { absent: "Absent without apologies", late: "Arriving late", apologies: "Sending apologies" }
+export const PENALTY_STATUS_LABEL: Record<MeetingPenalty["status"], string> = { issued: "Issued", waived: "Waived", paid: "Paid" }
+export const markAttendance = (orgId: string, id: string, invitee: string, attendance: AttendanceMark) =>
+  api<Meeting>(`${org(orgId)}/meetings/${id}/attendance/`, { body: { invitee, attendance } })
+export const issuePenalties = (orgId: string, id: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/penalties/`, { method: "POST" })
+export const updatePenalty = (orgId: string, id: string, penaltyId: string, body: Schemas["PatchedPenaltyUpdateRequest"]) =>
+  api<MeetingPenalty>(`${org(orgId)}/meetings/${id}/penalties/${penaltyId}/`, { method: "PATCH", body })
+
 export const listSponsorships = (orgId: string) => api<Sponsorship[]>(`${org(orgId)}/sponsorships/`)
 export const offerSponsorship = (orgId: string, body: Schemas["SponsorshipRequest"]) => api<Sponsorship>(`${org(orgId)}/sponsorships/`, { body })
 export const withdrawSponsorship = (orgId: string, id: string) => api<Sponsorship>(`${org(orgId)}/sponsorships/${id}/withdraw/`, { body: { reason: "" } })

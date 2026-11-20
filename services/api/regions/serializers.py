@@ -4,7 +4,7 @@ from rest_framework import serializers
 from competitions.models import Tournament
 from organizations.models import Organization
 
-from .models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship
+from .models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
 
 
 class OrgRefSerializer(serializers.Serializer):
@@ -137,14 +137,109 @@ class AgendaRowSerializer(serializers.Serializer):
     tournament = serializers.UUIDField(required=False, allow_null=True, default=None)
 
 
+PENALIZED = [
+    MeetingInvitee.Attendance.ABSENT,
+    MeetingInvitee.Attendance.LATE,
+    MeetingInvitee.Attendance.APOLOGIES,
+]
+MARKS = [MeetingInvitee.Attendance.PRESENT, *PENALIZED]
+
+
+class RuleSerializer(serializers.Serializer):
+    """What missing the meeting costs: one rule each for absent, late and apologies."""
+
+    applies_to = serializers.ChoiceField(choices=PENALIZED)
+    penalty = serializers.CharField(max_length=200, trim_whitespace=True)
+    amount_minor = serializers.IntegerField(
+        min_value=1,
+        max_value=100_000_000,
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="A fine in the smallest unit of KES, when the penalty is one.",
+    )
+
+
+class SecretarySerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    display_name = serializers.CharField()
+
+
+class PenaltyChangeSerializer(serializers.Serializer):
+    at = serializers.DateTimeField()
+    by_name = serializers.CharField()
+    changes = serializers.DictField(child=serializers.ListField(allow_null=True))
+
+
+class PenaltySerializer(serializers.ModelSerializer):
+    applies_to = serializers.ChoiceField(choices=PENALIZED, read_only=True)
+    issued_by_name = serializers.CharField(
+        source="issued_by.display_name", read_only=True, allow_null=True, default=None
+    )
+    history = PenaltyChangeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MeetingPenalty
+        fields = [
+            "id",
+            "applies_to",
+            "penalty",
+            "amount_minor",
+            "currency",
+            "status",
+            "note",
+            "issued_by_name",
+            "issued_at",
+            "updated_at",
+            "history",
+        ]
+        read_only_fields = fields
+
+
+class PenaltyUpdateSerializer(serializers.Serializer):
+    penalty = serializers.CharField(max_length=200, trim_whitespace=True, required=False)
+    amount_minor = serializers.IntegerField(
+        min_value=1, max_value=100_000_000, required=False, allow_null=True
+    )
+    status = serializers.ChoiceField(choices=MeetingPenalty.Status.choices, required=False)
+    note = serializers.CharField(max_length=300, trim_whitespace=True, allow_blank=True, required=False)
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError("Change the penalty, amount, status or note.")
+        return attrs
+
+
+class AttendanceSerializer(serializers.Serializer):
+    invitee = serializers.UUIDField()
+    attendance = serializers.ChoiceField(choices=MARKS)
+
+
 class InviteeSerializer(serializers.ModelSerializer):
     display_name = serializers.CharField(source="user.display_name", read_only=True)
     club = serializers.CharField(source="club.name", read_only=True, allow_null=True, default=None)
+    penalty = serializers.SerializerMethodField()
 
     class Meta:
         model = MeetingInvitee
-        fields = ["id", "display_name", "club", "answer", "checked_in_at"]
+        fields = [
+            "id",
+            "display_name",
+            "club",
+            "answer",
+            "checked_in_at",
+            "attendance",
+            "marked_at",
+            "penalty",
+        ]
         read_only_fields = fields
+
+    @extend_schema_field(PenaltySerializer(allow_null=True))
+    def get_penalty(self, invitee) -> dict | None:
+        try:
+            return PenaltySerializer(invitee.penalty).data
+        except MeetingPenalty.DoesNotExist:
+            return None
 
 
 class MeetingSerializer(serializers.ModelSerializer):
@@ -158,8 +253,22 @@ class MeetingSerializer(serializers.ModelSerializer):
     named_ids = serializers.ListField(
         child=serializers.UUIDField(), write_only=True, required=False, max_length=200
     )
+    rules = RuleSerializer(many=True, required=False)
+    secretary = SecretarySerializer(read_only=True, allow_null=True)
+    secretary_id = serializers.UUIDField(
+        write_only=True,
+        required=False,
+        allow_null=True,
+        help_text="An active member of the host. Defaults to whoever calls the meeting.",
+    )
     invitees = serializers.SerializerMethodField()
     me = serializers.SerializerMethodField()
+    can_take_attendance = serializers.SerializerMethodField(
+        help_text="You may mark attendance and issue penalties: governance staff or the secretary."
+    )
+    can_edit_penalties = serializers.SerializerMethodField(
+        help_text="You may change issued penalties: the host's admin or a platform super admin."
+    )
 
     class Meta:
         model = Meeting
@@ -175,6 +284,9 @@ class MeetingSerializer(serializers.ModelSerializer):
             "audience",
             "named_ids",
             "agenda",
+            "rules",
+            "secretary",
+            "secretary_id",
             "status",
             "minutes",
             "minutes_recorded_at",
@@ -182,6 +294,8 @@ class MeetingSerializer(serializers.ModelSerializer):
             "published_at",
             "invitees",
             "me",
+            "can_take_attendance",
+            "can_edit_penalties",
         ]
         read_only_fields = [
             "id",
@@ -193,13 +307,28 @@ class MeetingSerializer(serializers.ModelSerializer):
             "published_at",
             "invitees",
             "me",
+            "can_take_attendance",
+            "can_edit_penalties",
         ]
+
+    def _takes_attendance(self, meeting) -> bool:
+        user = self.context["request"].user
+        return bool(self.context.get("staff")) or (
+            meeting.secretary_id is not None and meeting.secretary_id == user.pk
+        )
 
     @extend_schema_field(InviteeSerializer(many=True))
     def get_invitees(self, meeting) -> list[dict]:
-        if not self.context.get("staff"):
+        if not self._takes_attendance(meeting):
             return []
-        return InviteeSerializer(meeting.invitees.select_related("user", "club"), many=True).data
+        invitees = meeting.invitees.select_related("user", "club", "penalty__issued_by")
+        return InviteeSerializer(invitees, many=True).data
+
+    def get_can_take_attendance(self, meeting) -> bool:
+        return self._takes_attendance(meeting)
+
+    def get_can_edit_penalties(self, meeting) -> bool:
+        return bool(self.context.get("top"))
 
     @extend_schema_field(InviteeSerializer(allow_null=True))
     def get_me(self, meeting) -> dict | None:
@@ -222,6 +351,11 @@ class MeetingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"audience": "Only a regional body invites its clubs' admins."})
         if len(attrs.get("agenda", [])) > 30:
             raise serializers.ValidationError({"agenda": "Keep the agenda to 30 items."})
+        rules = attrs.get("rules", [])
+        if len({rule["applies_to"] for rule in rules}) != len(rules):
+            raise serializers.ValidationError(
+                {"rules": "Give at most one rule each for absent, late and apologies."}
+            )
         return attrs
 
 

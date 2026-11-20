@@ -83,7 +83,7 @@ from organizations.models import (
 from organizations.permissions import RoleKey
 from outbox.models import Job
 from profiles.models import PlayerProfile
-from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship
+from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
@@ -254,6 +254,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-meeting-minutes": {"post": STAFF},
     "organization-meeting-answer": {"post": OWNER},  # Baraka's invitation
     "organization-meeting-check-in": {"post": OWNER},
+    # Attendance and issuing: governance staff (or the meeting's secretary, nobody here). Changing an
+    # issued penalty: the club admin only, which the staff check covers.
+    "organization-meeting-attendance": {"post": STAFF},
+    "organization-meeting-penalties": {"post": STAFF},
+    "organization-meeting-penalty": {"patch": STAFF},
     # Sponsorships: Coast's finance staff offer; a host's competition staff decide; sponsors are shown.
     "organization-sponsorships": {"get": STAFF, "post": STAFF},
     "organization-sponsorship-withdraw": {"post": STAFF},
@@ -525,6 +530,11 @@ BODIES = {
     ("organization-meeting-cancel", "post"): {"reason": "Venue closed"},
     ("organization-meeting-minutes", "post"): {"minutes": "Agreed the budget."},
     ("organization-meeting-answer", "post"): {"answer": "attending"},
+    ("organization-meeting-attendance", "post"): lambda: {
+        "invitee": str(MeetingInvitee.objects.get(meeting__title="MARK-MEETING-RUNNING").id),
+        "attendance": "late",
+    },
+    ("organization-meeting-penalty", "patch"): {"status": "waived"},
     ("organization-sponsorships", "post"): {"tournament_id": NYALI_CUP, "amount_minor": 100000},
     ("tournament-streams", "post"): {"url": "https://www.youtube.com/live/coast-open"},
     ("tournament-stream", "patch"): {"title": "Table 1"},
@@ -1316,6 +1326,14 @@ class World:
             starts_at=now - timedelta(minutes=10),
             ends_at=now + timedelta(hours=2),
         )
+        over = {"status": Meeting.Status.PUBLISHED, "starts_at": now - timedelta(hours=3)}
+        over["ends_at"] = now - timedelta(hours=1)
+        rule = {"applies_to": "absent", "penalty": "MARK-PENALTY-RULE", "amount_minor": 5000}
+        self.ended_meeting = meeting("Ended", [self.baraka], rules=[rule], **over)
+        penalized = meeting("Penalized", [self.baraka], rules=[rule], **over)
+        self.penalty = MeetingPenalty.objects.create(
+            invitee=penalized.invitees.get(), applies_to="absent", penalty="MARK-PENALTY", amount_minor=5000
+        )
         nyali_cup = Tournament.objects.create(
             id=NYALI_CUP,
             organization=self.nyali,
@@ -1428,6 +1446,9 @@ class World:
             "organization-meeting-minutes": self.running_meeting.id,
             "organization-meeting-answer": self.running_meeting.id,
             "organization-meeting-check-in": self.running_meeting.id,
+            "organization-meeting-attendance": self.running_meeting.id,
+            "organization-meeting-penalties": self.ended_meeting.id,
+            "organization-meeting-penalty": self.penalty.invitee.meeting_id,
             "organization-sponsorship-withdraw": self.offer.id,
             "tournament-sponsorship-accept": self.offer_to_accept.id,
             "tournament-sponsorship-decline": self.offer_to_decline.id,
@@ -1589,6 +1610,8 @@ class World:
             found["session_pk"] = self.club_session.id
         if "contribution_pk" in names:
             found["contribution_pk"] = self.welfare_contribution.id
+        if "penalty_pk" in names:
+            found["penalty_pk"] = self.penalty.id
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
@@ -1739,7 +1762,12 @@ class World:
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
             "meetings": sorted(Meeting.objects.values_list("title", "status", "location", "minutes")),
             "meeting_invitees": sorted(
-                MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at")
+                MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
+            ),
+            "meeting_penalties": sorted(
+                MeetingPenalty.objects.values_list(
+                    "invitee__user__email", "penalty", "amount_minor", "status"
+                )
             ),
             "sponsorships": sorted(Sponsorship.objects.values_list("amount_minor", "status")),
             "streams": sorted(LiveStream.objects.values_list("url", "title")),
@@ -2067,6 +2095,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ARTICLE-DRAFT": {"amina"},
         "MARK-MEETING-DRAFT": {"amina"},
         "MARK-MEETING-RUNNING": {"amina", "baraka"},
+        "MARK-PENALTY-RULE": {"amina", "baraka"},  # the meeting's invitees and staff
+        "MARK-PENALTY": {"amina", "baraka"},  # the penalized invitee and staff
         "MARK-SPONSOR-TERMS": {"amina"},
         "MARK-COACH-NOTE": {"baraka"},
         "MARK-COACHING-MESSAGE": {"baraka"},
