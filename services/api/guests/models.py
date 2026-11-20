@@ -39,8 +39,10 @@ class Guest(models.Model):
 
 
 class GuestInvitation(models.Model):
-    """Staff ask the person behind a guest to claim it (REQ-003). Only a signed-in account with this
-    verified address sees it, and it is answered once: accepted, declined, revoked or lapsed."""
+    """Staff ask the person behind a guest to claim it (REQ-003), by email, phone or both. It carries a
+    single-use link (only its hash is kept): whoever opens it creates their account from the guest, or
+    signs in and claims it. An account signed in with the verified email also sees it in its inbox.
+    It is answered once: accepted, declined, revoked or lapsed."""
 
     class Status(models.TextChoices):
         PENDING = "pending"
@@ -50,7 +52,10 @@ class GuestInvitation(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     guest = models.ForeignKey(Guest, on_delete=models.CASCADE, related_name="invitations")
-    email = models.EmailField()  # stored lower-cased
+    email = models.EmailField(blank=True)  # stored lower-cased; blank for a phone-only invitation
+    phone = models.CharField(max_length=16, blank=True)  # E.164, where staff will share the link
+    # Null for invitations made before links existed: unique, so they can't share a blank value.
+    token_hash = models.CharField(max_length=64, unique=True, null=True, editable=False)  # noqa: DJ001
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -68,7 +73,7 @@ class GuestInvitation(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.email} for {self.guest_id} ({self.status})"
+        return f"{self.email or self.phone} for {self.guest_id} ({self.status})"
 
     @property
     def is_open(self) -> bool:

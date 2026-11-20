@@ -41,6 +41,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     display_name = models.CharField(max_length=80)
     email_verified_at = models.DateTimeField(null=True, blank=True)
+    # Optional second way to sign in, in E.164 (accounts/phones.py). Confirmed when the player joined
+    # through an invitation link sent to this number; numbers players add themselves are unconfirmed.
+    phone = models.CharField(max_length=16, unique=True, null=True, blank=True)
+    phone_verified_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False, help_text="Django admin access (platform operators only).")
     date_joined = models.DateTimeField(default=timezone.now)
@@ -59,6 +63,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def save(self, *args, **kwargs):
         self.email = normalize_email(self.email)
+        self.phone = self.phone or None  # blank is no phone, and never clashes with another blank
         super().save(*args, **kwargs)
 
     @property
@@ -69,3 +74,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_email_verified(self) -> bool:
         return self.email_verified_at is not None
+
+    @property
+    def is_verified(self) -> bool:
+        """The player proved they hold a way to reach them: a verified email or a confirmed phone."""
+        return self.email_verified_at is not None or self.phone_verified_at is not None
+
+
+# Accounts that may sign in and be entered: a verified email or a confirmed phone (REQ-003).
+VERIFIED = models.Q(email_verified_at__isnull=False) | models.Q(phone_verified_at__isnull=False)

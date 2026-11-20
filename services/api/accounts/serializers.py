@@ -5,13 +5,29 @@ from rest_framework import serializers
 from core.geography import CountryField, validate_location
 
 from .models import User, normalize_email
+from .phones import looks_like_phone, normalize_phone
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """The signed-in player's own account. `email` is null for an account that signs in by phone only."""
+
+    email = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "email", "display_name", "email_verified_at", "date_joined"]
+        fields = [
+            "id",
+            "email",
+            "phone",
+            "display_name",
+            "email_verified_at",
+            "phone_verified_at",
+            "date_joined",
+        ]
         read_only_fields = fields
+
+    def get_email(self, user) -> str | None:
+        return user.email if user.can_receive_email else None
 
 
 class EmailField(serializers.EmailField):
@@ -37,9 +53,46 @@ class SignUpSerializer(serializers.Serializer):
         return attrs
 
 
+class PhoneField(serializers.CharField):
+    """A phone number as typed, returned in E.164. Numbers without a country code are Kenyan."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("max_length", 32)
+        super().__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        text = super().to_internal_value(data)
+        if not text:
+            return None
+        phone = normalize_phone(text)
+        if phone is None:
+            raise serializers.ValidationError(
+                "Enter a phone number such as 0712 345 678 or +254 712 345 678."
+            )
+        return phone
+
+
 class LogInSerializer(serializers.Serializer):
-    email = EmailField()
+    """Sign in with an email address or a phone number. `email` is the older name for `login`."""
+
+    login = serializers.CharField(max_length=254, required=False, trim_whitespace=True)
+    email = serializers.CharField(max_length=254, required=False, write_only=True, trim_whitespace=True)
     password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate(self, attrs):
+        given = attrs.get("login") or attrs.get("email")
+        if not given:
+            raise serializers.ValidationError({"login": "Enter your email address or phone number."})
+        if looks_like_phone(given):
+            return {"phone": normalize_phone(given), "password": attrs["password"]}
+        return {"email": normalize_email(given), "password": attrs["password"]}
+
+
+class AccountUpdateSerializer(serializers.Serializer):
+    """What players change about their own account. A new phone number starts unconfirmed."""
+
+    display_name = serializers.CharField(max_length=80, trim_whitespace=True, required=False)
+    phone = PhoneField(required=False, allow_blank=True, allow_null=True)
 
 
 class EmailOnlySerializer(serializers.Serializer):

@@ -45,6 +45,8 @@ from .serializers import (
     CalendarEntrySerializer,
     CoachingRequestSerializer,
     CoachingSerializer,
+    CoachOrganizerRequestSerializer,
+    CoachOrganizerSerializer,
     CoachProfileSerializer,
     CommentInputSerializer,
     CommentSerializer,
@@ -173,6 +175,26 @@ class MyCoachProfileView(APIView):
                 get_object_or_404(profiles(), pk=profile.pk), context={"request": request}
             ).data
         )
+
+
+class MyOrganizerView(APIView):
+    """POST /me/coach-profile/organizer/: the coach's organizing desk, made the first time they organize a
+    tournament. The coach is its only admin, so its tournaments run like any club's. Each of its tournaments
+    names the coach or their firm as organizer (Tournament.presented_as); the desk takes the name chosen
+    here."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=CoachOrganizerRequestSerializer, responses={200: CoachOrganizerSerializer})
+    def post(self, request):
+        body = CoachOrganizerRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        with transaction.atomic():
+            profile = get_object_or_404(
+                CoachProfile.objects.select_for_update().select_related("user"), user=request.user
+            )
+            desk = service.open_organizer(profile, body.validated_data["presented_as"])
+        return Response(CoachOrganizerSerializer({"organization_id": desk.id, "name": desk.name}).data)
 
 
 class MyAvailabilityView(APIView):

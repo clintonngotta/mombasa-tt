@@ -72,6 +72,16 @@ class CoachProfileSerializer(serializers.ModelSerializer):
         child=serializers.UUIDField(), write_only=True, required=False, max_length=10
     )
     availability = serializers.SerializerMethodField()
+    firm_name = serializers.CharField(
+        max_length=120,
+        allow_blank=True,
+        required=False,
+        trim_whitespace=True,
+        help_text="The company, firm or academy the coach works through.",
+    )
+    organizer_id = serializers.UUIDField(
+        read_only=True, allow_null=True, help_text="The coach's organizing desk, once they have organized."
+    )
 
     class Meta:
         model = CoachProfile
@@ -90,9 +100,11 @@ class CoachProfileSerializer(serializers.ModelSerializer):
             "organizations",
             "organization_ids",
             "accepting",
+            "firm_name",
+            "organizer_id",
             "availability",
         ]
-        read_only_fields = ["id", "user", "organizations", "availability"]
+        read_only_fields = ["id", "user", "organizations", "organizer_id", "availability"]
 
     @extend_schema_field(AvailabilitySerializer(many=True))
     def get_availability(self, profile) -> list[dict]:
@@ -335,3 +347,14 @@ def official_row(match, user, comments) -> dict:
         "score": f"{won}–{len(match.games) - won}" if match.games else "",
         "comments": comments,
     }
+
+
+class CoachOrganizerRequestSerializer(serializers.Serializer):
+    """Open (or rename) the coach's organizing desk, named after the coach or their firm."""
+
+    presented_as = serializers.ChoiceField(choices=["coach", "firm"], default="coach")
+
+
+class CoachOrganizerSerializer(serializers.Serializer):
+    organization_id = serializers.UUIDField()
+    name = serializers.CharField()

@@ -1,15 +1,20 @@
 """Guests (REQ-003): club staff create and invite them; the invitee claims; staff resolve clashes."""
 
+from django.contrib.auth import login
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from competitions.models import EntryPlayer
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
 from organizations.access import require_permission
@@ -21,9 +26,14 @@ from .models import Guest, GuestClaim, GuestClaimEvent, GuestInvitation
 from .serializers import (
     ClaimNoteSerializer,
     GuestClaimSerializer,
+    GuestCreateSerializer,
     GuestInviteSerializer,
     GuestSerializer,
     GuestWriteSerializer,
+    InvitationDetailSerializer,
+    InvitationJoinedSerializer,
+    InvitationJoinSerializer,
+    InvitedGuestSerializer,
     MyClaimSerializer,
     MyGuestInvitationSerializer,
 )
@@ -81,15 +91,25 @@ class GuestViewSet(_ClubScoped, viewsets.GenericViewSet):
         page = self.paginate_queryset(guests)
         return self.get_paginated_response(GuestSerializer(page, many=True).data)
 
-    @extend_schema(request=GuestWriteSerializer, responses={201: GuestSerializer})
+    def _invited(self, guest: Guest, token: str | None) -> dict:
+        data = InvitedGuestSerializer(self.get_queryset().get(pk=guest.pk)).data
+        data["invite_link"] = service.join_link(token) if token else None
+        return data
+
+    @extend_schema(request=GuestCreateSerializer, responses={201: InvitedGuestSerializer})
     def create(self, request, organization_pk):
+        """A new guest. With an email or phone they are invited at once, and `invite_link` is the link
+        to share with them (shown this once)."""
         organization = self.organization()
-        body = GuestWriteSerializer(data=request.data)
+        body = GuestCreateSerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        guest = service.create(organization, body.validated_data["display_name"], request.user)
-        return Response(
-            GuestSerializer(self.get_queryset().get(pk=guest.pk)).data, status=status.HTTP_201_CREATED
-        )
+        data = body.validated_data
+        token = None
+        with transaction.atomic():
+            guest = service.create(organization, data["display_name"], request.user)
+            if data.get("email") or data.get("phone"):
+                _, token = service.invite(guest, data.get("email"), request.user, data.get("phone") or "")
+        return Response(self._invited(guest, token), status=status.HTTP_201_CREATED)
 
     @extend_schema(request=GuestWriteSerializer, responses={200: GuestSerializer})
     def partial_update(self, request, organization_pk, pk):
@@ -110,17 +130,17 @@ class GuestViewSet(_ClubScoped, viewsets.GenericViewSet):
             user_id=user_id,
         )
 
-    @extend_schema(request=GuestInviteSerializer, responses={201: GuestSerializer})
+    @extend_schema(request=GuestInviteSerializer, responses={201: InvitedGuestSerializer})
     @action(detail=True, methods=["post"])
     def invite(self, request, organization_pk, pk):
+        """Invite by email (we send the link), phone (share `invite_link` yourself) or both."""
         body = GuestInviteSerializer(data=request.data)
         body.is_valid(raise_exception=True)
+        data = body.validated_data
         with transaction.atomic():
             guest = self._locked(pk)
-            service.invite(guest, body.validated_data["email"], request.user)
-        return Response(
-            GuestSerializer(self.get_queryset().get(pk=guest.pk)).data, status=status.HTTP_201_CREATED
-        )
+            _, token = service.invite(guest, data.get("email"), request.user, data.get("phone") or "")
+        return Response(self._invited(guest, token), status=status.HTTP_201_CREATED)
 
     @extend_schema(request=None, responses={200: GuestSerializer})
     @action(detail=True, methods=["post"], url_path="revoke-invitation")
@@ -223,3 +243,95 @@ class MyGuestClaimViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return GuestClaim.objects.filter(claimant=self.request.user).select_related(
             "guest__user", "guest__organization"
         )
+
+
+def _gone():
+    return ApiException(
+        "invitation_closed", "This invitation link has been used, withdrawn or has expired.", 404
+    )
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class JoinInvitationView(APIView):
+    """An invitation link (`/join/<token>`), open to whoever holds it: the link is the proof."""
+
+    permission_classes = [AllowAny]
+    throttle_scope = "auth_email"
+
+    def get_throttles(self):
+        # Reading the link is cheap and harmless; creating an account is rate limited.
+        return super().get_throttles() if self.request.method == "POST" else []
+
+    @extend_schema(responses={200: InvitationDetailSerializer})
+    def get(self, request, token):
+        invitation = service.by_token(token)
+        if invitation is None:
+            raise _gone()
+        guest = invitation.guest
+        places = (
+            EntryPlayer.objects.filter(user_id=guest.user_id, live=True)
+            .select_related("event__tournament")
+            .order_by("event__tournament__starts_on", "event__name")
+        )
+        return Response(
+            InvitationDetailSerializer(
+                {
+                    "guest_name": guest.user.display_name,
+                    "organization_name": guest.organization.name,
+                    "invited_by_name": invitation.invited_by.display_name if invitation.invited_by else None,
+                    "email": invitation.email,
+                    "phone": invitation.phone,
+                    "expires_at": invitation.expires_at,
+                    "entries": [
+                        {
+                            "tournament_id": place.event.tournament_id,
+                            "tournament_name": place.event.tournament.name,
+                            "event_name": place.event.name,
+                            "starts_on": place.event.tournament.starts_on,
+                        }
+                        for place in places
+                    ],
+                }
+            ).data
+        )
+
+    @extend_schema(request=InvitationJoinSerializer, responses={200: InvitationJoinedSerializer})
+    def post(self, request, token):
+        """Create the invitee's account from the guest. Signed in at once when the email or phone they
+        chose is the one the invitation went to; otherwise their email needs verifying first."""
+        body = InvitationJoinSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        with transaction.atomic():
+            invitation = service.by_token(token, lock=True)
+            if invitation is None:
+                raise _gone()
+            Guest.objects.select_for_update().get(pk=invitation.guest_id)
+            try:
+                user, ready = service.join(invitation, body.validated_data)
+            except service.Taken as taken:
+                # Only someone holding the link learns this, and they are the one it was meant for.
+                raise ApiException(
+                    f"{taken.field}_taken",
+                    f"That {'email address' if taken.field == 'email' else 'phone number'} already has an "
+                    "account. Log in with it, then open this link again to add these entries to it.",
+                    409,
+                ) from None
+        if ready:
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        return Response(InvitationJoinedSerializer({"signed_in": ready}).data)
+
+
+class ClaimByLinkView(APIView):
+    """A signed-in player with an invitation link claims the guest for their own account."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=None, responses={200: MyClaimSerializer})
+    def post(self, request, token):
+        with transaction.atomic():
+            invitation = service.by_token(token, lock=True)
+            if invitation is None:
+                raise _gone()
+            Guest.objects.select_for_update().get(pk=invitation.guest_id)
+            claim = service.accept(invitation, request.user)
+        return Response(MyClaimSerializer(claim).data)

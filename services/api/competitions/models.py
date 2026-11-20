@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
+from attachments.models import Attachment
 from facilities.models import Table, Venue
 from organizations.models import Organization
 
@@ -20,9 +21,9 @@ class TournamentQuerySet(models.QuerySet):
         events = Event.objects.annotate(
             accepted_count=models.Count("entries", filter=models.Q(entries__status="accepted"))
         ).order_by("position", "created_at")
-        return self.select_related("organization", "venue").prefetch_related(
-            models.Prefetch("events", queryset=events)
-        )
+        return self.select_related(
+            "organization", "organization__coach_organizer__user", "venue"
+        ).prefetch_related(models.Prefetch("events", queryset=events), "documents")
 
 
 class Tournament(models.Model):
@@ -43,6 +44,12 @@ class Tournament(models.Model):
         NATIONAL = "national", "National"
         INTERNATIONAL = "international", "International"
 
+    class PresentedAs(models.TextChoices):
+        """How a coach's tournament names its organizer: the coach, or the firm they work through."""
+
+        COACH = "coach", "The coach"
+        FIRM = "firm", "The coach's firm"
+
     class Approval(models.TextChoices):
         NOT_REQUESTED = "not_requested", "Not requested"
         PENDING = "pending", "Pending"
@@ -56,6 +63,9 @@ class Tournament(models.Model):
     )
     name = models.CharField(max_length=120)
     description = models.TextField(max_length=2000, blank=True)
+    # Only for a tournament hosted from a coach's organizing desk; blank for every other host.
+    presented_as = models.CharField(max_length=5, choices=PresentedAs.choices, blank=True)
+    cover = models.ForeignKey(Attachment, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     starts_on = models.DateField()
     ends_on = models.DateField()
     timezone = models.CharField(max_length=64)
@@ -99,6 +109,26 @@ class Tournament(models.Model):
     @property
     def is_closed(self) -> bool:
         return self.status in {self.Status.COMPLETED, self.Status.CANCELLED}
+
+
+MAX_DOCUMENTS = 10
+
+
+class TournamentDocument(models.Model):
+    """A PDF with further details of a tournament: its prospectus, rules or entry form (REQ-007). Seen by
+    whoever sees the tournament."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="documents")
+    title = models.CharField(max_length=120)
+    file = models.OneToOneField(Attachment, on_delete=models.CASCADE, related_name="tournament_document")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return self.title
 
 
 class Event(models.Model):

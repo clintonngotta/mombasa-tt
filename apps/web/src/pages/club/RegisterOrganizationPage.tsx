@@ -14,7 +14,7 @@ import { KIND_LABEL, clubKeys, createOrganization, setActiveOrganization, type O
 import { locationErrors } from "@/lib/geography"
 
 // A regional body is set up by its region's official, not registered here.
-const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).filter((value) => value !== "regional_body").map((value) => ({ value, label: KIND_LABEL[value] }))
+const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).filter((value) => value !== "regional_body" && value !== "coaching").map((value) => ({ value, label: KIND_LABEL[value] }))
 
 export function RegisterOrganizationPage() {
   const navigate = useNavigate()

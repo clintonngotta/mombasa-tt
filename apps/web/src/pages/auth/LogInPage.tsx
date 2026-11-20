@@ -38,10 +38,10 @@ export function LogInPage() {
     e.preventDefault()
     const incomplete = !email.trim() || !password
     setMissing(incomplete)
-    if (!incomplete) mutation.mutate({ email: email.trim(), password })
+    if (!incomplete) mutation.mutate({ login: email.trim(), password })
   }
 
-  // The API already returns one message for unknown email and wrong password (no enumeration).
+  // The API already returns one message for an unknown email or phone and a wrong password (no enumeration).
   const unverified = mutation.error instanceof ApiError && mutation.error.code === "email_unverified"
   const failure = mutation.error && !unverified ? errorMessage(mutation.error) : undefined
 
@@ -89,19 +89,21 @@ export function LogInPage() {
             Verify your email before logging in.{" "}
             <Link
               to="/signup/check-email"
-              state={{ email: email.trim() }}
+              state={{ email: email.includes("@") ? email.trim() : "" }}
               className="font-semibold underline underline-offset-4"
             >
               Resend the link
             </Link>
           </FormAlert>
         )}
-        {missing && <FormAlert>Enter your email and password.</FormAlert>}
+        {missing && <FormAlert>Enter your email or phone number, and your password.</FormAlert>}
         <Field
-          label="Email"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
+          label="Email or phone number"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          hint="A phone number works if it's on your account, for example 0712 345 678."
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />

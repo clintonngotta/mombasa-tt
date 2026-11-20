@@ -45,6 +45,7 @@ from competitions.models import (
     ScheduleSession,
     ScheduleVersion,
     Tournament,
+    TournamentDocument,
 )
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
@@ -110,6 +111,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "auth-logout": {"post": PUBLIC},
     "auth-password-reset": {"post": PUBLIC},
     "auth-password-reset-confirm": {"post": PUBLIC},
+    # The invitation link's secret is the authorization; joining creates the invitee's account.
+    "auth-invitation": {"get": PUBLIC, "post": PUBLIC},
+    "auth-invitation-claim": {"post": OWNER},
     "schema": {"get": PUBLIC},
     "geography-countries": {"get": PUBLIC},
     # The events listing (REQ-042) is public; pending external events reach the submitting club only.
@@ -124,7 +128,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-external-event-live": {"post": STAFF},
     "geography-country": {"get": PUBLIC},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
-    "auth-me": {"get": OWNER},
+    "auth-me": {"get": OWNER, "patch": OWNER},
     "attachment-link": {"get": SIGNED_IN},  # per-attachment policy, see test_attachments.py
     "personal-match-list": {"get": OWNER, "post": OWNER},
     "personal-match-labels": {"get": OWNER},
@@ -257,6 +261,13 @@ ACCESS: dict[str, dict[str, str]] = {
     # Watch links (REQ-042): seen and reported by everyone who sees the tournament; staff manage them.
     "tournament-streams": {"get": SIGNED_IN, "post": STAFF},
     "tournament-stream": {"patch": STAFF, "delete": STAFF},
+    # A tournament's cover and documents (REQ-007): shown with it; its host's competition staff change them.
+    "tournament-cover": {"put": STAFF, "delete": STAFF},
+    "tournament-documents": {"post": STAFF},
+    "tournament-document": {"delete": STAFF},
+    # Published tournaments in the caller's jurisdiction or their regional body's region; see
+    # test_tournament_organizers.
+    "tournament-overseen": {"get": SIGNED_IN},
     "tournament-stream-report": {"post": SIGNED_IN},
     "tournament-sponsorships": {"get": STAFF},
     "tournament-sponsorship-accept": {"post": STAFF},
@@ -275,6 +286,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "coach": {"get": SIGNED_IN},
     "coach-slots": {"get": SIGNED_IN},
     "my-coach-profile": {"get": OWNER, "put": OWNER},
+    "my-coach-organizer": {"post": OWNER},
     "my-coach-availability": {"get": OWNER, "put": OWNER},
     "my-coach-calendar": {"get": OWNER},
     "my-coach-notes": {"get": OWNER},
@@ -481,7 +493,17 @@ NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tourname
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 # Routes that take a file upload rather than JSON.
-MULTIPART = {"organization-expense-receipt"}
+MULTIPART = {"organization-expense-receipt", "tournament-cover", "tournament-documents"}
+PDF = b"%PDF-1.4\n%%EOF\n"
+
+
+def pdf_upload():
+    from io import BytesIO
+
+    out = BytesIO(PDF)
+    out.name = "rules.pdf"
+    return out
+
 
 BODIES = {
     ("tournament-ceremony", "put"): {"location": "Main hall"},
@@ -622,6 +644,8 @@ BODIES = {
         "spent_on": timezone.localdate().isoformat(),
     },
     ("organization-expense-receipt", "put"): lambda: {"file": image_upload("PNG", (64, 64), "slip.png")},
+    ("tournament-cover", "put"): lambda: {"file": image_upload("PNG", (64, 64), "cover.png")},
+    ("tournament-documents", "post"): lambda: {"title": "Rules", "file": pdf_upload()},
     ("organization-campaign-terms", "post"): lambda: {
         "member_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
         "amount_minor": 500,
@@ -1315,6 +1339,16 @@ class World:
         self.offer_to_accept = Sponsorship.objects.create(
             sponsor=self.nyali, tournament=self.published, amount_minor=100000
         )
+        self.document = TournamentDocument.objects.create(
+            tournament=self.draft,
+            title="Prospectus",
+            file=Attachment.store(
+                owner=self.amina,
+                purpose=Attachment.Purpose.TOURNAMENT_DOCUMENT,
+                content=PDF,
+                content_type="application/pdf",
+            ),
+        )
         self.stream = LiveStream.objects.create(
             tournament=self.published, url="https://fb.watch/coast", platform=LiveStream.Platform.FACEBOOK
         )
@@ -1326,6 +1360,11 @@ class World:
         self.guest = guests.create(self.coast, "Kassim Guest", self.amina)
         self.guest_invitation = GuestInvitation.objects.create(
             guest=self.guest, email=self.imani.email, invited_by=self.amina
+        )
+
+        # A guest invited by phone, whose link only its holder can use.
+        _, self.guest_link = guests.invite(
+            guests.create(self.coast, "Linked Guest", self.amina), "", self.amina, phone="+254700000009"
         )
 
         def waiting_claim(name):
@@ -1393,6 +1432,7 @@ class World:
             "tournament-sponsorship-accept": self.offer_to_accept.id,
             "tournament-sponsorship-decline": self.offer_to_decline.id,
             "tournament-stream": self.stream.id,
+            "tournament-document": self.document.id,
             "tournament-stream-report": self.stream.id,
             "coach": self.kito.id,
             "coach-slots": self.kito.id,
@@ -1537,6 +1577,8 @@ class World:
         found = {}
         if "code" in names:
             found["code"] = "KE"
+        if "token" in names:
+            found["token"] = self.guest_link
         if "organization_pk" in names:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
@@ -2120,9 +2162,13 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
     assert set(cup) == {
         "id",
         "organization",
+        "organizer",
+        "presented_as",
         "venue",
         "name",
         "description",
+        "cover",
+        "documents",
         "starts_on",
         "ends_on",
         "timezone",
@@ -2139,6 +2185,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "events",
     }
     assert set(cup["organization"]) == {"id", "name", "town", "country", "region"}
+    assert set(cup["organizer"]) == {"name", "kind", "label"}
     # A place's directions and coordinates are public, like its address: they help players find it.
     assert set(cup["venue"]) == {"id", "name", "town", "address", "directions", "latitude", "longitude"}
 

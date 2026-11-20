@@ -60,6 +60,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/invitations/{token}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description An invitation link (`/join/<token>`), open to whoever holds it: the link is the proof. */
+        get: operations["auth_invitations_retrieve"];
+        put?: never;
+        /**
+         * @description Create the invitee's account from the guest. Signed in at once when the email or phone they
+         *     chose is the one the invitation went to; otherwise their email needs verifying first.
+         */
+        post: operations["auth_invitations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/invitations/{token}/claim/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A signed-in player with an invitation link claims the guest for their own account. */
+        post: operations["auth_invitations_claim_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login/": {
         parameters: {
             query?: never;
@@ -109,7 +147,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["auth_me_partial_update"];
         trace?: never;
     };
     "/api/v1/auth/password-reset/": {
@@ -773,6 +811,28 @@ export interface paths {
         /** @description GET/PUT /me/coach-profile/: the caller's coach profile; PUT switches it on or changes it. */
         put: operations["me_coach_profile_update"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/coach-profile/organizer/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/coach-profile/organizer/: the coach's organizing desk, made the first time they organize a
+         *     tournament. The coach is its only admin, so its tournaments run like any club's. Each of its tournaments
+         *     names the coach or their firm as organizer (Tournament.presented_as); the desk takes the name chosen
+         *     here.
+         */
+        post: operations["me_coach_profile_organizer_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3284,7 +3344,10 @@ export interface paths {
         /** @description A club's guests: players its staff entered before they had an account. */
         get: operations["organizations_guests_list"];
         put?: never;
-        /** @description A club's guests: players its staff entered before they had an account. */
+        /**
+         * @description A new guest. With an email or phone they are invited at once, and `invite_link` is the link
+         *     to share with them (shown this once).
+         */
         post: operations["organizations_guests_create"];
         delete?: never;
         options?: never;
@@ -3318,7 +3381,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description A club's guests: players its staff entered before they had an account. */
+        /** @description Invite by email (we send the link), phone (share `invite_link` yourself) or both. */
         post: operations["organizations_guests_invite_create"];
         delete?: never;
         options?: never;
@@ -5059,6 +5122,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/cover/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description PUT /tournaments/{id}/cover/ sets (or replaces) the cover picture; DELETE removes it. */
+        put: operations["tournaments_cover_update"];
+        post?: never;
+        /** @description PUT /tournaments/{id}/cover/ sets (or replaces) the cover picture; DELETE removes it. */
+        delete: operations["tournaments_cover_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/dispatch/": {
         parameters: {
             query?: never;
@@ -5116,6 +5197,40 @@ export interface paths {
          */
         post: operations["tournaments_dispatch_run_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /tournaments/{id}/documents/ adds a PDF with a title, such as the prospectus or entry form. */
+        post: operations["tournaments_documents_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/documents/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description DELETE /tournaments/{id}/documents/{document}/ removes a document and its file. */
+        delete: operations["tournaments_documents_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6105,6 +6220,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/overseen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Published tournaments hosted in the caller's jurisdiction, for regional and country officials
+         *     (and every one for a platform super admin), and in the region of each regional body the caller
+         *     belongs to: what they oversee, whoever organized it. Empty for anybody else. `when=upcoming` (the
+         *     default) covers those still to finish; `when=past` the rest.
+         */
+        get: operations["tournaments_overseen_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7034,6 +7171,22 @@ export interface components {
          * @enum {string}
          */
         CoachLevelEnum: "beginner" | "intermediate" | "advanced";
+        CoachOrganizer: {
+            /** Format: uuid */
+            organization_id: string;
+            name: string;
+        };
+        /**
+         * @description * `coach` - coach
+         *     * `firm` - firm
+         * @enum {string}
+         */
+        CoachOrganizerRequestPresentedAsEnum: "coach" | "firm";
+        /** @description Open (or rename) the coach's organizing desk, named after the coach or their firm. */
+        CoachOrganizerRequestRequest: {
+            /** @default coach */
+            presented_as: components["schemas"]["CoachOrganizerRequestPresentedAsEnum"];
+        };
         /** @description A coach as players see them. `organizations` are the clubs where they coach. */
         CoachProfile: {
             /** Format: uuid */
@@ -7050,6 +7203,13 @@ export interface components {
             timezone: string;
             readonly organizations: components["schemas"]["ClubRef"][];
             accepting: boolean;
+            /** @description The company, firm or academy the coach works through. */
+            firm_name: string;
+            /**
+             * Format: uuid
+             * @description The coach's organizing desk, once they have organized.
+             */
+            readonly organizer_id: string | null;
             readonly availability: components["schemas"]["Availability"][];
         };
         /** @description A coach as players see them. `organizations` are the clubs where they coach. */
@@ -7065,6 +7225,8 @@ export interface components {
             timezone?: string;
             organization_ids?: string[];
             accepting?: boolean;
+            /** @description The company, firm or academy the coach works through. */
+            firm_name?: string;
         };
         /** @description A coaching from the caller's side: `role` is "coach" when they coach the other person. */
         Coaching: {
@@ -7207,6 +7369,10 @@ export interface components {
         CountryOption: {
             value: string;
             label: string;
+        };
+        CoverUploadRequest: {
+            /** Format: binary */
+            file: string;
         };
         DecisionRequest: {
             /** @default  */
@@ -7847,23 +8013,27 @@ export interface components {
          * @enum {string}
          */
         GuestClaimStatusEnum: "merged" | "conflict" | "rejected";
+        /** @description A new guest; with an email or phone, they are invited at once. */
+        GuestCreateRequest: {
+            display_name: string;
+            email?: string;
+            phone?: string | null;
+        };
         GuestInvitation: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: email */
             email: string;
+            phone: string;
             status: components["schemas"]["InvitationStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             expires_at: string;
         };
+        /** @description Where to reach the player: an email (we send the link), a phone (staff share the link), or both. */
         GuestInviteRequest: {
-            /** Format: email */
-            email: string;
-        };
-        GuestWriteRequest: {
-            display_name: string;
+            email?: string;
+            phone?: string | null;
         };
         /**
          * @description * `right` - Right
@@ -7928,6 +8098,45 @@ export interface components {
             email: string;
         };
         /**
+         * @description What an invitation link shows the person who opens it: who they were entered as, where, by whom,
+         *     and the tournaments they are in. The contact details are the ones staff typed for them.
+         */
+        InvitationDetail: {
+            guest_name: string;
+            organization_name: string;
+            invited_by_name: string | null;
+            email: string;
+            phone: string;
+            /** Format: date-time */
+            expires_at: string;
+            entries: components["schemas"]["InvitationEntry"][];
+        };
+        InvitationEntry: {
+            /** Format: uuid */
+            tournament_id: string;
+            tournament_name: string;
+            event_name: string;
+            /** Format: date */
+            starts_on: string;
+        };
+        /** @description The invitee's own details for their new account: email, phone or both to sign in with. */
+        InvitationJoinRequest: {
+            display_name: string;
+            email?: string;
+            phone?: string | null;
+            password: string;
+            country?: string;
+            region?: string;
+            city?: string;
+        };
+        /**
+         * @description `signed_in`: the account is ready and this browser is signed in. Otherwise the email the player
+         *     chose needs verifying first (a link is on its way).
+         */
+        InvitationJoined: {
+            signed_in: boolean;
+        };
+        /**
          * @description * `pending` - Pending
          *     * `accepted` - Accepted
          *     * `declined` - Declined
@@ -7937,6 +8146,21 @@ export interface components {
         InvitationStatusEnum: "pending" | "accepted" | "declined" | "revoked";
         InviteRequest: {
             user_ids: string[];
+        };
+        /** @description A guest just invited, with the link to share. The link is shown this once: only its hash is kept. */
+        InvitedGuest: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly display_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            claimed_at: string | null;
+            readonly claimed_by_name: string;
+            readonly invitation: components["schemas"]["GuestInvitation"] | null;
+            /** @default 0 */
+            readonly entries: number;
+            readonly invite_link: string;
         };
         Invitee: {
             /** Format: uuid */
@@ -7980,9 +8204,10 @@ export interface components {
          *     * `facility` - Facility
          *     * `club_facility` - Club Facility
          *     * `regional_body` - Regional Body
+         *     * `coaching` - Coaching
          * @enum {string}
          */
-        KindEnum: "club" | "facility" | "club_facility" | "regional_body";
+        KindEnum: "club" | "facility" | "club_facility" | "regional_body" | "coaching";
         LabelTally: {
             label: string;
             played: number;
@@ -8123,9 +8348,10 @@ export interface components {
             url: string;
             title?: string;
         };
+        /** @description Sign in with an email address or a phone number. `email` is the older name for `login`. */
         LogInRequest: {
-            /** Format: email */
-            email: string;
+            login?: string;
+            email?: string;
             password: string;
         };
         ManagementOrganization: {
@@ -8833,6 +9059,25 @@ export interface components {
             readonly region: string;
         };
         /**
+         * @description Who a tournament is organized by, as players should read it: the host club, facility or regional
+         *     body by name, or for a coach's tournament the coach or their firm.
+         */
+        Organizer: {
+            name: string;
+            kind: components["schemas"]["OrganizerKindEnum"];
+            label: string;
+        };
+        /**
+         * @description * `club` - club
+         *     * `facility` - facility
+         *     * `club_facility` - club_facility
+         *     * `regional_body` - regional_body
+         *     * `coach` - coach
+         *     * `firm` - firm
+         * @enum {string}
+         */
+        OrganizerKindEnum: "club" | "facility" | "club_facility" | "regional_body" | "coach" | "firm";
+        /**
          * @description * `check_in` - check_in
          *     * `rest` - rest
          * @enum {string}
@@ -9441,6 +9686,11 @@ export interface components {
             ended_on: string;
             end_reason: components["schemas"]["EndReasonEnum"];
         };
+        /** @description What players change about their own account. A new phone number starts unconfirmed. */
+        PatchedAccountUpdateRequest: {
+            display_name?: string;
+            phone?: string | null;
+        };
         PatchedAgendaItemRequest: {
             kind?: components["schemas"]["AgendaItemKindEnum"];
             title?: string;
@@ -9745,6 +9995,13 @@ export interface components {
          *     is private once the tournament is published, and drafts are served to the host's staff only.
          */
         PatchedTournamentRequest: {
+            /**
+             * @description For a coach's tournament: organized in the coach's name or their firm's.
+             *
+             *     * `coach` - The coach
+             *     * `firm` - The coach's firm
+             */
+            presented_as?: components["schemas"]["TournamentPresentedAsEnum"];
             /** Format: uuid */
             venue_id?: string | null;
             name?: string;
@@ -11412,9 +11669,19 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly organization: components["schemas"]["OrganizationSummary"];
+            readonly organizer: components["schemas"]["Organizer"];
+            /**
+             * @description For a coach's tournament: organized in the coach's name or their firm's.
+             *
+             *     * `coach` - The coach
+             *     * `firm` - The coach's firm
+             */
+            presented_as: components["schemas"]["TournamentPresentedAsEnum"];
             readonly venue: components["schemas"]["VenueSummary"] | null;
             name: string;
             description: string;
+            readonly cover: components["schemas"]["AttachmentLink"] | null;
+            readonly documents: components["schemas"]["TournamentDocument"][];
             /** Format: date */
             starts_on: string;
             /** Format: date */
@@ -11437,6 +11704,26 @@ export interface components {
             readonly cancel_reason: string;
             readonly events: components["schemas"]["Event"][];
         };
+        /** @description A document of a tournament with a fresh signed link to the PDF. */
+        TournamentDocument: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly file: components["schemas"]["AttachmentLink"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        TournamentDocumentUploadRequest: {
+            title: string;
+            /** Format: binary */
+            file: string;
+        };
+        /**
+         * @description * `coach` - The coach
+         *     * `firm` - The coach's firm
+         * @enum {string}
+         */
+        TournamentPresentedAsEnum: "coach" | "firm";
         TournamentRef: {
             /** Format: uuid */
             id: string;
@@ -11462,6 +11749,13 @@ export interface components {
          *     is private once the tournament is published, and drafts are served to the host's staff only.
          */
         TournamentRequest: {
+            /**
+             * @description For a coach's tournament: organized in the coach's name or their firm's.
+             *
+             *     * `coach` - The coach
+             *     * `firm` - The coach's firm
+             */
+            presented_as?: components["schemas"]["TournamentPresentedAsEnum"];
             /** Format: uuid */
             venue_id?: string | null;
             name: string;
@@ -11626,14 +11920,17 @@ export interface components {
             readonly status: components["schemas"]["TournamentStatusEnum"];
             readonly venue_name: string;
         };
+        /** @description The signed-in player's own account. `email` is null for an account that signs in by phone only. */
         User: {
             /** Format: uuid */
             readonly id: string;
-            /** Format: email */
-            readonly email: string;
+            readonly email: string | null;
+            readonly phone: string | null;
             readonly display_name: string;
             /** Format: date-time */
             readonly email_verified_at: string | null;
+            /** Format: date-time */
+            readonly phone_verified_at: string | null;
             /** Format: date-time */
             readonly date_joined: string;
         };
@@ -11893,6 +12190,7 @@ export interface operations {
                 };
                 content: {
                     "image/webp": string;
+                    "application/pdf": string;
                 };
             };
             /** @description Error envelope */
@@ -11951,6 +12249,100 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auth_invitations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationDetail"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auth_invitations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationJoinRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationJoined"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auth_invitations_claim_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaim"];
+                };
             };
             /** @description Error envelope */
             "4XX": {
@@ -12030,6 +12422,38 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auth_me_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAccountUpdateRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -13356,6 +13780,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoachProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_coach_profile_organizer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CoachOrganizerRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachOrganizer"];
                 };
             };
             /** @description Error envelope */
@@ -16485,7 +16941,7 @@ export interface operations {
                 /** @description Country code, e.g. KE */
                 country?: string;
                 /** @description Only these kinds */
-                kind?: ("club" | "club_facility" | "facility" | "regional_body")[];
+                kind?: ("club" | "club_facility" | "coaching" | "facility" | "regional_body")[];
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
@@ -19437,7 +19893,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GuestWriteRequest"];
+                "application/json": components["schemas"]["GuestCreateRequest"];
             };
         };
         responses: {
@@ -19446,7 +19902,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Guest"];
+                    "application/json": components["schemas"]["InvitedGuest"];
                 };
             };
             /** @description Error envelope */
@@ -19507,7 +19963,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["GuestInviteRequest"];
             };
@@ -19518,7 +19974,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Guest"];
+                    "application/json": components["schemas"]["InvitedGuest"];
                 };
             };
             /** @description Error envelope */
@@ -23416,6 +23872,70 @@ export interface operations {
             };
         };
     };
+    tournaments_cover_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["CoverUploadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_cover_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_dispatch_retrieve: {
         parameters: {
             query?: never;
@@ -23497,6 +24017,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_documents_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["TournamentDocumentUploadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_documents_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
                 };
             };
             /** @description Error envelope */
@@ -25361,6 +25946,40 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTournamentList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_overseen_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                when?: "past" | "upcoming";
             };
             header?: never;
             path?: never;

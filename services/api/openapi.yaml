@@ -33,6 +33,10 @@ paths:
               schema:
                 type: string
                 format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
           description: ''
         4XX:
           description: Error envelope
@@ -80,6 +84,98 @@ paths:
       responses:
         '204':
           description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/invitations/{token}/:
+    get:
+      operationId: auth_invitations_retrieve
+      description: 'An invitation link (`/join/<token>`), open to whoever holds it:
+        the link is the proof.'
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth
+      security:
+      - sessionAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationDetail'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: auth_invitations_create
+      description: |-
+        Create the invitee's account from the guest. Signed in at once when the email or phone they
+        chose is the one the invitation went to; otherwise their email needs verifying first.
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationJoinRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationJoined'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/invitations/{token}/claim/:
+    post:
+      operationId: auth_invitations_claim_create
+      description: A signed-in player with an invitation link claims the guest for
+        their own account.
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - auth
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyClaim'
+          description: ''
         4XX:
           description: Error envelope
           content:
@@ -137,6 +233,30 @@ paths:
       operationId: auth_me_retrieve
       tags:
       - auth
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: auth_me_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAccountUpdateRequest'
       security:
       - sessionAuth: []
       responses:
@@ -1465,6 +1585,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CoachProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/coach-profile/organizer/:
+    post:
+      operationId: me_coach_profile_organizer_create
+      description: |-
+        POST /me/coach-profile/organizer/: the coach's organizing desk, made the first time they organize a
+        tournament. The coach is its only admin, so its tournaments run like any club's. Each of its tournaments
+        names the coach or their firm as organizer (Tournament.presented_as); the desk takes the name chosen
+        here.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoachOrganizerRequestRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachOrganizer'
           description: ''
         4XX:
           description: Error envelope
@@ -4520,6 +4670,7 @@ paths:
             enum:
             - club
             - club_facility
+            - coaching
             - facility
             - regional_body
         description: Only these kinds
@@ -7768,8 +7919,9 @@ paths:
                 $ref: '#/components/schemas/ApiError'
     post:
       operationId: organizations_guests_create
-      description: 'A club''s guests: players its staff entered before they had an
-        account.'
+      description: |-
+        A new guest. With an email or phone they are invited at once, and `invite_link` is the link
+        to share with them (shown this once).
       parameters:
       - in: path
         name: organization_pk
@@ -7783,7 +7935,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GuestWriteRequest'
+              $ref: '#/components/schemas/GuestCreateRequest'
         required: true
       security:
       - sessionAuth: []
@@ -7792,7 +7944,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Guest'
+                $ref: '#/components/schemas/InvitedGuest'
           description: ''
         4XX:
           description: Error envelope
@@ -7843,8 +7995,8 @@ paths:
   /api/v1/organizations/{organization_pk}/guests/{id}/invite/:
     post:
       operationId: organizations_guests_invite_create
-      description: 'A club''s guests: players its staff entered before they had an
-        account.'
+      description: Invite by email (we send the link), phone (share `invite_link`
+        yourself) or both.
       parameters:
       - in: path
         name: id
@@ -7865,7 +8017,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/GuestInviteRequest'
-        required: true
       security:
       - sessionAuth: []
       responses:
@@ -7873,7 +8024,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Guest'
+                $ref: '#/components/schemas/InvitedGuest'
           description: ''
         4XX:
           description: Error envelope
@@ -12208,6 +12359,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/cover/:
+    put:
+      operationId: tournaments_cover_update
+      description: PUT /tournaments/{id}/cover/ sets (or replaces) the cover picture;
+        DELETE removes it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoverUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_cover_destroy
+      description: PUT /tournaments/{id}/cover/ sets (or replaces) the cover picture;
+        DELETE removes it.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/dispatch/:
     get:
       operationId: tournaments_dispatch_retrieve
@@ -12299,6 +12513,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/documents/:
+    post:
+      operationId: tournaments_documents_create
+      description: POST /tournaments/{id}/documents/ adds a PDF with a title, such
+        as the prospectus or entry form.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TournamentDocumentUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/documents/{id}/:
+    delete:
+      operationId: tournaments_documents_destroy
+      description: DELETE /tournaments/{id}/documents/{document}/ removes a document
+        and its file.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
           description: ''
         4XX:
           description: Error envelope
@@ -14502,6 +14786,51 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTournamentList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/overseen/:
+    get:
+      operationId: tournaments_overseen_list
+      description: |-
+        Published tournaments hosted in the caller's jurisdiction, for regional and country officials
+        (and every one for a platform super admin), and in the region of each regional body the caller
+        belongs to: what they oversee, whoever organized it. Empty for anybody else. `when=upcoming` (the
+        default) covers those still to finish; `when=past` the rest.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
       tags:
       - tournaments
       security:
@@ -16781,6 +17110,34 @@ components:
         * `beginner` - Beginner
         * `intermediate` - Intermediate
         * `advanced` - Advanced
+    CoachOrganizer:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - name
+      - organization_id
+    CoachOrganizerRequestPresentedAsEnum:
+      enum:
+      - coach
+      - firm
+      type: string
+      description: |-
+        * `coach` - coach
+        * `firm` - firm
+    CoachOrganizerRequestRequest:
+      type: object
+      description: Open (or rename) the coach's organizing desk, named after the coach
+        or their firm.
+      properties:
+        presented_as:
+          allOf:
+          - $ref: '#/components/schemas/CoachOrganizerRequestPresentedAsEnum'
+          default: coach
     CoachProfile:
       type: object
       description: A coach as players see them. `organizations` are the clubs where
@@ -16834,6 +17191,16 @@ components:
           readOnly: true
         accepting:
           type: boolean
+        firm_name:
+          type: string
+          description: The company, firm or academy the coach works through.
+          maxLength: 120
+        organizer_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The coach's organizing desk, once they have organized.
         availability:
           type: array
           items:
@@ -16844,10 +17211,12 @@ components:
       - availability
       - bio
       - currency
+      - firm_name
       - headline
       - id
       - levels
       - organizations
+      - organizer_id
       - rate_minor
       - region
       - specialties
@@ -16904,6 +17273,10 @@ components:
           maxItems: 10
         accepting:
           type: boolean
+        firm_name:
+          type: string
+          description: The company, firm or academy the coach works through.
+          maxLength: 120
       required:
       - headline
     Coaching:
@@ -17262,6 +17635,14 @@ components:
       required:
       - label
       - value
+    CoverUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     DecisionRequest:
       type: object
       properties:
@@ -18981,6 +19362,26 @@ components:
         * `merged` - Merged
         * `conflict` - Conflict
         * `rejected` - Rejected
+    GuestCreateRequest:
+      type: object
+      description: A new guest; with an email or phone, they are invited at once.
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          nullable: true
+          maxLength: 32
+      required:
+      - display_name
     GuestInvitation:
       type: object
       properties:
@@ -18989,9 +19390,15 @@ components:
           format: uuid
           readOnly: true
         email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone:
           type: string
-          format: email
-          maxLength: 254
+          maxLength: 16
         status:
           $ref: '#/components/schemas/InvitationStatusEnum'
         created_at:
@@ -19006,25 +19413,23 @@ components:
       - email
       - expires_at
       - id
+      - phone
       - status
     GuestInviteRequest:
       type: object
+      description: 'Where to reach the player: an email (we send the link), a phone
+        (staff share the link), or both.'
       properties:
         email:
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        phone:
           type: string
-          format: email
-          minLength: 1
-      required:
-      - email
-    GuestWriteRequest:
-      type: object
-      properties:
-        display_name:
-          type: string
-          minLength: 1
-          maxLength: 80
-      required:
-      - display_name
+          nullable: true
+          maxLength: 32
     HandEnum:
       enum:
       - right
@@ -19168,6 +19573,104 @@ components:
           minLength: 1
       required:
       - email
+    InvitationDetail:
+      type: object
+      description: |-
+        What an invitation link shows the person who opens it: who they were entered as, where, by whom,
+        and the tournaments they are in. The contact details are the ones staff typed for them.
+      properties:
+        guest_name:
+          type: string
+        organization_name:
+          type: string
+        invited_by_name:
+          type: string
+          nullable: true
+        email:
+          type: string
+        phone:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvitationEntry'
+      required:
+      - email
+      - entries
+      - expires_at
+      - guest_name
+      - invited_by_name
+      - organization_name
+      - phone
+    InvitationEntry:
+      type: object
+      properties:
+        tournament_id:
+          type: string
+          format: uuid
+        tournament_name:
+          type: string
+        event_name:
+          type: string
+        starts_on:
+          type: string
+          format: date
+      required:
+      - event_name
+      - starts_on
+      - tournament_id
+      - tournament_name
+    InvitationJoinRequest:
+      type: object
+      description: 'The invitee''s own details for their new account: email, phone
+        or both to sign in with.'
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          nullable: true
+          maxLength: 32
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        country:
+          type: string
+          minLength: 1
+          maxLength: 2
+        region:
+          type: string
+          minLength: 1
+          maxLength: 100
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+      - display_name
+      - password
+    InvitationJoined:
+      type: object
+      description: |-
+        `signed_in`: the account is ready and this browser is signed in. Otherwise the email the player
+        chose needs verifying first (a link is on its way).
+      properties:
+        signed_in:
+          type: boolean
+      required:
+      - signed_in
     InvitationStatusEnum:
       enum:
       - pending
@@ -19192,6 +19695,50 @@ components:
           minItems: 1
       required:
       - user_ids
+    InvitedGuest:
+      type: object
+      description: 'A guest just invited, with the link to share. The link is shown
+        this once: only its hash is kept.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        claimed_at:
+          type: string
+          format: date-time
+          nullable: true
+        claimed_by_name:
+          type: string
+          readOnly: true
+        invitation:
+          allOf:
+          - $ref: '#/components/schemas/GuestInvitation'
+          nullable: true
+          readOnly: true
+        entries:
+          type: integer
+          readOnly: true
+          default: 0
+        invite_link:
+          type: string
+          readOnly: true
+      required:
+      - claimed_at
+      - claimed_by_name
+      - created_at
+      - display_name
+      - entries
+      - id
+      - invitation
+      - invite_link
     Invitee:
       type: object
       properties:
@@ -19285,12 +19832,14 @@ components:
       - facility
       - club_facility
       - regional_body
+      - coaching
       type: string
       description: |-
         * `club` - Club
         * `facility` - Facility
         * `club_facility` - Club Facility
         * `regional_body` - Regional Body
+        * `coaching` - Coaching
     LabelTally:
       type: object
       properties:
@@ -19616,17 +20165,23 @@ components:
       - url
     LogInRequest:
       type: object
+      description: Sign in with an email address or a phone number. `email` is the
+        older name for `login`.
       properties:
+        login:
+          type: string
+          minLength: 1
+          maxLength: 254
         email:
           type: string
-          format: email
+          writeOnly: true
           minLength: 1
+          maxLength: 254
         password:
           type: string
           writeOnly: true
           minLength: 1
       required:
-      - email
       - password
     ManagementOrganization:
       type: object
@@ -21522,6 +22077,38 @@ components:
       - name
       - region
       - town
+    Organizer:
+      type: object
+      description: |-
+        Who a tournament is organized by, as players should read it: the host club, facility or regional
+        body by name, or for a coach's tournament the coach or their firm.
+      properties:
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/OrganizerKindEnum'
+        label:
+          type: string
+      required:
+      - kind
+      - label
+      - name
+    OrganizerKindEnum:
+      enum:
+      - club
+      - facility
+      - club_facility
+      - regional_body
+      - coach
+      - firm
+      type: string
+      description: |-
+        * `club` - club
+        * `facility` - facility
+        * `club_facility` - club_facility
+        * `regional_body` - regional_body
+        * `coach` - coach
+        * `firm` - firm
     OverridesEnum:
       enum:
       - check_in
@@ -22600,6 +23187,19 @@ components:
       - id
       - position
       - started_on
+    PatchedAccountUpdateRequest:
+      type: object
+      description: What players change about their own account. A new phone number
+        starts unconfirmed.
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        phone:
+          type: string
+          nullable: true
+          maxLength: 32
     PatchedAgendaItemRequest:
       type: object
       properties:
@@ -23372,6 +23972,14 @@ components:
         A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
         is private once the tournament is published, and drafts are served to the host's staff only.
       properties:
+        presented_as:
+          allOf:
+          - $ref: '#/components/schemas/TournamentPresentedAsEnum'
+          description: |-
+            For a coach's tournament: organized in the coach's name or their firm's.
+
+            * `coach` - The coach
+            * `firm` - The coach's firm
         venue_id:
           type: string
           format: uuid
@@ -27360,6 +27968,18 @@ components:
           allOf:
           - $ref: '#/components/schemas/OrganizationSummary'
           readOnly: true
+        organizer:
+          allOf:
+          - $ref: '#/components/schemas/Organizer'
+          readOnly: true
+        presented_as:
+          allOf:
+          - $ref: '#/components/schemas/TournamentPresentedAsEnum'
+          description: |-
+            For a coach's tournament: organized in the coach's name or their firm's.
+
+            * `coach` - The coach
+            * `firm` - The coach's firm
         venue:
           allOf:
           - $ref: '#/components/schemas/VenueSummary'
@@ -27371,6 +27991,16 @@ components:
         description:
           type: string
           maxLength: 2000
+        cover:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          nullable: true
+          readOnly: true
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/TournamentDocument'
+          readOnly: true
         starts_on:
           type: string
           format: date
@@ -27431,12 +28061,16 @@ components:
       - cancel_reason
       - cancelled_at
       - completed_at
+      - cover
       - description
+      - documents
       - ends_on
       - events
       - id
       - name
       - organization
+      - organizer
+      - presented_as
       - published_at
       - registration_fee
       - schedule_notice_minutes
@@ -27446,6 +28080,51 @@ components:
       - status
       - timezone
       - venue
+    TournamentDocument:
+      type: object
+      description: A document of a tournament with a fresh signed link to the PDF.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        file:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - file
+      - id
+      - title
+    TournamentDocumentUploadRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        file:
+          type: string
+          format: binary
+      required:
+      - file
+      - title
+    TournamentPresentedAsEnum:
+      enum:
+      - coach
+      - firm
+      type: string
+      description: |-
+        * `coach` - The coach
+        * `firm` - The coach's firm
     TournamentRef:
       type: object
       properties:
@@ -27498,6 +28177,14 @@ components:
         A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
         is private once the tournament is published, and drafts are served to the host's staff only.
       properties:
+        presented_as:
+          allOf:
+          - $ref: '#/components/schemas/TournamentPresentedAsEnum'
+          description: |-
+            For a coach's tournament: organized in the coach's name or their firm's.
+
+            * `coach` - The coach
+            * `firm` - The coach's firm
         venue_id:
           type: string
           format: uuid
@@ -27916,6 +28603,8 @@ components:
       - venue_name
     User:
       type: object
+      description: The signed-in player's own account. `email` is null for an account
+        that signs in by phone only.
       properties:
         id:
           type: string
@@ -27923,12 +28612,21 @@ components:
           readOnly: true
         email:
           type: string
-          format: email
+          nullable: true
           readOnly: true
+        phone:
+          type: string
+          readOnly: true
+          nullable: true
         display_name:
           type: string
           readOnly: true
         email_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        phone_verified_at:
           type: string
           format: date-time
           readOnly: true
@@ -27943,6 +28641,8 @@ components:
       - email
       - email_verified_at
       - id
+      - phone
+      - phone_verified_at
     Venue:
       type: object
       description: A venue with its tables in playing order, and its branch profile

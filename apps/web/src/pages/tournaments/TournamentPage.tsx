@@ -10,6 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
+import { TournamentCover, TournamentDocuments, TournamentMediaManager } from "@/components/tournaments/TournamentMedia"
 import { useLiveTournament } from "@/lib/live"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
@@ -78,6 +79,7 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
   const soon = countdown(t)
   return (
     <header className="flex flex-col gap-3">
+      <TournamentCover cover={t.cover} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="min-w-0 text-[32px] leading-9 font-bold break-words">{t.name}</h1>
         <TournamentStatusChip status={t.status} />
@@ -91,8 +93,13 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
           {t.venue ? [t.venue.name, t.venue.address, t.venue.town].filter(Boolean).join(", ") : "Venue to be announced"}
           {t.venue && <PlaceDirections place={t.venue} className="mt-1 text-muted-foreground" />}
         </Fact>
-        <Fact icon={<Users aria-hidden className="size-5" />} label="Host">
-          {t.organization.name}, {t.organization.town}
+        <Fact icon={<Users aria-hidden className="size-5" />} label="Organized by">
+          Organized by <span className="font-semibold">{t.organizer.name}</span>
+          <span className="text-muted-foreground">
+            {" "}
+            · {t.organizer.label}
+            {t.organizer.kind !== "coach" && t.organizer.kind !== "firm" && t.organization.town && `, ${t.organization.town}`}
+          </span>
         </Fact>
         <Fact icon={<Globe aria-hidden className="size-5" />} label="Scope">
           {[
@@ -106,6 +113,7 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
       {t.status === "cancelled" && <FormAlert>Cancelled: {t.cancel_reason}</FormAlert>}
       {t.description && <p className="whitespace-pre-line">{t.description}</p>}
       <p className="text-sm text-muted-foreground">Dates and times are venue local ({t.timezone}).</p>
+      <TournamentDocuments tournament={t} />
     </header>
   )
 }
@@ -329,7 +337,7 @@ function Approve({ tournament: t, authority }: { tournament: Tournament; authori
       <h2 id="approve-heading" className="text-2xl font-bold">
         Waiting for your approval
       </h2>
-      <p className="text-sm text-muted-foreground">{t.organization.name} asked to publish this {SCOPE_LABEL[t.scope].toLowerCase()} tournament.</p>
+      <p className="text-sm text-muted-foreground">{t.organizer.name} asked to publish this {SCOPE_LABEL[t.scope].toLowerCase()} tournament.</p>
       {publish.isError && <FormAlert>{errorMessage(publish.error)}</FormAlert>}
       {declining ? (
         <ReasonForm label="Why is approval declined?" submit="Decline approval" pending={reject.isPending} error={reject.error} onSubmit={(reason) => reject.mutate(reason)} onBack={() => setDeclining(false)} />
@@ -387,8 +395,10 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
         <h2 id="manage-heading" className="text-2xl font-bold">
           Run this tournament
         </h2>
-        <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organization.name} see this.</p>
+        <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organizer.name} see this.</p>
       </div>
+
+      {open && <TournamentMediaManager tournament={t} />}
 
       {(t.status === "published" || t.status === "in_progress") && (
         <Link to={`/tournaments/${t.id}/schedule-plan`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
