@@ -6,14 +6,20 @@ import { AuthLayout } from "@/components/layout/AuthLayout"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
 import { verifyEmail } from "@/lib/auth"
+import { rememberReturn } from "@/lib/onboarding"
 
 export function VerifyEmailPage() {
   const navigate = useNavigate()
-  const token = useSearchParams()[0].get("token") ?? ""
+  const [params] = useSearchParams()
+  const token = params.get("token") ?? ""
+  const next = params.get("next")
   const { mutate, isError, error } = useMutation({
     mutationFn: verifyEmail,
-    // Verifying signs the player in; onboarding picks up from there.
-    onSuccess: () => navigate("/onboarding/profile", { replace: true }),
+    // Verifying signs the player in; onboarding picks up from there and ends where they started.
+    onSuccess: () => {
+      rememberReturn(next)
+      navigate("/onboarding/profile", { replace: true })
+    },
   })
 
   useEffect(() => {

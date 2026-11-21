@@ -20,6 +20,7 @@ from .serializers import (
     EmailOnlySerializer,
     LogInSerializer,
     PasswordResetConfirmSerializer,
+    ResendVerificationSerializer,
     SignUpSerializer,
     TokenSerializer,
     UserSerializer,
@@ -60,7 +61,7 @@ class SignUpView(PublicAuthView):
         existing = User.objects.filter(email=data["email"]).first()
         if existing:
             # Same response as a new signup; the owner hears about it by email instead (REQ-003).
-            emails.send_existing_account_email(existing)
+            emails.send_existing_account_email(existing, data.get("next", ""))
         else:
             with transaction.atomic():
                 user = User.objects.create_user(
@@ -70,22 +71,22 @@ class SignUpView(PublicAuthView):
                     PlayerProfile.objects.create(
                         user=user, country=data["country"], region=data["region"], city=data["city"]
                     )
-            emails.send_verification_email(user)
+            emails.send_verification_email(user, data.get("next", ""))
         return Response(ACCEPTED, status=status.HTTP_201_CREATED)
 
 
 class ResendVerificationView(PublicAuthView):
     throttle_scope = "auth_email"
 
-    @extend_schema(request=EmailOnlySerializer, responses={202: None})
+    @extend_schema(request=ResendVerificationSerializer, responses={202: None})
     def post(self, request):
-        serializer = EmailOnlySerializer(data=request.data)
+        serializer = ResendVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = User.objects.filter(
             email=serializer.validated_data["email"], is_active=True, email_verified_at__isnull=True
         ).first()
         if user:
-            emails.send_verification_email(user)
+            emails.send_verification_email(user, serializer.validated_data.get("next", ""))
         return Response(ACCEPTED, status=status.HTTP_202_ACCEPTED)
 
 

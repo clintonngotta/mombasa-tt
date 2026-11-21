@@ -92,7 +92,7 @@ export function EntriesPage() {
   )
 }
 
-/** For a signed-out visitor: entering needs an account. Logging in comes back here; a new account goes through email verification first. */
+/** For a signed-out visitor: entering needs an account. Logging in comes back here, and so does a new account once verified and onboarded. */
 function LogInToEnter({ tournament: t, event }: { tournament: Tournament; event: TournamentEvent }) {
   const location = useLocation()
   const next = encodeURIComponent(location.pathname + location.search)

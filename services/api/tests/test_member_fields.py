@@ -151,7 +151,10 @@ def test_staff_only_values_never_reach_the_member(club, staff, member, shirt, no
             assert SECRET not in client.get(url).text, url
     anonymous = BrowserClient()
     for url in (*public, my_values_url(member), member_values_url(club, member), fields_url(club)):
-        assert anonymous.get(url).status_code in (401, 403), url
+        seen = anonymous.get(url)
+        # A player page is public for competitors (TASK-035); this member has no records, so it is 404.
+        assert seen.status_code in (401, 403, 404) and SECRET not in seen.text, url
+        assert seen.status_code != 404 or url == f"/api/v1/players/{member.user.id}/", url
 
     # Template roles: Captain manages members and so sees the values; Committee doesn't.
     captain = logged_in(add_member(club, make_user("captain@example.com"), "captain").user)

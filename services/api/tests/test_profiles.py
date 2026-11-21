@@ -171,9 +171,10 @@ def test_player_page_disappears_when_opted_out(ama):
     assert other.get(player_url(ama)).status_code == 404
 
 
-def test_player_page_requires_login(ama):
+def test_signed_out_a_listed_player_without_competition_records_has_no_page(ama):
+    # The directory is for signed-in players; signed out, only competition records make a page (TASK-035).
     PlayerProfile.objects.create(user=ama, directory_opt_in=True)
-    assert BrowserClient().get(player_url(ama)).status_code in {401, 403}
+    assert BrowserClient().get(player_url(ama)).status_code == 404
 
 
 def test_player_page_with_nothing_published_shows_only_directory_fields(ama):

@@ -490,7 +490,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
-    "player-detail": {"get": SIGNED_IN},
+    "player-detail": {"get": PUBLIC},  # signed out, the name of a listed player with competition records
     "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records
     "rankings": {"get": PUBLIC},  # a club's own ranking needs a session
     "club-rankings": {"get": PUBLIC},

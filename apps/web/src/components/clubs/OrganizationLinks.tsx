@@ -61,7 +61,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     links: pick(
       (manageRoles || training) && { to: "/club/profile", label: `${variant === "facility" ? "Facility" : "Club"} profile and training hours`, icon: Store },
       training && { to: "/club/sessions", label: "Training sessions: invitations and attendance", icon: CalendarClock },
-      competitions && { to: "/club/tournaments", label: "Tournaments", icon: Trophy },
+      competitions && { to: "/club/tournaments", label: "Tournaments and their dashboards", icon: Trophy },
       activities && { to: "/club/activities", label: "Activities: nights out, fun days and visits", icon: PartyPopper },
       announce && { to: "/club/announce", label: `Announce to ${variant === "facility" ? "players" : "members"}`, icon: Bell },
       announce && { to: "/club/external-events", label: "Events elsewhere: list a tournament run outside Coast TT", icon: Megaphone },

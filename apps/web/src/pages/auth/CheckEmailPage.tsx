@@ -6,10 +6,13 @@ import { AuthLayout } from "@/components/layout/AuthLayout"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
 import { resendVerification } from "@/lib/auth"
+import { safeNext } from "@/lib/session"
 
 export function CheckEmailPage() {
-  const email = (useLocation().state as { email?: string } | null)?.email
-  const resend = useMutation({ mutationFn: resendVerification })
+  const { email, next: given } = (useLocation().state as { email?: string; next?: string } | null) ?? {}
+  const next = safeNext(given, "")
+  // A fresh link keeps where the player started, as the first one did.
+  const resend = useMutation({ mutationFn: (to: string) => resendVerification(to, next) })
 
   return (
     <AuthLayout
@@ -21,7 +24,7 @@ export function CheckEmailPage() {
         </>
       }
       footer={
-        <Link to="/login" className="font-semibold text-brand-blue underline-offset-4 hover:underline">
+        <Link to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
           Back to log in
         </Link>
       }
