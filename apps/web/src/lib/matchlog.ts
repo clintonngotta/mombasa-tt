@@ -1,4 +1,5 @@
 import { api } from "@/lib/api"
+import { sendOrKeep } from "@/lib/offline"
 import type { Schemas } from "@/lib/schema"
 
 export type MatchFormat = Schemas["SinglesOrDoublesEnum"]
@@ -30,6 +31,9 @@ export const getMatchStats = (label?: string) => api<MatchStats>(`${BASE}stats/?
 export const getMatchLabels = () => api<Schemas["MatchLabels"]>(`${BASE}labels/`)
 export const getMatch = (id: string) => api<PersonalMatch>(`${BASE}${id}/`)
 export const createMatch = (input: PersonalMatchInput) => api<PersonalMatch>(BASE, { body: input })
+/** A new match logged with no connection is kept on the device and added when it is back (REQ-035). */
+export const createMatchOrKeep = (input: PersonalMatchInput) =>
+  sendOrKeep<PersonalMatch>({ path: BASE, body: input, label: `Log a match against ${input.opponent_name || "an opponent"} (${input.label})`, refresh: [matchKeys.all] })
 export const updateMatch = (id: string, input: PersonalMatchInput) =>
   api<PersonalMatch>(`${BASE}${id}/`, { method: "PUT", body: input })
 export const deleteMatch = (id: string) => api<void>(`${BASE}${id}/`, { method: "DELETE" })

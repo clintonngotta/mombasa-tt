@@ -18,7 +18,7 @@ import {
   INVITATION_STATUS,
   inviteMembers,
   listInvitations,
-  markAttendance,
+  markAttendanceOrKeep,
   type ClubSession,
   type SessionInvitation,
 } from "@/lib/clubSessions"
@@ -69,9 +69,20 @@ export function ClubSessionPage() {
 function Invited({ session, orgId, invitations, error }: { session: ClubSession; orgId: string; invitations: SessionInvitation[]; error: unknown }) {
   const queryClient = useQueryClient()
   const started = new Date(session.starts_at) <= new Date()
+  // With no connection a mark is kept on the device, shown at once and sent later (REQ-035).
+  const [kept, setKept] = useState<Set<string>>(() => new Set())
   const mark = useMutation({
-    mutationFn: ({ invitation, attended }: { invitation: SessionInvitation; attended: boolean | null }) => markAttendance(orgId, session.id, invitation.id, attended),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: clubSessionKeys.invitations(orgId, session.id) }),
+    mutationFn: ({ invitation, attended }: { invitation: SessionInvitation; attended: boolean | null }) => markAttendanceOrKeep(orgId, session, invitation, attended),
+    onSuccess: (sent, { invitation, attended }) => {
+      setKept((ids) => {
+        const next = new Set(ids)
+        if (sent.kept) next.add(invitation.id)
+        else next.delete(invitation.id)
+        return next
+      })
+      if (!sent.kept) return queryClient.invalidateQueries({ queryKey: clubSessionKeys.invitations(orgId, session.id) })
+      queryClient.setQueryData<SessionInvitation[]>(clubSessionKeys.invitations(orgId, session.id), (list) => list?.map((i) => (i.id === invitation.id ? { ...i, attended } : i)))
+    },
   })
   return (
     <section aria-labelledby="invited-heading" className="flex flex-col gap-3">
@@ -91,6 +102,7 @@ function Invited({ session, orgId, invitations, error }: { session: ClubSession;
                 {INVITATION_STATUS[invitation.status]}
                 {invitation.attended === true && " · came"}
                 {invitation.attended === false && " · didn't come"}
+                {kept.has(invitation.id) && " · waiting to sync"}
               </span>
             </span>
             {session.status === "scheduled" && started && (

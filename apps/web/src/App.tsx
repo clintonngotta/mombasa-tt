@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { queryClient } from "@/lib/queryClient"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
 import { GalleryPage } from "@/pages/dev/GalleryPage"
@@ -90,15 +91,7 @@ import { SchedulePage } from "@/pages/tournaments/SchedulePage"
 import { CorrectionsPage } from "@/pages/tournaments/CorrectionsPage"
 import { ScoringDeckRoute } from "@/pages/scoring/ScoringDeckPage"
 import { QuickScorePage } from "@/pages/play/QuickScorePage"
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      retry: 1,
-    },
-  },
-})
+import { SyncPage } from "@/pages/profile/SyncPage"
 
 function App() {
   return (
@@ -193,6 +186,7 @@ function App() {
               <Route path="/club/fields/:id" element={<MemberFieldEditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/profile/sync" element={<SyncPage />} />
               <Route path="/profile/claims" element={<GuestClaimsPage />} />
               <Route path="/profile/visits" element={<MyVisitsPage />} />
               <Route path="/profile/bookings" element={<MyBookingsPage />} />

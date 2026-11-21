@@ -1,6 +1,7 @@
 import { api, ApiError } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 import type { CalendarConflict } from "@/lib/training"
+import { sendOrKeep } from "@/lib/offline"
 
 export type ClubSession = Schemas["ClubSession"]
 export type ClubSessionInput = Schemas["ClubSessionRequest"]
@@ -29,6 +30,16 @@ export const listInvitations = (orgId: string, id: string) => api<SessionInvitat
 export const inviteMembers = (orgId: string, id: string, userIds: string[]) => api<SessionInvitation[]>(`${base(orgId)}${id}/invitations/`, { body: { user_ids: userIds } })
 export const markAttendance = (orgId: string, id: string, invitationId: string, attended: boolean | null) =>
   api<SessionInvitation>(`${base(orgId)}${id}/invitations/${invitationId}/`, { method: "PATCH", body: { attended } })
+
+/** Taking attendance at the session, where the connection may drop: kept on the device and sent later (REQ-035). */
+export const markAttendanceOrKeep = (orgId: string, session: Pick<ClubSession, "id" | "title">, invitation: Pick<SessionInvitation, "id" | "display_name">, attended: boolean | null) =>
+  sendOrKeep<SessionInvitation>({
+    method: "PATCH",
+    path: `${base(orgId)}${session.id}/invitations/${invitation.id}/`,
+    body: { attended },
+    label: `${invitation.display_name}: ${attended === true ? "came" : attended === false ? "didn't come" : "attendance cleared"} at ${session.title}`,
+    refresh: [clubSessionKeys.invitations(orgId, session.id)],
+  })
 
 export const listMyInvitations = (when: When) => api<Schemas["PaginatedMySessionInvitationList"]>(`${MINE}?when=${when}`)
 export const acceptInvitation = (id: string) => api<MySessionInvitation>(`${MINE}${id}/accept/`, { body: {} })

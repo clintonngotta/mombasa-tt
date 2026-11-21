@@ -1,14 +1,14 @@
 # Coast TT: project completion
 
-Updated 2026-11-21. Counted from the checkboxes in [tasks.md](../tasks.md) on `feat/meeting-penalties` (contains `dev` after PR #76). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
+Updated 2026-11-21. Counted from the checkboxes in [tasks.md](../tasks.md) on `feat/offline-sync` (contains `dev` after PR #78). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
 
 ## Summary
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 77 | 120 | 43 | 64% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 77 | 116 | 39 | 66% |
-| **Phase 1 launch** | **67** | **85** | **18** | **79%** |
+| All tasks | 78 | 121 | 43 | 64% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 78 | 117 | 39 | 67% |
+| **Phase 1 launch** | **68** | **86** | **18** | **79%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -22,7 +22,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: competitions and operations | 18 | 24 | TASK-034, TASK-035, TASK-082, TASK-083, TASK-084, TASK-085 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
-| Current feature checklist | 29 | 33 | TASK-107, TASK-108, TASK-109, TASK-110 |
+| Current feature checklist | 30 | 34 | TASK-107, TASK-108, TASK-109, TASK-110 |
 | Phase 2: reservations and finances | 6 | 8 | TASK-075, TASK-079 |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
@@ -30,7 +30,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **77** | **120** | **43** |
+| **All tasks** | **78** | **121** | **43** |
 
 ## Left for Phase 1 launch (18)
 
@@ -49,7 +49,7 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 
 ## Not yet counted
 
-- **In review on other branches, still unchecked in tasks.md:** TASK-075 (`feat/welfare-dues-visits`) and TASK-116 (`feat/role-navigation`, which has no line in tasks.md on `dev` yet). Merging both raises the all-tasks figure to 79 of 121 (65%).
+- **In review on other branches, still unchecked in tasks.md:** TASK-075 (`feat/welfare-dues-visits`) and TASK-116 (`feat/role-navigation`, which has no line in tasks.md on `dev` yet). Merging both raises the all-tasks figure to 80 of 122 (66%).
 
 ## History
 
@@ -58,3 +58,4 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-20 | 75 | 117 | 64% | 78% (65/83) | First count; TASK-117 done, TASK-119 added |
 | 2026-11-20 | 76 | 119 | 64% | 79% (66/84) | TASK-120 done (players added before they register, phone login); TASK-118 defined (SMS verification, future) |
 | 2026-11-21 | 77 | 120 | 64% | 79% (67/85) | TASK-121 done (meeting rules, secretary attendance, penalties only the admin changes) |
+| 2026-11-21 | 78 | 121 | 64% | 79% (68/86) | TASK-122 done (offline app: saved screens per account, venue changes kept offline and synced once) |

@@ -485,6 +485,12 @@ The privacy matrix covers every new route, and the session note reaches only the
 
 *Built in TASK-009 (2026-11-19).* Automated: `tests/test_client_build.py` (an older build gets 426 `client_outdated` and a refused write changes nothing; builds without the header and non-API paths pass) and `apps/web/test/deck.test.ts` (an upgrade from version 2 keeps unsent actions; unsent actions are counted across accounts). Desktop Chrome check of a production build: shell cached without API responses, reopened offline, update deferred while scoring and while an action was unsent, then applied with the journal intact and the old cache removed. Android and iOS devices remain for TASK-062.
 
+*Offline app and sync, TASK-122 (2026-11-21).*
+- **Automated:**
+  - `tests/test_idempotency.py`: a repeat with the same key returns the first answer and makes nothing twice; refusals are kept; keys are per account; bad, reused and unfinished keys; signed out is unaffected; old keys are forgotten.
+  - `apps/web/test/offline.test.ts`: changes made offline are sent once, in order, after a lost reply; a refusal is set aside and the rest still go; a retry uses a new key; an ended session pauses sending; two accounts on one device are kept apart; a failed write is not reported as kept; order survives a restart.
+- **Still owed:** a browser and real-device run: open screens, go offline, reopen, mark attendance and log a match, reconnect, and see each change once on the server.
+
 ### EVAL-036
 
 **Document/design gate — static plus design review.** Setup: five documents and Stitch inventory. Steps: check every REQ has tasks and EVAL, dependency IDs exist, local Markdown links/anchors resolve; inspect each required screen/phase mapping; confirm sequence docs→screens→code. Pass documentation subgate: all 37 requirements mapped, no orphan IDs or contradictory superseded stacks. Pass full gate: missing screen inventory filled/reviewed with IDs and no initial application code created before that review. Evidence: link/ID report and inventory review. Documentation subgate may pass while full gate remains pending.

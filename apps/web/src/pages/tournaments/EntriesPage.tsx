@@ -24,7 +24,7 @@ import {
   MAX_TEAM_ROSTER,
   POOL_LABEL,
   placesTaken,
-  selfCheckIn,
+  selfCheckInOrKeep,
   withdrawEntry,
   type Entry,
   type EntryStatus,
@@ -131,8 +131,10 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
   const today = todayIn(t.timezone)
   const checkInDay = t.starts_on <= today && today <= t.ends_on
   const checkIn = useMutation({
-    mutationFn: (entryId: string) => selfCheckIn(t.id, event.id, entryId),
-    onSuccess: onChange,
+    mutationFn: (entryId: string) => selfCheckInOrKeep(t.id, event.id, entryId, event.name),
+    onSuccess: (sent) => {
+      if (!sent.kept) onChange()
+    },
   })
   const withdraw = useMutation({
     mutationFn: (entryId: string) => withdrawEntry(t.id, event.id, entryId),
@@ -158,7 +160,8 @@ function MyEntry({ tournament: t, event, staff, entries }: { tournament: Tournam
           {live.status === "accepted" && !live.checked_in_at && live.my_check_in_at && (
             <p className="text-sm text-success">You’re checked in. Waiting for the rest of your entry.</p>
           )}
-          {live.status === "accepted" && !live.my_check_in_at && !live.checked_in_at && checkInDay && !isClosed(event) && !isClosed(t) && (
+          {checkIn.data?.kept && <p className="text-sm font-semibold">Checked in on this device. It will be sent when you're back online.</p>}
+          {live.status === "accepted" && !live.my_check_in_at && !live.checked_in_at && checkInDay && !isClosed(event) && !isClosed(t) && !checkIn.data?.kept && (
             <Button type="button" className="self-start" disabled={checkIn.isPending} onClick={() => checkIn.mutate(live.id)}>
               {checkIn.isPending ? "Checking in…" : "Check in now"}
             </Button>
