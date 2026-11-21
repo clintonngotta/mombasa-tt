@@ -1,3 +1,4 @@
+import { sendOrKeep } from "@/lib/offline"
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 import type { Tournament, TournamentEvent } from "@/lib/tournaments"
@@ -24,6 +25,9 @@ export const listEntries = (id: string, eventId: string, status: EntryStatus | "
   api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100${status ? `&status=${status}` : ""}`)
 export const createEntry = (id: string, eventId: string, body: EntryInput) => api<Entry>(base(id, eventId), { body })
 export const withdrawEntry = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/withdraw/`, { body: {} })
+/** Checking in at the venue, where the connection may drop: kept on the device and sent later (REQ-035). */
+export const selfCheckInOrKeep = (id: string, eventId: string, entryId: string, eventName: string) =>
+  sendOrKeep<Entry>({ path: `${base(id, eventId)}${entryId}/self-check-in/`, label: `Check in to ${eventName}`, refresh: [["entries"], ["tournaments"]] })
 export const selfCheckIn = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/self-check-in/`, { body: {} })
 export const changeEntry = (id: string, eventId: string, entryId: string, action: StaffEntryAction, reason?: string) =>
   api<Entry>(`${base(id, eventId)}${entryId}/${action}/`, { body: reason === undefined ? {} : { reason } })

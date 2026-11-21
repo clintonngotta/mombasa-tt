@@ -1,4 +1,5 @@
 import { api } from "@/lib/api"
+import { sendOrKeep } from "@/lib/offline"
 import type { Schemas } from "@/lib/schema"
 
 // Regional bodies (REQ-048): the region's clubs, yearly agenda, articles, meetings and sponsorships.
@@ -111,3 +112,15 @@ export function describeSponsorship(offer: { amount_minor?: number | null; curre
   for (const goods of offer.in_kind ?? []) parts.push(`${goods.quantity} × ${goods.item}`)
   return parts.join(" · ")
 }
+
+// Offline (REQ-035): checking in and taking attendance happen in the room, where the connection may
+// drop. These keep the change on the device and send it later when there is no connection.
+export const checkInOrKeep = (orgId: string, meeting: Pick<Meeting, "id" | "title">) =>
+  sendOrKeep<Meeting>({ path: `${org(orgId)}/meetings/${meeting.id}/check-in/`, label: `Check in to ${meeting.title}`, refresh: [regionKeys.all] })
+export const markAttendanceOrKeep = (orgId: string, meeting: Pick<Meeting, "id" | "title">, invitee: Pick<MeetingInvitee, "id" | "display_name">, attendance: AttendanceMark) =>
+  sendOrKeep<Meeting>({
+    path: `${org(orgId)}/meetings/${meeting.id}/attendance/`,
+    body: { invitee: invitee.id, attendance },
+    label: `Mark ${invitee.display_name} ${ATTENDANCE_LABEL[attendance].toLowerCase()} at ${meeting.title}`,
+    refresh: [regionKeys.all],
+  })

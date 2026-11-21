@@ -23,7 +23,8 @@ import {
   getMeeting,
   issuePenalties,
   listMeetings,
-  markAttendance,
+  markAttendanceOrKeep,
+  checkInOrKeep,
   meetingAction,
   MEETING_KIND_LABEL,
   PENALIZED,
@@ -227,7 +228,16 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
     queryClient.setQueryData(regionKeys.meeting(orgId, meeting.id), data)
     return queryClient.invalidateQueries({ queryKey: regionKeys.all })
   }
-  const act = useMutation({ mutationFn: (action: "publish" | "check-in") => meetingAction(orgId, meeting.id, action), onSuccess: update })
+  const act = useMutation({ mutationFn: (action: "publish") => meetingAction(orgId, meeting.id, action), onSuccess: update })
+  // Kept on the device with no connection: shown as checked in at once, sent later (REQ-035).
+  const checkIn = useMutation({
+    mutationFn: () => checkInOrKeep(orgId, meeting),
+    onSuccess: (sent) => {
+      if (!sent.kept) return update(sent.data)
+      const now = new Date().toISOString()
+      queryClient.setQueryData<Meeting>(regionKeys.meeting(orgId, meeting.id), (m) => (m?.me ? { ...m, me: { ...m.me, checked_in_at: now, attendance: m.me.attendance || "present" } } : m))
+    },
+  })
   const answer = useMutation({ mutationFn: (value: "attending" | "apologies") => answerMeeting(orgId, meeting.id, value), onSuccess: update })
   const cancel = useMutation({ mutationFn: () => cancelMeeting(orgId, meeting.id, reason.trim()), onSuccess: update })
   const record = useMutation({ mutationFn: () => recordMinutes(orgId, meeting.id, minutes.trim()), onSuccess: update })
@@ -241,7 +251,7 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
   const [now] = useState(() => Date.now())
   const started = new Date(meeting.starts_at).getTime() <= now
   const running = started && now < new Date(meeting.ends_at).getTime()
-  const error = act.error ?? answer.error ?? cancel.error ?? record.error ?? remove.error
+  const error = act.error ?? checkIn.error ?? answer.error ?? cancel.error ?? record.error ?? remove.error
 
   return (
     <>
@@ -304,10 +314,11 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
           <p className="text-muted-foreground">
             {meeting.me.attendance ? `Recorded as ${ATTENDANCE_LABEL[meeting.me.attendance as AttendanceMark].toLowerCase()}.` : meeting.me.checked_in_at ? "You're checked in." : meeting.me.answer === "attending" ? "You said you'll attend." : meeting.me.answer === "apologies" ? "You sent apologies." : "Let the organizers know if you're coming."}
           </p>
+          {checkIn.data?.kept && <WaitingToSync />}
           {meeting.me.penalty && <PenaltyLine penalty={meeting.me.penalty} />}
           <div className="flex flex-wrap gap-2">
             {running && !meeting.me.checked_in_at && (
-              <Button disabled={act.isPending} onClick={() => act.mutate("check-in")}>
+              <Button disabled={checkIn.isPending} onClick={() => checkIn.mutate()}>
                 Check in
               </Button>
             )}
@@ -390,7 +401,22 @@ function PenaltyLine({ penalty }: { penalty: MeetingPenalty }) {
 /** The attendance record: the secretary or governance staff mark invitees while the meeting runs or after
  * it, then issue the penalties its rules set. Once issued, only the host's admin changes a penalty. */
 function Attendance({ orgId, meeting, started, over, onChange }: { orgId: string; meeting: Meeting; started: boolean; over: boolean; onChange: (m: Meeting) => void }) {
-  const mark = useMutation({ mutationFn: ({ invitee, value }: { invitee: string; value: AttendanceMark }) => markAttendance(orgId, meeting.id, invitee, value), onSuccess: onChange })
+  const queryClient = useQueryClient()
+  // Marks made with no connection are kept on the device and shown at once (REQ-035).
+  const [kept, setKept] = useState<Set<string>>(() => new Set())
+  const mark = useMutation({
+    mutationFn: ({ invitee, value }: { invitee: MeetingInvitee; value: AttendanceMark }) => markAttendanceOrKeep(orgId, meeting, invitee, value),
+    onSuccess: (sent, { invitee, value }) => {
+      if (!sent.kept) {
+        setKept((ids) => (ids.has(invitee.id) ? new Set([...ids].filter((id) => id !== invitee.id)) : ids))
+        return onChange(sent.data)
+      }
+      setKept((ids) => new Set(ids).add(invitee.id))
+      queryClient.setQueryData<Meeting>(regionKeys.meeting(orgId, meeting.id), (m) =>
+        m ? { ...m, invitees: m.invitees.map((i) => (i.id === invitee.id ? { ...i, attendance: value } : i)) } : m
+      )
+    },
+  })
   const issue = useMutation({ mutationFn: () => issuePenalties(orgId, meeting.id), onSuccess: onChange })
   const marked = meeting.invitees.filter((i) => i.attendance).length
   const error = mark.error ?? issue.error
@@ -403,7 +429,7 @@ function Attendance({ orgId, meeting, started, over, onChange }: { orgId: string
       {error && <FormAlert>{errorMessage(error)}</FormAlert>}
       <ul className="flex flex-col gap-2">
         {meeting.invitees.map((invitee) => (
-          <InviteeRow key={invitee.id} orgId={orgId} meeting={meeting} invitee={invitee} editable={started && meeting.status === "published"} pending={mark.isPending} onMark={(value) => mark.mutate({ invitee: invitee.id, value })} />
+          <InviteeRow key={invitee.id} orgId={orgId} meeting={meeting} invitee={invitee} editable={started && meeting.status === "published"} pending={mark.isPending} waiting={kept.has(invitee.id)} onMark={(value) => mark.mutate({ invitee, value })} />
         ))}
       </ul>
       {over && (meeting.rules?.length ?? 0) > 0 && meeting.invitees.some((i) => !i.penalty) && (
@@ -418,7 +444,7 @@ function Attendance({ orgId, meeting, started, over, onChange }: { orgId: string
   )
 }
 
-function InviteeRow({ orgId, meeting, invitee, editable, pending, onMark }: { orgId: string; meeting: Meeting; invitee: MeetingInvitee; editable: boolean; pending: boolean; onMark: (value: AttendanceMark) => void }) {
+function InviteeRow({ orgId, meeting, invitee, editable, pending, waiting, onMark }: { orgId: string; meeting: Meeting; invitee: MeetingInvitee; editable: boolean; pending: boolean; waiting: boolean; onMark: (value: AttendanceMark) => void }) {
   const answer = invitee.answer === "attending" ? "Said they'll attend" : invitee.answer === "apologies" ? "Sent apologies" : "No answer"
   return (
     <li className="flex flex-col gap-2 rounded-lg border bg-card px-3 py-2">
@@ -429,6 +455,7 @@ function InviteeRow({ orgId, meeting, invitee, editable, pending, onMark }: { or
           <span className="block text-sm text-muted-foreground">
             {answer}
             {invitee.checked_in_at && " · checked in"}
+            {waiting && " · waiting to sync"}
           </span>
         </span>
         {editable && !invitee.penalty ? (
@@ -496,4 +523,8 @@ function PenaltyEditor({ orgId, meeting, penalty }: { orgId: string; meeting: Me
       )}
     </div>
   )
+}
+
+function WaitingToSync() {
+  return <p className="text-sm font-semibold text-muted-foreground">Saved on this device: it will be sent when you're back online.</p>
 }
