@@ -5,16 +5,18 @@ from unittest import mock
 
 import pytest
 
-from competitions import standings
+from competitions import drawing, recap, standings
 from competitions.models import Match
 from competitions.standings import DISQUALIFIED, Result, rank
 from organizations.permissions import Permission
 from outbox import service as outbox
 from ratings.models import RatingEvent
 from realtime import broadcast
+from reservations import service as reservations
 
 from .helpers import logged_in, make_user
 from .test_official_results import correct, enter, fresh, hall, knockout  # noqa: F401
+from .test_reservations import person, send, started, tables
 from .test_roles import add_member
 
 
@@ -37,8 +39,8 @@ def test_only_the_referee_awards_a_disqualification(staff, club, hall):  # noqa:
     refused = enter(captain, game, first, first.entry_a, expect=403, outcome="disqualified")
     assert refused["code"] == "referee_only"
     assert fresh(first).status == Match.Status.SCHEDULED
-    # Competition staff who also hold the Referee role may.
-    referee = staff_member(club, "referee@example.com", "captain", "referee")
+    # The referee may, with no other role: the results desk is theirs too.
+    referee = staff_member(club, "referee@example.com", "referee")
     enter(referee, game, first, first.entry_a, outcome="disqualified", games=[[11, 7], [4, 3]])
     decided = fresh(first)
     assert (decided.status, decided.outcome, decided.winner_id) == (
@@ -99,3 +101,43 @@ def test_the_board_is_a_live_topic_beside_scores_and_results(topic):
     later.assert_called_once()
     with pytest.raises(ValueError):
         broadcast.tournament_changed("t-1", "elsewhere")
+
+
+def test_the_match_page_offers_the_result_desk_to_the_referee_and_not_to_staff_once_disqualified(
+    staff,
+    club,
+    hall,  # noqa: F811
+):
+    game = knockout(staff, club, hall)
+    first = game["semis"][0]
+    page = f"/api/v1/tournaments/{game['cup']['id']}/events/{game['event']['id']}/matches/{first.id}/"
+    captain = staff_member(club, "captain@example.com", "captain")
+    referee = staff_member(club, "referee@example.com", "referee")
+    assert captain.get(page).json()["can_record_result"] and referee.get(page).json()["can_record_result"]
+    enter(referee, game, first, first.entry_a, outcome="disqualified")
+    assert not captain.get(page).json()["can_record_result"]
+    assert referee.get(page).json()["can_record_result"]
+
+
+def test_a_disqualification_before_play_is_no_play_so_nobody_rests_after_it(staff, club, hall):  # noqa: F811
+    one, _ = tables(hall)
+    first = started(staff, club, hall, [["Amina"], ["Brian"]])
+    send(staff, first, one)
+    match = first["match"]
+    drawing.record_result(match, match.entry_a, outcome="disqualified")
+    assert reservations.rest_until(person("Amina"), match.draw.event) is None
+    second = started(staff, club, hall, [["Chege"], ["Daudi"]], tournament="Veterans Cup")
+    send(staff, second, one)
+    part_way = second["match"]
+    drawing.record_result(part_way, part_way.entry_a, outcome="disqualified", games=[[11, 4], [2, 1]])
+    assert reservations.rest_until(person("Chege"), part_way.draw.event) is not None
+
+
+def test_the_result_card_marks_a_disqualification_and_counts_only_finished_games():
+    shown = {
+        "tournament_name": "Coast Open", "event_name": "Men's singles", "side_a": "Amina", "side_b": "Brian",
+        "games": [[11, 7], [4, 3]], "winner_side": "a", "official": True, "outcome": "disqualified",
+    }  # fmt: skip
+    body = recap.card_svg(shown)
+    assert "Amina wins (DQ)" in body and "4-3" in body
+    assert ">1<" in body and ">0<" in body and ">2<" not in body  # the unfinished game isn't counted as won

@@ -3,6 +3,13 @@
 from django.db import migrations, models
 
 
+def refuse_to_lose_disqualifications(apps, schema_editor):
+    """Going back would leave results whose outcome no longer exists and doesn't fit the column: stop."""
+    for model in ("Match", "Rubber", "OfficialResult"):
+        if apps.get_model("competitions", model).objects.filter(outcome="disqualified").exists():
+            raise RuntimeError(f"Disqualifications are recorded ({model}); correct them before migrating back.")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -25,4 +32,5 @@ class Migration(migrations.Migration):
             name='outcome',
             field=models.CharField(blank=True, choices=[('played', 'Played'), ('walkover', 'Walkover'), ('retired', 'Retired'), ('disqualified', 'Disqualified')], max_length=12),
         ),
+        migrations.RunPython(migrations.RunPython.noop, refuse_to_lose_disqualifications),
     ]

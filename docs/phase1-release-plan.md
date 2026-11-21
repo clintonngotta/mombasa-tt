@@ -37,8 +37,8 @@ Phase 1 launch is 65 of 83 tasks done. This plan sequences the 18 that are left,
 
 Order: shared groundwork first, then the features in parallel tracks.
 
-**2.0 Shared groundwork** (one small PR, `feat/match-outcomes-referee`). Done 2026-11-22: `disqualified` keeps the points played, as REQ-043 says (a W/O records none); only `results.referee` enters or takes away a DQ through the results desk, and the Referee template (referee, results, assigned scoring) is seeded in existing organizations. Walkovers stay with competition staff until the control centre (TASK-082) moves them to the referee.
-- Add `DQ` to `Match.Outcome` and the official result. W/O, ret. and DQ record no game scores and no Elo.
+**2.0 Shared groundwork** (one small PR, `feat/match-outcomes-referee`). Done 2026-11-22: `disqualified` keeps the points played, as REQ-043 says (a W/O records none); only `results.referee` enters or takes away a DQ through the results desk, which the referee can use with no other role, and the Referee template (referee, results, assigned scoring) is seeded in existing organizations. Still open for TASK-083: the referee's recorded decision, removing a disqualified player from later matches, and the web control to award a DQ. Walkovers stay with competition staff until the control centre (TASK-082) moves them to the referee.
+- Add `DQ` to `Match.Outcome` and the official result. None of W/O, ret. and DQ changes Elo; W/O records no game scores, while ret. and DQ keep the points played (REQ-043).
 - Add the referee permission (D5) to the permission catalogue and role templates.
 - Add a `board` topic to `realtime.broadcast.TOPICS` beside `scores` and `results`.
 

@@ -13,7 +13,7 @@ class Permission(models.TextChoices):
     ROLES_MANAGE = "roles.manage", "Create and edit roles and assign them to members"
     COMPETITIONS_MANAGE = "competitions.manage", "Set up and run tournaments, events and match days"
     RESULTS_MANAGE = "results.manage", "Confirm and correct official results"
-    RESULTS_REFEREE = "results.referee", "Award walkovers and disqualifications as the referee"
+    RESULTS_REFEREE = "results.referee", "Award and change disqualifications as the referee"
     SCORING_ASSIGNED = "scoring.assigned", "Score matches they are assigned to"
     FACILITIES_MANAGE = "facilities.manage", "Manage venues, tables, opening hours and bookings"
     FINANCES_VIEW = "finances.view", "See club finances and contribution records"

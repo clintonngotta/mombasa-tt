@@ -68,13 +68,20 @@ export function gamesWon(match: { games: number[][] }) {
 /** Whether `side` won the match. */
 export const sideWon = (match: Pick<DrawMatch, "status" | "winner_id">, side: DrawSide | null) => !!side?.entry && match.status === "completed" && match.winner_id === side.entry.id
 
+/** How a score is marked when the match wasn't played to a finish: written ("ret.") and read out (", retired"). */
+export const OUTCOME_MARK: Partial<Record<DrawMatch["outcome"], { short: string; spoken: string }>> = {
+  retired: { short: " ret.", spoken: ", retired" },
+  disqualified: { short: " DQ", spoken: ", disqualification" },
+}
+
 /** The score as it is read out: "3 games to 1", "walkover", "1 game to 0, disqualification", "not played yet". */
 export function spokenScore(match: Pick<DrawMatch, "games" | "status" | "outcome" | "tie_score">) {
   const { a, b } = sideScores(match)
   const unit = match.tie_score ? "rubbers" : "games"
   if (match.status !== "completed") return match.tie_score ? `${a} ${unit} to ${b} so far` : "not played yet"
   if (match.outcome === "walkover") return "walkover"
-  return `${a} ${unit} to ${b}${match.outcome === "retired" ? ", retired" : match.outcome === "disqualified" ? ", disqualification" : ""}`
+  if (match.outcome === "disqualified" && match.games.length === 0 && !match.tie_score) return "disqualification before play"
+  return `${a} ${unit} to ${b}${OUTCOME_MARK[match.outcome]?.spoken ?? ""}`
 }
 
 /** "3–1", "W/O" for a walkover, "2–1 ret." for a retirement, "1–0 DQ" for a disqualification; null while the match isn't decided. */
@@ -83,7 +90,8 @@ export function scoreLine(match: Pick<DrawMatch, "games" | "status" | "outcome" 
   // A tie under way shows its rubbers so far.
   if (match.status !== "completed") return match.tie_score ? `${a}–${b}` : null
   if (match.outcome === "walkover") return "W/O"
-  return match.outcome === "retired" ? `${a}–${b} ret.` : match.outcome === "disqualified" ? `${a}–${b} DQ` : `${a}–${b}`
+  if (match.outcome === "disqualified" && match.games.length === 0 && !match.tie_score) return "DQ"
+  return `${a}–${b}${OUTCOME_MARK[match.outcome]?.short ?? ""}`
 }
 
 /** What a decided match's outcome means, in words, for screen readers and the match page. */

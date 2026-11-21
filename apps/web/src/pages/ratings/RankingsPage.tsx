@@ -43,7 +43,7 @@ export function RankingsPage() {
     <div className="flex max-w-[820px] flex-col gap-5">
       <header className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Rankings</h1>
-        <p className="text-muted-foreground">Ratings change only with played tournament matches. Walkovers, retirements and casual games don't count.</p>
+        <p className="text-muted-foreground">Ratings change only with played tournament matches. Walkovers, retirements, disqualifications and casual games don't count.</p>
       </header>
       <Segmented
         label="Rankings"

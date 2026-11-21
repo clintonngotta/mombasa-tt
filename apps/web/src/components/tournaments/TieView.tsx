@@ -7,7 +7,7 @@ import { SearchSelect } from "@/components/forms/SelectField"
 import { errorMessage } from "@/lib/api"
 import { WinnerMark } from "@/components/tournaments/MatchCard"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
-import { drawKeys, gamesWon, resetLineups, submitLineup, type DrawSide, type MatchDetail, type Rubber, type Tie } from "@/lib/draws"
+import { drawKeys, gamesWon, OUTCOME_MARK, resetLineups, submitLineup, type DrawSide, type MatchDetail, type Rubber, type Tie } from "@/lib/draws"
 import { tieSummary, type RubberKind } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 
@@ -89,7 +89,7 @@ const names = (players: Rubber["a_players"]) => players.map((player) => player.d
 function RubberRow({ rubber, match, next, ids }: { rubber: Rubber; match: MatchDetail; next: boolean; ids: Ids }) {
   const won = (side: SideKey) => rubber.status === "completed" && rubber.winner_id === (side === "a" ? match.a.entry?.id : match.b?.entry?.id)
   const games = gamesWon(rubber)
-  const score = rubber.status === "not_played" ? "Not played" : rubber.status === "scheduled" ? "v" : rubber.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}${rubber.outcome === "retired" ? " ret." : rubber.outcome === "disqualified" ? " DQ" : ""}`
+  const score = rubber.status === "not_played" ? "Not played" : rubber.status === "scheduled" ? "v" : rubber.outcome === "walkover" ? "W/O" : rubber.outcome === "disqualified" && rubber.games.length === 0 ? "DQ" : `${games.a}–${games.b}${OUTCOME_MARK[rubber.outcome]?.short ?? ""}`
   return (
     <li className={cn("flex flex-col gap-1.5 rounded-xl border bg-card px-3 py-2.5", rubber.status === "not_played" && "bg-muted text-muted-foreground")}>
       <span className="text-sm font-semibold text-muted-foreground">

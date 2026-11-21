@@ -22,7 +22,13 @@ def add_referee_role(apps, schema_editor):
 
 
 def remove_referee_role(apps, schema_editor):
-    apps.get_model("organizations", "Role").objects.filter(key="referee").delete()
+    """Going back: the permission leaves every role that holds it (it no longer exists before this
+    migration), and the template role goes, taking its assignments with it."""
+    Role = apps.get_model("organizations", "Role")
+    for role in Role.objects.filter(permissions__contains=["results.referee"]):
+        role.permissions = [code for code in role.permissions if code != "results.referee"]
+        role.save(update_fields=["permissions"])
+    Role.objects.filter(key="referee").delete()
 
 
 class Migration(migrations.Migration):
@@ -40,7 +46,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='role',
             name='permissions',
-            field=django.contrib.postgres.fields.ArrayField(base_field=models.CharField(choices=[('members.manage', 'Invite members, decide join requests and remove members'), ('roles.manage', 'Create and edit roles and assign them to members'), ('competitions.manage', 'Set up and run tournaments, events and match days'), ('results.manage', 'Confirm and correct official results'), ('results.referee', 'Award walkovers and disqualifications as the referee'), ('scoring.assigned', 'Score matches they are assigned to'), ('facilities.manage', 'Manage venues, tables, opening hours and bookings'), ('finances.view', 'See club finances and contribution records'), ('finances.manage', 'Record charges, payments, expenses and dues'), ('announcements.manage', 'Publish club announcements and news'), ('training.manage', 'Plan training sessions and coaching groups'), ('welfare.manage', 'Run welfare projects'), ('activities.manage', 'Plan club activities such as nights out'), ('governance.manage', 'Set the committee, nominate representatives and run meetings')], max_length=40), blank=True, default=list),
+            field=django.contrib.postgres.fields.ArrayField(base_field=models.CharField(choices=[('members.manage', 'Invite members, decide join requests and remove members'), ('roles.manage', 'Create and edit roles and assign them to members'), ('competitions.manage', 'Set up and run tournaments, events and match days'), ('results.manage', 'Confirm and correct official results'), ('results.referee', 'Award and change disqualifications as the referee'), ('scoring.assigned', 'Score matches they are assigned to'), ('facilities.manage', 'Manage venues, tables, opening hours and bookings'), ('finances.view', 'See club finances and contribution records'), ('finances.manage', 'Record charges, payments, expenses and dues'), ('announcements.manage', 'Publish club announcements and news'), ('training.manage', 'Plan training sessions and coaching groups'), ('welfare.manage', 'Run welfare projects'), ('activities.manage', 'Plan club activities such as nights out'), ('governance.manage', 'Set the committee, nominate representatives and run meetings')], max_length=40), blank=True, default=list),
         ),
         migrations.RunPython(add_referee_role, remove_referee_role),
     ]

@@ -69,16 +69,26 @@ def resolutions_of(tournament: Tournament) -> list[dict]:
     return [describe_resolution(resolution) for resolution in ordered]
 
 
-def require_referee_for(
-    user, tournament: Tournament, match: Match, rubber: Rubber | None, outcome: str
-) -> None:
+def results_tournament(user, pk) -> tuple[Tournament, bool]:
+    """The tournament, locked, for whoever may enter its results: its competition staff, or its host's
+    referee (decision D5), who needs no other role. Also says whether the caller is a referee."""
+    tournament = get_object_or_404(
+        Tournament.objects.select_for_update(of=("self",)).select_related("organization"), pk=pk
+    )
+    referee = Permission.RESULTS_REFEREE in effective_permissions(user, tournament.organization)
+    if not referee:
+        require_staff(user, tournament)
+    return tournament, referee
+
+
+def require_referee_for(referee: bool, match: Match, rubber: Rubber | None, outcome: str) -> None:
     """Only the referee disqualifies (decision D5): giving a match a disqualification, or taking one away,
-    needs `results.referee` as well as the competition staff's own permission."""
+    needs `results.referee`."""
     standing = official.current(match, rubber)
     touches = outcome == Match.Outcome.DISQUALIFIED or (
         standing is not None and standing.outcome == Match.Outcome.DISQUALIFIED
     )
-    if touches and Permission.RESULTS_REFEREE not in effective_permissions(user, tournament.organization):
+    if touches and not referee:
         raise ApiException("referee_only", "Only the referee awards or changes a disqualification.", 403)
 
 
@@ -117,9 +127,9 @@ class ResultViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         asked = serializer.validated_data
         with transaction.atomic():
-            tournament = staff_tournament(request.user, tournament_pk)
+            tournament, referee = results_tournament(request.user, tournament_pk)
             match, rubber, winner = self._target(tournament, event_pk, pk, asked)
-            require_referee_for(request.user, tournament, match, rubber, asked["outcome"])
+            require_referee_for(referee, match, rubber, asked["outcome"])
             corrections.enter(match, rubber, winner, asked["outcome"], asked["games"], request.user)
         return match_reply(request, match.draw, match.id)
 
@@ -133,9 +143,9 @@ class ResultViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         asked = serializer.validated_data
         with transaction.atomic():
-            tournament = staff_tournament(request.user, tournament_pk)
+            tournament, referee = results_tournament(request.user, tournament_pk)
             match, rubber, winner = self._target(tournament, event_pk, pk, asked)
-            require_referee_for(request.user, tournament, match, rubber, asked["outcome"])
+            require_referee_for(referee, match, rubber, asked["outcome"])
             corrections.correct(
                 match, rubber, winner, asked["outcome"], asked["games"], request.user, asked["reason"]
             )
