@@ -54,7 +54,7 @@ def test_a_signed_out_visitor_follows_a_published_tournament(staff, club, hall):
     assert visitor.get(f"/api/v1/rankings/?organization={club.id}").status_code == 401
 
 
-def test_a_visitor_sees_a_listed_competitors_name_and_nothing_the_directory_keeps(staff, club, hall):
+def test_a_visitor_sees_a_competitors_name_and_nothing_the_directory_keeps(staff, club, hall):
     game = knockout(staff, club, hall)
     semi = game["semis"][0]
     enter(staff, game, semi, semi.entry_a, games=GAMES)
@@ -73,13 +73,18 @@ def test_a_visitor_sees_a_listed_competitors_name_and_nothing_the_directory_keep
     assert staff.get(page).json()["style"] == "MARK-STYLE"  # control: a player sees it
     ranked = {row["user_id"]: row for row in visitor.get("/api/v1/rankings/").json()["rows"]}
     assert ranked[str(winner.id)]["listed"] and ranked[str(winner.id)]["avatar"] is None
-    # A listed player with no competition record has no public page, nor does one who opts out.
+    # A listed player with no competition record has no public page.
     newcomer = make_user("newcomer@example.com")
     PlayerProfile.objects.filter(pk=profile_for(newcomer).pk).update(directory_opt_in=True)
     assert visitor.get(f"/api/v1/players/{newcomer.id}/").status_code == 404
+    # Opting out closes the directory card, but a visitor sees the same name-only page as before, so the
+    # answer never tells them who joined the directory.
     profile.directory_opt_in = False
     profile.save()
-    assert visitor.get(page).status_code == 404
+    assert staff.get(page).status_code == 404
+    assert visitor.get(page).json() == shown
+    ranked = {row["user_id"]: row for row in visitor.get("/api/v1/rankings/").json()["rows"]}
+    assert ranked[str(winner.id)]["listed"]
     assert visitor.get("/api/v1/players/?search=Lefty").status_code == 401
 
 

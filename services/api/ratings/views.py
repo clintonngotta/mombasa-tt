@@ -119,8 +119,8 @@ class RankingView(APIView):
         top = list(rated.select_related("user").order_by("-rating", "user__display_name")[:RANKING_LIMIT])
         user_ids = [rating.user_id for rating in top]
         form, listed = _form(discipline, user_ids), _listed(user_ids, request.user)
-        # Every ranked player has competition records, so a listed one has a page even signed out (TASK-035).
-        with_page = _listed(user_ids)
+        # Signed out, every ranked player has a name-only page: they all have competition records (TASK-035).
+        signed_out = not request.user.is_authenticated
         avatars = _avatars(user_ids, listed, request.user.id)
         clubs: dict = {}
         # Clubs are shown as the directory shows them: only for players who chose to be listed.
@@ -138,7 +138,7 @@ class RankingView(APIView):
                     "user_id": rating.user_id,
                     "display_name": rating.user.display_name,
                     "clubs": clubs.get(rating.user_id, []),
-                    "listed": rating.user_id in with_page,
+                    "listed": signed_out or rating.user_id in listed,
                     "is_me": rating.user_id == request.user.id,
                     "avatar": avatars.get(rating.user_id),
                     "rating": rating.rating,

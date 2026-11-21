@@ -76,7 +76,7 @@ import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
 import { MemberFieldEditPage } from "@/pages/club/MemberFieldEditPage"
 import { VenuesPage } from "@/pages/club/VenuesPage"
 import { VenueEditPage } from "@/pages/club/VenueEditPage"
-import { TournamentDashboardsPage } from "@/pages/tournaments/TournamentDashboardsPage"
+import { TournamentDashboardsPage } from "@/pages/club/TournamentDashboardsPage"
 import { PlayPage } from "@/pages/tournaments/PlayPage"
 import { TournamentPage } from "@/pages/tournaments/TournamentPage"
 import { TournamentDashboardPage } from "@/pages/tournaments/TournamentDashboardPage"
@@ -141,10 +141,10 @@ function App() {
             <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
             <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
             <Route path="/tournaments/:id/ceremony" element={<CeremonyPage />} />
+            <Route path="/players/:id" element={<PlayerPage />} />
             <Route element={<PersonOnly />}>
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
-              <Route path="/players/:id" element={<PlayerPage />} />
             </Route>
             <Route element={<RequireAuth />}>
               <Route path="/notifications" element={<NotificationsPage />} />

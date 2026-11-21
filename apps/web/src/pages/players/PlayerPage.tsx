@@ -18,7 +18,8 @@ import { DETAIL_LABEL, PUBLISHED_DETAILS, detailText, getPlayer, playerKeys } fr
 export function PlayerPage() {
   const { id = "" } = useParams()
   const me = useMe()
-  const signedOut = me.isError
+  // Only a refused session means signed out: any other failure loading it keeps the signed-in page.
+  const signedOut = me.error instanceof ApiError && me.error.status === 401
   const back = signedOut ? <BackLink to="/rankings">Rankings</BackLink> : <BackLink to="/players">Players</BackLink>
   const player = useQuery({ queryKey: playerKeys.detail(id), queryFn: () => getPlayer(id), enabled: !me.isPending })
 

@@ -4733,9 +4733,10 @@ export interface paths {
         /**
          * @description One listed player's page. 404 once they opt out, so opting out removes the page too.
          *
-         *     Signed out (TASK-035) the directory doesn't apply: the page is there only for a listed player with
-         *     competition records, and carries their name alone, as their public ratings page does. No photo,
-         *     nickname, clubs or published details.
+         *     Signed out (TASK-035) the directory doesn't apply: the page is there for any active player with
+         *     competition records, whether or not they joined the directory, so the answer never tells a visitor
+         *     who opted in. It carries their name alone, as their public ratings page does. No photo, nickname,
+         *     clubs or published details.
          */
         get: operations["players_retrieve"];
         put?: never;
@@ -10929,7 +10930,7 @@ export interface components {
             user_id: string;
             display_name: string;
             clubs: string[];
-            /** @description The player has a player page, signed out too. */
+            /** @description The viewer can open the player's page: a listed player's, or signed out anyone's. */
             listed: boolean;
             is_me: boolean;
             /** @description The player's photo: only for listed players and yourself. */

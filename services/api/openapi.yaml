@@ -11508,9 +11508,10 @@ paths:
       description: |-
         One listed player's page. 404 once they opt out, so opting out removes the page too.
 
-        Signed out (TASK-035) the directory doesn't apply: the page is there only for a listed player with
-        competition records, and carries their name alone, as their public ratings page does. No photo,
-        nickname, clubs or published details.
+        Signed out (TASK-035) the directory doesn't apply: the page is there for any active player with
+        competition records, whether or not they joined the directory, so the answer never tells a visitor
+        who opted in. It carries their name alone, as their public ratings page does. No photo, nickname,
+        clubs or published details.
       parameters:
       - in: path
         name: id
@@ -26026,7 +26027,8 @@ components:
             type: string
         listed:
           type: boolean
-          description: The player has a player page, signed out too.
+          description: 'The viewer can open the player''s page: a listed player''s,
+            or signed out anyone''s.'
         is_me:
           type: boolean
         avatar:

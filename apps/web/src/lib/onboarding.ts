@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react"
 import { api } from "@/lib/api"
+import { safeNext } from "@/lib/session"
 import type { Organization } from "@/lib/clubs"
 import type { Experience, Goal, Grip, Hand } from "@/lib/profile"
 
@@ -77,7 +78,8 @@ const RETURN_KEY = "coast-tt:onboarding-return"
  */
 export function rememberReturn(path: string | null) {
   try {
-    if (path && path.startsWith("/") && !path.startsWith("//")) localStorage.setItem(RETURN_KEY, path)
+    const safe = safeNext(path, null)
+    if (safe) localStorage.setItem(RETURN_KEY, safe)
   } catch {
     // Without storage the player finishes at Home, as before.
   }
@@ -85,7 +87,7 @@ export function rememberReturn(path: string | null) {
 
 export function readReturn(): string | null {
   try {
-    return localStorage.getItem(RETURN_KEY)
+    return safeNext(localStorage.getItem(RETURN_KEY), null)
   } catch {
     return null
   }
