@@ -50,7 +50,7 @@ export function TournamentPage() {
   const { id = "" } = useParams()
   useLiveTournament(id)
   const { results: memberships } = useMemberships()
-  const signedIn = useMe().isSuccess
+  const me = useMe()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const t = tournament.data
   const staff = !!t && canManageTournament(memberships, t)
@@ -58,7 +58,7 @@ export function TournamentPage() {
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      {signedIn ? <BackLink to="/play">Play</BackLink> : <BackLink to="/events">Events</BackLink>}
+      {me.isSuccess ? <BackLink to="/play">Play</BackLink> : !me.isPending && <BackLink to="/events">Events</BackLink>}
       {tournament.isPending && <p className="text-muted-foreground">Loading tournament…</p>}
       {missing && <FormAlert>This tournament doesn't exist or hasn't been published.</FormAlert>}
       {tournament.isError && !missing && <FormAlert>{errorMessage(tournament.error, "We couldn't load this tournament.")}</FormAlert>}

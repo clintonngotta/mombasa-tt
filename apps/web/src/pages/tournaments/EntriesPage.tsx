@@ -92,7 +92,7 @@ export function EntriesPage() {
   )
 }
 
-/** For a signed-out visitor: entering needs an account, and the login comes back here. */
+/** For a signed-out visitor: entering needs an account. Logging in comes back here; a new account goes through email verification first. */
 function LogInToEnter({ tournament: t, event }: { tournament: Tournament; event: TournamentEvent }) {
   const location = useLocation()
   const next = encodeURIComponent(location.pathname + location.search)
@@ -111,7 +111,7 @@ function LogInToEnter({ tournament: t, event }: { tournament: Tournament; event:
             <Link to={`/login?next=${next}`} className={buttonVariants()}>
               Log in to enter
             </Link>
-            <Link to="/signup" className={buttonVariants({ variant: "outline" })}>
+            <Link to={`/signup?next=${next}`} className={buttonVariants({ variant: "outline" })}>
               Create an account
             </Link>
           </div>
