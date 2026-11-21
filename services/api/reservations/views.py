@@ -1,6 +1,8 @@
+import uuid
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -10,11 +12,16 @@ from competitions.serializers import MatchDetailSerializer
 from competitions.views import match_reply, require_staff, staff_tournament
 from facilities.models import Table
 
-from . import board, service
+from . import board, control, service
 from .serializers import (
+    ArrivalSerializer,
     AutoDispatchSerializer,
+    BlockSerializer,
     BoardSerializer,
+    DeskEntrySerializer,
     DispatchSerializer,
+    MatchDayLogSerializer,
+    MoveSerializer,
     RecallSerializer,
     ReservationSerializer,
     TableStateSerializer,
@@ -115,3 +122,89 @@ class DispatchViewSet(viewsets.GenericViewSet):
             match = self._match(tournament, event_pk, pk)
             service.recall(match, request.user, serializer.validated_data["reason"])
         return match_reply(request, match.draw, match.id)
+
+
+class ControlViewSet(DispatchViewSet):
+    """The match-day control centre (REQ-043): calls, players reporting, moves, blocked tables, the
+    check-in desk and the match-day log, for the host's competition staff. Each change answers with the
+    board as it now stands."""
+
+    def _board(self, tournament: Tournament) -> Response:
+        return Response(BoardSerializer(board.build(tournament)).data)
+
+    @extend_schema(request=None, responses={200: BoardSerializer})
+    def call(self, request, tournament_pk, event_pk, pk):
+        """Call the match on a table again: the players of each side not yet at the table are told once
+        more. The grace period still runs from the first call."""
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            control.call_again(self._match(tournament, event_pk, pk), request.user)
+        return self._board(tournament)
+
+    @extend_schema(request=ArrivalSerializer, responses={200: BoardSerializer})
+    def report(self, request, tournament_pk, event_pk, pk):
+        """A called side is at the table, or with `undo` isn't. Once both are, the table is warming up."""
+        serializer = ArrivalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            match = self._match(tournament, event_pk, pk)
+            control.report(match, asked["side"], request.user, undo=asked["undo"])
+        return self._board(tournament)
+
+    @extend_schema(request=MoveSerializer, responses={200: BoardSerializer})
+    def move(self, request, tournament_pk, event_pk, pk):
+        """Move a match on a table to another free table, with a reason. Its call and who has reported
+        go with it; the new table is checked as any dispatch is."""
+        serializer = MoveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            match = self._match(tournament, event_pk, pk)
+            table = get_object_or_404(Table, pk=asked["table_id"])
+            control.move(match, table, request.user, asked["reason"])
+        return self._board(tournament)
+
+    @extend_schema(request=BlockSerializer, responses={200: BoardSerializer})
+    def block(self, request, tournament_pk, table_pk):
+        """Take a free table out of use, with a reason. Nothing is sent to it until it is unblocked."""
+        serializer = BlockSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            table = get_object_or_404(Table, pk=table_pk)
+            control.block(tournament, table, asked["reason"], asked["note"], request.user)
+        return self._board(tournament)
+
+    @extend_schema(request=None, responses={200: BoardSerializer})
+    def unblock(self, request, tournament_pk, table_pk):
+        """Put a blocked table back in use."""
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            table = get_object_or_404(Table, pk=table_pk)
+            control.unblock(tournament, table, request.user)
+        return self._board(tournament)
+
+    @extend_schema(responses={200: DeskEntrySerializer(many=True)})
+    def desk(self, request, tournament_pk):
+        """The check-in desk: accepted entries of events still to play, those not checked in first.
+        Checking in and undoing it use the entry's own check-in routes."""
+        tournament = self._tournament(request, tournament_pk)
+        return Response(DeskEntrySerializer(control.desk(tournament), many=True).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter("match", str, required=False, description="Only this match's.")],
+        responses={200: MatchDayLogSerializer(many=True)},
+    )
+    def log(self, request, tournament_pk):
+        """The match-day log, newest first (the latest 200): who did what, when and why."""
+        tournament = self._tournament(request, tournament_pk)
+        asked = request.query_params.get("match") or None
+        try:
+            match_id = uuid.UUID(asked) if asked else None
+        except ValueError:  # not a match id: no entries are about it
+            return Response([])
+        return Response(MatchDayLogSerializer(control.log_of(tournament, match_id), many=True).data)

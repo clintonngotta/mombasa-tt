@@ -1,14 +1,14 @@
 # Coast TT: project completion
 
-Updated 2026-11-21. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #84 and TASK-035's web half, with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21. Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
+Updated 2026-11-22. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #88 and TASK-082 (match-day control centre), with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21. Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
 
 ## Summary
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 81 | 131 | 50 | 62% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 81 | 127 | 46 | 64% |
-| **Phase 1 launch** | **70** | **96** | **26** | **73%** |
+| All tasks | 82 | 131 | 49 | 63% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 82 | 127 | 45 | 65% |
+| **Phase 1 launch** | **71** | **96** | **25** | **74%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -19,7 +19,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 0: documentation and design | 1 | 3 | TASK-002, TASK-003 |
 | Foundation | 6 | 6 | — |
 | Phase 1: identities and clubs | 7 | 7 | — |
-| Phase 1: competitions and operations | 19 | 24 | TASK-034, TASK-082, TASK-083, TASK-084, TASK-085 |
+| Phase 1: competitions and operations | 20 | 24 | TASK-034, TASK-083, TASK-084, TASK-085 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
 | Current feature checklist | 31 | 44 | TASK-107 to TASK-110, TASK-123 to TASK-131 |
@@ -30,13 +30,13 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **81** | **131** | **50** |
+| **All tasks** | **82** | **131** | **49** |
 
-## Left for Phase 1 launch (26)
+## Left for Phase 1 launch (25)
 
 Sequenced, with the owner decisions each task waits on, in [phase1-release-plan.md](phase1-release-plan.md).
 
-- **Competition features:** browser push (TASK-034, real-device check only), match-day control centre (TASK-082), scoring incidents: cards, injury, expedite, retirement, DQ (TASK-083), live score channel (TASK-084), results announcements (TASK-085).
+- **Competition features:** browser push (TASK-034, real-device check only), scoring incidents: cards, injury, expedite, retirement, DQ (TASK-083), live score channel (TASK-084), results announcements (TASK-085).
 - **Governance:** regional and national bodies (TASK-107), representatives (TASK-108), meetings with agendas and minutes (TASK-109), non-competition events (TASK-110).
 - **Club life and match day (added 2026-11-21):** representative squads with rotation (TASK-123), internal and external finance with source categories (TASK-124), training rules and 300 m location check-in (TASK-125), apologies for training and meetings (TASK-126), order of play with no idle tables (TASK-127), next-match recommendation (TASK-128), absence penalties (TASK-129), post-tournament review (TASK-130), feedback form builder (TASK-131).
 - **Operations:** VPS deploy and staging (TASK-058), backups and restore drill (TASK-060), load tests and monitoring (TASK-061), PWA install and update rehearsal (TASK-062), Phase 1 acceptance and dogfood (TASK-063).

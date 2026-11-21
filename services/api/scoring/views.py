@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.models import User
+from competitions import matchday
 from competitions.models import DrawVersion, Event, Match, Rubber, Tournament
 from competitions.serializers import MatchDetailSerializer
 from competitions.views import match_reply, require_staff, staff_tournament
@@ -143,6 +144,15 @@ class UmpireViewSet(viewsets.GenericViewSet):
                 if umpire is None:
                     raise ApiException("not_an_umpire", "We don't know that person.", 409)
             service.assign(match, rubber, umpire, request.user)
+            where = f" (rubber {rubber.position})" if rubber else ""
+            matchday.log(
+                tournament,
+                matchday.Action.UMPIRE_ASSIGNED if umpire else matchday.Action.UMPIRE_REMOVED,
+                f"{matchday.match_title(match)}{where}" + (f": {umpire.display_name}" if umpire else ""),
+                actor=request.user,
+                match=match,
+                table=match.table,
+            )
         return match_reply(request, match.draw, match.id)
 
 

@@ -230,6 +230,8 @@ SPECTACULAR_SETTINGS = {
         "PenalizedAttendanceEnum": "regions.serializers.PENALIZED",
         "MeetingPenaltyStatusEnum": "regions.models.MeetingPenalty.Status",
         "SkillEnum": "training.models.Skill",
+        "TableBlockReasonEnum": "reservations.models.TableBlock.Reason",
+        "SideEnum": "reservations.control.SIDES",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",
         "PaymentMethodEnum": "finance.models.Payment.Method",

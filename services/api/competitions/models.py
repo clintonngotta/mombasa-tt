@@ -185,6 +185,8 @@ class Event(models.Model):
     capacity = models.PositiveSmallIntegerField(null=True, blank=True)  # entries; null = no limit
     best_of = models.PositiveSmallIntegerField(default=5)
     rest_minutes = models.PositiveSmallIntegerField(default=10)
+    # How long a called player has to report at the table before they are flagged (REQ-043).
+    call_grace_minutes = models.PositiveSmallIntegerField(default=10)
     registration_opens_at = models.DateTimeField(null=True, blank=True)
     registration_closes_at = models.DateTimeField(null=True, blank=True)
     admission = models.CharField(max_length=6, choices=Admission.choices, default=Admission.CLOSED)
@@ -838,3 +840,45 @@ class LiveStreamReport(models.Model):
 
     def __str__(self):
         return f"{self.reason} on {self.stream_id}"
+
+
+class MatchDayLog(models.Model):
+    """One staff action on match day (REQ-043): who did what, when and why. Calls, recalls, moves,
+    players reporting, check-ins, umpire assignments, tables blocked, results entered and corrected.
+    Entries are only ever added."""
+
+    class Action(models.TextChoices):
+        CALLED = "called", "Called to a table"
+        CALLED_AGAIN = "called_again", "Called again"
+        RECALLED = "recalled", "Taken off the table"
+        MOVED = "moved", "Moved to another table"
+        REPORTED = "reported", "Reported at the table"
+        REPORT_UNDONE = "report_undone", "Report undone"
+        CHECKED_IN = "checked_in", "Checked in"
+        CHECK_IN_UNDONE = "check_in_undone", "Check-in undone"
+        UMPIRE_ASSIGNED = "umpire_assigned", "Umpire assigned"
+        UMPIRE_REMOVED = "umpire_removed", "Umpire taken off"
+        TABLE_BLOCKED = "table_blocked", "Table blocked"
+        TABLE_UNBLOCKED = "table_unblocked", "Table back in use"
+        RESULT_ENTERED = "result_entered", "Result entered"
+        RESULT_CORRECTED = "result_corrected", "Result corrected"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")
+    match = models.ForeignKey(Match, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    action = models.CharField(max_length=20, choices=Action.choices)
+    # What it was about, in words as it stood then: the match, the table, the player, the outcome.
+    summary = models.CharField(max_length=300)
+    reason = models.CharField(max_length=300, blank=True)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-at", "-id"]
+        indexes = [models.Index(fields=["tournament", "-at"], name="match_day_log_recent")]
+
+    def __str__(self):
+        return f"{self.action} at {self.at}"

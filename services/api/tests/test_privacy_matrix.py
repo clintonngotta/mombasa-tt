@@ -485,6 +485,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-dispatch-run": {"post": STAFF},
     "tournament-event-match-dispatch": {"post": STAFF},
     "tournament-event-match-recall": {"post": STAFF},
+    # The match-day control centre (REQ-043, TASK-082).
+    "tournament-event-match-call": {"post": STAFF},
+    "tournament-event-match-report": {"post": STAFF},
+    "tournament-event-match-move": {"post": STAFF},
+    "tournament-table-block": {"post": STAFF},
+    "tournament-table-unblock": {"post": STAFF},
+    "tournament-check-in-desk": {"get": STAFF},
+    "tournament-match-day-log": {"get": STAFF},
     "tournament-scoring": {"get": STAFF},
     "tournament-scoring-conflict-resolve": {"post": STAFF},
     "tournament-event-draw-preview": {"post": STAFF},
@@ -498,6 +506,7 @@ ACCESS: dict[str, dict[str, str]] = {
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
+MOVE_TABLE = "00000000-0000-4000-8000-0000000000ab"  # a free table to move a match to
 FAITH_MEMBERSHIP = "00000000-0000-4000-8000-0000000000fa"  # Faith, for the admin nomination bodies
 # Entries with known ids, so a result can name its winner.
 ENTERED_WINNER = "00000000-0000-4000-8000-0000000000b1"
@@ -751,6 +760,9 @@ BODIES = {
     ("tournament-event-match-dispatch", "post"): {"table_id": SPARE_TABLE},
     ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
+    ("tournament-event-match-report", "post"): {"side": "a"},
+    ("tournament-event-match-move", "post"): {"table_id": MOVE_TABLE, "reason": "Light out"},
+    ("tournament-table-block", "post"): {"reason": "out_of_service"},
     ("tournament-event-match-result", "post"): {"winner_entry_id": ENTERED_WINNER, "outcome": "walkover"},
     ("tournament-event-match-result-correct", "post"): {
         "winner_entry_id": CORRECTED_WINNER,
@@ -1271,6 +1283,12 @@ class World:
         reservations.dispatch(
             self.on_table, Table.objects.create(venue=self.venue, label="Recall table"), self.amina
         )
+        # A match on a table for the control centre's call, report and move routes.
+        self.control_cup, self.called = under_way("Control Cup", ("k1", "k2"))
+        reservations.dispatch(
+            self.called, Table.objects.create(venue=self.venue, label="Control table"), self.amina
+        )
+        Table.objects.create(id=MOVE_TABLE, venue=self.venue, label="Move table")
         # For the result routes: a match to enter a result for, a decided one to correct, and a later
         # match a correction has put in question.
         self.result_cup, self.to_decide = under_way("Result Cup", ("e1", "e2"), ENTERED_WINNER)
@@ -1566,6 +1584,9 @@ class World:
             "tournament-event-match-umpire": self.scored_match.id,
             "tournament-event-match-dispatch": self.to_dispatch.id,
             "tournament-event-match-recall": self.on_table.id,
+            "tournament-event-match-call": self.called.id,
+            "tournament-event-match-report": self.called.id,
+            "tournament-event-match-move": self.called.id,
             "tournament-event-match-result": self.to_decide.id,
             "tournament-event-match-result-correct": self.decided.id,
             "tournament-correction-resolve": self.resolution.id,
@@ -1661,6 +1682,20 @@ class World:
             found["coaching_pk"] = self.coaching.id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
+        if name in ("tournament-table-block", "tournament-table-unblock"):
+            found["tournament_pk"] = self.scored_cup.id
+            return found
+        if name in ("tournament-check-in-desk", "tournament-match-day-log"):
+            found["tournament_pk"] = self.scored_cup.id
+            return found
+        control = (
+            "tournament-event-match-call",
+            "tournament-event-match-report",
+            "tournament-event-match-move",
+        )
+        if name in control:
+            found["event_pk"], found["tournament_pk"] = self.control_cup.event.id, self.control_cup.id
+            return found
         if name.startswith("tournament-schedule"):
             found["tournament_pk"] = self.planned_cup.id
             if "number" in names:

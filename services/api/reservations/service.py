@@ -25,7 +25,7 @@ from competitions.models import DrawVersion, Entry, Event, Match, Rubber, Tourna
 from core.exceptions import ApiException
 from facilities.models import Table
 
-from .models import Hold, Reservation
+from .models import Hold, MatchCall, Reservation, TableBlock
 
 logger = logging.getLogger(__name__)
 
@@ -143,10 +143,18 @@ def rest_until(user, event: Event):
 
 
 def dispatch(
-    match: Match, table: Table, actor, *, overrides=(), reason: str = "", automatic: bool = False
+    match: Match,
+    table: Table,
+    actor,
+    *,
+    overrides=(),
+    reason: str = "",
+    automatic: bool = False,
+    carry: Reservation | None = None,
 ) -> Reservation:
     """Send the match to the table: hold the table and the players, or say what stands in the way.
-    Call inside a transaction, with the tournament row locked."""
+    `carry` is the reservation of the table a match is moved from: its first call and who had reported
+    stay with the match. Call inside a transaction, with the tournament row locked."""
     overrides = [name for name in OVERRIDABLE if name in overrides]
     if overrides and not reason:
         raise ApiException("reason_required", "Say why the check is set aside.", 400)
@@ -172,12 +180,16 @@ def dispatch(
         raise Blocked(
             "table_busy", f"{table.label} is taken by a match of {held.reservation.match.draw.event.name}."
         )
+    blocked = TableBlock.objects.filter(table=table, ended_at__isnull=True).first()
+    if blocked:
+        raise Blocked("table_blocked", f"{table.label} is blocked: {blocked.get_reason_display().lower()}.")
     for blocked in standing_in_the_way(match, people, rubber):
         if SETS_ASIDE.get(blocked.blocker) not in overrides:
             raise blocked
 
     try:
         with transaction.atomic():
+            now = timezone.now()
             reservation = Reservation.objects.create(
                 match=match,
                 table=table,
@@ -185,7 +197,11 @@ def dispatch(
                 automatic=automatic,
                 overrides=overrides,
                 override_reason=reason,
+                called_at=(carry.called_at or carry.created_at) if carry else now,
+                a_reported_at=carry.a_reported_at if carry else None,
+                b_reported_at=carry.b_reported_at if carry else None,
             )
+            MatchCall.objects.create(match=match, reservation=reservation, called_by=actor)
             Hold.objects.create(reservation=reservation, table=table)
             Hold.objects.bulk_create(
                 Hold(reservation=reservation, user=user, rubber=rubber) for user in people
@@ -198,6 +214,19 @@ def dispatch(
     from notifications import triggers
 
     triggers.called_to_table(match, reservation, [user.pk for user in people])
+    if carry is None:  # a move is logged by `control.move`, with its reason
+        from competitions import matchday
+
+        how = "automatically " if automatic else ""
+        matchday.log(
+            event.tournament_id,
+            matchday.Action.CALLED,
+            f"{matchday.match_title(match)} sent {how}to {table.label}",
+            actor=actor,
+            match=match,
+            table=table,
+            reason=reason,
+        )
     if not automatic:  # automatic dispatch announces once it has sent everything it can
         from . import board
 
@@ -331,6 +360,17 @@ def recall(match: Match, actor, reason: str) -> None:
     from notifications import triggers
 
     triggers.taken_off_table(match, players, reason)
+    from competitions import matchday
+
+    matchday.log(
+        match.draw.event.tournament_id,
+        matchday.Action.RECALLED,
+        f"{matchday.match_title(match)} off {reservation.table.label}",
+        actor=actor,
+        match=match,
+        table=reservation.table,
+        reason=reason,
+    )
     _off_the_table(match)
     look_for_the_next(match.draw.event.tournament, actor)
 
@@ -442,7 +482,9 @@ def active_for(tournament: Tournament) -> list[Reservation]:
             match__draw__event__tournament=tournament, status=Reservation.Status.ACTIVE
         )
         .select_related("table", "match__draw__event", "match__entry_a", "match__entry_b", "created_by")
-        .prefetch_related("holds__user", "match__entry_a__players__user", "match__entry_b__players__user")
+        .prefetch_related(
+            "holds__user", "calls", "match__entry_a__players__user", "match__entry_b__players__user"
+        )
         .order_by("table__position", "created_at")
     )
 

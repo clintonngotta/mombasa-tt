@@ -51,15 +51,16 @@ def up_next(match, players) -> None:
     )
 
 
-def called_to_table(match, reservation, players) -> None:
+def called_to_table(match, reservation, players, version: str | None = None) -> None:
+    """The match was sent to its table, or (with a `version` of its own) called there once more."""
     supersede(f"match:{match.id}", Category.UP_NEXT)
     notify(
         players,
         Category.TABLE_CALL,
-        f"Called to {reservation.table.label}",
+        f"{'Called again' if version else 'Called'} to {reservation.table.label}",
         body=f"{match.draw.event.name}: go to {reservation.table.label} now.",
         subject=f"match:{match.id}",
-        version=str(reservation.id),
+        version=version or str(reservation.id),
         link=_match_link(match),
         organization=match.draw.event.tournament.organization,
     )

@@ -1,16 +1,40 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CircleCheck, CircleDot, Clock, Hourglass, TriangleAlert } from "lucide-react"
+import { Ban, CircleCheck, CircleDot, Clock, Hourglass, Megaphone, TriangleAlert, UserCheck } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { FormAlert } from "@/components/forms/Field"
+import { Field, FormAlert } from "@/components/forms/Field"
+import { SelectField } from "@/components/forms/SelectField"
 import { Toggle } from "@/components/forms/Toggle"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { drawKeys } from "@/lib/draws"
-import { dispatchMatch, getBoard, reservationKeys, runAutoDispatch, setAutoDispatch, type Board, type BoardTable, type QueuedMatch } from "@/lib/reservations"
+import {
+  blockTable,
+  callAgain,
+  controlKeys,
+  dispatchMatch,
+  getBoard,
+  getDesk,
+  getMatchDayLog,
+  moveMatch,
+  recallMatch,
+  reportSide,
+  reservationKeys,
+  runAutoDispatch,
+  setAutoDispatch,
+  TABLE_BLOCK_REASONS,
+  unblockTable,
+  type Board,
+  type BoardTable,
+  type DeskEntry,
+  type QueuedMatch,
+  type TableBlockReason,
+} from "@/lib/reservations"
+import { changeEntry } from "@/lib/entries"
+import { cn } from "@/lib/utils"
 import { scoringKeys } from "@/lib/scoring"
 import { getTournament, tournamentKeys } from "@/lib/tournaments"
 import { useLiveTournament } from "@/lib/live"
@@ -22,6 +46,22 @@ const STATE = {
   waiting: { label: "Waiting", icon: Hourglass, className: "text-muted-foreground" },
   blocked: { label: "Held up", icon: TriangleAlert, className: "text-warning" },
 } as const
+
+/** How each table state reads on the board (REQ-043). */
+const TABLE_STATE: Record<BoardTable["state"], { label: string; icon: typeof CircleCheck; className: string }> = {
+  free: { label: "Free", icon: CircleCheck, className: "text-success" },
+  called: { label: "Called", icon: Megaphone, className: "text-warning" },
+  warming_up: { label: "Warming up", icon: UserCheck, className: "text-brand-blue" },
+  in_play: { label: "In play", icon: CircleDot, className: "text-brand-blue" },
+  blocked: { label: "Blocked", icon: Ban, className: "text-destructive" },
+}
+
+const VIEWS = [
+  { value: "tables", label: "Tables" },
+  { value: "desk", label: "Check-in desk" },
+  { value: "log", label: "Log" },
+] as const
+type View = (typeof VIEWS)[number]["value"]
 
 const matchPath = (tournamentId: string, row: { event_id: string; match_id: string }) => `/tournaments/${tournamentId}/events/${row.event_id}/matches/${row.match_id}`
 
@@ -37,13 +77,16 @@ function Sides({ a, b }: { a: string; b: string }) {
 }
 
 /**
- * The dispatch board for a tournament's competition staff (REQ-014): every table, the queue of matches
- * in its fixed order, and what keeps each held-up match from a table. A match shown next to a free
- * table is a suggestion; Send asks the server, which checks everything again and may refuse.
+ * The match-day control centre for a tournament's competition staff (REQ-043, built on the REQ-014
+ * dispatch board): every table and its state, calls and who has reported, players flagged after the
+ * grace period, the queue in its fixed order, the check-in desk and the match-day log. A match shown
+ * next to a free table is a suggestion; Send asks the server, which checks everything again.
  */
 export function DispatchBoardPage() {
   const { id = "" } = useParams()
   useLiveTournament(id)
+  const [params, setParams] = useSearchParams()
+  const view: View = VIEWS.some((v) => v.value === params.get("view")) ? (params.get("view") as View) : "tables"
   const queryClient = useQueryClient()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const board = useQuery({ queryKey: reservationKeys.board(id), queryFn: () => getBoard(id), refetchInterval: LOOK_EVERY, staleTime: 0 })
@@ -74,18 +117,39 @@ export function DispatchBoardPage() {
   const byId = new Map(data?.queue.map((row) => [row.match_id, row]))
 
   return (
-    <div className="flex max-w-[900px] flex-col gap-6">
-      <BackLink to={`/tournaments/${id}`}>{t?.name ?? "Tournament"}</BackLink>
+    <div className="flex max-w-[1100px] flex-col gap-6">
+      <BackLink to={`/tournaments/${id}/dashboard`}>{t?.name ?? "Tournament"}</BackLink>
       <header className="flex flex-col gap-1">
-        <h1 className="text-[32px] leading-9 font-bold">Tables</h1>
-        <p className="text-muted-foreground">Which match is on which table, which goes out next, and what the others are waiting for.</p>
+        <h1 className="text-[32px] leading-9 font-bold">Control centre</h1>
+        <p className="text-muted-foreground">Every table and its match, who has been called and has reported, what goes out next, the check-in desk and a log of every action.</p>
       </header>
+      <div role="tablist" aria-label="Control centre" className="flex gap-1 overflow-x-auto border-b">
+        {VIEWS.map((v) => (
+          <button
+            key={v.value}
+            role="tab"
+            type="button"
+            aria-selected={view === v.value}
+            onClick={() => setParams(v.value === "tables" ? {} : { view: v.value }, { replace: true })}
+            className={cn(
+              "-mb-px min-h-12 shrink-0 border-b-2 px-4 font-semibold whitespace-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              view === v.value ? "border-brand-blue text-brand-blue" : "border-transparent text-muted-foreground"
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+      {view === "desk" && t && <CheckInDesk tournamentId={id} timeZone={t.timezone} />}
+      {view === "log" && t && <MatchDayLog tournamentId={id} timeZone={t.timezone} />}
       {(board.isPending || (tournament.isPending && !board.isError)) && <p className="text-muted-foreground">Loading…</p>}
       {tournament.isError && !refused && <FormAlert>{errorMessage(tournament.error, "We couldn't load this tournament.")}</FormAlert>}
       {refused && <AccessLost />}
       {board.isError && !refused && <FormAlert>{errorMessage(board.error, "We couldn't load the tables.")}</FormAlert>}
-      {data && t && (
+      {view === "tables" && data && t && (
         <>
+          <Summary tables={data.tables} />
+          <NoShows tournamentId={id} tables={data.tables} />
           {!data.in_play && <FormAlert>This tournament isn't under way, so no match can go to a table.</FormAlert>}
           <Toggle
             checked={automatic}
@@ -106,9 +170,16 @@ export function DispatchBoardPage() {
             {data.tables.length === 0 ? (
               <p className="text-muted-foreground">This tournament's venue has no tables in use. Add them under Club, Venues.</p>
             ) : (
-              <ul className="grid gap-3 sm:grid-cols-2">
+              <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {data.tables.map((table) => (
-                  <TableCard key={table.id} tournamentId={id} table={table} next={table.suggested_match_id ? byId.get(table.suggested_match_id) : undefined} timeZone={t.timezone} />
+                  <TableCard
+                    key={table.id}
+                    tournamentId={id}
+                    table={table}
+                    freeTables={data.tables.filter((other) => other.state === "free")}
+                    next={table.suggested_match_id ? byId.get(table.suggested_match_id) : undefined}
+                    timeZone={t.timezone}
+                  />
                 ))}
               </ul>
             )}
@@ -138,7 +209,7 @@ export function DispatchBoardPage() {
   )
 }
 
-function TableCard({ tournamentId, table, next, timeZone }: { tournamentId: string; table: BoardTable; next?: QueuedMatch; timeZone: string }) {
+function TableCard({ tournamentId, table, freeTables, next, timeZone }: { tournamentId: string; table: BoardTable; freeTables: BoardTable[]; next?: QueuedMatch; timeZone: string }) {
   const queryClient = useQueryClient()
   const [sentFor, setSentFor] = useState("")
   const send = useMutation({
@@ -151,35 +222,30 @@ function TableCard({ tournamentId, table, next, timeZone }: { tournamentId: stri
       void queryClient.invalidateQueries({ queryKey: scoringKeys.overview(tournamentId) })
     },
   })
+  const state = TABLE_STATE[table.state]
+  const Icon = state.icon
   const playing = table.playing
   return (
-    <li className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+    <li className={cn("flex flex-col gap-2 rounded-xl border bg-card p-4", table.call?.no_show.length ? "border-warning" : "")}>
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-lg font-bold">{table.label}</h3>
-        {table.free ? (
-          <span className="flex items-center gap-1 text-sm font-semibold text-success">
-            <CircleCheck aria-hidden className="size-5" /> Free
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 text-sm font-semibold text-brand-blue">
-            <CircleDot aria-hidden className="size-5" /> In use
-          </span>
-        )}
+        <span className={`flex items-center gap-1 text-sm font-semibold ${state.className}`}>
+          <Icon aria-hidden className="size-5" /> {state.label}
+        </span>
       </div>
-      {playing && (
+      {table.block && (
         <>
-          <p className="text-sm font-semibold text-muted-foreground">{playing.event_name}</p>
-          <Sides a={playing.a} b={playing.b} />
           <p className="text-sm">
-            {playing.automatic ? "Sent automatically, on" : "On"} the table since {formatInstant(playing.since, timeZone)}. Held until the result is official.
+            {table.block.reason_label}
+            {table.block.note && `: ${table.block.note}`}. Since {formatInstant(table.block.since, timeZone)}
+            {table.block.by && `, by ${table.block.by}`}.
           </p>
-          <Link to={matchPath(tournamentId, playing)} className={buttonVariants({ variant: "outline", className: "self-start" })}>
-            Open the match
-          </Link>
+          <Unblock tournamentId={tournamentId} table={table} />
         </>
       )}
-      {!table.free && !playing && <p className="text-sm">Taken by {table.held_by}.</p>}
-      {table.free && next && (
+      {playing && <OnTable tournamentId={tournamentId} table={table} freeTables={freeTables} timeZone={timeZone} />}
+      {!table.free && !playing && !table.block && <p className="text-sm">Taken by {table.held_by}.</p>}
+      {table.state === "free" && next && (
         <>
           <p className="text-sm font-semibold text-muted-foreground">
             Next: {next.event_name} · {next.label}
@@ -191,8 +257,335 @@ function TableCard({ tournamentId, table, next, timeZone }: { tournamentId: stri
         </>
       )}
       {send.isError && sentFor === next?.match_id && <FormAlert>Not sent: {errorMessage(send.error)}</FormAlert>}
-      {table.free && !next && <p className="text-sm text-muted-foreground">{table.idle_reason}</p>}
+      {table.state === "free" && !next && <p className="text-sm text-muted-foreground">{table.idle_reason}</p>}
+      {table.state === "free" && <Block tournamentId={tournamentId} table={table} />}
     </li>
+  )
+}
+
+/** Counts of tables in each state, at a glance. */
+function Summary({ tables }: { tables: BoardTable[] }) {
+  return (
+    <ul className="flex flex-wrap gap-2" aria-label="Tables by state">
+      {(Object.keys(TABLE_STATE) as BoardTable["state"][]).map((key) => {
+        const shown = TABLE_STATE[key]
+        const n = tables.filter((table) => table.state === key).length
+        return (
+          <li key={key} className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-semibold">
+            <shown.icon aria-hidden className={`size-4 ${shown.className}`} /> {shown.label} <span className="tabular-nums">{n}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** Called players who haven't reported within the grace period: only the referee awards a walkover. */
+function NoShows({ tournamentId, tables }: { tournamentId: string; tables: BoardTable[] }) {
+  const flagged = tables.filter((table) => table.playing && table.call && table.call.no_show.length > 0)
+  if (flagged.length === 0) return null
+  return (
+    <section aria-labelledby="no-shows" className="flex flex-col gap-2 rounded-xl border border-warning bg-card p-4">
+      <h2 id="no-shows" className="flex items-center gap-2 text-lg font-bold">
+        <TriangleAlert aria-hidden className="size-5 text-warning" /> Not at the table after the grace period
+      </h2>
+      <ul className="flex flex-col gap-1">
+        {flagged.map((table) => {
+          const playing = table.playing!
+          const names = table.call!.no_show.map((side) => (side === "a" ? playing.a : playing.b)).join(" and ")
+          return (
+            <li key={table.id}>
+              {table.label}: {names}.{" "}
+              <Link to={matchPath(tournamentId, playing)} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
+                Open the match
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="text-sm text-muted-foreground">Call them again, or ask the referee: only the referee can award a walkover.</p>
+    </section>
+  )
+}
+
+/** The match on a table: who has reported, its call, umpire and score, and the actions staff take. */
+function OnTable({ tournamentId, table, freeTables, timeZone }: { tournamentId: string; table: BoardTable; freeTables: BoardTable[]; timeZone: string }) {
+  const queryClient = useQueryClient()
+  const playing = table.playing!
+  const call = table.call
+  const [mode, setMode] = useState<"" | "move" | "recall">("")
+  const [target, setTarget] = useState("")
+  const [reason, setReason] = useState("")
+  const fresh = (board: Board) => {
+    queryClient.setQueryData(reservationKeys.board(tournamentId), board)
+    void queryClient.invalidateQueries({ queryKey: controlKeys.log(tournamentId) })
+    void queryClient.invalidateQueries({ queryKey: drawKeys.match(playing.match_id) })
+  }
+  const report = useMutation({ mutationFn: ({ side, undo }: { side: "a" | "b"; undo: boolean }) => reportSide(tournamentId, playing.event_id, playing.match_id, side, undo), onSuccess: fresh })
+  const again = useMutation({ mutationFn: () => callAgain(tournamentId, playing.event_id, playing.match_id), onSuccess: fresh })
+  const move = useMutation({
+    mutationFn: () => moveMatch(tournamentId, playing.event_id, playing.match_id, target, reason.trim()),
+    onSuccess: (board) => {
+      fresh(board)
+      setMode("")
+      setReason("")
+    },
+  })
+  const recall = useMutation({
+    mutationFn: () => recallMatch(tournamentId, playing.event_id, playing.match_id, reason.trim()),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: reservationKeys.board(tournamentId) })
+      void queryClient.invalidateQueries({ queryKey: controlKeys.log(tournamentId) })
+      setMode("")
+      setReason("")
+    },
+  })
+  const failed = report.error ?? again.error
+  const inPlay = table.state === "in_play"
+  return (
+    <>
+      <p className="text-sm font-semibold text-muted-foreground">{playing.event_name}</p>
+      <Sides a={playing.a} b={playing.b} />
+      {table.score && (
+        <p className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 font-display text-xl tabular-nums" aria-label="Live score">
+          <span>
+            {table.score.games_won[0]} <span className="text-base text-muted-foreground">({table.score.points[0]})</span>
+          </span>
+          <span className="text-sm font-normal text-muted-foreground">{table.score.rubber ? `Rubber ${table.score.rubber}` : "games"}</span>
+          <span className="text-right">
+            <span className="text-base text-muted-foreground">({table.score.points[1]})</span> {table.score.games_won[1]}
+          </span>
+        </p>
+      )}
+      {table.score?.rubbers_won && (
+        <p className="text-sm text-muted-foreground">
+          Rubbers {table.score.rubbers_won[0]}–{table.score.rubbers_won[1]}
+        </p>
+      )}
+      <p className="text-sm">{table.umpire ? `Umpire: ${table.umpire}.` : "No umpire yet: choose one on the match page."}</p>
+      {call && !inPlay && (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Called {formatInstant(call.called_at, timeZone)}
+            {call.calls > 1 && `, ${call.calls} times`}. Grace until {formatInstant(call.grace_until, timeZone)}.
+          </p>
+          <div role="group" aria-label="At the table" className="grid grid-cols-2 gap-2">
+            {(["a", "b"] as const).map((side) => {
+              const at = side === "a" ? call.a_reported_at : call.b_reported_at
+              const late = call.no_show.includes(side)
+              return (
+                <button
+                  key={side}
+                  type="button"
+                  aria-pressed={!!at}
+                  disabled={report.isPending}
+                  onClick={() => report.mutate({ side, undo: !!at })}
+                  className={cn(
+                    "flex min-h-12 min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    side === "b" && "flex-row-reverse text-right",
+                    at ? "border-success text-success" : late ? "border-warning text-warning" : "text-muted-foreground"
+                  )}
+                >
+                  {at ? <UserCheck aria-hidden className="size-5 shrink-0" /> : late ? <TriangleAlert aria-hidden className="size-5 shrink-0" /> : <Hourglass aria-hidden className="size-5 shrink-0" />}
+                  <span className="min-w-0 break-words">{at ? `${side === "a" ? playing.a : playing.b} is here` : `${side === "a" ? playing.a : playing.b}: not yet`}</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+      {failed && <FormAlert>{errorMessage(failed)}</FormAlert>}
+      <div className="flex flex-wrap gap-2">
+        <Link to={matchPath(tournamentId, playing)} className={buttonVariants({ variant: "outline" })}>
+          Open the match
+        </Link>
+        {!inPlay && (
+          <Button variant="outline" disabled={again.isPending} onClick={() => again.mutate()}>
+            {again.isPending ? "Calling…" : "Call again"}
+          </Button>
+        )}
+        <Button variant="ghost" onClick={() => setMode(mode === "move" ? "" : "move")} aria-expanded={mode === "move"}>
+          Move
+        </Button>
+        <Button variant="ghost" onClick={() => setMode(mode === "recall" ? "" : "recall")} aria-expanded={mode === "recall"}>
+          Take off
+        </Button>
+      </div>
+      {mode !== "" && (
+        <form
+          className="flex flex-col gap-3 rounded-lg border p-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (mode === "move") move.mutate()
+            else recall.mutate()
+          }}
+        >
+          {mode === "move" &&
+            (freeTables.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No table is free to move to.</p>
+            ) : (
+              <SelectField label="Move to" value={target} onChange={setTarget} options={[{ value: "", label: "Choose a table" }, ...freeTables.map((free) => ({ value: free.id, label: free.label }))]} />
+            ))}
+          <Field label={mode === "move" ? "Why move it?" : "Why take it off?"} required maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} hint="Kept in the match-day log." />
+          {(move.error ?? recall.error) && <FormAlert>{errorMessage(move.error ?? recall.error)}</FormAlert>}
+          <Button type="submit" className="self-start" disabled={!reason.trim() || (mode === "move" && !target) || move.isPending || recall.isPending}>
+            {mode === "move" ? "Move the match" : "Take it off the table"}
+          </Button>
+        </form>
+      )}
+    </>
+  )
+}
+
+function Block({ tournamentId, table }: { tournamentId: string; table: BoardTable }) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState<TableBlockReason>("out_of_service")
+  const [note, setNote] = useState("")
+  const block = useMutation({
+    mutationFn: () => blockTable(tournamentId, table.id, reason, note.trim()),
+    onSuccess: (board) => {
+      queryClient.setQueryData(reservationKeys.board(tournamentId), board)
+      void queryClient.invalidateQueries({ queryKey: controlKeys.log(tournamentId) })
+      setOpen(false)
+      setNote("")
+    },
+  })
+  if (!open)
+    return (
+      <Button variant="ghost" className="self-start" onClick={() => setOpen(true)}>
+        Block this table
+      </Button>
+    )
+  return (
+    <form
+      className="flex flex-col gap-3 rounded-lg border p-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        block.mutate()
+      }}
+    >
+      <SelectField label="Why" value={reason} onChange={(value) => setReason(value as TableBlockReason)} options={TABLE_BLOCK_REASONS} />
+      <Field label="Note" optional maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+      {block.isError && <FormAlert>{errorMessage(block.error)}</FormAlert>}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={block.isPending}>
+          Block {table.label}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function Unblock({ tournamentId, table }: { tournamentId: string; table: BoardTable }) {
+  const queryClient = useQueryClient()
+  const unblock = useMutation({
+    mutationFn: () => unblockTable(tournamentId, table.id),
+    onSuccess: (board) => {
+      queryClient.setQueryData(reservationKeys.board(tournamentId), board)
+      void queryClient.invalidateQueries({ queryKey: controlKeys.log(tournamentId) })
+    },
+  })
+  return (
+    <>
+      <Button variant="outline" className="self-start" disabled={unblock.isPending} onClick={() => unblock.mutate()}>
+        Put back in use
+      </Button>
+      {unblock.isError && <FormAlert>{errorMessage(unblock.error)}</FormAlert>}
+    </>
+  )
+}
+
+/** The check-in desk: who still has to arrive, and checking them in or undoing it. */
+function CheckInDesk({ tournamentId, timeZone }: { tournamentId: string; timeZone: string }) {
+  const [search, setSearch] = useState("")
+  const desk = useQuery({ queryKey: controlKeys.desk(tournamentId), queryFn: () => getDesk(tournamentId) })
+  if (desk.isPending) return <p className="text-muted-foreground">Loading…</p>
+  if (desk.isError) return <FormAlert>{errorMessage(desk.error, "We couldn't load the check-in desk.")}</FormAlert>
+  const wanted = search.trim().toLowerCase()
+  const rows = desk.data.filter((row) => !wanted || row.title.toLowerCase().includes(wanted) || row.event_name.toLowerCase().includes(wanted))
+  const waiting = desk.data.filter((row) => !row.checked_in_at).length
+  return (
+    <section aria-labelledby="desk-heading" className="flex flex-col gap-3">
+      <h2 id="desk-heading" className="text-2xl font-bold">
+        Check-in desk
+      </h2>
+      <p className="text-muted-foreground">
+        {waiting === 0 ? "Everybody has checked in." : `${waiting} still to check in, of ${desk.data.length}.`} Players can also check themselves in on the tournament's days.
+      </p>
+      <Field label="Find a player, team or event" value={search} onChange={(e) => setSearch(e.target.value)} />
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground">Nobody matches.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {rows.map((row) => (
+            <DeskRow key={row.id} tournamentId={tournamentId} row={row} timeZone={timeZone} />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function DeskRow({ tournamentId, row, timeZone }: { tournamentId: string; row: DeskEntry; timeZone: string }) {
+  const queryClient = useQueryClient()
+  const change = useMutation({
+    mutationFn: () => changeEntry(tournamentId, row.event_id, row.id, row.checked_in_at ? "undo-check-in" : "check-in"),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: controlKeys.desk(tournamentId) })
+      void queryClient.invalidateQueries({ queryKey: controlKeys.log(tournamentId) })
+      void queryClient.invalidateQueries({ queryKey: reservationKeys.board(tournamentId) })
+    },
+  })
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
+      <div className="flex min-w-0 flex-col">
+        <span className="font-semibold break-words">{row.title}</span>
+        <span className="text-sm text-muted-foreground">
+          {row.event_name}
+          {row.checked_in_at && ` · checked in ${formatInstant(row.checked_in_at, timeZone)}${row.checked_in_by ? ` by ${row.checked_in_by}` : ""}`}
+        </span>
+        {change.isError && <span className="text-sm text-destructive">{errorMessage(change.error)}</span>}
+      </div>
+      <Button variant={row.checked_in_at ? "ghost" : "default"} disabled={change.isPending} onClick={() => change.mutate()}>
+        {row.checked_in_at ? "Undo check-in" : "Check in"}
+      </Button>
+    </li>
+  )
+}
+
+/** Every match-day action, newest first, with who did it and why. */
+function MatchDayLog({ tournamentId, timeZone }: { tournamentId: string; timeZone: string }) {
+  const log = useQuery({ queryKey: controlKeys.log(tournamentId), queryFn: () => getMatchDayLog(tournamentId) })
+  if (log.isPending) return <p className="text-muted-foreground">Loading…</p>
+  if (log.isError) return <FormAlert>{errorMessage(log.error, "We couldn't load the log.")}</FormAlert>
+  return (
+    <section aria-labelledby="log-heading" className="flex flex-col gap-3">
+      <h2 id="log-heading" className="text-2xl font-bold">
+        Match-day log
+      </h2>
+      <p className="text-muted-foreground">Calls, moves, players reporting, check-ins, umpires, blocked tables and results, newest first. The latest 200.</p>
+      {log.data.length === 0 ? (
+        <p className="text-muted-foreground">Nothing has happened yet.</p>
+      ) : (
+        <ol className="flex flex-col gap-2">
+          {log.data.map((entry) => (
+            <li key={entry.id} className="flex flex-col gap-0.5 rounded-xl border bg-card p-3">
+              <span className="text-sm text-muted-foreground">
+                {formatInstant(entry.at, timeZone)} · {entry.actor || "Automatic"}
+              </span>
+              <span>
+                <span className="font-semibold">{entry.action_label}</span>: {entry.summary}
+              </span>
+              {entry.reason && <span className="text-sm">Reason: {entry.reason}</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   )
 }
 

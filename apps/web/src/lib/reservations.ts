@@ -38,3 +38,33 @@ export const OVERRIDE_LABEL: Record<Override, string> = {
   check_in: "Send it anyway: the players are here but weren't checked in",
   rest: "Send it anyway: the players agree to play without the full rest",
 }
+
+// The match-day control centre (REQ-043).
+export type TableBlockReason = Schemas["TableBlockReasonEnum"]
+export type DeskEntry = Schemas["DeskEntry"]
+export type MatchDayLogEntry = Schemas["MatchDayLog"]
+
+export const controlKeys = {
+  desk: (tournamentId: string) => ["control", "desk", tournamentId] as const,
+  log: (tournamentId: string) => ["control", "log", tournamentId] as const,
+}
+
+export const TABLE_BLOCK_REASONS: { value: TableBlockReason; label: string }[] = [
+  { value: "out_of_service", label: "Out of service" },
+  { value: "cleaning", label: "Being cleaned or set up" },
+  { value: "reserved", label: "Kept free on purpose" },
+  { value: "other", label: "Other" },
+]
+
+/** Call the match on a table again; only the sides not yet at the table are told. */
+export const callAgain = (tournamentId: string, eventId: string, matchId: string) => api<Board>(`${match(tournamentId, eventId, matchId)}call/`, { body: {} })
+/** A called side is at the table, or with `undo` isn't. */
+export const reportSide = (tournamentId: string, eventId: string, matchId: string, side: "a" | "b", undo = false) => api<Board>(`${match(tournamentId, eventId, matchId)}report/`, { body: { side, undo } })
+/** Move a match on a table to another free table, with a reason. */
+export const moveMatch = (tournamentId: string, eventId: string, matchId: string, tableId: string, reason: string) => api<Board>(`${match(tournamentId, eventId, matchId)}move/`, { body: { table_id: tableId, reason } })
+export const blockTable = (tournamentId: string, tableId: string, reason: TableBlockReason, note: string) => api<Board>(`/tournaments/${tournamentId}/tables/${tableId}/block/`, { body: { reason, note } })
+export const unblockTable = (tournamentId: string, tableId: string) => api<Board>(`/tournaments/${tournamentId}/tables/${tableId}/unblock/`, { body: {} })
+/** Accepted entries of events still to play, those not checked in first. */
+export const getDesk = (tournamentId: string) => api<DeskEntry[]>(`/tournaments/${tournamentId}/check-in-desk/`)
+/** The latest 200 match-day log entries, newest first. */
+export const getMatchDayLog = (tournamentId: string) => api<MatchDayLogEntry[]>(`/tournaments/${tournamentId}/match-day-log/`)

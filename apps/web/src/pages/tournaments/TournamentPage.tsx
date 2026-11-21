@@ -413,7 +413,7 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
       )}
       {t.status === "in_progress" && (
         <Link to={`/tournaments/${t.id}/dispatch`} className={buttonVariants({ className: "self-start" })}>
-          Tables: send the next matches out
+          Control centre: tables, calls and check-in
         </Link>
       )}
       {t.events.some((event) => event.paused_at) && (

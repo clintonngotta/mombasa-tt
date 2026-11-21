@@ -12607,6 +12607,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/check-in-desk/:
+    get:
+      operationId: tournaments_check_in_desk_list
+      description: |-
+        The check-in desk: accepted entries of events still to play, those not checked in first.
+        Checking in and undoing it use the entry's own check-in routes.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeskEntry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/corrections/:
     get:
       operationId: tournaments_corrections_list
@@ -13581,6 +13613,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/call/:
+    post:
+      operationId: tournaments_events_matches_call_create
+      description: |-
+        Call the match on a table again: the players of each side not yet at the table are told once
+        more. The grace period still runs from the first call.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg:
     get:
       operationId: tournaments_events_matches_card.svg_retrieve
@@ -13762,6 +13836,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/move/:
+    post:
+      operationId: tournaments_events_matches_move_create
+      description: |-
+        Move a match on a table to another free table, with a reason. Its call and who has reported
+        go with it; the new table is checked as any dispatch is.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recall/:
     post:
       operationId: tournaments_events_matches_recall_create
@@ -13845,6 +13967,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Recap'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/report/:
+    post:
+      operationId: tournaments_events_matches_report_create
+      description: A called side is at the table, or with `undo` isn't. Once both
+        are, the table is warming up.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArrivalRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
           description: ''
         4XX:
           description: Error envelope
@@ -14256,6 +14425,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/match-day-log/:
+    get:
+      operationId: tournaments_match_day_log_list
+      description: 'The match-day log, newest first (the latest 200): who did what,
+        when and why.'
+      parameters:
+      - in: query
+        name: match
+        schema:
+          type: string
+        description: Only this match's.
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MatchDayLog'
           description: ''
         4XX:
           description: Error envelope
@@ -15121,6 +15326,81 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/tables/{table_pk}/block/:
+    post:
+      operationId: tournaments_tables_block_create
+      description: Take a free table out of use, with a reason. Nothing is sent to
+        it until it is unblocked.
+      parameters:
+      - in: path
+        name: table_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/tables/{table_pk}/unblock/:
+    post:
+      operationId: tournaments_tables_unblock_create
+      description: Put a blocked table back in use.
+      parameters:
+      - in: path
+        name: table_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/awaiting-approval/:
     get:
       operationId: tournaments_awaiting_approval_list
@@ -15591,6 +15871,16 @@ components:
           maximum: 10000000
           minimum: 0
           nullable: true
+    ArrivalRequest:
+      type: object
+      properties:
+        side:
+          $ref: '#/components/schemas/SideEnum'
+        undo:
+          type: boolean
+          default: false
+      required:
+      - side
     Article:
       type: object
       properties:
@@ -16053,6 +16343,17 @@ components:
     BlankEnum:
       enum:
       - ''
+    BlockRequest:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/TableBlockReasonEnum'
+        note:
+          type: string
+          default: ''
+          maxLength: 200
+      required:
+      - reason
     Board:
       type: object
       description: |-
@@ -16099,6 +16400,31 @@ components:
           type: string
           format: date-time
           nullable: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/BoardTableStateEnum'
+          description: |-
+            called: sent and waiting for a side; warming_up: both sides at the table, no point yet; in_play: scoring has started (or another tournament's match holds it); blocked: out of use.
+
+            * `free` - free
+            * `called` - called
+            * `warming_up` - warming_up
+            * `in_play` - in_play
+            * `blocked` - blocked
+        block:
+          allOf:
+          - $ref: '#/components/schemas/TableBlock'
+          nullable: true
+        call:
+          allOf:
+          - $ref: '#/components/schemas/MatchCallState'
+          nullable: true
+        umpire:
+          type: string
+        score:
+          allOf:
+          - $ref: '#/components/schemas/LiveScore'
+          nullable: true
         playing:
           allOf:
           - $ref: '#/components/schemas/Reservation'
@@ -16112,14 +16438,33 @@ components:
           type: string
           description: Why a free table has no match.
       required:
+      - block
+      - call
       - free
       - held_by
       - id
       - idle_reason
       - label
       - playing
+      - score
       - since
+      - state
       - suggested_match_id
+      - umpire
+    BoardTableStateEnum:
+      enum:
+      - free
+      - called
+      - warming_up
+      - in_play
+      - blocked
+      type: string
+      description: |-
+        * `free` - free
+        * `called` - called
+        * `warming_up` - warming_up
+        * `in_play` - in_play
+        * `blocked` - blocked
     Booking:
       type: object
       properties:
@@ -18152,6 +18497,33 @@ components:
         * `short` - short
         * `half` - half
         * `long` - long
+    DeskEntry:
+      type: object
+      description: An accepted entry at the check-in desk.
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        title:
+          type: string
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        checked_in_by:
+          type: string
+      required:
+      - checked_in_at
+      - checked_in_by
+      - event_id
+      - event_name
+      - id
+      - title
     Device:
       type: object
       description: Which device is scoring the sheet. `here` compares with the caller's
@@ -18868,6 +19240,13 @@ components:
           type: integer
           maximum: 240
           minimum: 0
+        call_grace_minutes:
+          type: integer
+          maximum: 60
+          minimum: 1
+          description: Minutes a called player has to report at the table before the
+            control centre flags them as a no-show (REQ-043). Only the referee then
+            awards a walkover.
         registration_opens_at:
           type: string
           format: date-time
@@ -18945,6 +19324,7 @@ components:
       - accepted_count
       - admission
       - best_of
+      - call_grace_minutes
       - cancel_reason
       - cancelled_at
       - capacity
@@ -19063,6 +19443,13 @@ components:
           type: integer
           maximum: 240
           minimum: 0
+        call_grace_minutes:
+          type: integer
+          maximum: 60
+          minimum: 1
+          description: Minutes a called player has to report at the table before the
+            control centre flags them as a no-show (REQ-043). Only the referee then
+            awards a walkover.
         registration_opens_at:
           type: string
           format: date-time
@@ -20604,6 +20991,30 @@ components:
         * `postponed` - postponed
         * `cancelled` - cancelled
         * `completed` - completed
+    LiveScore:
+      type: object
+      properties:
+        games_won:
+          type: array
+          items:
+            type: integer
+        points:
+          type: array
+          items:
+            type: integer
+        rubber:
+          type: integer
+          nullable: true
+          description: The rubber being played, for a tie.
+        rubbers_won:
+          type: array
+          items:
+            type: integer
+      required:
+      - games_won
+      - points
+      - rubber
+      - rubbers_won
     LiveStream:
       type: object
       properties:
@@ -20806,6 +21217,45 @@ components:
       - table
       - tie_score
       - winner_id
+    MatchCallState:
+      type: object
+      description: Where the call of the match on a table stands (REQ-043).
+      properties:
+        called_at:
+          type: string
+          format: date-time
+          description: First call; the grace period runs from it.
+        calls:
+          type: integer
+          description: How many times it was called to this table.
+        last_called_at:
+          type: string
+          format: date-time
+        grace_until:
+          type: string
+          format: date-time
+        a_reported_at:
+          type: string
+          format: date-time
+          nullable: true
+        b_reported_at:
+          type: string
+          format: date-time
+          nullable: true
+        no_show:
+          type: array
+          items:
+            $ref: '#/components/schemas/SideEnum'
+          description: Sides not at the table when the grace period ran out. Only
+            the referee awards a walkover for it.
+      required:
+      - a_reported_at
+      - b_reported_at
+      - called_at
+      - calls
+      - grace_until
+      - last_called_at
+      - no_show
     MatchCounts:
       type: object
       properties:
@@ -20824,6 +21274,42 @@ components:
       - on_table
       - ready
       - total
+    MatchDayLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        at:
+          type: string
+          format: date-time
+        action:
+          type: string
+        action_label:
+          type: string
+        summary:
+          type: string
+        reason:
+          type: string
+        actor:
+          type: string
+          description: Empty for automatic dispatch.
+        match_id:
+          type: string
+          format: uuid
+          nullable: true
+        table:
+          type: string
+      required:
+      - action
+      - action_label
+      - actor
+      - at
+      - id
+      - match_id
+      - reason
+      - summary
+      - table
     MatchDetail:
       type: object
       description: One match of the published draw on its own page. Reading it gives
@@ -20933,6 +21419,10 @@ components:
         can_record_result:
           type: boolean
           description: The caller may enter or correct its result.
+        can_award_walkover:
+          type: boolean
+          description: 'The caller is the referee: they may also award or change a
+            walkover or a disqualification.'
         held_for_correction:
           type: boolean
           description: A corrected earlier result put its opponent in question; nothing
@@ -20940,6 +21430,7 @@ components:
       required:
       - a
       - b
+      - can_award_walkover
       - can_dispatch
       - can_record_result
       - dispatched_at
@@ -21615,6 +22106,19 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    MoveRequest:
+      type: object
+      properties:
+        table_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
+      - table_id
     MyClaim:
       type: object
       description: 'What came of accepting: merged, or waiting for the club to sort
@@ -24144,6 +24648,13 @@ components:
           type: integer
           maximum: 240
           minimum: 0
+        call_grace_minutes:
+          type: integer
+          maximum: 60
+          minimum: 1
+          description: Minutes a called player has to report at the table before the
+            control centre flags them as a no-show (REQ-043). Only the referee then
+            awards a walkover.
         registration_opens_at:
           type: string
           format: date-time
@@ -25954,7 +26465,7 @@ components:
           type: string
           format: date-time
         state:
-          $ref: '#/components/schemas/StateEnum'
+          $ref: '#/components/schemas/QueuedMatchStateEnum'
         position:
           type: integer
           nullable: true
@@ -25983,6 +26494,16 @@ components:
       - state
       - suggested_table
       - suggested_table_id
+    QueuedMatchStateEnum:
+      enum:
+      - ready
+      - waiting
+      - blocked
+      type: string
+      description: |-
+        * `ready` - ready
+        * `waiting` - waiting
+        * `blocked` - blocked
     Ranking:
       type: object
       properties:
@@ -26858,6 +27379,12 @@ components:
           type: string
           format: uuid
           nullable: true
+        reason:
+          type: string
+          default: ''
+          description: 'Why, kept in the match-day log: for a walkover, a no-show
+            after the grace period, a withdrawal or an injury before the start (REQ-043).'
+          maxLength: 300
       required:
       - winner_entry_id
     ReverseVisitRequest:
@@ -28396,16 +28923,6 @@ components:
       - groups
       - placements
       - rules_version
-    StateEnum:
-      enum:
-      - ready
-      - waiting
-      - blocked
-      type: string
-      description: |-
-        * `ready` - ready
-        * `waiting` - waiting
-        * `blocked` - blocked
     StreamEvent:
       type: object
       properties:
@@ -28509,6 +29026,38 @@ components:
       - kind
       - label
       - position
+    TableBlock:
+      type: object
+      properties:
+        reason:
+          $ref: '#/components/schemas/TableBlockReasonEnum'
+        reason_label:
+          type: string
+        note:
+          type: string
+        since:
+          type: string
+          format: date-time
+        by:
+          type: string
+      required:
+      - by
+      - note
+      - reason
+      - reason_label
+      - since
+    TableBlockReasonEnum:
+      enum:
+      - out_of_service
+      - cleaning
+      - reserved
+      - other
+      type: string
+      description: |-
+        * `out_of_service` - Out of service
+        * `cleaning` - Being cleaned or set up
+        * `reserved` - Kept free on purpose
+        * `other` - Other
     TableBooking:
       type: object
       description: A table booking, as its requester and the venue's staff see it.

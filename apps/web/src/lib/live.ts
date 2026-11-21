@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { drawKeys } from "@/lib/draws"
-import { reservationKeys } from "@/lib/reservations"
+import { controlKeys, reservationKeys } from "@/lib/reservations"
 import { scoringKeys } from "@/lib/scoring"
 import { tournamentKeys } from "@/lib/tournaments"
 
@@ -33,7 +33,7 @@ export function useLiveTournament(tournamentId: string | undefined) {
       const stale: (readonly string[])[] = [scoringKeys.overview(tournamentId), tournamentKeys.detail(tournamentId), tournamentKeys.dashboard(tournamentId), [...drawKeys.all, "match"]]
       if (message.event) stale.push(drawKeys.event(message.event), drawKeys.standings(message.event))
       // A result frees its table and players on the dispatch board; "board" is a change to the board itself.
-      if (message.topic === "results" || message.topic === "board") stale.push(reservationKeys.board(tournamentId))
+      if (message.topic === "results" || message.topic === "board") stale.push(reservationKeys.board(tournamentId), controlKeys.desk(tournamentId), controlKeys.log(tournamentId))
       for (const queryKey of stale) void queryClient.invalidateQueries({ queryKey })
     }
 

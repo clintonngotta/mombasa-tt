@@ -49,7 +49,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - Organizer dashboard: one page per hosted tournament that links entries, draw, schedule, dispatch, scoring overview, corrections and ceremony, with counts. Replaces `HostedTournamentsPage`.
 - Tests: add every new route to `tests/test_privacy_matrix.py` with negative assertions (unpublished, private fields). Browser run of the signed-out journey and the admin journey.
 
-**TASK-082: match-day control centre (L)** `feat/control-centre`, after 2.0
+**TASK-082: match-day control centre (L)** `feat/control-centre`, after 2.0. Done 2026-11-22 (see tasks.md); walkovers are now the referee's alone. Choosing the umpire stays on the match page.
 - Table board states: free, called, warming up, in play, blocked with a reason. Built from reservations, scoring and delays.
 - Check-in desk view for the existing entry check-in and undo.
 - Call timestamps (a `MatchCall` model or fields), a grace period per event, and an automatic no-show flag. Only the referee then decides the walkover.

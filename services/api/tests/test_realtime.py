@@ -107,8 +107,11 @@ def test_a_result_tells_the_tournament_once_committed(
     with django_capture_on_commit_callbacks(execute=True):
         outbox.work()
     group = f"tournament.{game['cup']['id']}"
-    assert sent and all(g == group and m["topic"] == "results" for g, m in sent)
-    assert {m["event"] for _, m in sent} == {game["event"]["id"]}
+    results = [m for g, m in sent if m["topic"] == "results"]
+    # The results desk also writes the match-day log, which tells the control centre ("board").
+    assert results and {m["topic"] for _, m in sent} == {"results", "board"}
+    assert all(g == group for g, _ in sent)
+    assert {m["event"] for m in results} == {game["event"]["id"]}
 
 
 def test_a_broadcast_with_redis_down_does_not_fail_the_change(monkeypatch, caplog):

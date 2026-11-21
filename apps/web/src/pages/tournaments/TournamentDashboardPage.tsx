@@ -26,7 +26,7 @@ const CEREMONY_LABEL: Record<TournamentDashboard["ceremony"], string> = { none: 
 /** Every desk the dashboard links, so the top row and the event cards name and route each one the same way. */
 const DESK = {
   schedule: { path: "schedule-plan", label: "Schedule" },
-  tables: { path: "dispatch", label: "Tables" },
+  tables: { path: "dispatch", label: "Control centre" },
   scoring: { path: "scoring", label: "Scoring" },
   corrections: { path: "corrections", label: "Corrections" },
   ceremony: { path: "ceremony", label: "Ceremony" },

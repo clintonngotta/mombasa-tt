@@ -32,6 +32,7 @@ from .models import (
 BEST_OF = (3, 5, 7)
 MAX_CAPACITY = 512
 MAX_REST_MINUTES = 240
+MAX_GRACE_MINUTES = 60
 MAX_GROUPS = 64
 MAX_QUALIFIERS = 8
 
@@ -57,6 +58,13 @@ class EventSerializer(serializers.ModelSerializer):
     capacity = serializers.IntegerField(min_value=2, max_value=MAX_CAPACITY, allow_null=True, required=False)
     best_of = serializers.ChoiceField(choices=BEST_OF, required=False)
     rest_minutes = serializers.IntegerField(min_value=0, max_value=MAX_REST_MINUTES, required=False)
+    call_grace_minutes = serializers.IntegerField(
+        min_value=1,
+        max_value=MAX_GRACE_MINUTES,
+        required=False,
+        help_text="Minutes a called player has to report at the table before the control centre flags "
+        "them as a no-show (REQ-043). Only the referee then awards a walkover.",
+    )
     group_count = serializers.IntegerField(min_value=2, max_value=MAX_GROUPS, allow_null=True, required=False)
     qualifiers_per_group = serializers.IntegerField(
         min_value=1, max_value=MAX_QUALIFIERS, allow_null=True, required=False
@@ -87,6 +95,7 @@ class EventSerializer(serializers.ModelSerializer):
             "capacity",
             "best_of",
             "rest_minutes",
+            "call_grace_minutes",
             "registration_opens_at",
             "registration_closes_at",
             "admission",
@@ -674,6 +683,15 @@ class ResultEntrySerializer(serializers.Serializer):
         max_length=9,
     )
     rubber_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    reason = serializers.CharField(
+        max_length=300,
+        trim_whitespace=True,
+        allow_blank=True,
+        required=False,
+        default="",
+        help_text="Why, kept in the match-day log: for a walkover, a no-show after the grace period, a "
+        "withdrawal or an injury before the start (REQ-043).",
+    )
 
 
 class ResultCorrectionSerializer(ResultEntrySerializer):
@@ -727,6 +745,9 @@ class MatchDetailSerializer(MatchSerializer):
         many=True, help_text="Every version, of the match and of its rubbers. Competition staff only."
     )
     can_record_result = serializers.BooleanField(help_text="The caller may enter or correct its result.")
+    can_award_walkover = serializers.BooleanField(
+        help_text="The caller is the referee: they may also award or change a walkover or a disqualification."
+    )
     held_for_correction = serializers.BooleanField(
         help_text="A corrected earlier result put its opponent in question; nothing is played until settled."
     )

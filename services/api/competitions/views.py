@@ -19,7 +19,7 @@ from organizations.access import effective_permissions, managed_organizations, r
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
-from . import drawing, entries, lifecycle, official, ties
+from . import drawing, entries, lifecycle, matchday, official, ties
 from .emails import send_entry_news
 from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
@@ -151,13 +151,16 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     shown["result"] = standing
     shown["result_history"] = versions if staff else []
     closed = draw.event.is_closed or draw.event.tournament.is_closed
-    # The host's referee records results too, and only the referee changes a disqualification (D5).
+    # The host's referee records results too, and only the referee awards or changes a walkover or a
+    # disqualification (D5, REQ-043).
     referee = Permission.RESULTS_REFEREE in effective_permissions(
         request.user, draw.event.tournament.organization
     )
-    disqualified = standing is not None and standing["outcome"] == Match.Outcome.DISQUALIFIED
-    may_record = referee or (staff and not disqualified)
+    referees_only = (Match.Outcome.WALKOVER, Match.Outcome.DISQUALIFIED)
+    referee_decided = standing is not None and standing["outcome"] in referees_only
+    may_record = referee or (staff and not referee_decided)
     shown["can_record_result"] = may_record and not closed and draw.status == DrawVersion.Status.PUBLISHED
+    shown["can_award_walkover"] = shown["can_record_result"] and referee
     shown["held_for_correction"] = match.resolutions.filter(resolved_at__isnull=True).exists()
     held = (
         match.reservations.filter(status=Reservation.Status.ACTIVE)
@@ -691,20 +694,29 @@ class EntryViewSet(viewsets.GenericViewSet):
     @extend_schema(request=None, responses={200: EntrySerializer})
     def check_in(self, request, tournament_pk, event_pk, pk):
         """The entry has arrived. Independent of the fee, which this API doesn't record yet."""
-        return self._staff_change(
-            request,
-            tournament_pk,
-            event_pk,
-            pk,
-            lambda entry: entries.check_in(entry, request.user),
-            before_start=False,
-        )
+
+        def change(entry):
+            if entry.checked_in_at is None:
+                entries.check_in(entry, request.user)
+                matchday.log(
+                    tournament_pk, matchday.Action.CHECKED_IN, matchday.entry_title(entry), actor=request.user
+                )
+
+        return self._staff_change(request, tournament_pk, event_pk, pk, change, before_start=False)
 
     @extend_schema(request=None, responses={200: EntrySerializer})
     def undo_check_in(self, request, tournament_pk, event_pk, pk):
-        return self._staff_change(
-            request, tournament_pk, event_pk, pk, entries.undo_check_in, before_start=False
-        )
+        def change(entry):
+            if entry.checked_in_at is not None:
+                entries.undo_check_in(entry)
+                matchday.log(
+                    tournament_pk,
+                    matchday.Action.CHECK_IN_UNDONE,
+                    matchday.entry_title(entry),
+                    actor=request.user,
+                )
+
+        return self._staff_change(request, tournament_pk, event_pk, pk, change, before_start=False)
 
     @extend_schema(request=None, responses={200: EntrySerializer})
     def self_check_in(self, request, tournament_pk, event_pk, pk):

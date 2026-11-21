@@ -5265,6 +5265,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/check-in-desk/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The check-in desk: accepted entries of events still to play, those not checked in first.
+         *     Checking in and undoing it use the entry's own check-in routes.
+         */
+        get: operations["tournaments_check_in_desk_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/corrections/": {
         parameters: {
             query?: never;
@@ -5718,6 +5738,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/call/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Call the match on a table again: the players of each side not yet at the table are told once
+         *     more. The grace period still runs from the first call.
+         */
+        post: operations["tournaments_events_matches_call_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg": {
         parameters: {
             query?: never;
@@ -5795,6 +5835,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/move/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Move a match on a table to another free table, with a reason. Its call and who has reported
+         *     go with it; the new table is checked as any dispatch is.
+         */
+        post: operations["tournaments_events_matches_move_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/recall/": {
         parameters: {
             query?: never;
@@ -5826,6 +5886,23 @@ export interface paths {
         get: operations["tournaments_events_matches_recap_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A called side is at the table, or with `undo` isn't. Once both are, the table is warming up. */
+        post: operations["tournaments_events_matches_report_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6011,6 +6088,23 @@ export interface paths {
          *     tournament, so the caller always holds one consistent copy.
          */
         post: operations["tournaments_events_start_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/match-day-log/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The match-day log, newest first (the latest 200): who did what, when and why. */
+        get: operations["tournaments_match_day_log_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6403,6 +6497,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/tables/{table_pk}/block/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Take a free table out of use, with a reason. Nothing is sent to it until it is unblocked. */
+        post: operations["tournaments_tables_block_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/tables/{table_pk}/unblock/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Put a blocked table back in use. */
+        post: operations["tournaments_tables_unblock_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/awaiting-approval/": {
         parameters: {
             query?: never;
@@ -6624,6 +6752,11 @@ export interface components {
         ApproveTableBookingRequest: {
             fee_minor?: number | null;
         };
+        ArrivalRequest: {
+            side: components["schemas"]["SideEnum"];
+            /** @default false */
+            undo: boolean;
+        };
         Article: {
             /** Format: uuid */
             readonly id: string;
@@ -6827,6 +6960,11 @@ export interface components {
         BestOfEnum: 3 | 5 | 7;
         /** @enum {unknown} */
         BlankEnum: "";
+        BlockRequest: {
+            reason: components["schemas"]["TableBlockReasonEnum"];
+            /** @default  */
+            note: string;
+        };
         /**
          * @description The dispatch board: the tables, the queue in its fixed order and what is suggested. A suggestion
          *     is only that: sending it checks everything again.
@@ -6849,6 +6987,20 @@ export interface components {
             held_by: string;
             /** Format: date-time */
             since: string | null;
+            /**
+             * @description called: sent and waiting for a side; warming_up: both sides at the table, no point yet; in_play: scoring has started (or another tournament's match holds it); blocked: out of use.
+             *
+             *     * `free` - free
+             *     * `called` - called
+             *     * `warming_up` - warming_up
+             *     * `in_play` - in_play
+             *     * `blocked` - blocked
+             */
+            state: components["schemas"]["BoardTableStateEnum"];
+            block: components["schemas"]["TableBlock"] | null;
+            call: components["schemas"]["MatchCallState"] | null;
+            umpire: string;
+            score: components["schemas"]["LiveScore"] | null;
             /** @description This tournament's match on the table. */
             playing: components["schemas"]["Reservation"] | null;
             /** Format: uuid */
@@ -6856,6 +7008,15 @@ export interface components {
             /** @description Why a free table has no match. */
             idle_reason: string;
         };
+        /**
+         * @description * `free` - free
+         *     * `called` - called
+         *     * `warming_up` - warming_up
+         *     * `in_play` - in_play
+         *     * `blocked` - blocked
+         * @enum {string}
+         */
+        BoardTableStateEnum: "free" | "called" | "warming_up" | "in_play" | "blocked";
         Booking: {
             /** Format: uuid */
             readonly id: string;
@@ -7656,6 +7817,18 @@ export interface components {
          * @enum {string}
          */
         DepthEnum: "short" | "half" | "long";
+        /** @description An accepted entry at the check-in desk. */
+        DeskEntry: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            title: string;
+            /** Format: date-time */
+            checked_in_at: string | null;
+            checked_in_by: string;
+        };
         /** @description Which device is scoring the sheet. `here` compares with the caller's X-Device-Id header. */
         Device: {
             /** @description A device has taken the sheet. */
@@ -7932,6 +8105,8 @@ export interface components {
             capacity: number | null;
             best_of: components["schemas"]["BestOfEnum"];
             rest_minutes: number;
+            /** @description Minutes a called player has to report at the table before the control centre flags them as a no-show (REQ-043). Only the referee then awards a walkover. */
+            call_grace_minutes: number;
             /** Format: date-time */
             registration_opens_at: string | null;
             /** Format: date-time */
@@ -7999,6 +8174,8 @@ export interface components {
             capacity?: number | null;
             best_of?: components["schemas"]["BestOfEnum"];
             rest_minutes?: number;
+            /** @description Minutes a called player has to report at the table before the control centre flags them as a no-show (REQ-043). Only the referee then awards a walkover. */
+            call_grace_minutes?: number;
             /** Format: date-time */
             registration_opens_at?: string | null;
             /** Format: date-time */
@@ -8602,6 +8779,13 @@ export interface components {
          * @enum {string}
          */
         ListedEventStatusEnum: "scheduled" | "postponed" | "cancelled" | "completed";
+        LiveScore: {
+            games_won: number[];
+            points: number[];
+            /** @description The rubber being played, for a tie. */
+            rubber: number | null;
+            rubbers_won: number[];
+        };
         LiveStream: {
             /** Format: uuid */
             readonly id: string;
@@ -8675,6 +8859,26 @@ export interface components {
              */
             dispatched_at: string | null;
         };
+        /** @description Where the call of the match on a table stands (REQ-043). */
+        MatchCallState: {
+            /**
+             * Format: date-time
+             * @description First call; the grace period runs from it.
+             */
+            called_at: string;
+            /** @description How many times it was called to this table. */
+            calls: number;
+            /** Format: date-time */
+            last_called_at: string;
+            /** Format: date-time */
+            grace_until: string;
+            /** Format: date-time */
+            a_reported_at: string | null;
+            /** Format: date-time */
+            b_reported_at: string | null;
+            /** @description Sides not at the table when the grace period ran out. Only the referee awards a walkover for it. */
+            no_show: components["schemas"]["SideEnum"][];
+        };
         MatchCounts: {
             /** @description Matches of the published draw, byes left out. */
             total: number;
@@ -8682,6 +8886,21 @@ export interface components {
             on_table: number;
             /** @description Undecided, both sides known and not on a table. */
             ready: number;
+        };
+        MatchDayLog: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            at: string;
+            action: string;
+            action_label: string;
+            summary: string;
+            reason: string;
+            /** @description Empty for automatic dispatch. */
+            actor: string;
+            /** Format: uuid */
+            match_id: string | null;
+            table: string;
         };
         /** @description One match of the published draw on its own page. Reading it gives nobody a way to score it. */
         MatchDetail: {
@@ -8735,6 +8954,8 @@ export interface components {
             result_history: components["schemas"]["OfficialResult"][];
             /** @description The caller may enter or correct its result. */
             can_record_result: boolean;
+            /** @description The caller is the referee: they may also award or change a walkover or a disqualification. */
+            can_award_walkover: boolean;
             /** @description A corrected earlier result put its opponent in question; nothing is played until settled. */
             held_for_correction: boolean;
         };
@@ -9013,6 +9234,11 @@ export interface components {
             amount_minor: number;
             /** @default KES */
             currency: string;
+        };
+        MoveRequest: {
+            /** Format: uuid */
+            table_id: string;
+            reason: string;
         };
         /** @description What came of accepting: merged, or waiting for the club to sort out a clash. */
         MyClaim: {
@@ -10143,6 +10369,8 @@ export interface components {
             capacity?: number | null;
             best_of?: components["schemas"]["BestOfEnum"];
             rest_minutes?: number;
+            /** @description Minutes a called player has to report at the table before the control centre flags them as a no-show (REQ-043). Only the referee then awards a walkover. */
+            call_grace_minutes?: number;
             /** Format: date-time */
             registration_opens_at?: string | null;
             /** Format: date-time */
@@ -10905,7 +11133,7 @@ export interface components {
             planned_at: string | null;
             /** Format: date-time */
             ready_since: string;
-            state: components["schemas"]["StateEnum"];
+            state: components["schemas"]["QueuedMatchStateEnum"];
             /** @description Rank among matches playable now. */
             position: number | null;
             reasons: components["schemas"]["Reason"][];
@@ -10913,6 +11141,13 @@ export interface components {
             suggested_table_id: string | null;
             suggested_table: string;
         };
+        /**
+         * @description * `ready` - ready
+         *     * `waiting` - waiting
+         *     * `blocked` - blocked
+         * @enum {string}
+         */
+        QueuedMatchStateEnum: "ready" | "waiting" | "blocked";
         Ranking: {
             discipline: components["schemas"]["SinglesOrDoublesEnum"];
             scope: components["schemas"]["RankingScopeEnum"];
@@ -11296,6 +11531,11 @@ export interface components {
             games?: number[][];
             /** Format: uuid */
             rubber_id?: string | null;
+            /**
+             * @description Why, kept in the match-day log: for a walkover, a no-show after the grace period, a withdrawal or an injury before the start (REQ-043).
+             * @default
+             */
+            reason: string;
         };
         ReverseVisitRequest: {
             reason: string;
@@ -11909,13 +12149,6 @@ export interface components {
             groups: components["schemas"]["GroupStanding"][];
             placements: components["schemas"]["Placement"][];
         };
-        /**
-         * @description * `ready` - ready
-         *     * `waiting` - waiting
-         *     * `blocked` - blocked
-         * @enum {string}
-         */
-        StateEnum: "ready" | "waiting" | "blocked";
         StreamEvent: {
             sequence: number;
             event: unknown;
@@ -11964,6 +12197,22 @@ export interface components {
             readonly position: number;
             active: boolean;
         };
+        TableBlock: {
+            reason: components["schemas"]["TableBlockReasonEnum"];
+            reason_label: string;
+            note: string;
+            /** Format: date-time */
+            since: string;
+            by: string;
+        };
+        /**
+         * @description * `out_of_service` - Out of service
+         *     * `cleaning` - Being cleaned or set up
+         *     * `reserved` - Kept free on purpose
+         *     * `other` - Other
+         * @enum {string}
+         */
+        TableBlockReasonEnum: "out_of_service" | "cleaning" | "reserved" | "other";
         /** @description A table booking, as its requester and the venue's staff see it. */
         TableBooking: {
             /** Format: uuid */
@@ -24609,6 +24858,36 @@ export interface operations {
             };
         };
     };
+    tournaments_check_in_desk_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeskEntry"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_corrections_list: {
         parameters: {
             query?: never;
@@ -25426,6 +25705,38 @@ export interface operations {
             };
         };
     };
+    tournaments_events_matches_call_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     "tournaments_events_matches_card.svg_retrieve": {
         parameters: {
             query?: never;
@@ -25562,6 +25873,42 @@ export interface operations {
             };
         };
     };
+    tournaments_events_matches_move_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_events_matches_recall_create: {
         parameters: {
             query?: never;
@@ -25617,6 +25964,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Recap"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_matches_report_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArrivalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
                 };
             };
             /** @description Error envelope */
@@ -25950,6 +26333,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_match_day_log_list: {
+        parameters: {
+            query?: {
+                /** @description Only this match's. */
+                match?: string;
+            };
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchDayLog"][];
                 };
             };
             /** @description Error envelope */
@@ -26758,6 +27174,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TableState"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_tables_block_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                table_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlockRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_tables_unblock_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                table_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
                 };
             };
             /** @description Error envelope */

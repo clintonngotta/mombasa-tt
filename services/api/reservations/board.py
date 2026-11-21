@@ -22,8 +22,8 @@ from competitions import drawing
 from competitions.models import DrawVersion, Event, Match, Tournament
 from facilities.models import Table
 
-from . import service
-from .models import Hold, Reservation
+from . import control, service
+from .models import Hold, Reservation, TableBlock
 
 READY, WAITING, BLOCKED = "ready", "waiting", "blocked"
 logger = logging.getLogger(__name__)
@@ -105,8 +105,14 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
 
 
 def _free_tables(tournament: Tournament) -> list[Table]:
+    """Tables nothing holds and staff haven't blocked."""
     held = Hold.objects.filter(table__venue_id=tournament.venue_id, active=True).values("table_id")
-    return list(Table.objects.filter(venue_id=tournament.venue_id, active=True).exclude(id__in=held))
+    blocked = TableBlock.objects.filter(table__venue_id=tournament.venue_id, ended_at__isnull=True)
+    return list(
+        Table.objects.filter(venue_id=tournament.venue_id, active=True)
+        .exclude(id__in=held)
+        .exclude(id__in=blocked.values("table_id"))
+    )
 
 
 def _suggest(rows: list[Row], free: list[Table]) -> None:
@@ -200,16 +206,39 @@ def build(tournament: Tournament) -> dict:
     suggested = {row.table.id: row for row in rows if row.table}
     on_tables = {held.table_id: held for held in service.active_for(tournament)}
     idle = _idle(tournament, rows, to_come)
+    blocks = control.blocks_at(tournament.venue_id) if tournament.venue_id else {}
+    now = timezone.now()
     tables = []
     for state in service.tables_of(tournament):
         held = on_tables.get(state["id"])
         row = suggested.get(state["id"])
+        blocked = blocks.get(state["id"])
+        live = control.describe_table(held, now) if held else None
         tables.append(
             {
                 **state,
+                "state": control.BLOCKED
+                if blocked
+                else live["state"]
+                if live
+                else control.FREE
+                if state["free"]
+                else control.IN_PLAY,  # another tournament's match at a shared venue
+                "block": {
+                    "reason": blocked.reason,
+                    "reason_label": blocked.get_reason_display(),
+                    "note": blocked.note,
+                    "since": blocked.blocked_at,
+                    "by": blocked.blocked_by.display_name if blocked.blocked_by else "",
+                }
+                if blocked
+                else None,
+                "call": live["call"] if live else None,
+                "umpire": live["umpire"] if live else "",
+                "score": live["score"] if live else None,
                 "playing": service.describe(held) if held else None,
                 "suggested_match_id": row.match.id if row else None,
-                "idle_reason": idle if state["free"] and row is None else "",
+                "idle_reason": idle if state["free"] and not blocked and row is None else "",
             }
         )
     return {
