@@ -502,8 +502,8 @@ def test_only_competition_staff_of_the_host_change_a_tournament(club, staff, dra
         )
         assert create.status_code == 403
         assert client.get(TOURNAMENTS).json()["count"] == 0
-    assert BrowserClient().get(url(draft)).status_code == 401
-    assert BrowserClient().get(TOURNAMENTS).status_code == 401
+    assert BrowserClient().get(url(draft)).status_code == 404  # signed out, a draft doesn't exist
+    assert BrowserClient().get(TOURNAMENTS).json()["count"] == 0  # the public list has no drafts
 
     # Published: everyone signed in can read it, and still only staff can change it.
     do(staff, draft, "publish")

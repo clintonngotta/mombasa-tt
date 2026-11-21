@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
+from core.permissions import PublicReads
 
 from .models import LiveStream, LiveStreamReport, Match, Tournament
 from .official import title as entry_title
@@ -180,7 +181,8 @@ class StreamsView(APIView):
     """GET/POST /tournaments/{id}/streams/: the tournament's watch links (with ?match=, that match's
     and the whole tournament's); staff add one for the tournament or a match."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(responses={200: LiveStreamSerializer(many=True)})
     def get(self, request, tournament_pk):

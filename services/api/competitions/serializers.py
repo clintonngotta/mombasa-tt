@@ -435,13 +435,13 @@ class EntrySerializer(serializers.ModelSerializer):
     def get_mine(self, entry) -> bool:
         """Whether the caller plays in it, so may withdraw it."""
         user = self.context["request"].user
-        return any(place.user_id == user.id for place in entry.players.all())
+        return user.is_authenticated and any(place.user_id == user.id for place in entry.players.all())
 
     @extend_schema_field(serializers.DateTimeField(allow_null=True))
     def get_my_check_in_at(self, entry):
         user = self.context["request"].user
         for place in entry.players.all():
-            if place.user_id == user.id:
+            if user.is_authenticated and place.user_id == user.id:
                 return self.fields["checked_in_at"].to_representation(
                     place.checked_in_at or entry.checked_in_at
                 )
@@ -510,7 +510,7 @@ class DrawEntrySerializer(serializers.ModelSerializer):
     def get_mine(self, entry) -> bool:
         """Whether the caller plays in it, so screens can point out their own matches."""
         user = self.context["request"].user
-        return any(place.user_id == user.id for place in entry.players.all())
+        return user.is_authenticated and any(place.user_id == user.id for place in entry.players.all())
 
     def get_title(self, entry) -> str:
         return entry.team_name or " / ".join(place.user.display_name for place in entry.players.all())

@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
+from core.permissions import PublicReads
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
@@ -208,7 +209,8 @@ class CeremonyView(APIView):
     """GET/PUT /tournaments/{id}/ceremony/: a published ceremony for everyone who sees the tournament, a
     draft for the host's competition staff. PUT sets when, where and who hosts it."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(responses={200: CeremonySerializer})
     def get(self, request, tournament_pk):

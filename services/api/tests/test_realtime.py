@@ -81,16 +81,18 @@ def test_a_signed_in_viewer_hears_that_a_tournament_changed_but_not_what(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_a_socket_needs_a_session_an_allowed_origin_and_a_tournament_the_viewer_may_see(staff, club):
+def test_a_socket_needs_an_allowed_origin_and_a_tournament_the_viewer_may_see(staff, club):
     draft = make_tournament(staff, club)
     stranger = logged_in(make_user("fan@example.com"))
-    assert opens(draft["id"], [ORIGIN]) == (False, 4401)  # signed out
+    assert opens(draft["id"], [ORIGIN]) == (False, 4404)  # a draft is nobody's business signed out
     assert opens(draft["id"], [ORIGIN, cookies(stranger)]) == (False, 4404)  # a draft is the host's
     assert opens(draft["id"], [ORIGIN, cookies(staff)])[0] is True
     assert opens(draft["id"], [(b"origin", b"https://evil.example"), cookies(staff)])[0] is False
     assert opens("00000000-0000-0000-0000-000000000000", [ORIGIN, cookies(staff)]) == (False, 4404)
     Tournament.objects.filter(pk=draft["id"]).update(status=Tournament.Status.PUBLISHED)
     assert opens(draft["id"], [ORIGIN, cookies(stranger)])[0] is True
+    # Published pages are public (TASK-035): signed out, the scores still arrive live.
+    assert opens(draft["id"], [ORIGIN])[0] is True
 
 
 def test_a_result_tells_the_tournament_once_committed(

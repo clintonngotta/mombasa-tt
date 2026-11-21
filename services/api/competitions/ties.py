@@ -224,8 +224,8 @@ def describe(match: Match, viewer, staff: bool) -> dict:
 
     def side(entry_id) -> dict:
         entry = Entry.objects.filter(pk=entry_id).first() if entry_id else None
-        captain = entry is not None and entry.captain_id == viewer.id
-        on_team = entry is not None and entry.players.filter(user=viewer).exists()
+        captain = entry is not None and viewer.is_authenticated and entry.captain_id == viewer.id
+        on_team = entry is not None and viewer.is_authenticated and entry.players.filter(user=viewer).exists()
         lineup = lineups.get(entry_id)
         return {
             "submitted": lineup is not None,

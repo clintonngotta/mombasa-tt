@@ -231,7 +231,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "training-plan-item": {"patch": OWNER, "delete": OWNER},
     # A club's drills: members read them, training staff change them.
     # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
-    "tournament-ceremony": {"get": STAFF, "put": STAFF},
+    # Published tournaments are public (TASK-035): a draft ceremony is still the staff's (test_public_views).
+    "tournament-ceremony": {"get": PUBLIC, "put": STAFF},
     "tournament-ceremony-generate": {"post": STAFF},
     "tournament-ceremony-publish": {"post": STAFF},
     "tournament-ceremony-reorder": {"post": STAFF},
@@ -268,9 +269,9 @@ ACCESS: dict[str, dict[str, str]] = {
     # Sponsorships: Coast's finance staff offer; a host's competition staff decide; sponsors are shown.
     "organization-sponsorships": {"get": STAFF, "post": STAFF},
     "organization-sponsorship-withdraw": {"post": STAFF},
-    "tournament-sponsors": {"get": SIGNED_IN},
+    "tournament-sponsors": {"get": PUBLIC},
     # Watch links (REQ-042): seen and reported by everyone who sees the tournament; staff manage them.
-    "tournament-streams": {"get": SIGNED_IN, "post": STAFF},
+    "tournament-streams": {"get": PUBLIC, "post": STAFF},
     "tournament-stream": {"patch": STAFF, "delete": STAFF},
     # A tournament's cover and documents (REQ-007): shown with it; its host's competition staff change them.
     "tournament-cover": {"put": STAFF, "delete": STAFF},
@@ -411,7 +412,8 @@ ACCESS: dict[str, dict[str, str]] = {
     # Tournaments: published ones are for every signed-in player (signed-out pages come with TASK-035);
     # drafts and every change are for the host's competition staff.
     "organization-tournaments": {"get": STAFF, "post": STAFF},
-    "tournament-list": {"get": SIGNED_IN},
+    "tournament-list": {"get": PUBLIC},
+    "tournament-dashboard": {"get": STAFF},
     "tournament-schedule": {"get": STAFF, "put": STAFF},
     "tournament-schedule-recommend": {"post": STAFF},
     "tournament-schedule-check": {"post": STAFF},
@@ -423,7 +425,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-schedule-session": {"patch": STAFF, "delete": STAFF},
     # Lists only the drafts the caller may approve; see test_authority.
     "tournament-awaiting-approval": {"get": SIGNED_IN},
-    "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
+    "tournament-detail": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
     "tournament-publish": {"post": STAFF},
     "tournament-request-approval": {"post": STAFF},
     "tournament-reject-approval": {"post": APPROVER},
@@ -438,7 +440,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-cancel": {"post": STAFF},
     # Entries: accepted ones are for every signed-in player, the rest for their own players and for
     # competition staff. Anyone may enter; only an entry's own players withdraw it themselves.
-    "tournament-event-entries": {"get": SIGNED_IN, "post": SIGNED_IN},
+    "tournament-event-entries": {"get": PUBLIC, "post": SIGNED_IN},
     "tournament-event-entry-accept": {"post": STAFF},
     "tournament-event-entry-waitlist": {"post": STAFF},
     "tournament-event-entry-reject": {"post": STAFF},
@@ -449,9 +451,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-entry-withdraw": {"post": OWNER},
     "me-entries": {"get": OWNER},
     # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
-    "tournament-event-draw": {"get": SIGNED_IN},
-    "tournament-event-standings": {"get": SIGNED_IN},
-    "tournament-event-match": {"get": SIGNED_IN},  # of the published draw only
+    "tournament-event-draw": {"get": PUBLIC},
+    "tournament-event-standings": {"get": PUBLIC},
+    "tournament-event-match": {"get": PUBLIC},  # of the published draw only
     # A match's recap and result card are public for a published tournament (REQ-018).
     "tournament-event-match-recap": {"get": PUBLIC},
     "tournament-event-match-card": {"get": PUBLIC},
@@ -489,10 +491,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
-    "player-ratings": {"get": SIGNED_IN},
-    "rankings": {"get": SIGNED_IN},
-    "club-rankings": {"get": SIGNED_IN},
-    "geography-rankings": {"get": SIGNED_IN},
+    "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records
+    "rankings": {"get": PUBLIC},  # a club's own ranking needs a session
+    "club-rankings": {"get": PUBLIC},
+    "geography-rankings": {"get": PUBLIC},
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
@@ -2041,8 +2043,9 @@ def test_owner_routes_refuse_everyone_else(world, who):
 
 
 def everything_served_to(world, user) -> str:
-    """The bodies of every GET route (with searches that would match the private markers)."""
-    client = logged_in(user)
+    """The bodies of every GET route (with searches that would match the private markers). `user=None`
+    reads them signed out."""
+    client = logged_in(user) if user else BrowserClient()
     urls = [world.url(name, names) for name, methods, names in ROUTES if "get" in methods]
     urls += [
         reverse("player-detail", kwargs={"pk": world.faith.id}),
@@ -2183,6 +2186,15 @@ def test_private_values_reach_only_the_people_they_are_for(world):
                 assert marker in served, f"{who} should be able to see {marker}"
             else:
                 assert marker not in served, f"{marker} leaked to {who}"
+    # Signed out (TASK-035): the published tournament and its accepted entries, and nothing the directory
+    # or a club keeps for signed-in players (Faith's listed style and photo are the control).
+    public = {"Published Cup", "Grace Achieng"}
+    served = everything_served_to(world, None)
+    for marker in allowed:
+        if marker in public:
+            assert marker in served, f"signed out should see {marker}"
+        else:
+            assert marker not in served, f"{marker} leaked to a signed-out caller"
 
 
 def test_views_of_other_people_carry_only_allowlisted_fields(world):

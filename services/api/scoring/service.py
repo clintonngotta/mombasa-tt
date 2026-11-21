@@ -87,7 +87,7 @@ def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
     status = ScoringStatus.UNASSIGNED
     if scorecard and (umpire or scorecard.revision or scorecard.confirmed_at):
         status = scorecard.shown_status
-    mine = scorecard is not None and is_umpire_of(scorecard, viewer)
+    mine = scorecard is not None and viewer.is_authenticated and is_umpire_of(scorecard, viewer)
     return {
         "scorecard_id": scorecard.id if mine else None,
         "status": status,
