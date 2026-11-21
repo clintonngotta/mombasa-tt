@@ -15,7 +15,7 @@ from .test_matchlog import payload
 
 pytestmark = pytest.mark.django_db
 URL = "/api/v1/me/matches/"
-KEY = "6f1c2a1e-5b7d-4c43-9a3e-0c2f7b8d9e10"
+KEY = "retry-" + "x" * 20  # a made-up key; any 16-64 letters, digits and dashes
 
 
 def test_a_repeat_returns_the_first_answer_and_changes_nothing():
