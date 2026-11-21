@@ -7,18 +7,19 @@ import { Field, FormAlert, PasswordField } from "@/components/forms/Field"
 import { LocationFields } from "@/components/forms/LocationFields"
 import { ApiError, errorMessage } from "@/lib/api"
 import { MIN_PASSWORD_LENGTH, signUp } from "@/lib/auth"
+import { safeNext } from "@/lib/session"
 import { EMPTY_LOCATION, locationErrors } from "@/lib/geography"
 
 export function SignUpPage() {
   const navigate = useNavigate()
-  // Someone who already has an account and follows "Log in" from here still goes back where they came from.
-  const next = useSearchParams()[0].get("next")
+  // Where they came from, such as an event to enter: the verification link and "Log in" both keep it.
+  const returnTo = safeNext(useSearchParams()[0].get("next"), "")
   const [form, setForm] = useState({ display_name: "", email: "", password: "", ...EMPTY_LOCATION })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const mutation = useMutation({
     mutationFn: signUp,
-    onSuccess: () => navigate("/signup/check-email", { state: { email: form.email } }),
+    onSuccess: () => navigate("/signup/check-email", { state: { email: form.email, next: returnTo } }),
     onError: (error) => {
       if (error instanceof ApiError) setErrors(error.fieldErrors())
     },
@@ -36,7 +37,7 @@ export function SignUpPage() {
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email address."
     if (form.password.length < MIN_PASSWORD_LENGTH) next.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
     setErrors(next)
-    if (Object.keys(next).length === 0) mutation.mutate({ ...form, display_name: form.display_name.trim() })
+    if (Object.keys(next).length === 0) mutation.mutate({ ...form, display_name: form.display_name.trim(), ...(returnTo && { next: returnTo }) })
   }
 
   const fieldErrorShown = Object.keys(errors).length > 0
@@ -47,7 +48,7 @@ export function SignUpPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
+          <Link to={returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : "/login"} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
             Log in
           </Link>
         </>

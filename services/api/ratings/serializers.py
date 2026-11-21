@@ -10,7 +10,7 @@ class RankingRowSerializer(serializers.Serializer):
     user_id = serializers.UUIDField()
     display_name = serializers.CharField()
     clubs = serializers.ListField(child=serializers.CharField())
-    listed = serializers.BooleanField(help_text="The player has a page in the directory.")
+    listed = serializers.BooleanField(help_text="The player has a player page, signed out too.")
     is_me = serializers.BooleanField()
     avatar = AttachmentLinkSerializer(
         allow_null=True, help_text="The player's photo: only for listed players and yourself."

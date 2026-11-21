@@ -5,13 +5,16 @@ import { countdown, KIND_LABEL, SCOPE_LABEL, type Tournament } from "@/lib/tourn
 import { TournamentStatusChip } from "@/components/tournaments/StatusChip"
 import { TournamentCover } from "@/components/tournaments/TournamentMedia"
 
-/** A tournament in a list: its cover, dates, name, organizer and venue, its events as chips and a countdown. */
-export function TournamentCard({ tournament: t }: { tournament: Tournament }) {
+/**
+ * A tournament in a list: its cover, dates, name, organizer and venue, its events as chips and a countdown.
+ * It opens the tournament's page, or `to` (the organizer's list opens dashboards).
+ */
+export function TournamentCard({ tournament: t, to = `/tournaments/${t.id}` }: { tournament: Tournament; to?: string }) {
   const soon = countdown(t)
   const events = t.events.filter((e) => e.status !== "cancelled")
   return (
     <Link
-      to={`/tournaments/${t.id}`}
+      to={to}
       className="flex flex-col gap-3 overflow-hidden rounded-xl border bg-card p-4 outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <TournamentCover cover={t.cover} className="-mx-4 -mt-4 aspect-[16/6] w-[calc(100%+2rem)] max-w-none rounded-t-xl bg-surface-selected object-cover" />

@@ -4730,7 +4730,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description One listed player's page. 404 once they opt out, so opting out removes the page too. */
+        /**
+         * @description One listed player's page. 404 once they opt out, so opting out removes the page too.
+         *
+         *     Signed out (TASK-035) the directory doesn't apply: the page is there only for a listed player with
+         *     competition records, and carries their name alone, as their public ratings page does. No photo,
+         *     nickname, clubs or published details.
+         */
         get: operations["players_retrieve"];
         put?: never;
         post?: never;
@@ -10923,7 +10929,7 @@ export interface components {
             user_id: string;
             display_name: string;
             clubs: string[];
-            /** @description The player has a page in the directory. */
+            /** @description The player has a player page, signed out too. */
             listed: boolean;
             is_me: boolean;
             /** @description The player's photo: only for listed players and yourself. */
@@ -11182,6 +11188,11 @@ export interface components {
         ReportRequest: {
             reason: components["schemas"]["StreamReportReasonEnum"];
             note?: string;
+        };
+        ResendVerificationRequest: {
+            /** Format: email */
+            email: string;
+            next?: string;
         };
         /** @description A match on a table: the table and the people held until its result is official. */
         Reservation: {
@@ -11747,6 +11758,7 @@ export interface components {
             country?: string;
             region?: string;
             city?: string;
+            next?: string;
         };
         /**
          * @description * `singles` - Singles
@@ -13100,7 +13112,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EmailOnlyRequest"];
+                "application/json": components["schemas"]["ResendVerificationRequest"];
             };
         };
         responses: {

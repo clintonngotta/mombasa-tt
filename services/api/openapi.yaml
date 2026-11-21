@@ -388,7 +388,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmailOnlyRequest'
+              $ref: '#/components/schemas/ResendVerificationRequest'
         required: true
       security:
       - {}
@@ -11505,8 +11505,12 @@ paths:
   /api/v1/players/{id}/:
     get:
       operationId: players_retrieve
-      description: One listed player's page. 404 once they opt out, so opting out
-        removes the page too.
+      description: |-
+        One listed player's page. 404 once they opt out, so opting out removes the page too.
+
+        Signed out (TASK-035) the directory doesn't apply: the page is there only for a listed player with
+        competition records, and carries their name alone, as their public ratings page does. No photo,
+        nickname, clubs or published details.
       parameters:
       - in: path
         name: id
@@ -26022,7 +26026,7 @@ components:
             type: string
         listed:
           type: boolean
-          description: The player has a page in the directory.
+          description: The player has a player page, signed out too.
         is_me:
           type: boolean
         avatar:
@@ -26605,6 +26609,18 @@ components:
           maxLength: 200
       required:
       - reason
+    ResendVerificationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        next:
+          type: string
+          maxLength: 300
+      required:
+      - email
     Reservation:
       type: object
       description: 'A match on a table: the table and the people held until its result
@@ -28014,6 +28030,9 @@ components:
           type: string
           minLength: 1
           maxLength: 100
+        next:
+          type: string
+          maxLength: 300
       required:
       - display_name
       - email

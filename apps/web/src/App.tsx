@@ -76,7 +76,7 @@ import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
 import { MemberFieldEditPage } from "@/pages/club/MemberFieldEditPage"
 import { VenuesPage } from "@/pages/club/VenuesPage"
 import { VenueEditPage } from "@/pages/club/VenueEditPage"
-import { HostedTournamentsPage } from "@/pages/club/HostedTournamentsPage"
+import { TournamentDashboardsPage } from "@/pages/tournaments/TournamentDashboardsPage"
 import { PlayPage } from "@/pages/tournaments/PlayPage"
 import { TournamentPage } from "@/pages/tournaments/TournamentPage"
 import { TournamentDashboardPage } from "@/pages/tournaments/TournamentDashboardPage"
@@ -144,6 +144,7 @@ function App() {
             <Route element={<PersonOnly />}>
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
+              <Route path="/players/:id" element={<PlayerPage />} />
             </Route>
             <Route element={<RequireAuth />}>
               <Route path="/notifications" element={<NotificationsPage />} />
@@ -180,7 +181,7 @@ function App() {
               <Route path="/tournaments/:id/events/new" element={<EventFormPage />} />
               <Route path="/tournaments/:id/events/:eventId" element={<EventFormPage />} />
               <Route path="/tournaments/:id/events/:eventId/draw" element={<DrawPage />} />
-              <Route path="/club/tournaments" element={<HostedTournamentsPage />} />
+              <Route path="/club/tournaments" element={<TournamentDashboardsPage />} />
               <Route path="/club/tournaments/new" element={<TournamentFormPage />} />
               <Route path="/club/venues" element={<VenuesPage />} />
               <Route path="/club/venues/new" element={<VenueEditPage />} />
@@ -230,7 +231,6 @@ function App() {
               <Route path="/club/meetings" element={<MeetingsPage />} />
               <Route path="/meetings/:orgId/:id" element={<MeetingPage />} />
               <Route path="/players" element={<PlayersPage />} />
-              <Route path="/players/:id" element={<PlayerPage />} />
             </Route>
             {import.meta.env.DEV && <Route path="/dev/gallery" element={<GalleryPage />} />}
           </Route>

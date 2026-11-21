@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, status
@@ -12,7 +12,9 @@ from rest_framework.views import APIView
 from attachments.images import MAX_UPLOAD_BYTES, OUTPUT_CONTENT_TYPE, normalize_image
 from attachments.models import Attachment
 from core.pagination import StandardPagination, search_term
+from core.permissions import PublicReads
 from organizations.models import Membership
+from ratings.models import RatingEvent
 
 from .models import PlayerProfile, listed_profiles, profile_for
 from .serializers import (
@@ -21,6 +23,7 @@ from .serializers import (
     GoalsSerializer,
     PlayerSerializer,
     ProfileSerializer,
+    SignedOutPlayerSerializer,
 )
 
 MIN_SEARCH_LENGTH = 2
@@ -145,10 +148,25 @@ class PlayerDirectoryView(generics.ListAPIView):
 
 
 class PlayerDetailView(generics.RetrieveAPIView):
-    """One listed player's page. 404 once they opt out, so opting out removes the page too."""
+    """One listed player's page. 404 once they opt out, so opting out removes the page too.
+
+    Signed out (TASK-035) the directory doesn't apply: the page is there only for a listed player with
+    competition records, and carries their name alone, as their public ratings page does. No photo,
+    nickname, clubs or published details."""
 
     serializer_class = PlayerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # held to the visitors' allowance (core/throttling.py)
 
     def get_queryset(self):
-        return listed_players()
+        if self.request.user.is_authenticated:
+            return listed_players()
+        competed = RatingEvent.objects.filter(user_id=OuterRef("user_id"))
+        return listed_profiles().select_related("user").filter(Exists(competed))
+
+    @extend_schema(responses=PlayerSerializer)  # one shape either way: signed out, most fields are blank
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_serializer_class(self):
+        return PlayerSerializer if self.request.user.is_authenticated else SignedOutPlayerSerializer

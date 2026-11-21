@@ -26,7 +26,8 @@ export const logOut = async () => {
   return api<void>("/auth/logout/", { body: {} })
 }
 
-export const resendVerification = (email: string) => api<void>("/auth/verification/resend/", { body: { email } })
+export const resendVerification = (email: string, next?: string) =>
+  api<void>("/auth/verification/resend/", { body: { email, ...(next && { next }) } })
 
 export const MIN_PASSWORD_LENGTH = 10
 

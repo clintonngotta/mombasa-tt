@@ -63,8 +63,31 @@ export function useOnboardingDraft() {
 export function clearOnboardingDraft() {
   try {
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(RETURN_KEY)
   } catch {
     // ignore
+  }
+}
+
+const RETURN_KEY = "coast-tt:onboarding-return"
+
+/**
+ * Where a new player was heading when they signed up, such as the event they wanted to enter (TASK-035).
+ * The verification link carries it; onboarding finishes by offering the way back.
+ */
+export function rememberReturn(path: string | null) {
+  try {
+    if (path && path.startsWith("/") && !path.startsWith("//")) localStorage.setItem(RETURN_KEY, path)
+  } catch {
+    // Without storage the player finishes at Home, as before.
+  }
+}
+
+export function readReturn(): string | null {
+  try {
+    return localStorage.getItem(RETURN_KEY)
+  } catch {
+    return null
   }
 }
 
