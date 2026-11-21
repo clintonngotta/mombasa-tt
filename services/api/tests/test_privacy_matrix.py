@@ -195,6 +195,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-welfare-project": {"get": MEMBER, "patch": STAFF},
     "organization-welfare-project-hide": {"post": STAFF},
     "organization-welfare-project-close": {"post": STAFF},
+    "organization-welfare-project-due": {"post": STAFF},
     "organization-welfare-contributions": {"get": STAFF, "post": STAFF},
     "organization-welfare-contribution-reverse": {"post": STAFF},
     "organization-welfare-expenses": {"get": STAFF, "post": STAFF},
@@ -329,6 +330,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-activity-publish": {"post": STAFF},
     "organization-activity-cancel": {"post": STAFF},
     "organization-activity-rsvp": {"post": MEMBER},
+    "organization-activity-cost-share": {"post": STAFF},
     "organization-activity-attendees": {"get": MEMBER},
     "organization-activity-invitees": {"get": STAFF},
     "organization-schedule": {"get": MEMBER},
@@ -605,6 +607,10 @@ BODIES = {
     ("organization-activity", "patch"): {"place": "Moved to the beach"},
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
+    ("organization-activity-cost-share", "post"): lambda: {
+        "amount_minor": 50000,
+        "due_on": timezone.localdate().isoformat(),
+    },
     ("organization-soda-policy", "put"): {"games_enabled": True, "stakes_enabled": False},
     ("organization-announcements", "post"): {"title": "Hall closed", "audience": "members"},
     ("organization-charges", "post"): lambda: {
@@ -964,7 +970,7 @@ class World:
             receipt=self.receipt,
         )
 
-        # A welfare project with one anonymous gift from Faith; two more to hide and to close.
+        # A welfare project with one anonymous gift from Faith; more to hide, to close and to make a due.
         def project(title, **extra):
             return WelfareProject.objects.create(
                 organization=self.coast, title=title, suggested_minor=5000, **extra
@@ -973,6 +979,7 @@ class World:
         self.welfare = project("MARK-WELFARE", description="MARK-WELFARE-DESC")
         self.welfare_to_hide = project("Hide me")
         self.welfare_to_close = project("Close me")
+        self.welfare_to_due = project("Make me a due")
         self.welfare_contribution = welfare.contribute(
             self.welfare,
             self.amina,
@@ -1038,6 +1045,14 @@ class World:
             ends_at=later + timedelta(hours=3),
             status=Activity.Status.PUBLISHED,
         )
+        self.activity_to_share = Activity.objects.create(
+            organization=self.coast,
+            title="Share my cost",
+            starts_at=later,
+            ends_at=later + timedelta(hours=3),
+            status=Activity.Status.PUBLISHED,
+        )
+        Rsvp.objects.create(activity=self.activity_to_share, user=self.baraka, answer=Rsvp.Answer.GOING)
         self.session_to_cancel = ClubSession.objects.create(
             organization=self.coast,
             title="To cancel",
@@ -1567,6 +1582,7 @@ class World:
             "organization-welfare-project": self.welfare.id,
             "organization-welfare-project-hide": self.welfare_to_hide.id,
             "organization-welfare-project-close": self.welfare_to_close.id,
+            "organization-welfare-project-due": self.welfare_to_due.id,
             "organization-welfare-contributions": self.welfare.id,
             "organization-welfare-contribution-reverse": self.welfare.id,
             "organization-welfare-expenses": self.welfare.id,
@@ -1588,6 +1604,7 @@ class World:
             "organization-activity-publish": self.activity_draft.id,
             "organization-activity-cancel": self.activity_to_cancel.id,
             "organization-activity-rsvp": self.activity.id,
+            "organization-activity-cost-share": self.activity_to_share.id,
             "organization-activity-attendees": self.activity.id,
             "organization-activity-invitees": self.activity.id,
             "organization-club-session-cancel": self.session_to_cancel.id,
@@ -1861,6 +1878,7 @@ ALSO_STAFF = {
             "organization-welfare-project",
             "organization-welfare-project-hide",
             "organization-welfare-project-close",
+            "organization-welfare-project-due",
             "organization-welfare-contributions",
             "organization-welfare-contribution-reverse",
             "organization-welfare-expenses",
@@ -1884,6 +1902,7 @@ ALSO_STAFF = {
             "organization-activity-publish",
             "organization-activity-cancel",
             "organization-activity-invitees",
+            "organization-activity-cost-share",
         )
     },
 }

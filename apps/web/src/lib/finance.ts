@@ -77,6 +77,7 @@ export const createWelfare = (orgId: string, body: Schemas["WelfareProjectReques
 export const updateWelfare = (orgId: string, id: string, body: Schemas["PatchedWelfareUpdateRequest"]) => api<WelfareProject>(`${welfare(orgId)}${id}/`, { method: "PATCH", body })
 export const hideWelfare = (orgId: string, id: string) => api<WelfareProject | null>(`${welfare(orgId)}${id}/hide/`, { body: {} })
 export const closeWelfare = (orgId: string, id: string) => api<WelfareProject>(`${welfare(orgId)}${id}/close/`, { body: {} })
+export const makeWelfareDue = (orgId: string, id: string, body: Schemas["WelfareDueRequest"]) => api<WelfareProject>(`${welfare(orgId)}${id}/due/`, { body })
 export const listContributions = (orgId: string, id: string) => api<WelfareContribution[]>(`${welfare(orgId)}${id}/contributions/`)
 export const recordContribution = (orgId: string, id: string, body: Schemas["WelfareContributionRequest"]) => api<WelfareContribution>(`${welfare(orgId)}${id}/contributions/`, { body })
 export const reverseContribution = (orgId: string, id: string, contributionId: string, reason: string) =>

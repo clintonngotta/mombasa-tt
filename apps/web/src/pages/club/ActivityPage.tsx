@@ -15,11 +15,14 @@ import {
   KIND_LABEL,
   listAttendees,
   publishActivity,
+  shareActivityCost,
   type Activity,
   type Answer,
 } from "@/lib/activities"
 import { can, useActiveMembership } from "@/lib/clubs"
+import { formatMoney } from "@/lib/coaching"
 import { DEFAULT_TIME_ZONE, formatInstant } from "@/lib/dates"
+import { toMinor } from "@/lib/finance"
 import { cn } from "@/lib/utils"
 
 /** One club activity (REQ-039): when and where, answering going, maybe or not going, and who is going
@@ -30,6 +33,7 @@ export function ActivityPage() {
   const membership = all.find((m) => m.organization.id === orgId)
   const timeZone = membership?.organization.timezone ?? DEFAULT_TIME_ZONE
   const staff = can(membership, "activities.manage")
+  const canShare = staff && can(membership, "finances.manage")
   const activity = useQuery({ queryKey: activityKeys.detail(orgId, id), queryFn: () => getActivity(orgId, id) })
   const a = activity.data
 
@@ -64,7 +68,8 @@ export function ActivityPage() {
               </p>
             )}
             {a.description && <p className="whitespace-pre-wrap">{a.description}</p>}
-            {a.cost_note && <p className="text-sm">Cost: {a.cost_note}. Pay the organizers directly; Coast TT doesn't take payments.</p>}
+            {a.cost_note && !a.cost_share && <p className="text-sm">Cost: {a.cost_note}. Pay the organizers directly; Coast TT doesn't take payments.</p>}
+            {a.cost_share && <CostShare share={a.cost_share} />}
             <p className="text-sm text-muted-foreground">
               {a.going} going{a.capacity ? ` of ${a.capacity} places` : ""}
               {a.waitlisted > 0 && ` · ${a.waitlisted} waiting`}
@@ -74,9 +79,83 @@ export function ActivityPage() {
           {a.can_answer && <Answer orgId={orgId} activity={a} />}
           {(a.can_answer || staff) && a.status !== "draft" && <Attendees orgId={orgId} id={a.id} />}
           {staff && <StaffActions orgId={orgId} activity={a} />}
+          {canShare && a.status === "published" && !a.cost_share && a.going > 0 && <ShareCost orgId={orgId} activity={a} />}
         </>
       )}
     </div>
+  )
+}
+
+const SHARE_STATUS = { paid: "paid", partial: "part paid", pending: "not paid yet", overdue: "overdue" } as const
+
+function CostShare({ share }: { share: NonNullable<Activity["cost_share"]> }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-xl border bg-card p-3 text-sm">
+      <p>
+        <span className="font-semibold">Shared cost:</span> {formatMoney(share.amount_minor, share.currency)} each for those going, by {share.due_on}. Pay the club treasurer; Coast TT doesn't take payments.
+      </p>
+      {share.my_share && (
+        <p className={cn(share.my_share.status === "overdue" && "font-semibold text-destructive")}>
+          Your share is {SHARE_STATUS[share.my_share.status]}
+          {share.my_share.outstanding_minor > 0 && share.my_share.status !== "pending" && ` (${formatMoney(share.my_share.outstanding_minor, share.currency)} left)`}.
+        </p>
+      )}
+      {share.received_minor != null && share.remaining_minor != null && (
+        <p className="text-muted-foreground">
+          Received {formatMoney(share.received_minor, share.currency)} · spent {formatMoney(share.spent_minor, share.currency)} ·{" "}
+          <span className={cn(share.remaining_minor < 0 && "font-semibold text-destructive")}>
+            {share.remaining_minor < 0 ? `deficit ${formatMoney(-share.remaining_minor, share.currency)}` : `${formatMoney(share.remaining_minor, share.currency)} left`}
+          </span>
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Bill those going their share (REQ-039 Phase 2): an amount each, or a total split evenly. Record the
+ * activity's spending as expenses on its campaign under Finance. */
+function ShareCost({ orgId, activity }: { orgId: string; activity: Activity }) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [split, setSplit] = useState(false)
+  const [amount, setAmount] = useState("")
+  const [dueOn, setDueOn] = useState(() => new Date().toISOString().slice(0, 10))
+  const share = useMutation({
+    mutationFn: () => shareActivityCost(orgId, activity.id, { due_on: dueOn, currency: "KES", ...(split ? { total_minor: toMinor(amount) ?? 0 } : { amount_minor: toMinor(amount) ?? 0 }) }),
+    onSuccess: (fresh) => {
+      queryClient.setQueryData(activityKeys.detail(orgId, activity.id), fresh)
+      setOpen(false)
+    },
+  })
+  if (!open) {
+    return (
+      <Button variant="outline" className="self-start" onClick={() => setOpen(true)}>
+        Share the cost
+      </Button>
+    )
+  }
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+      <h2 className="text-xl font-bold">Share the cost</h2>
+      <p className="text-sm">The {activity.going} going will each owe their share, and show as overdue if it isn't paid by the date. Those waiting for a place don't owe. Add anyone who joins later from the campaign under Finance.</p>
+      <label className="flex min-h-12 items-center gap-3">
+        <input type="checkbox" className="size-5 accent-brand-blue" checked={split} onChange={(e) => setSplit(e.target.checked)} />
+        Split a total evenly (rounded up to whole shillings)
+      </label>
+      <div className="flex flex-wrap items-end gap-2">
+        <Field label={split ? "Total (KES)" : "Each (KES)"} type="number" min={0} className="w-40" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Field label="Due by" type="date" className="w-44" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
+      </div>
+      {share.isError && <FormAlert>{errorMessage(share.error)}</FormAlert>}
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={toMinor(amount) == null || !dueOn || share.isPending} onClick={() => share.mutate()}>
+          Share the cost
+        </Button>
+        <Button variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </section>
   )
 }
 

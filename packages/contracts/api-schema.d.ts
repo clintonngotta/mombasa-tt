@@ -2256,6 +2256,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/cost-share/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Share the cost among those going (REQ-039 Phase 2): a one-time due for each, through the
+         *     ledger. Takes activities.manage and finances.manage, since it makes members owe.
+         */
+        post: operations["organizations_activities_cost_share_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/activities/{id}/invitees/": {
         parameters: {
             query?: never;
@@ -4493,6 +4513,27 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["organizations_welfare_projects_contributions_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/due/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Make giving required: a one-time due for the project's audience, the beneficiary excepted.
+         *     Needs both welfare.manage and finances.manage, since it makes members owe. It can't be undone
+         *     here; finance staff waive dues or close the campaign as for any other.
+         */
+        post: operations["organizations_welfare_projects_due_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7079,6 +7120,11 @@ export interface components {
             rsvp_deadline: string | null;
             public: boolean;
             cost_note: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id: string | null;
             readonly status: components["schemas"]["ActivityStatusEnum"];
             readonly cancel_reason: string;
             readonly going: number;
@@ -7087,6 +7133,7 @@ export interface components {
             readonly my_waitlisted: boolean;
             /** @description In the audience (a member, and the activity is for all members or invites them) and open. */
             readonly can_answer: boolean;
+            readonly cost_share: components["schemas"]["CostShare"] | null;
             /** Format: date-time */
             readonly published_at: string | null;
         };
@@ -7125,6 +7172,11 @@ export interface components {
             rsvp_deadline?: string | null;
             public?: boolean;
             cost_note?: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id?: string | null;
         };
         ClubProfile: {
             /** Format: uuid */
@@ -7430,6 +7482,20 @@ export interface components {
             /** @description "Anonymous" for those who asked */
             name: string;
             amount_minor: number;
+        };
+        /**
+         * @description The shared cost: what each pays and by when, the viewer's own share, and (finance staff only)
+         *     received, spent and remaining.
+         */
+        CostShare: {
+            amount_minor: number;
+            currency: string;
+            /** Format: date */
+            due_on: string;
+            my_share: components["schemas"]["MyShare"] | null;
+            received_minor: number | null;
+            spent_minor: number | null;
+            remaining_minor: number | null;
         };
         CounterRequest: {
             /** Format: date-time */
@@ -8949,6 +9015,10 @@ export interface components {
             readonly attended: boolean | null;
             readonly session: components["schemas"]["MySession"];
         };
+        MyShare: {
+            outstanding_minor: number;
+            status: components["schemas"]["OwedStatusEnum"];
+        };
         MySodaSettings: {
             /** @description Whether stake fields apply for this player. */
             stakes_available: boolean;
@@ -8975,6 +9045,13 @@ export interface components {
             readonly valid_until: string;
             readonly on_pass: boolean;
             readonly reversed: boolean;
+        };
+        MyWelfareDue: {
+            amount_minor: number;
+            outstanding_minor: number;
+            /** Format: date */
+            due_on: string;
+            status: components["schemas"]["OwedStatusEnum"];
         };
         NominateRequest: {
             /** Format: uuid */
@@ -9189,6 +9266,14 @@ export interface components {
          * @enum {string}
          */
         OverridesEnum: "check_in" | "rest";
+        /**
+         * @description * `paid` - paid
+         *     * `partial` - partial
+         *     * `pending` - pending
+         *     * `overdue` - overdue
+         * @enum {string}
+         */
+        OwedStatusEnum: "paid" | "partial" | "pending" | "overdue";
         PaginatedAdminHandoverList: {
             /** @example 123 */
             count: number;
@@ -9852,6 +9937,11 @@ export interface components {
             rsvp_deadline?: string | null;
             public?: boolean;
             cost_note?: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id?: string | null;
         };
         /** @description A club session as its training staff see it. */
         PatchedClubSessionRequest: {
@@ -11433,6 +11523,15 @@ export interface components {
         SessionTableRequest: {
             label: string;
         };
+        /** @description An amount each, or a total split evenly among those going (rounded up to whole units). */
+        ShareCostRequest: {
+            amount_minor?: number;
+            total_minor?: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            due_on: string;
+        };
         ShareRequest: {
             share: boolean;
         };
@@ -12270,6 +12369,17 @@ export interface components {
             /** @default false */
             anonymous: boolean;
         };
+        /** @description Make giving required. The amount defaults to the suggested gift, the date to the deadline. */
+        WelfareDueRequest: {
+            amount_minor?: number;
+            /** Format: date */
+            due_on?: string;
+        };
+        WelfareDueTerms: {
+            amount_minor: number;
+            /** Format: date */
+            due_on: string;
+        };
         /**
          * @description A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
          *     and a contributor list only when the club shows one.
@@ -12297,6 +12407,12 @@ export interface components {
             readonly remaining_minor: number;
             readonly my_contribution_minor: number;
             readonly contributors: components["schemas"]["Contributor"][] | null;
+            /** @description Made a due (REQ-023): only then does anyone owe, or show as overdue. */
+            readonly required: boolean;
+            readonly due: components["schemas"]["WelfareDueTerms"] | null;
+            readonly expected_minor: number | null;
+            readonly my_due: components["schemas"]["MyWelfareDue"] | null;
+            readonly visits: components["schemas"]["WelfareVisit"][];
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -12320,6 +12436,26 @@ export interface components {
             member_ids?: string[];
             show_contributors?: boolean;
         };
+        WelfareVisit: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place: string;
+            status: components["schemas"]["WelfareVisitStatusEnum"];
+            /** @description Display names */
+            going: string[];
+        };
+        /**
+         * @description * `draft` - draft
+         *     * `published` - published
+         *     * `cancelled` - cancelled
+         * @enum {string}
+         */
+        WelfareVisitStatusEnum: "draft" | "published" | "cancelled";
         /**
          * @description * `left` - left
          *     * `center` - center
@@ -17370,6 +17506,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CancelActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_cost_share_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareCostRequest"];
             };
         };
         responses: {
@@ -22787,6 +22958,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WelfareContribution"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_welfare_projects_due_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WelfareDueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
                 };
             };
             /** @description Error envelope */

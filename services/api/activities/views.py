@@ -17,10 +17,12 @@ from rest_framework.views import APIView
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
 from notifications import triggers
-from organizations.access import require_membership, require_permission
+from organizations.access import effective_permissions, require_membership, require_permission
+from organizations.committee import local_today
 from organizations.models import Membership, Organization
+from organizations.permissions import Permission
 
-from . import service
+from . import costs, service
 from .models import Activity, Rsvp
 from .serializers import (
     AttendeeSerializer,
@@ -28,6 +30,7 @@ from .serializers import (
     ClubActivitySerializer,
     RsvpRequestSerializer,
     ScheduleItemSerializer,
+    ShareCostSerializer,
 )
 
 WHEN = OpenApiParameter("when", str, enum=["upcoming", "past"])
@@ -65,6 +68,11 @@ class ActivityViewSet(
             return context
         organization = self.organization()
         context["member"] = service.is_member(self.request.user, organization)
+        context["today"] = local_today(organization)
+        context["finance_staff"] = bool(
+            effective_permissions(self.request.user, organization)
+            & {Permission.FINANCES_VIEW, Permission.FINANCES_MANAGE}
+        )
         context["invited"] = set(
             Activity.invitees.through.objects.filter(
                 user_id=self.request.user.pk, activity__organization=organization
@@ -103,7 +111,18 @@ class ActivityViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
-        invitees = self._invitees(organization, data.pop("invitee_ids", None))
+        invitee_ids = data.pop("invitee_ids", None)
+        project_id = data.pop("welfare_project_id", None)
+        data["welfare_project"] = service.check_welfare_link(
+            request.user,
+            organization,
+            project_id,
+            changed=project_id is not None,
+            audience=data.get("audience", Activity.Audience.MEMBERS),
+            invitee_ids=invitee_ids,
+            public=data.get("public", False),
+        )
+        invitees = self._invitees(organization, invitee_ids)
         activity = Activity.objects.create(organization=organization, created_by=request.user, **data)
         if invitees is not None and activity.audience == Activity.Audience.SELECTED:
             activity.invitees.set(invitees)
@@ -120,7 +139,22 @@ class ActivityViewSet(
         serializer = self.get_serializer(activity, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
-        invitees = self._invitees(organization, data.pop("invitee_ids", None))
+        invitee_ids = data.pop("invitee_ids", None)
+        project_id = data.pop("welfare_project_id", activity.welfare_project_id)
+        audience = data.get("audience", activity.audience)
+        chosen = invitee_ids
+        if chosen is None and audience == Activity.Audience.SELECTED:
+            chosen = list(activity.invitees.values_list("pk", flat=True))
+        data["welfare_project"] = service.check_welfare_link(
+            request.user,
+            organization,
+            project_id,
+            audience=audience,
+            invitee_ids=chosen,
+            public=data.get("public", activity.public),
+            changed=project_id != activity.welfare_project_id,
+        )
+        invitees = self._invitees(organization, invitee_ids)
         if (
             "capacity" in data
             and data["capacity"] is not None
@@ -177,6 +211,19 @@ class ActivityViewSet(
             activity.save(update_fields=["status", "cancel_reason", "cancelled_at"])
             if activity.published_at:
                 triggers.activity_news(activity, "cancelled")
+        return self._reply(activity)
+
+    @extend_schema(request=ShareCostSerializer, responses={200: ClubActivitySerializer})
+    @action(detail=True, methods=["post"], url_path="cost-share")
+    def cost_share(self, request, *args, **kwargs):
+        """Share the cost among those going (REQ-039 Phase 2): a one-time due for each, through the
+        ledger. Takes activities.manage and finances.manage, since it makes members owe."""
+        organization = self._staff()
+        require_permission(request.user, organization, Permission.FINANCES_MANAGE)
+        activity = get_object_or_404(Activity, pk=kwargs["pk"], organization=organization)
+        body = ShareCostSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        costs.share(activity, request.user, local_today(organization), **body.validated_data)
         return self._reply(activity)
 
     @extend_schema(request=RsvpRequestSerializer, responses={200: ClubActivitySerializer})

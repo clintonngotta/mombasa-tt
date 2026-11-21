@@ -1,11 +1,42 @@
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from finance.ledger import OWED_STATUSES
+
+from . import costs
 from .models import Activity, Rsvp
 
 LONGEST = timezone.timedelta(days=14)
 # What a schedule lists; shared with a facility branch's schedule.
 SCHEDULE_KINDS = [("activity", "activity"), ("tournament", "tournament"), ("training", "training")]
+
+
+class MyShareSerializer(serializers.Serializer):
+    outstanding_minor = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=OWED_STATUSES)
+
+
+class CostShareSerializer(serializers.Serializer):
+    """The shared cost: what each pays and by when, the viewer's own share, and (finance staff only)
+    received, spent and remaining."""
+
+    amount_minor = serializers.IntegerField()
+    currency = serializers.CharField()
+    due_on = serializers.DateField()
+    my_share = MyShareSerializer(allow_null=True)
+    received_minor = serializers.IntegerField(allow_null=True)
+    spent_minor = serializers.IntegerField(allow_null=True)
+    remaining_minor = serializers.IntegerField(allow_null=True)
+
+
+class ShareCostSerializer(serializers.Serializer):
+    """An amount each, or a total split evenly among those going (rounded up to whole units)."""
+
+    amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000, required=False)
+    total_minor = serializers.IntegerField(min_value=1, max_value=1_000_000_000, required=False)
+    currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
+    due_on = serializers.DateField()
 
 
 class ClubActivitySerializer(serializers.ModelSerializer):
@@ -17,11 +48,17 @@ class ClubActivitySerializer(serializers.ModelSerializer):
     invitee_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, write_only=True, max_length=500
     )
+    welfare_project_id = serializers.UUIDField(
+        allow_null=True,
+        required=False,
+        help_text="The welfare project this visit or support activity is for (REQ-038).",
+    )
     going = serializers.SerializerMethodField()
     waitlisted = serializers.SerializerMethodField()
     my_answer = serializers.SerializerMethodField()
     my_waitlisted = serializers.SerializerMethodField()
     can_answer = serializers.SerializerMethodField()
+    cost_share = serializers.SerializerMethodField()
 
     class Meta:
         model = Activity
@@ -39,6 +76,7 @@ class ClubActivitySerializer(serializers.ModelSerializer):
             "rsvp_deadline",
             "public",
             "cost_note",
+            "welfare_project_id",
             "status",
             "cancel_reason",
             "going",
@@ -46,6 +84,7 @@ class ClubActivitySerializer(serializers.ModelSerializer):
             "my_answer",
             "my_waitlisted",
             "can_answer",
+            "cost_share",
             "published_at",
         ]
         read_only_fields = ["id", "status", "cancel_reason", "published_at"]
@@ -78,6 +117,17 @@ class ClubActivitySerializer(serializers.ModelSerializer):
             return False
         return activity.audience == Activity.Audience.MEMBERS or activity.pk in self.context.get(
             "invited", ()
+        )
+
+    @extend_schema_field(CostShareSerializer(allow_null=True))
+    def get_cost_share(self, activity):
+        if not activity.campaign_id:
+            return None
+        return costs.summary(
+            activity,
+            self.context["request"].user,
+            self.context.get("today") or timezone.localdate(),
+            staff=self.context.get("finance_staff", False),
         )
 
     def validate(self, attrs):
