@@ -345,6 +345,16 @@ Completion figures by phase and what is left are in [docs/completion.md](docs/co
   - **Offline-capable actions:** meeting check-in and the secretary's attendance marks, club session attendance, tournament self check-in, logging a match. Each shows at once, marked as waiting to sync.
   - **Tests:** `tests/test_idempotency.py` (4) and `apps/web/test/offline.test.ts` (7: order and a lost reply sent once, refusal set aside and retried under a new key, session ended, two accounts, a failed write not reported as kept, restart), run in CI.
   - **Open:** not yet checked in a browser or on Android and iOS (TASK-062). Door payments and other money stay online by design. Other screens' changes need a connection until they are made offline-capable the same way.
+- [ ] **TASK-123** — Representative squads for external tournaments: clubs (and regional bodies, from the region's clubs) pick squads with per-event slots, players accept or decline, staff replace, a rotation recommendation (least recently represented first, then rating; the last squad goes last) with a reason for overrides, and representation history. Depends: TASK-080, TASK-107. REQ-050 / EVAL-050. Done: rotation and privacy tests pass; squad screen checked in the browser.
+- [ ] **TASK-124** — Internal and external club finance: club-defined external source categories (`finances.manage`), external income recorded by choosing a source from a dropdown, used categories switched off rather than deleted, and summaries filtered and totalled by internal, external and source. Depends: TASK-040, TASK-079. REQ-051 / EVAL-051. Done: totals reconcile with the ledger; filters checked in the browser.
+- [ ] **TASK-125** — Training rules and location check-in: the club's weekly schedule with a usual location (venue or map point), a check-in window with late marking, self check-in only from the app within 300 m (configurable smaller) checked in the API with accuracy, only distance, accuracy and time stored, staff hand-marking kept and labelled, and the admin setting a different location per session with invitees told. Depends: TASK-044, TASK-103. REQ-052 / EVAL-052. Done: range, accuracy, window and moved-session tests pass; checked at phone width.
+- [ ] **TASK-126** — Apologies for training sessions and meetings: sent before the start with an optional reason, seen by staff, shown as apologised in attendance and used by the penalty rules. Depends: TASK-125, TASK-121. REQ-052, REQ-046 / EVAL-052. Done: apology before and after the start, and its effect on attendance, tested.
+- [ ] **TASK-127** — Order of play: staff publish the order of event stages (for example men's singles groups A–E, then women's singles groups), everyone who sees the tournament sees it, officials reorder it live with a change log, dispatch fills free tables in that order and falls through to the next stage with free players so no table stands idle, and the control centre shows idle tables, idle time and table use. Depends: TASK-099, TASK-082. REQ-053 / EVAL-053. Done: dispatch fall-through and reorder tests pass; control centre screenshot.
+- [ ] **TASK-128** — Next-match recommendation: when the deck reaches the last game's winning point before confirmation, recommend the match that takes that table next, show it to staff and to the umpire after confirming, and never assign or confirm by itself. Depends: TASK-127, TASK-024. REQ-053 / EVAL-053. Done: recommendation appears before confirmation and changes nothing; deck checked in the browser.
+- [ ] **TASK-129** — Club absence penalties: governance staff set rules for no-shows at accepted tournament entries or squad places and for missed training without an apology (meetings stay with TASK-121), with a warning, a selection suspension or points and an optional ledger fine; the app proposes, staff issue or waive with a reason, and the member sees their penalties and appeals once. Depends: TASK-121, TASK-123, TASK-126. REQ-054 / EVAL-054. Done: proposal, excuse, fine and privacy tests pass.
+- [ ] **TASK-130** — Post-tournament review: the host's competition staff record what went well, what went wrong and actions with owners, visible to the host's staff and officials. Depends: TASK-029. REQ-055 / EVAL-055. Done: privacy matrix entry and screen checked.
+- [ ] **TASK-131** — Feedback form builder: ordered sections and questions (rating 1–5, single and multiple choice, short and long text, yes/no, number) with required and help text, reusable templates, sending to a tournament's attendees (entrants, umpires, staff, named guests) with open and close dates and an anonymous option, one editable answer each until closing, live totals and CSV export, and no respondent identity on anonymous forms. Depends: TASK-130. REQ-055 / EVAL-055. Done: builder, answering, anonymity and export tests pass; builder and totals checked in the browser.
+
 
 ## Traceability index
 
@@ -397,7 +407,13 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-043](spec.md#req-043) | [EVAL-043](test.md#eval-043) | TASK-003, TASK-081, TASK-082, TASK-083, TASK-084, TASK-085 |
 | [REQ-044](spec.md#req-044) | [EVAL-044](test.md#eval-044) | TASK-101, TASK-102, TASK-103, TASK-104 |
 | [REQ-045](spec.md#req-045) | [EVAL-045](test.md#eval-045) | TASK-105, TASK-106, TASK-107, TASK-108 |
-| [REQ-046](spec.md#req-046) | [EVAL-046](test.md#eval-046) | TASK-109, TASK-110, TASK-121 |
+| [REQ-046](spec.md#req-046) | [EVAL-046](test.md#eval-046) | TASK-109, TASK-110, TASK-121, TASK-126 |
 | [REQ-049](spec.md#req-049) | [EVAL-049](test.md#eval-049) | TASK-114 |
 | [REQ-047](spec.md#req-047) | [EVAL-047](test.md#eval-047) | TASK-111 |
 | [REQ-048](spec.md#req-048) | [EVAL-048](test.md#eval-048) | TASK-112 |
+| [REQ-050](spec.md#req-050) | [EVAL-050](test.md#eval-050) | TASK-123 |
+| [REQ-051](spec.md#req-051) | [EVAL-051](test.md#eval-051) | TASK-124 |
+| [REQ-052](spec.md#req-052) | [EVAL-052](test.md#eval-052) | TASK-125, TASK-126 |
+| [REQ-053](spec.md#req-053) | [EVAL-053](test.md#eval-053) | TASK-127, TASK-128 |
+| [REQ-054](spec.md#req-054) | [EVAL-054](test.md#eval-054) | TASK-129 |
+| [REQ-055](spec.md#req-055) | [EVAL-055](test.md#eval-055) | TASK-130, TASK-131 |

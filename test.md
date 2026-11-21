@@ -327,6 +327,31 @@ The privacy matrix covers every new route, keeps walk-in names and references wi
 
 **Regional officers and bodies — integration/browser.** Setup: Kenya with Mombasa and Kilifi, the Mombasa official, a club in each region with an admin and a member, an outsider. Steps: the official sets up the Mombasa body (again: refused; an outsider: refused; picking the kind when registering: refused); the official opens the club's committee, members, roles, settings and creates a tournament there; the body lists its clubs; add agenda items, one linked to a published tournament; write an article to the region and one to a chosen club, read both before and after publishing as each player; call a clubs' admins meeting, publish, answer, check in before and during it, record minutes; a club calls a members' meeting that the official tries to open; offer a sponsorship to a draft, to the body's own tournament, twice, then to a published one; the sponsor and the host decide; withdraw. Pass: the official reads the club but every write is refused and their managed permissions are empty; agenda and articles reach the region's clubs only, a chosen article only its clubs; drafts are for staff; only the Coast admin is invited, check-in works only while it runs, minutes are refused before it starts; the club's meeting is 404 to the official; only the host decides; accepted sponsors are shown to everyone and disappear when withdrawn. Evidence: tests/test_regions.py, tests/test_authority.py, routes in tests/test_privacy_matrix.py, browser screenshots of the region page tabs, a meeting and a tournament's sponsors.
 
+### EVAL-050
+
+**Representative squads — integration/browser.** Setup: a club with eight active members with ratings, a regional body with two clubs, an external event. Steps: create a squad of four; take the rotation recommendation; one player declines and is replaced; create the next squad. Pass: the next recommendation puts the previous squad last, an override needs a reason, players see only their own history, and a regional squad draws only from the region's clubs. Evidence: tests and browser screenshots.
+
+### EVAL-051
+
+**External finance sources — integration.** Setup: a club with finance staff. Steps: add sources, record external income with a source, try free text and another club's source, switch off a used source, then filter and total. Pass: only the club's active sources are accepted, a used source can't be deleted, and internal and external totals reconcile with the ledger. Evidence: tests and the summary screen.
+
+### EVAL-052
+
+**Training check-in by location — integration/browser.** Setup: a session at a venue with coordinates, a 300 m radius and a check-in window. Steps: check in from 100 m, from 450 m, with 600 m accuracy, before the window, late; move the session to new coordinates and check in from the old place; send an apology, then check in after it. Pass: in range and in the window checks in, late is marked late, out of range or inaccurate is refused, the moved session uses the new point, only distance, accuracy and time are stored, and an apologised player isn't absent. Evidence: tests and phone-width screenshots.
+
+### EVAL-053
+
+**Order of play — integration.** Setup: two events with groups and two tables. Steps: publish an order; dispatch with the current stage blocked by busy players; reorder mid-event; score a match to its last point without confirming. Pass: free tables take the next ready match in order and fall through to the next stage instead of standing idle, reorders are logged, and the next-match recommendation appears before confirmation without assigning anything. Evidence: tests and control centre screenshots.
+
+### EVAL-054
+
+**Absence penalties — integration.** Setup: a no-show penalty rule, a missed-training rule that excuses apologies, a member. Steps: don't attend an accepted entry; miss training with and without an apology; staff issue, waive and the member appeals. Pass: proposals match the rules, the apology excuses, fines post to the ledger once, and only the member and staff see the penalty. Evidence: tests.
+
+### EVAL-055
+
+**Reviews and feedback forms — integration/browser.** Setup: a completed tournament with entrants, an umpire and an outsider. Steps: write a review; build a form with each question type, required and optional; send it anonymously; answer as entrants, again to edit, as the outsider, after closing; view totals and export CSV. Pass: only attendees answer, once each, required questions are enforced, edits stop at closing, totals match the answers, and anonymous answers carry no respondent in the API or the CSV. Evidence: tests and screenshots of the builder, a form and the totals.
+
+
 ## Phase 2 evaluations
 
 ### EVAL-021

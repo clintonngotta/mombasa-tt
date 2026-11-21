@@ -329,7 +329,7 @@ def test_the_message_sent_is_encrypted_for_the_browser_and_signed(monkeypatch):
         seen["body"] = request.data
         return Reply()
 
-    monkeypatch.setattr(webpush.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(webpush, "_open", fake_urlopen)
     result = webpush.send(
         "https://fcm.googleapis.com/fcm/send/abc",
         P256DH,

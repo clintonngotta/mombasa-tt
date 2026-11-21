@@ -74,7 +74,7 @@ Document a deployment-specific environment file outside source control and reada
 | `DJANGO_SECRET_KEY` | Server only; unique per environment |
 | `DJANGO_DEBUG` | False outside local development |
 | `DJANGO_ALLOWED_HOSTS` | Exact API domains, no production wildcard |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Exact HTTPS browser origins |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Exact HTTPS browser origins allowed besides the API's own: CSRF, state-changing API requests (another site's POST, PUT, PATCH or DELETE gets 403 `origin_not_allowed`) and WebSockets check this list (`core/security.py`). With `DJANGO_DEBUG` off the API refuses to start with a wildcard or non-https origin, or a wildcard host in `DJANGO_ALLOWED_HOSTS`. The API sends no CORS headers: the PWA shares its origin |
 | `CORS_ALLOWED_ORIGINS` | Exact web origins; credential support restricted to them |
 | `DATABASE_URL` | Server-only private PostgreSQL address/credential |
 | `REDIS_URL` | Server-only private Redis address/credential |
@@ -92,6 +92,7 @@ Document a deployment-specific environment file outside source control and reada
 | `APP_BUILD` | Build time, public: the web release's number, `YYYYMMDDHHMM` (CI sets it; a local build uses the build time). The service worker version and the `X-Client-Build` header carry it |
 | `MIN_CLIENT_BUILD` | Server: the oldest `APP_BUILD` the API still serves (default 0, every build). An older cached app gets 426 `client_outdated` and asks to update; its queued scores stay on the device and the new version sends them. Raise only for a change that breaks older apps, after the new web release is live |
 | `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` | Server: browser push (REQ-019, TASK-034). Empty key = push off; the inbox works either way. Make the VAPID key once with `manage.py push_keys` and keep it: a new key stops every subscribed device until its player switches push on again. The subject is a `mailto:` or https contact for push services (default `FRONTEND_URL`). The worker sends push over outbound HTTPS only to the hosts in `WEB_PUSH_HOSTS` (default: Google FCM, Mozilla, Apple, Windows push services) |
+| `SECURE_HSTS_SECONDS` | Server: HSTS max-age, 0 (off) by default. Set it (e.g. `31536000`) once every host is checked over HTTPS. Django admin's login is held to `THROTTLE_AUTH_LOGIN` per address, and the live schema (`/api/v1/schema/`) needs a session |
 | `TRUSTED_PROXY_COUNT`, `THROTTLE_PUBLIC_READS` | Server: request throttles take the client address from the last `X-Forwarded-For` hop added by this many proxies (default 1, Caddy). Set it to the real number of proxies in front, or a spoofed header can dodge the login and public-page throttles. Signed-out reads of public tournament pages are limited per address (default `120/min`; TASK-035) |
 | `SODA_STAKES_ENABLED` | Server: allow soda game stakes (default off). **Leave off in production until the legal and policy sign-off (Kenyan betting and gaming law, age 18+, limits) is recorded in intent.md (TASK-078).** While off, stake fields are refused and hidden, and soda games run without stakes. Clubs can still switch stakes or soda games off for their members |
 | `APP_IMAGE`, `WEB_IMAGE` | Immutable release tag/digest, including previous release in history |
