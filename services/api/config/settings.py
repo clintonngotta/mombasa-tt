@@ -27,7 +27,17 @@ if not SECRET_KEY:
     SECRET_KEY = "insecure-local-development-key"
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
+# The browser origins allowed to use the API besides its own (core/security.py): CSRF, state-changing
+# requests and WebSockets all check against this list. Production takes exact https origins only.
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:5173" if DEBUG else "")
+if not DEBUG:
+    if any("*" in host or host.startswith(".") for host in ALLOWED_HOSTS):
+        raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS takes exact domains in production, no wildcard.")
+    for origin in CSRF_TRUSTED_ORIGINS:
+        if not origin.startswith("https://") or "*" in origin:
+            raise ImproperlyConfigured(
+                f"DJANGO_CSRF_TRUSTED_ORIGINS takes exact https:// origins in production, not {origin!r}."
+            )
 
 # Where emailed links (verification, password reset) point.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
@@ -74,6 +84,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "core.security.OriginCheckMiddleware",
+    "core.security.AdminLoginThrottleMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "core.middleware.IdempotencyMiddleware",
@@ -131,6 +143,11 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 30
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Off until every host is checked over HTTPS (deployment.md); then set it, e.g. 31536000.
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0") or 0)
+# Nothing the API serves may be framed or open a window that keeps a handle on it.
+X_FRAME_OPTIONS = "DENY"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 
 LANGUAGE_CODE = "en"
 TIME_ZONE = "Africa/Nairobi"
@@ -196,6 +213,8 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Coast TT API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # The live schema maps every route: signed-in callers only (the web app builds from openapi.yaml).
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
     "COMPONENT_SPLIT_REQUEST": True,
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",

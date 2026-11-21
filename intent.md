@@ -75,6 +75,9 @@ Success means that confirmed results produce correct progression and ratings; co
 | Broadcast | Later distribution to eligible Facebook/Instagram/TikTok destinations; viewers watch there |
 | Subscription | Later platform plans paid by organizations; distinct from club member dues |
 | Hosting | Full service on VPS; shared hosting can serve the static web frontend with API on VPS |
+| Soda stakes at launch | Launch with stakes disabled (`SODA_STAKES_ENABLED` off); turned on only after the legal sign-off of TASK-078 (2026-11-21) |
+| Referee and approval permissions | Only a new `results.referee` permission awards walkovers and disqualifications; a new `tournaments.approve` approves publication; `OfficialAppointment` stays read-only history after moving to body membership (2026-11-21) |
+| Club life and match day additions | Representative squads with rotation, external finance sources, 300 m location check-in for training, apologies, absence penalties, order of play with no idle tables, next-match recommendation, post-tournament reviews and configurable feedback forms (REQ-050 to REQ-055, 2026-11-21) |
 
 Decision revision on 2026-09-08: the user selected **React PWA + Django for launch**, with React Native added later. This supersedes the earlier native-first Expo plan. Next.js, NestJS and Spring Boot are not selected. The mobile-first Stitch designs remain applicable to the responsive PWA; they do not imply native implementation.
 

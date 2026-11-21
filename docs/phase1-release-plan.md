@@ -24,6 +24,15 @@ Phase 1 launch is 65 of 83 tasks done. This plan sequences the 18 that are left,
 | D6 | **Infrastructure purchases.** <ul><li>VPS: Contabo or Namecheap, about 4 vCPU / 8 GB / 80 GB, region chosen after a latency test from Mombasa and Nairobi.</li><li>Staging host.</li><li>Domain and DNS.</li><li>S3-compatible object storage, plus a separate backup bucket and keys.</li><li>Container registry.</li><li>SMTP provider (SPF, DKIM and DMARC).</li><li>Alerting channel and uptime service.</li><li>A machine to generate load.</li><li>Android and iOS test devices.</li></ul> | TASK-058, 060, 061, 062 |
 | D7 | **Dogfood.** Pick the host club, the date and the participants for the seeded tournament. | TASK-063 |
 
+**Recorded 2026-11-21 (owner's answers):**
+
+- **D1:** the transcribed draw, standings and scoring clauses and fixtures are approved as transcribed. The incident clauses are transcribed with TASK-083 for the owner to see; TASK-083 may start.
+- **D2:** pages without Stitch screens follow the existing app's design; they are adjusted later if screens arrive.
+- **D3:** launch with soda stakes disabled (`SODA_STAKES_ENABLED` off), recorded in intent.md; TASK-078 stays open.
+- **D4:** a new `tournaments.approve` permission approves publication, held through body membership; `OfficialAppointment` is kept read-only as history after the migration.
+- **D5:** a new `results.referee` permission (and Referee role); only it awards walkovers and disqualifications.
+- D6 and D7 are still open.
+
 ## 2. Competition features (code)
 
 Order: shared groundwork first, then the features in parallel tracks.

@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-049 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-055 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -310,6 +310,46 @@ On availability/result changes, rank ready matches by planned start, then ready-
 *Meetings.* Any organization's governance staff call meetings (REQ-046 core): title, kind, start and end, place or online link, an ordered agenda, and invitees: the committee, all members, named people, or, for a body, the admins of the region's clubs. Invitees are fixed when the meeting is published; they answer attending or apologies, check in while it runs, and read the minutes staff record once it has started. A meeting is visible only to its invitees and the host's governance staff; a body never sees a club's meetings. Staff cancel a meeting with a reason before it starts. Approval and amendment of minutes, attachments and notifications remain TASK-109.
 
 *Sponsorships.* An organization's competition staff offer a published tournament that hasn't finished an amount (declared only, no payments) and/or goods with quantities, with conditions; one open offer per sponsor and tournament, never for its own. The host's competition staff accept or decline; the sponsor withdraws. Everyone who sees the tournament sees its accepted sponsors and what they give; offers and conditions are for the host's and the sponsor's staff.
+
+### REQ-050
+
+**Representative squads — Phase 1 (user request, 2026-11-21).** A club's competition staff pick the players who represent the club in an external tournament (one not run on Coast TT, such as a REQ-042 listed event or an invitation). A regional body does the same for its region, drawing from the active members of the region's clubs. A squad has a size and per-event slots (for example men's team of 4, women's singles of 2). Picked players accept or decline, and staff replace anyone who declines.
+
+*Rotation.* When staff pick the next squad, the app recommends players in rotation: those who have represented least recently first, then by rating in the discipline. Players who were in the previous squad go last unless staff keep them. Staff can override the recommendation and record a reason. Each player sees their own representation history; staff see the club's or region's history.
+
+### REQ-051
+
+**Internal and external club finance — Phase 2 (user request, 2026-11-21).** Club money is split into internal (members' contributions, dues, levies, activity shares: the REQ-022 ledger) and external (money from outside the membership).
+
+*External sources.* `finances.manage` keeps a list of the club's external source categories (for example sponsor, government grant, county, regional body, gate takings, donation). Recording external income means choosing a source from a dropdown, never typing free text, so filters and reports stay consistent. A category used by any record is switched off rather than deleted. Finance summaries and the annual report (REQ-041) filter and total by internal or external, and external by source.
+
+### REQ-052
+
+**Training rules and location check-in — Phase 1 (user request, 2026-11-21).** A club sets its training schedule (weekly slots with a usual training location: a venue or a map point) and a check-in window: how long before and after a session's start a player may check in. A late check-in is marked late.
+
+*Location check-in.* Players check themselves in to training only through the app, and only while their device reports a position within 300 m of the session's location (the club may set a smaller radius). The check is made in the API from the position the device sends with its accuracy; a position less accurate than the radius is refused with a message to try again outdoors. The API keeps only the distance, accuracy and time of the check-in, never a track. Staff can still mark attendance by hand for a player without a working phone, and the record shows it was marked by staff.
+
+*Location changes.* When a session is held somewhere other than usual, the club admin (or `training.manage`) sets that session's location by picking a venue or entering coordinates. Check-in for that session is measured from the new location, and invitees are told it has moved.
+
+*Apologies.* A player sends an apology (with an optional reason) for a training session or a meeting before it starts. Staff see the apologies, and attendance shows the player as apologised rather than absent, for the penalty rules (REQ-054, REQ-046).
+
+### REQ-053
+
+**Order of play and table flow — Phase 1 (user request, 2026-11-21).** Competition staff publish a tournament's order of play: the sequence of event stages, for example men's singles group stage groups A to E, then women's singles groups, then men's singles knockout. Everyone who sees the tournament sees it. Officials reorder it during the event, and each change is logged with who made it and when.
+
+*No empty tables.* Dispatch (REQ-043) fills each free table with the next ready match in the order of play. If the current stage has no ready match, it takes one from the next stage whose players are free, so no table stands empty while a match could be played. The control centre shows idle tables and their idle time, and the day's table use.
+
+*Next match.* When the umpire's deck reaches the last game's winning point but the result isn't confirmed yet, the app recommends the match that will take that table next and shows it to staff (and to the umpire after confirming), so the next players can be called early. The recommendation never assigns the table or confirms anything by itself.
+
+### REQ-054
+
+**Club penalties for absences — Phase 1 (user request, 2026-11-21).** Club officials (governance staff) set penalty rules for missing what a member signed up for or was picked for. This covers an accepted tournament entry or a representative squad place not attended (no-show or not checked in), and training sessions accepted but missed without an apology. The meeting rules of TASK-121 cover meetings. Each rule has a penalty (warning, suspension from selection for a number of events, or points) and an optional fine through the REQ-022 ledger. Apologies sent in time (REQ-052) excuse an absence when the rule allows it. Penalties are proposed by the app and issued or waived by staff with a reason; the member sees their own penalties and can appeal once.
+
+### REQ-055
+
+**Tournament reviews and feedback forms — Phase 1 (user request, 2026-11-21).** After a tournament the host's competition staff record a review: what went well, what went wrong and actions for next time, with owners. The review is visible to the host's staff and officials.
+
+*Feedback forms.* Staff build feedback forms with a form builder. A form has ordered sections and questions of configurable types: rating (1 to 5), single choice, multiple choice, short text, long text, yes/no and number. Each question can be required and can have help text. Forms can be saved as templates and reused. A form is sent to a tournament's attendees: players with accepted entries, umpires, staff, and optionally named guests. It opens and closes on set dates, and can be anonymous. Each attendee answers once and can edit their answers until the form closes. Staff see live totals per question (averages, counts per choice, text answers) and export the answers as CSV. An anonymous form never shows staff who answered what.
 
 ## Competition rules: version `ITTF-2026-ch3`
 

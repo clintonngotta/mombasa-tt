@@ -114,7 +114,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # The invitation link's secret is the authorization; joining creates the invitee's account.
     "auth-invitation": {"get": PUBLIC, "post": PUBLIC},
     "auth-invitation-claim": {"post": OWNER},
-    "schema": {"get": PUBLIC},
+    "schema": {"get": SIGNED_IN},
     "geography-countries": {"get": PUBLIC},
     # The events listing (REQ-042) is public; pending external events reach the submitting club only.
     "events": {"get": PUBLIC},

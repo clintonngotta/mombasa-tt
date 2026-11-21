@@ -26,6 +26,21 @@ RECORD_SIZE = 4096
 TIMEOUT_SECONDS = 10
 
 
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    """A push service answers in place; following a redirect could send the server to an address the
+    endpoint check (notifications/push.py) never saw, inside the private network included."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None  # the 3xx comes back as an HTTPError: not delivered
+
+
+_OPENER = urllib.request.build_opener(_NoRedirects)
+
+
+def _open(request, timeout):
+    return _OPENER.open(request, timeout=timeout)
+
+
 def b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
@@ -150,7 +165,7 @@ def send(
         headers["Topic"] = topic
     request = urllib.request.Request(endpoint, data=body, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310
+        with _open(request, TIMEOUT_SECONDS) as response:
             return Result(response.status)
     except urllib.error.HTTPError as error:
         return Result(error.code)

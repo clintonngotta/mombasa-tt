@@ -47,6 +47,7 @@ class EventListingView(APIView):
     """GET /events/: the public listing of table tennis events, on Coast TT and elsewhere."""
 
     permission_classes = [AllowAny]
+    public_actions = ("get",)  # signed-out reads are held to the visitors' allowance (core/throttling.py)
 
     @extend_schema(
         parameters=[
