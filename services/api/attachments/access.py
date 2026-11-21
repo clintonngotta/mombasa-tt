@@ -13,6 +13,11 @@ def can_read(user, attachment: Attachment) -> bool:
         from finance.summaries import can_read_receipt
 
         return can_read_receipt(user, attachment)
+    if attachment.purpose in (Attachment.Purpose.TOURNAMENT_COVER, Attachment.Purpose.TOURNAMENT_DOCUMENT):
+        # Whoever may see the tournament it belongs to.
+        from competitions.views import sees_tournament
+
+        return sees_tournament(user, attachment)
     if attachment.owner_id == user.id:
         return True
     if attachment.purpose == Attachment.Purpose.AVATAR:

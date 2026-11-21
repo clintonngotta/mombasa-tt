@@ -45,6 +45,7 @@ from competitions.models import (
     ScheduleSession,
     ScheduleVersion,
     Tournament,
+    TournamentDocument,
 )
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
@@ -82,7 +83,7 @@ from organizations.models import (
 from organizations.permissions import RoleKey
 from outbox.models import Job
 from profiles.models import PlayerProfile
-from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship
+from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
@@ -110,6 +111,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "auth-logout": {"post": PUBLIC},
     "auth-password-reset": {"post": PUBLIC},
     "auth-password-reset-confirm": {"post": PUBLIC},
+    # The invitation link's secret is the authorization; joining creates the invitee's account.
+    "auth-invitation": {"get": PUBLIC, "post": PUBLIC},
+    "auth-invitation-claim": {"post": OWNER},
     "schema": {"get": PUBLIC},
     "geography-countries": {"get": PUBLIC},
     # The events listing (REQ-042) is public; pending external events reach the submitting club only.
@@ -124,7 +128,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-external-event-live": {"post": STAFF},
     "geography-country": {"get": PUBLIC},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
-    "auth-me": {"get": OWNER},
+    "auth-me": {"get": OWNER, "patch": OWNER},
     "attachment-link": {"get": SIGNED_IN},  # per-attachment policy, see test_attachments.py
     "personal-match-list": {"get": OWNER, "post": OWNER},
     "personal-match-labels": {"get": OWNER},
@@ -251,6 +255,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-meeting-minutes": {"post": STAFF},
     "organization-meeting-answer": {"post": OWNER},  # Baraka's invitation
     "organization-meeting-check-in": {"post": OWNER},
+    # Attendance and issuing: governance staff (or the meeting's secretary, nobody here). Changing an
+    # issued penalty: the club admin only, which the staff check covers.
+    "organization-meeting-attendance": {"post": STAFF},
+    "organization-meeting-penalties": {"post": STAFF},
+    "organization-meeting-penalty": {"patch": STAFF},
     # Sponsorships: Coast's finance staff offer; a host's competition staff decide; sponsors are shown.
     "organization-sponsorships": {"get": STAFF, "post": STAFF},
     "organization-sponsorship-withdraw": {"post": STAFF},
@@ -258,6 +267,13 @@ ACCESS: dict[str, dict[str, str]] = {
     # Watch links (REQ-042): seen and reported by everyone who sees the tournament; staff manage them.
     "tournament-streams": {"get": SIGNED_IN, "post": STAFF},
     "tournament-stream": {"patch": STAFF, "delete": STAFF},
+    # A tournament's cover and documents (REQ-007): shown with it; its host's competition staff change them.
+    "tournament-cover": {"put": STAFF, "delete": STAFF},
+    "tournament-documents": {"post": STAFF},
+    "tournament-document": {"delete": STAFF},
+    # Published tournaments in the caller's jurisdiction or their regional body's region; see
+    # test_tournament_organizers.
+    "tournament-overseen": {"get": SIGNED_IN},
     "tournament-stream-report": {"post": SIGNED_IN},
     "tournament-sponsorships": {"get": STAFF},
     "tournament-sponsorship-accept": {"post": STAFF},
@@ -276,6 +292,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "coach": {"get": SIGNED_IN},
     "coach-slots": {"get": SIGNED_IN},
     "my-coach-profile": {"get": OWNER, "put": OWNER},
+    "my-coach-organizer": {"post": OWNER},
     "my-coach-availability": {"get": OWNER, "put": OWNER},
     "my-coach-calendar": {"get": OWNER},
     "my-coach-notes": {"get": OWNER},
@@ -483,7 +500,17 @@ NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tourname
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 # Routes that take a file upload rather than JSON.
-MULTIPART = {"organization-expense-receipt"}
+MULTIPART = {"organization-expense-receipt", "tournament-cover", "tournament-documents"}
+PDF = b"%PDF-1.4\n%%EOF\n"
+
+
+def pdf_upload():
+    from io import BytesIO
+
+    out = BytesIO(PDF)
+    out.name = "rules.pdf"
+    return out
+
 
 BODIES = {
     ("tournament-ceremony", "put"): {"location": "Main hall"},
@@ -505,6 +532,11 @@ BODIES = {
     ("organization-meeting-cancel", "post"): {"reason": "Venue closed"},
     ("organization-meeting-minutes", "post"): {"minutes": "Agreed the budget."},
     ("organization-meeting-answer", "post"): {"answer": "attending"},
+    ("organization-meeting-attendance", "post"): lambda: {
+        "invitee": str(MeetingInvitee.objects.get(meeting__title="MARK-MEETING-RUNNING").id),
+        "attendance": "late",
+    },
+    ("organization-meeting-penalty", "patch"): {"status": "waived"},
     ("organization-sponsorships", "post"): {"tournament_id": NYALI_CUP, "amount_minor": 100000},
     ("tournament-streams", "post"): {"url": "https://www.youtube.com/live/coast-open"},
     ("tournament-stream", "patch"): {"title": "Table 1"},
@@ -628,6 +660,8 @@ BODIES = {
         "spent_on": timezone.localdate().isoformat(),
     },
     ("organization-expense-receipt", "put"): lambda: {"file": image_upload("PNG", (64, 64), "slip.png")},
+    ("tournament-cover", "put"): lambda: {"file": image_upload("PNG", (64, 64), "cover.png")},
+    ("tournament-documents", "post"): lambda: {"title": "Rules", "file": pdf_upload()},
     ("organization-campaign-terms", "post"): lambda: {
         "member_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
         "amount_minor": 500,
@@ -1307,6 +1341,14 @@ class World:
             starts_at=now - timedelta(minutes=10),
             ends_at=now + timedelta(hours=2),
         )
+        over = {"status": Meeting.Status.PUBLISHED, "starts_at": now - timedelta(hours=3)}
+        over["ends_at"] = now - timedelta(hours=1)
+        rule = {"applies_to": "absent", "penalty": "MARK-PENALTY-RULE", "amount_minor": 5000}
+        self.ended_meeting = meeting("Ended", [self.baraka], rules=[rule], **over)
+        penalized = meeting("Penalized", [self.baraka], rules=[rule], **over)
+        self.penalty = MeetingPenalty.objects.create(
+            invitee=penalized.invitees.get(), applies_to="absent", penalty="MARK-PENALTY", amount_minor=5000
+        )
         nyali_cup = Tournament.objects.create(
             id=NYALI_CUP,
             organization=self.nyali,
@@ -1330,6 +1372,16 @@ class World:
         self.offer_to_accept = Sponsorship.objects.create(
             sponsor=self.nyali, tournament=self.published, amount_minor=100000
         )
+        self.document = TournamentDocument.objects.create(
+            tournament=self.draft,
+            title="Prospectus",
+            file=Attachment.store(
+                owner=self.amina,
+                purpose=Attachment.Purpose.TOURNAMENT_DOCUMENT,
+                content=PDF,
+                content_type="application/pdf",
+            ),
+        )
         self.stream = LiveStream.objects.create(
             tournament=self.published, url="https://fb.watch/coast", platform=LiveStream.Platform.FACEBOOK
         )
@@ -1341,6 +1393,11 @@ class World:
         self.guest = guests.create(self.coast, "Kassim Guest", self.amina)
         self.guest_invitation = GuestInvitation.objects.create(
             guest=self.guest, email=self.imani.email, invited_by=self.amina
+        )
+
+        # A guest invited by phone, whose link only its holder can use.
+        _, self.guest_link = guests.invite(
+            guests.create(self.coast, "Linked Guest", self.amina), "", self.amina, phone="+254700000009"
         )
 
         def waiting_claim(name):
@@ -1404,10 +1461,14 @@ class World:
             "organization-meeting-minutes": self.running_meeting.id,
             "organization-meeting-answer": self.running_meeting.id,
             "organization-meeting-check-in": self.running_meeting.id,
+            "organization-meeting-attendance": self.running_meeting.id,
+            "organization-meeting-penalties": self.ended_meeting.id,
+            "organization-meeting-penalty": self.penalty.invitee.meeting_id,
             "organization-sponsorship-withdraw": self.offer.id,
             "tournament-sponsorship-accept": self.offer_to_accept.id,
             "tournament-sponsorship-decline": self.offer_to_decline.id,
             "tournament-stream": self.stream.id,
+            "tournament-document": self.document.id,
             "tournament-stream-report": self.stream.id,
             "coach": self.kito.id,
             "coach-slots": self.kito.id,
@@ -1554,6 +1615,8 @@ class World:
         found = {}
         if "code" in names:
             found["code"] = "KE"
+        if "token" in names:
+            found["token"] = self.guest_link
         if "organization_pk" in names:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
@@ -1564,6 +1627,8 @@ class World:
             found["session_pk"] = self.club_session.id
         if "contribution_pk" in names:
             found["contribution_pk"] = self.welfare_contribution.id
+        if "penalty_pk" in names:
+            found["penalty_pk"] = self.penalty.id
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
@@ -1714,7 +1779,12 @@ class World:
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
             "meetings": sorted(Meeting.objects.values_list("title", "status", "location", "minutes")),
             "meeting_invitees": sorted(
-                MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at")
+                MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
+            ),
+            "meeting_penalties": sorted(
+                MeetingPenalty.objects.values_list(
+                    "invitee__user__email", "penalty", "amount_minor", "status"
+                )
             ),
             "sponsorships": sorted(Sponsorship.objects.values_list("amount_minor", "status")),
             "streams": sorted(LiveStream.objects.values_list("url", "title")),
@@ -2044,6 +2114,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ARTICLE-DRAFT": {"amina"},
         "MARK-MEETING-DRAFT": {"amina"},
         "MARK-MEETING-RUNNING": {"amina", "baraka"},
+        "MARK-PENALTY-RULE": {"amina", "baraka"},  # the meeting's invitees and staff
+        "MARK-PENALTY": {"amina", "baraka"},  # the penalized invitee and staff
         "MARK-SPONSOR-TERMS": {"amina"},
         "MARK-COACH-NOTE": {"baraka"},
         "MARK-COACHING-MESSAGE": {"baraka"},
@@ -2139,9 +2211,13 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
     assert set(cup) == {
         "id",
         "organization",
+        "organizer",
+        "presented_as",
         "venue",
         "name",
         "description",
+        "cover",
+        "documents",
         "starts_on",
         "ends_on",
         "timezone",
@@ -2158,6 +2234,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
         "events",
     }
     assert set(cup["organization"]) == {"id", "name", "town", "country", "region"}
+    assert set(cup["organizer"]) == {"name", "kind", "label"}
     # A place's directions and coordinates are public, like its address: they help players find it.
     assert set(cup["venue"]) == {"id", "name", "town", "address", "directions", "latitude", "longitude"}
 

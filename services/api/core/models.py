@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.functions import Lower
@@ -48,3 +49,24 @@ class City(models.Model):
 
     def __str__(self):
         return f"{self.name}, {self.region.name}"
+
+
+class IdempotentRequest(models.Model):
+    """A change sent with an Idempotency-Key header, and the answer it got (REQ-013, REQ-035). The app
+    keeps changes made offline and sends them when the connection is back. If a reply is lost it sends
+    the same change again with the same key, and the server answers from here instead of doing it twice."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    key = models.CharField(max_length=64)
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=500)
+    # Empty while the first request is still being handled.
+    status = models.PositiveSmallIntegerField(null=True)
+    body = models.JSONField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint("user", "key", name="unique_idempotency_key_per_user")]
+
+    def __str__(self):
+        return f"{self.method} {self.path} ({self.key})"

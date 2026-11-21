@@ -1,0 +1,34 @@
+# Production image for the API, the Celery worker and beat (TASK-058, deployment.md). One immutable image
+# per release: infra/compose.production.yml runs Daphne from it, and worker and beat with other commands.
+# The development image is ./Dockerfile.
+
+FROM python:3.13-slim AS build
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /bin/
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/opt/venv
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project
+COPY . .
+# Django's own static files (admin, API browser). The proxy image copies them out of this stage's result;
+# the throwaway key and database address exist only for this command.
+RUN DJANGO_SECRET_KEY=collectstatic-only DATABASE_URL=postgres://build@localhost/build \
+    /opt/venv/bin/python manage.py collectstatic --noinput
+
+FROM python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    ATTACHMENTS_ROOT=/var/lib/mombasa-tt/attachments
+RUN groupadd --system app && useradd --system --gid app --home-dir /app --no-create-home app \
+    && mkdir -p /var/lib/mombasa-tt/attachments && chown app:app /var/lib/mombasa-tt/attachments
+WORKDIR /app
+COPY --from=build /opt/venv /opt/venv
+COPY --from=build --chown=app:app /app /app
+USER app
+
+EXPOSE 8000
+# Only the proxy reaches this port, so the forwarded client address it sets is trusted (throttling and logs).
+CMD ["daphne", "--bind", "0.0.0.0", "--port", "8000", "--proxy-headers", "config.asgi:application"]

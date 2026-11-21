@@ -5,6 +5,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { AccessLost } from "@/components/clubs/AccessLost"
+import { InviteLink } from "@/components/guests/InviteLink"
 import { ApiError, errorMessage } from "@/lib/api"
 import { can, useActiveMembership } from "@/lib/clubs"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
@@ -20,14 +21,15 @@ import {
   revokeGuestInvitation,
   type Guest,
   type GuestClaim,
+  type InvitedGuest,
 } from "@/lib/guests"
 
 const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
 
 /**
  * The club's guests (REQ-003): players entered before they had an account. Staff invite the person by
- * email; once they accept with that verified address, the guest's entries and matches move to their
- * account. A claim that clashes waits here for staff to resolve, with its trail.
+ * email or phone with a single-use link: opening it, they set their own details and the guest becomes
+ * their account, or they log in and claim it. A claim that clashes waits here for staff, with its trail.
  */
 export function GuestsPage() {
   const { memberships, active } = useActiveMembership()
@@ -48,8 +50,8 @@ export function GuestsPage() {
         {active && <p className="text-muted-foreground">{active.organization.name}</p>}
       </div>
       <p className="text-muted-foreground">
-        Players you enter before they have a Coast TT account. Invite them by email: when they accept with that address, their entries and matches become theirs. Names alone never join two
-        players.
+        Players you enter before they have a Coast TT account. Invite them by email or phone: the link lets them join with their own details, and their entries and matches become theirs.
+        Names alone never join two players.
       </p>
       {memberships.isSuccess && (!allowed || accessLost) && <AccessLost />}
       {allowed && !accessLost && (
@@ -64,13 +66,13 @@ export function GuestsPage() {
               ))}
             </section>
           )}
-          <NewGuest orgId={orgId} />
+          <NewGuest orgId={orgId} club={active?.organization.name ?? ""} />
           {guests.isPending && <p className="text-muted-foreground">Loading guests…</p>}
           {guests.isError && <FormAlert>{errorMessage(guests.error, "We couldn't load the guests.")}</FormAlert>}
           {guests.isSuccess && all.length === 0 && <p className="rounded-xl border border-dashed bg-card p-6 text-muted-foreground">No guests yet.</p>}
           <ul className="flex flex-col gap-2">
             {all.map((guest) => (
-              <GuestRow key={guest.id} orgId={orgId} guest={guest} />
+              <GuestRow key={guest.id} orgId={orgId} guest={guest} club={active?.organization.name ?? ""} />
             ))}
           </ul>
           {settled.length > 0 && (
@@ -89,42 +91,55 @@ export function GuestsPage() {
   )
 }
 
-function NewGuest({ orgId }: { orgId: string }) {
+function NewGuest({ orgId, club }: { orgId: string; club: string }) {
   const queryClient = useQueryClient()
-  const [name, setName] = useState("")
+  const [form, setForm] = useState({ name: "", email: "", phone: "" })
+  const [added, setAdded] = useState<InvitedGuest | null>(null)
   const add = useMutation({
-    mutationFn: () => createGuest(orgId, name.trim()),
-    onSuccess: () => {
-      setName("")
+    mutationFn: () => createGuest(orgId, form.name.trim(), { email: form.email.trim(), phone: form.phone.trim() }),
+    onSuccess: (guest) => {
+      setForm({ name: "", email: "", phone: "" })
+      setAdded(guest.invite_link ? guest : null)
       void queryClient.invalidateQueries({ queryKey: guestKeys.all })
     },
   })
   const fields = add.error instanceof ApiError ? add.error.fieldErrors() : {}
+  const set = (field: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [field]: e.target.value }))
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (name.trim()) add.mutate()
+    if (form.name.trim()) add.mutate()
   }
   return (
     <form onSubmit={submit} noValidate className="flex flex-wrap items-end gap-3 rounded-xl border border-dashed p-4">
-      <Field label="New guest's name" className="min-w-[220px] flex-1" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} error={fields.display_name} />
-      <Button type="submit" disabled={add.isPending || !name.trim()}>
-        <UserPlus aria-hidden className="size-5" /> Add guest
+      <Field label="New player's name" className="min-w-[220px] flex-1" maxLength={80} value={form.name} onChange={set("name")} error={fields.display_name} />
+      <Field label="Email" type="email" optional className="min-w-[200px] flex-1" value={form.email} onChange={set("email")} error={fields.email} />
+      <Field label="Phone" type="tel" inputMode="tel" optional className="min-w-[160px] flex-1" value={form.phone} onChange={set("phone")} error={fields.phone} />
+      <Button type="submit" disabled={add.isPending || !form.name.trim()}>
+        <UserPlus aria-hidden className="size-5" /> {form.email.trim() || form.phone.trim() ? "Add and invite" : "Add guest"}
       </Button>
-      {add.isError && !fields.display_name && <FormAlert>{errorMessage(add.error)}</FormAlert>}
+      <p className="basis-full text-sm text-muted-foreground">With an email or phone, they get a link to join and check their details.</p>
+      {add.isError && !fields.display_name && !fields.email && !fields.phone && <FormAlert>{errorMessage(add.error)}</FormAlert>}
+      {added?.invite_link && (
+        <InviteLink link={added.invite_link} name={added.display_name} club={club} phone={added.invitation?.phone} emailed={!!added.invitation?.email} onDone={() => setAdded(null)} />
+      )}
     </form>
   )
 }
 
-function GuestRow({ orgId, guest }: { orgId: string; guest: Guest }) {
+function GuestRow({ orgId, guest, club }: { orgId: string; guest: Guest; club: string }) {
   const queryClient = useQueryClient()
   const [inviting, setInviting] = useState(false)
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [sent, setSent] = useState<InvitedGuest | null>(null)
   const refresh = () => queryClient.invalidateQueries({ queryKey: guestKeys.all })
   const invite = useMutation({
-    mutationFn: () => inviteGuest(orgId, guest.id, email.trim()),
-    onSuccess: () => {
+    mutationFn: () => inviteGuest(orgId, guest.id, { email: email.trim(), phone: phone.trim() }),
+    onSuccess: (invited) => {
       setInviting(false)
       setEmail("")
+      setPhone("")
+      setSent(invited)
       void refresh()
     },
   })
@@ -140,7 +155,7 @@ function GuestRow({ orgId, guest }: { orgId: string; guest: Guest }) {
           {claimed
             ? `Claimed by ${guest.claimed_by_name ?? "a player"} on ${when(guest.claimed_at!)}`
             : guest.invitation
-              ? `Invited ${guest.invitation.email} · open until ${when(guest.invitation.expires_at)}`
+              ? `Invited ${[guest.invitation.email, guest.invitation.phone].filter(Boolean).join(" and ")} · open until ${when(guest.invitation.expires_at)}`
               : `Added ${when(guest.created_at)} · not invited yet`}
           {!claimed && ` · ${guest.entries} ${guest.entries === 1 ? "entry" : "entries"}`}
         </span>
@@ -164,13 +179,18 @@ function GuestRow({ orgId, guest }: { orgId: string; guest: Guest }) {
             invite.mutate()
           }}
         >
-          <Field label="Their email address" type="email" className="min-w-[220px] flex-1" value={email} onChange={(e) => setEmail(e.target.value)} error={fields.email} hint="They accept after signing in with this address." />
-          <Button type="submit" disabled={invite.isPending || !email.trim()}>
-            {invite.isPending ? "Sending…" : "Send invitation"}
+          <Field label="Their email" type="email" optional className="min-w-[200px] flex-1" value={email} onChange={(e) => setEmail(e.target.value)} error={fields.email} />
+          <Field label="Their phone" type="tel" inputMode="tel" optional className="min-w-[160px] flex-1" value={phone} onChange={(e) => setPhone(e.target.value)} error={fields.phone} />
+          <Button type="submit" disabled={invite.isPending || (!email.trim() && !phone.trim())}>
+            {invite.isPending ? "Inviting…" : "Invite"}
           </Button>
+          <p className="basis-full text-sm text-muted-foreground">We email the link to an address; for a phone, you share it by WhatsApp or SMS.</p>
         </form>
       )}
-      {(revoke.isError || (invite.isError && !fields.email)) && (
+      {sent?.invite_link && (
+        <InviteLink link={sent.invite_link} name={guest.display_name} club={club} phone={sent.invitation?.phone} emailed={!!sent.invitation?.email} onDone={() => setSent(null)} />
+      )}
+      {(revoke.isError || (invite.isError && !fields.email && !fields.phone)) && (
         <div className="basis-full">
           <FormAlert>{errorMessage(revoke.error ?? invite.error)}</FormAlert>
         </div>

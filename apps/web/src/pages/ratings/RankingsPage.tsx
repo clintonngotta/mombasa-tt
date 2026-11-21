@@ -7,6 +7,7 @@ import { Segmented } from "@/components/forms/Segmented"
 import { SelectField } from "@/components/forms/SelectField"
 import { Form } from "@/components/ratings/Form"
 import { Processing } from "@/components/ratings/Processing"
+import { Avatar } from "@/components/profile/Avatar"
 import { RatingHistory } from "@/components/ratings/RatingHistory"
 import { buttonVariants } from "@/components/ui/button"
 import { errorMessage } from "@/lib/api"
@@ -201,6 +202,7 @@ function Row({ row, discipline }: { row: RankingRow; discipline: Discipline }) {
         <span className="w-8 shrink-0 text-center text-lg font-bold tabular-nums" aria-label={`Rank ${row.rank}`}>
           {row.rank}
         </span>
+        <Avatar link={row.avatar} className="size-10" />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="font-semibold break-words">
             {row.display_name}

@@ -1,5 +1,7 @@
 """Guests and their claims (REQ-003): create, invite, accept, and staff resolution of clashes."""
 
+import hashlib
+import secrets
 import uuid
 
 from django.conf import settings
@@ -7,9 +9,11 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
+from accounts import emails
 from accounts.models import GUEST_EMAIL_DOMAIN, User
 from core.exceptions import ApiException
 from organizations.models import Organization
+from profiles.models import PlayerProfile
 
 from . import merge
 from .models import Guest, GuestClaim, GuestClaimEvent, GuestInvitation
@@ -31,8 +35,27 @@ def still_a_guest(guest: Guest) -> None:
         raise ApiException("guest_claimed", "This guest already belongs to a player's account.", 409)
 
 
-def invite(guest: Guest, email: str, actor) -> GuestInvitation:
-    """Ask the person behind the guest to claim it. A new invitation replaces any still open."""
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def join_link(token: str) -> str:
+    return f"{settings.FRONTEND_URL}/join/{token}"
+
+
+def by_token(token: str, lock: bool = False) -> GuestInvitation | None:
+    """The open invitation this link belongs to, or None (unknown, used, revoked or lapsed)."""
+    found = GuestInvitation.objects.select_related("guest__user", "guest__organization", "invited_by")
+    if lock:
+        found = found.select_for_update(of=("self",))
+    invitation = found.filter(token_hash=_hash(token)).first() if token else None
+    return invitation if invitation and invitation.is_open else None
+
+
+def invite(guest: Guest, email: str, actor, phone: str = "") -> tuple[GuestInvitation, str]:
+    """Ask the person behind the guest to claim it, by email, phone or both. A new invitation replaces
+    any still open. Returns the invitation and its link's secret, which is shown to staff once (to
+    share by WhatsApp or SMS) and never stored."""
     still_a_guest(guest)
     if guest.claims.filter(status=GuestClaim.Status.CONFLICT).exists():
         raise ApiException(
@@ -42,12 +65,20 @@ def invite(guest: Guest, email: str, actor) -> GuestInvitation:
     guest.invitations.filter(status=GuestInvitation.Status.PENDING).update(
         status=GuestInvitation.Status.REVOKED, decided_at=now
     )
-    invitation = GuestInvitation.objects.create(guest=guest, email=email.strip().lower(), invited_by=actor)
-    transaction.on_commit(lambda: _send_invitation(invitation))
-    return invitation
+    token = secrets.token_urlsafe(32)
+    invitation = GuestInvitation.objects.create(
+        guest=guest,
+        email=(email or "").strip().lower(),
+        phone=phone or "",
+        invited_by=actor,
+        token_hash=_hash(token),
+    )
+    if invitation.email:
+        transaction.on_commit(lambda: _send_invitation(invitation, token))
+    return invitation, token
 
 
-def _send_invitation(invitation: GuestInvitation) -> None:
+def _send_invitation(invitation: GuestInvitation, token: str) -> None:
     """Sent whether or not the address has an account, so inviting never reveals who is registered."""
     guest = invitation.guest
     club = guest.organization.name
@@ -56,9 +87,9 @@ def _send_invitation(invitation: GuestInvitation) -> None:
         send_mail(
             f"Claim your matches at {club} on Coast TT",
             f'{inviter} at {club} entered you on Coast TT as "{guest.user.display_name}" before you had '
-            "an account. Claim that player to add their entries and results to your own account.\n\n"
-            f"Log in with this email address to accept or decline: {settings.FRONTEND_URL}/profile/claims\n"
-            f"New to Coast TT? Sign up with this address first: {settings.FRONTEND_URL}/signup\n\n"
+            "an account. Join to see your entries and results, and check your details.\n\n"
+            f"Join or claim them here: {join_link(token)}\n"
+            "Already on Coast TT? The same link lets you log in and add them to your account.\n\n"
             f"The invitation expires on {invitation.expires_at:%d %b %Y}. "
             "If this isn't you, ignore this email.",
             None,
@@ -110,7 +141,7 @@ def _try_merge(claim: GuestClaim, actor, action: str, note: str = "") -> GuestCl
 def accept(invitation: GuestInvitation, claimant) -> GuestClaim:
     """The invitee takes the guest. The invitation is used up whatever happens next: merged now, or
     waiting for staff because something clashes."""
-    if claimant.pk == invitation.guest.user_id or not claimant.email_verified_at:
+    if claimant.pk == invitation.guest.user_id or not claimant.is_verified:
         raise ApiException("not_allowed", "Only a verified account can claim a guest.", 403)
     still_a_guest(invitation.guest)
     invitation.status = GuestInvitation.Status.ACCEPTED
@@ -150,3 +181,60 @@ def reject(claim: GuestClaim, actor, note: str) -> GuestClaim:
         claim=claim, actor=actor, action=GuestClaimEvent.Action.REJECTED, note=note
     )
     return claim
+
+
+class Taken(Exception):
+    """The email or phone the invitee chose already belongs to another account."""
+
+    def __init__(self, field: str):
+        super().__init__(field)
+        self.field = field
+
+
+def join(invitation: GuestInvitation, details: dict) -> tuple[User, bool]:
+    """The invitee has no account yet: the guest becomes their account, so its entries, matches and
+    results are theirs with nothing to move. `details`: display_name, password, and email, phone or
+    both, and optionally country, region and city.
+
+    The invitation proves whatever it was sent to: an email that matches it is verified, and so is a
+    phone that matches it. Anything else must be confirmed first (an email gets a verification link).
+    Returns the account and whether it can sign in now."""
+    guest = invitation.guest
+    still_a_guest(guest)
+    user = guest.user
+    email, phone = details.get("email") or "", details.get("phone") or ""
+    if email and User.objects.filter(email=email).exclude(pk=user.pk).exists():
+        raise Taken("email")
+    if phone and User.objects.filter(phone=phone).exclude(pk=user.pk).exists():
+        raise Taken("phone")
+    now = timezone.now()
+    user.display_name = details["display_name"]
+    if email:
+        user.email = email
+        user.email_verified_at = now if email == invitation.email else None
+    if phone:
+        user.phone = phone
+        user.phone_verified_at = now if phone == invitation.phone else None
+    user.set_password(details["password"])
+    user.save()
+    if details.get("country"):
+        PlayerProfile.objects.update_or_create(
+            user=user,
+            defaults={"country": details["country"], "region": details["region"], "city": details["city"]},
+        )
+    invitation.status = GuestInvitation.Status.ACCEPTED
+    invitation.decided_at = now
+    invitation.save(update_fields=["status", "decided_at"])
+    claim = GuestClaim.objects.create(
+        guest=guest, invitation=invitation, claimant=user, status=GuestClaim.Status.MERGED
+    )
+    GuestClaimEvent.objects.create(claim=claim, actor=user, action=GuestClaimEvent.Action.ACCEPTED)
+    GuestClaimEvent.objects.create(
+        claim=claim, actor=user, action=GuestClaimEvent.Action.MERGED, note="Joined from the invitation"
+    )
+    guest.claimed_by = user
+    guest.claimed_at = now
+    guest.save(update_fields=["claimed_by", "claimed_at"])
+    if email and not user.is_email_verified:
+        transaction.on_commit(lambda: emails.send_verification_email(user))
+    return user, user.is_verified

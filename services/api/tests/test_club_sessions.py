@@ -1,6 +1,7 @@
 """Club training sessions (REQ-027, EVAL-027; TASK-044)."""
 
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from django.core.cache import cache
@@ -166,7 +167,8 @@ def test_a_table_in_use_is_reported_before_the_session_is_saved(staff, club, tab
 
 def test_a_running_tournament_at_the_venue_takes_its_tables(staff, club, tables, hall):
     starts, _ = soon(24 * 3)
-    day = starts.date().isoformat()
+    # The tournament's own day: late in the UTC evening it is already tomorrow in Nairobi.
+    day = starts.astimezone(ZoneInfo("Africa/Nairobi")).date().isoformat()
     cup = make_tournament(staff, club, hall, starts_on=day, ends_on=day, timezone="Africa/Nairobi")
     # A draft takes nothing.
     schedule(staff, club, tables[:1], hours=24 * 3)

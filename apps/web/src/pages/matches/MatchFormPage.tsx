@@ -9,7 +9,7 @@ import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { Field, FieldError, FormAlert } from "@/components/forms/Field"
 import { ApiError, errorMessage } from "@/lib/api"
 import {
-  createMatch,
+  createMatchOrKeep,
   getMatch,
   getMatchLabels,
   matchKeys,
@@ -70,8 +70,11 @@ function MatchForm({ match }: { match?: PersonalMatch }) {
     set({ sets: form.sets.map((row, i) => (i === index ? { ...row, ...patch } : row)) })
 
   const save = useMutation({
-    mutationFn: (input: PersonalMatchInput) => (match ? updateMatch(match.id, input) : createMatch(input)),
-    onSuccess: (saved) => {
+    mutationFn: async (input: PersonalMatchInput) => (match ? { kept: false as const, data: await updateMatch(match.id, input) } : createMatchOrKeep(input)),
+    onSuccess: (sent) => {
+      // No connection: kept on this device, and the banner says it is waiting to be sent (REQ-035).
+      if (sent.kept) return navigate("/matches", { replace: true })
+      const saved = sent.data
       queryClient.invalidateQueries({ queryKey: matchKeys.all })
       queryClient.setQueryData(matchKeys.detail(saved.id), saved)
       navigate(`/matches/${saved.id}`, { replace: true })

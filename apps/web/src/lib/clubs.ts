@@ -56,6 +56,7 @@ export const KIND_LABEL: Record<OrganizationKind, string> = {
   facility: "Facility",
   club_facility: "Club and facility",
   regional_body: "Regional body",
+  coaching: "Coaching desk",
 }
 
 export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {

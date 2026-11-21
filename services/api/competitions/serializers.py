@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
 
+from attachments.serializers import AttachmentLinkSerializer
 from core.money import MAX_AMOUNT_MINOR
 from core.timezones import validate_timezone
 from facilities.models import Venue
@@ -25,6 +26,7 @@ from .models import (
     Resolution,
     Rubber,
     Tournament,
+    TournamentDocument,
 )
 
 BEST_OF = (3, 5, 7)
@@ -207,6 +209,61 @@ class OrganizationSummarySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class OrganizerSerializer(serializers.Serializer):
+    """Who a tournament is organized by, as players should read it: the host club, facility or regional
+    body by name, or for a coach's tournament the coach or their firm."""
+
+    name = serializers.CharField()
+    kind = serializers.ChoiceField(
+        choices=["club", "facility", "club_facility", "regional_body", "coach", "firm"]
+    )
+    label = serializers.CharField()
+
+
+ORGANIZER_LABELS = {
+    Organization.Kind.CLUB: "Club",
+    Organization.Kind.FACILITY: "Facility",
+    Organization.Kind.CLUB_FACILITY: "Club and facility",
+    Organization.Kind.REGIONAL_BODY: "Regional body",
+}
+
+
+def organizer(tournament) -> dict:
+    host = tournament.organization
+    coach = getattr(host, "coach_organizer", None) if host.is_coaching else None
+    if coach is not None:
+        if tournament.presented_as == Tournament.PresentedAs.FIRM and coach.firm_name:
+            return {"name": coach.firm_name, "kind": "firm", "label": "Coaching firm"}
+        return {"name": coach.user.display_name, "kind": "coach", "label": "Coach"}
+    if host.is_coaching:
+        return {"name": host.name, "kind": "coach", "label": "Coach"}
+    return {"name": host.name, "kind": host.kind, "label": ORGANIZER_LABELS.get(host.kind, "Club")}
+
+
+class TournamentDocumentSerializer(serializers.ModelSerializer):
+    """A document of a tournament with a fresh signed link to the PDF."""
+
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TournamentDocument
+        fields = ["id", "title", "file", "created_at"]
+        read_only_fields = fields
+
+    @extend_schema_field(AttachmentLinkSerializer)
+    def get_file(self, document) -> dict:
+        return AttachmentLinkSerializer(document.file_id).data
+
+
+class TournamentDocumentUploadSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=120, trim_whitespace=True)
+    file = serializers.FileField()
+
+
+class CoverUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+
 class TournamentSerializer(serializers.ModelSerializer):
     """A tournament with its events. The same fields serve staff and the public (REQ-020): nothing here
     is private once the tournament is published, and drafts are served to the host's staff only."""
@@ -222,6 +279,14 @@ class TournamentSerializer(serializers.ModelSerializer):
     )
     timezone = serializers.CharField(max_length=64, required=False, validators=[validate_timezone])
     events = EventSerializer(many=True, read_only=True)
+    organizer = serializers.SerializerMethodField()
+    presented_as = serializers.ChoiceField(
+        choices=Tournament.PresentedAs.choices,
+        required=False,
+        help_text="For a coach's tournament: organized in the coach's name or their firm's.",
+    )
+    cover = serializers.SerializerMethodField()
+    documents = TournamentDocumentSerializer(many=True, read_only=True)
     registration_fee = RegistrationFeeSerializer(source="*", required=False)
     schedule_notice_minutes = serializers.IntegerField(
         min_value=0,
@@ -235,10 +300,14 @@ class TournamentSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "organization",
+            "organizer",
+            "presented_as",
             "venue",
             "venue_id",
             "name",
             "description",
+            "cover",
+            "documents",
             "starts_on",
             "ends_on",
             "timezone",
@@ -264,6 +333,24 @@ class TournamentSerializer(serializers.ModelSerializer):
             "cancelled_at",
             "cancel_reason",
         ]
+
+    @extend_schema_field(OrganizerSerializer)
+    def get_organizer(self, tournament) -> dict:
+        return organizer(tournament)
+
+    @extend_schema_field(AttachmentLinkSerializer(allow_null=True))
+    def get_cover(self, tournament) -> dict | None:
+        return AttachmentLinkSerializer(tournament.cover_id).data if tournament.cover_id else None
+
+    def validate_presented_as(self, value):
+        """Only a coach's tournament names the coach or their firm; the firm needs its name first."""
+        host = self.context["organization"]
+        if not host.is_coaching:
+            raise serializers.ValidationError("Only a coach's tournament names the coach or a firm.")
+        coach = getattr(host, "coach_organizer", None)
+        if value == Tournament.PresentedAs.FIRM and not (coach and coach.firm_name):
+            raise serializers.ValidationError("Add your firm's name to your coach profile first.")
+        return value
 
     def validate_venue_id(self, venue):
         """The venue must be one of the host's own and in use (a tournament may keep the one it has)."""

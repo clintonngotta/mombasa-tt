@@ -11,12 +11,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.models import User
+from accounts.models import VERIFIED, User
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
 from organizations.access import effective_permissions, managed_organizations, require_permission
-from organizations.models import Organization
+from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
 from . import drawing, entries, lifecycle, official, ties
@@ -98,6 +98,18 @@ def sees_draft(user, tournament: Tournament) -> bool:
     """A draft is shown to its host's competition staff, and to whoever approves its tier once the host
     asks for approval."""
     return manages(user, tournament.organization) or approves(user, tournament)
+
+
+def sees_tournament(user, attachment) -> bool:
+    """Whether `user` may see the tournament that `attachment` (a cover or document) belongs to."""
+    tournament = (
+        Tournament.objects.filter(Q(cover=attachment) | Q(documents__file=attachment))
+        .select_related("organization")
+        .first()
+    )
+    if tournament is None:
+        return False
+    return tournament.status != T.DRAFT or sees_draft(user, tournament)
 
 
 def ensure_open(tournament: Tournament) -> None:
@@ -219,6 +231,33 @@ class TournamentViewSet(viewsets.GenericViewSet):
         found = [
             t for t in pending.order_by("starts_on", "name", "id") if lifecycle.can_approve(t, request.user)
         ]
+        page = self.paginate_queryset(found)
+        return self.get_paginated_response(TournamentSerializer(page, many=True).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter("when", str, enum=["upcoming", "past"])],
+        responses={200: TournamentSerializer(many=True)},
+    )
+    def overseen(self, request):
+        """Published tournaments hosted in the caller's jurisdiction, for regional and country officials
+        (and every one for a platform super admin), and in the region of each regional body the caller
+        belongs to: what they oversee, whoever organized it. Empty for anybody else. `when=upcoming` (the
+        default) covers those still to finish; `when=past` the rest."""
+        found = tournaments().exclude(status=T.DRAFT)
+        if not is_platform_super_admin(request.user):
+            region = Q(pk__in=managed_organizations(request.user).values("pk"))
+            bodies = Membership.objects.active().filter(
+                user=request.user, organization__kind=Organization.Kind.REGIONAL_BODY
+            )
+            for body in bodies.select_related("organization"):
+                region |= Q(country=body.organization.country, region__iexact=body.organization.region)
+            found = found.filter(organization__in=Organization.objects.filter(region))
+        today = timezone.localdate()
+        over = Q(status__in=[T.COMPLETED, T.CANCELLED]) | Q(ends_on__lt=today, status=T.PUBLISHED)
+        if request.query_params.get("when") == "past":
+            found = found.filter(over).order_by("-starts_on", "name", "id")
+        else:
+            found = found.exclude(over)
         page = self.paginate_queryset(found)
         return self.get_paginated_response(TournamentSerializer(page, many=True).data)
 
@@ -346,6 +385,8 @@ class OrganizationTournamentViewSet(viewsets.GenericViewSet):
         serializer = TournamentSerializer(data=request.data, context={"organization": organization})
         serializer.is_valid(raise_exception=True)
         serializer.validated_data.setdefault("timezone", organization.timezone)
+        if organization.is_coaching:
+            serializer.validated_data.setdefault("presented_as", Tournament.PresentedAs.COACH)
         tournament = serializer.save(organization=organization, created_by=request.user)
         return reply(tournament, status.HTTP_201_CREATED)
 
@@ -539,7 +580,7 @@ class EntryViewSet(viewsets.GenericViewSet):
                 entries.ensure_registration_open(event)
             ids = asked.get("player_ids") or [request.user.id]
             # Verified players; and, for the host's staff, the host's own unclaimed guests (REQ-003).
-            enterable = Q(email_verified_at__isnull=False)
+            enterable = VERIFIED
             if staff:
                 enterable |= Q(
                     guest__organization_id=tournament.organization_id, guest__claimed_by__isnull=True
