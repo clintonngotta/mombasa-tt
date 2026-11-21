@@ -76,6 +76,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.IdempotencyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -173,14 +174,22 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
     # Applies only to views that set `throttle_scope` (anonymous auth endpoints, sending invitations).
-    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    # ...and, for signed-out callers, the public competition pages (core/throttling.py).
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+        "core.throttling.PublicReadThrottle",
+    ],
     "DEFAULT_THROTTLE_RATES": {
         "auth_login": os.environ.get("THROTTLE_AUTH_LOGIN", "10/min"),
         "auth_email": os.environ.get("THROTTLE_AUTH_EMAIL", "5/min"),
         "invitations": os.environ.get("THROTTLE_INVITATIONS", "30/hour"),
         "uploads": os.environ.get("THROTTLE_UPLOADS", "30/hour"),
         "entries": os.environ.get("THROTTLE_ENTRIES", "30/hour"),
+        "public_reads": os.environ.get("THROTTLE_PUBLIC_READS", "120/min"),
     },
+    # The client address is the last X-Forwarded-For hop added by the one proxy in front (Caddy), so a
+    # client can't dodge a throttle by sending its own X-Forwarded-For. With no header, REMOTE_ADDR.
+    "NUM_PROXIES": int(os.environ.get("TRUSTED_PROXY_COUNT", "1")),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -197,6 +206,10 @@ SPECTACULAR_SETTINGS = {
         # Campaigns and welfare projects share one audience choice set (all or selected members).
         "FinanceAudienceEnum": "finance.models.Campaign.Audience",
         "MembershipStatusEnum": "organizations.models.Membership.Status",
+        "MeetingAttendanceEnum": "regions.models.MeetingInvitee.Attendance",
+        "AttendanceMarkEnum": "regions.serializers.MARKS",
+        "PenalizedAttendanceEnum": "regions.serializers.PENALIZED",
+        "MeetingPenaltyStatusEnum": "regions.models.MeetingPenalty.Status",
         "SkillEnum": "training.models.Skill",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",
@@ -206,6 +219,8 @@ SPECTACULAR_SETTINGS = {
         "SodaChallengeStatusEnum": "soda.models.Challenge.Status",
         "ScheduleKindEnum": "activities.serializers.SCHEDULE_KINDS",
         "ActivityStatusEnum": "activities.models.Activity.Status",
+        # A welfare due's and an activity share's standing for the member who owes it.
+        "OwedStatusEnum": "finance.ledger.OWED_STATUSES",
         "SessionInvitationStatusEnum": "training.models.SessionInvitation.Status",
         "CoachLevelEnum": "coaching.models.Level",
         "JoinRequestStatusEnum": "organizations.models.JoinRequest.Status",
@@ -267,6 +282,18 @@ REDIS_URL = os.environ.get("REDIS_URL", "")
 # Raise it only when a change breaks older cached apps; 0 serves every build.
 MIN_CLIENT_BUILD = int(os.environ.get("MIN_CLIENT_BUILD", "0") or 0)
 # Soda game stakes (REQ-040) stay off until the legal and policy sign-off is recorded (TASK-078).
+# Browser push (REQ-019, TASK-034). Off until a VAPID private key is set: make one with
+# `manage.py push_keys`. The subject is how push services reach the operator (mailto: or https URL).
+WEB_PUSH_PRIVATE_KEY = os.environ.get("WEB_PUSH_PRIVATE_KEY", "").strip()
+WEB_PUSH_SUBJECT = os.environ.get("WEB_PUSH_SUBJECT", "") or FRONTEND_URL
+# The only hosts the server sends push messages to: the browsers' own push services. Anything else a
+# client sends as an endpoint is refused, so the server can't be made to post to other addresses.
+WEB_PUSH_HOSTS = env_list(
+    "WEB_PUSH_HOSTS",
+    "fcm.googleapis.com,updates.push.services.mozilla.com,push.services.mozilla.com,"
+    "web.push.apple.com,*.push.apple.com,*.notify.windows.com",
+)
+
 SODA_STAKES_ENABLED = os.environ.get("SODA_STAKES_ENABLED", "").lower() in ("1", "true", "yes")
 
 CELERY_BROKER_URL = REDIS_URL or "memory://"
@@ -278,7 +305,16 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_BEAT_SCHEDULE = {"outbox-sweep": {"task": "outbox.work", "schedule": 5.0}}
+CELERY_BEAT_SCHEDULE = {
+    "outbox-sweep": {"task": "outbox.work", "schedule": 5.0},
+    "forget-idempotency-keys": {"task": "core.forget_idempotency_keys", "schedule": 6 * 60 * 60.0},
+    "drop-expired-push-devices": {
+        "task": "notifications.drop_expired_push_devices",
+        "schedule": 6 * 60 * 60.0,
+    },
+}
+# How long the answer to a change sent with an Idempotency-Key is kept (core.middleware).
+IDEMPOTENCY_KEEP_DAYS = 14
 
 CHANNEL_LAYERS = {
     "default": (

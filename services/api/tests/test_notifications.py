@@ -2,8 +2,10 @@
 
 import pytest
 
+from competitions.models import Match, Tournament
 from notifications import service
 from notifications.models import Notification
+from reservations import board
 
 from .helpers import logged_in, make_user
 from .test_entries import act, cup, enter, player, singles  # noqa: F401
@@ -118,3 +120,38 @@ def test_announcements_go_to_an_explicit_audience_only(club, staff):
         logged_in(members[1]).post(path, {"title": "x", "audience": "members"}, format="json").status_code
         == 403
     )
+
+
+def test_the_matches_next_in_line_hear_they_are_up_next_and_the_call_supersedes_it(staff, club, hall):  # noqa: F811
+    names = [[n] for n in ("Amina", "Brian", "Chao", "Dalia", "Eli", "Fatma", "Gideon", "Halima")]
+    game = started(staff, club, hall, names)
+    one, two = tables(hall)
+    send(staff, game, one)  # two tables, four ready matches: one goes out, one could, two wait
+    first = set(players_of(game["match"]))
+    told = Notification.objects.filter(category="up_next", superseded=False)
+    told_people = {alert.recipient_id for alert in told}
+    assert len(told_people) == 4 and not told_people & first
+    assert {alert.title for alert in told} == {"You're up next"}
+    # Calling one of them to a table supersedes its "Up next" with the call.
+    waiting = next(
+        m
+        for m in Match.objects.filter(draw__event_id=game["event"]["id"], round=1)
+        if set(players_of(m)) <= told_people
+    )
+    send(staff, {**game, "match": waiting}, two)
+    for user_id in players_of(waiting):
+        assert not Notification.objects.filter(
+            recipient_id=user_id, category="up_next", superseded=False
+        ).exists()
+        assert Notification.objects.filter(
+            recipient_id=user_id, category="table_call", superseded=False
+        ).exists()
+    # Sending the same alert again changes nothing: each match is announced once.
+    count = Notification.objects.filter(category="up_next").count()
+
+    board.announce_up_next(Tournament.objects.get(pk=game["cup"]["id"]))
+    assert Notification.objects.filter(category="up_next").count() == count
+
+
+def players_of(match):
+    return [p.user_id for entry in (match.entry_a, match.entry_b) for p in entry.players.all()]

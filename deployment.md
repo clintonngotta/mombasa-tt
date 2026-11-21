@@ -4,7 +4,7 @@ Updated 2026-09-08. Requirements: [spec.md](spec.md#req-034). Tasks: [tasks.md](
 
 ## Status and assumptions
 
-This is a deployment plan. No server, DNS record, mobile build, container image, database or paid subscription has been provisioned. Commands below describe the intended release interface; Compose files, Django commands, images and project directories are deliverables of TASK-058 and do not exist yet. Replace documented placeholders only after those artifacts are implemented and tested on staging. Do not run production examples against an arbitrary existing server.
+No server, DNS record, mobile build, image registry, database or paid subscription has been provisioned. The container artifacts exist (2026-11-20, TASK-058 in progress) and were tried locally with `APP_DOMAIN=localhost`: `services/api/Dockerfile.production` (API, worker and beat), `apps/web/Dockerfile.production` (Caddy with the PWA build and Django's static files), `infra/Caddyfile`, `infra/compose.production.yml` and the secret-free `infra/production.env.example`. Still to do for TASK-058: publish images from CI to a chosen registry, object storage for attachments and backups, and the staging deploy and rollback rehearsal on a VPS. Do not run production examples against an arbitrary existing server.
 
 Launch runs the React PWA/Django core without streaming, video workers, subscription billing or a native app. PostgreSQL is the durable source of truth; Redis is private transport/cache, not the only copy of queued work. The PWA build, manifest and service worker are hosted over HTTPS. React Native/Expo and store distribution are a deferred follow-on.
 
@@ -48,7 +48,7 @@ flowchart LR
     P --> K[Off-site base backups and WAL]
 ```
 
-Compose services: `proxy`, `api`, `worker`, `beat`, `db`, `redis`. Daphne runs Django ASGI. Worker and beat use the same immutable application image/release as API. Define a bounded worker concurrency; one beat instance. Jobs reference database IDs rather than embedding sensitive records in Redis payloads.
+Compose services: `proxy`, `api`, `worker`, `beat`, `db`, `redis`. Daphne runs Django ASGI (`--proxy-headers`, so the client address Caddy forwards is used for throttling and logs). The proxy image carries the PWA build and Django's collected static files, so a release replaces both images together; the API image runs as a non-root user. Redis needs a password (`REDIS_PASSWORD`) and keeps nothing on disk, because the outbox in PostgreSQL holds the work. Worker and beat use the same immutable application image/release as API. Define a bounded worker concurrency; one beat instance. Jobs reference database IDs rather than embedding sensitive records in Redis payloads.
 
 Use named volumes for PostgreSQL, necessary Redis persistence, and Caddy certificates. Containers have restart policies and readiness dependencies. Container restart is not data recovery. Only proxy binds public HTTP/HTTPS. DB and Redis bind no host-public ports. Do not mount the Docker socket into application containers.
 
@@ -78,7 +78,10 @@ Document a deployment-specific environment file outside source control and reada
 | `CORS_ALLOWED_ORIGINS` | Exact web origins; credential support restricted to them |
 | `DATABASE_URL` | Server-only private PostgreSQL address/credential |
 | `REDIS_URL` | Server-only private Redis address/credential |
-| `APP_DOMAIN`, `API_DOMAIN` | Reverse proxy hostnames |
+| `APP_DOMAIN` | The site's hostname. Caddy serves the PWA and proxies `/api/` (WebSockets included), `/admin/` and `/health/` on it, so the app and API share one origin. `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` and `FRONTEND_URL` default to it in `infra/compose.production.yml` |
+| `API_DOMAIN` | Not implemented yet: a separate API hostname (the split frontend option) also needs CORS with credentials, which the API doesn't have |
+| `POSTGRES_PASSWORD`, `REDIS_PASSWORD` | Server only; compose builds `DATABASE_URL` and `REDIS_URL` from them |
+| `HTTP_PORT`, `HTTPS_PORT`, `COMPOSE_PROJECT_NAME`, `WORKER_CONCURRENCY` | Host ports (80 and 443), the project name (separate for staging on a shared host) and worker concurrency (default 2) |
 | `SMTP_HOST`, `SMTP_PORT`, SMTP credentials | Transactional account/recovery email; configure SPF/DKIM/DMARC |
 | Object storage endpoint/bucket/credentials | Private attachments, separate backup credentials/bucket |
 | `ATTACHMENTS_ROOT` | Private attachment folder while the `attachments` storage is the local filesystem; a persistent volume outside the web root, never served by the proxy. Replaced by the object storage settings above once TASK-058 switches the backend |
@@ -88,6 +91,8 @@ Document a deployment-specific environment file outside source control and reada
 | `VITE_API_BASE_URL` | Build time, public: the API base the web app calls. Leave unset (`/api/v1`) when Caddy serves the app and API on one origin; set the full HTTPS URL (e.g. `https://api.example.com/api/v1`) for split hosting. Staging builds point at the staging API, production at production. Never put server tokens here; Expo public URL added only with later native app |
 | `APP_BUILD` | Build time, public: the web release's number, `YYYYMMDDHHMM` (CI sets it; a local build uses the build time). The service worker version and the `X-Client-Build` header carry it |
 | `MIN_CLIENT_BUILD` | Server: the oldest `APP_BUILD` the API still serves (default 0, every build). An older cached app gets 426 `client_outdated` and asks to update; its queued scores stay on the device and the new version sends them. Raise only for a change that breaks older apps, after the new web release is live |
+| `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` | Server: browser push (REQ-019, TASK-034). Empty key = push off; the inbox works either way. Make the VAPID key once with `manage.py push_keys` and keep it: a new key stops every subscribed device until its player switches push on again. The subject is a `mailto:` or https contact for push services (default `FRONTEND_URL`). The worker sends push over outbound HTTPS only to the hosts in `WEB_PUSH_HOSTS` (default: Google FCM, Mozilla, Apple, Windows push services) |
+| `TRUSTED_PROXY_COUNT`, `THROTTLE_PUBLIC_READS` | Server: request throttles take the client address from the last `X-Forwarded-For` hop added by this many proxies (default 1, Caddy). Set it to the real number of proxies in front, or a spoofed header can dodge the login and public-page throttles. Signed-out reads of public tournament pages are limited per address (default `120/min`; TASK-035) |
 | `SODA_STAKES_ENABLED` | Server: allow soda game stakes (default off). **Leave off in production until the legal and policy sign-off (Kenyan betting and gaming law, age 18+, limits) is recorded in intent.md (TASK-078).** While off, stake fields are refused and hidden, and soda games run without stakes. Clubs can still switch stakes or soda games off for their members |
 | `APP_IMAGE`, `WEB_IMAGE` | Immutable release tag/digest, including previous release in history |
 | Later relay/billing secrets | Provision only when those phases are enabled |
@@ -117,7 +122,7 @@ Planned file: `infra/compose.production.yml`. The following is the intended comm
 
 ```bash
 cd /srv/mombasa-tt
-docker compose --env-file .env.production -f infra/compose.production.yml pull
+docker compose --env-file .env.production -f infra/compose.production.yml pull --ignore-buildable
 docker compose --env-file .env.production -f infra/compose.production.yml run --rm api python manage.py check --deploy
 docker compose --env-file .env.production -f infra/compose.production.yml run --rm api python manage.py migrate --plan
 ```
@@ -128,12 +133,11 @@ Pause dispatch and drain active worker tasks for deployments that could interrup
 
 ```bash
 docker compose --env-file .env.production -f infra/compose.production.yml run --rm api python manage.py migrate --noinput
-docker compose --env-file .env.production -f infra/compose.production.yml run --rm api python manage.py collectstatic --noinput
 docker compose --env-file .env.production -f infra/compose.production.yml up -d
 docker compose --env-file .env.production -f infra/compose.production.yml ps
 ```
 
-The Compose implementation must arrange for collected static files to be served by the proxy and must perform worker draining before this restart sequence when necessary. Health checks: `/health/live` checks process responsiveness; `/health/ready` checks required DB/broker readiness without exposing credentials. Outbox recovery covers broker interruption. The `worker` service runs Celery (`celery -A config worker`) and exactly one `beat` (`celery -A config beat`). A job written to the PostgreSQL outbox wakes a worker once its transaction commits, and beat asks for a sweep every 5 seconds, which picks up retries that are due and any wake-up Redis lost; tasks are acknowledged late, so one a dying worker held goes to another, and the outbox row lock makes the repeat harmless. No job is run inside a web request. Without `REDIS_URL` (local development only) `python manage.py work_outbox` polls the outbox instead. `/health/ready` checks Redis whenever `REDIS_URL` is set. Live updates: `/api/v1/ws/tournaments/{id}/` (Daphne, Channels with the Redis channel layer) tells signed-in pages that may see the tournament that its scores or results changed; the page fetches the data again through the API. The proxy must pass WebSocket upgrades on `/api/v1/ws/`. Logs are one JSON object per line (`LOG_FORMAT=json`, the default when `DJANGO_DEBUG` is off) with `request_id`; request lines carry method, path, status and duration, never query strings, headers or bodies. Ratings are worked out by that worker from official results; `python manage.py rebuild_ratings` writes both ledgers again from nothing (run it once after first deploying ratings, and whenever the ledgers are in doubt).
+Static files are collected when the API image is built and copied into the proxy image, so there is no collectstatic step on the server. `check --deploy` warns about HSTS (deferred until every host is checked) and `SECURE_SSL_REDIRECT` (Caddy redirects HTTP to HTTPS). The worker gets a 60-second grace period on stop; Celery's warm shutdown lets running tasks finish, and the outbox retries any it couldn't. Health checks: `/health/live` checks process responsiveness; `/health/ready` checks required DB/broker readiness without exposing credentials. Outbox recovery covers broker interruption. The `worker` service runs Celery (`celery -A config worker`) and exactly one `beat` (`celery -A config beat`). A job written to the PostgreSQL outbox wakes a worker once its transaction commits, and beat asks for a sweep every 5 seconds, which picks up retries that are due and any wake-up Redis lost; tasks are acknowledged late, so one a dying worker held goes to another, and the outbox row lock makes the repeat harmless. No job is run inside a web request. Without `REDIS_URL` (local development only) `python manage.py work_outbox` polls the outbox instead. `/health/ready` checks Redis whenever `REDIS_URL` is set. Live updates: `/api/v1/ws/tournaments/{id}/` (Daphne, Channels with the Redis channel layer) tells signed-in pages that may see the tournament that its scores or results changed; the page fetches the data again through the API. The proxy must pass WebSocket upgrades on `/api/v1/ws/`. Logs are one JSON object per line (`LOG_FORMAT=json`, the default when `DJANGO_DEBUG` is off) with `request_id`; request lines carry method, path, status and duration, never query strings, headers or bodies. Ratings are worked out by that worker from official results; `python manage.py rebuild_ratings` writes both ledgers again from nothing (run it once after first deploying ratings, and whenever the ledgers are in doubt).
 
 After deploy: verify HTTPS, login/refresh/CSRF, a public tournament deep link, authenticated WebSocket, test notification, readiness, and a fixture tournament in staging. In production use non-destructive staff smoke checks and an explicitly designated test event if needed. Compare errors/queue age for at least 15 minutes. Record image digests, migration names, backup ID and mobile compatibility in release history.
 

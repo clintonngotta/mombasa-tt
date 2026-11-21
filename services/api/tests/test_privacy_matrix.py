@@ -64,7 +64,7 @@ from finance.models import (
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
-from notifications.models import Notification, Preference
+from notifications.models import Notification, Preference, PushSubscription
 from organizations.models import (
     AdminHandover,
     CommitteeField,
@@ -83,7 +83,7 @@ from organizations.models import (
 from organizations.permissions import RoleKey
 from outbox.models import Job
 from profiles.models import PlayerProfile
-from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship
+from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
 from reservations import service as reservations
 from reservations.models import Hold, Reservation
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
@@ -171,6 +171,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "notification-read": {"post": OWNER},
     "notification-read-all": {"post": OWNER},
     "my-notification-preferences": {"get": OWNER, "put": OWNER},
+    # Browser push (TASK-034): the player's own devices.
+    "my-push": {"get": OWNER},
+    "my-push-subscribe": {"post": OWNER},
+    "my-push-unsubscribe": {"post": OWNER},
+    "my-push-device": {"delete": OWNER},
     "organization-announcements": {"post": STAFF},
     # The manual ledger (REQ-022): finance staff record and read; a member reads their own.
     "organization-charges": {"get": STAFF, "post": STAFF},
@@ -195,6 +200,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-welfare-project": {"get": MEMBER, "patch": STAFF},
     "organization-welfare-project-hide": {"post": STAFF},
     "organization-welfare-project-close": {"post": STAFF},
+    "organization-welfare-project-due": {"post": STAFF},
     "organization-welfare-contributions": {"get": STAFF, "post": STAFF},
     "organization-welfare-contribution-reverse": {"post": STAFF},
     "organization-welfare-expenses": {"get": STAFF, "post": STAFF},
@@ -225,7 +231,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "training-plan-item": {"patch": OWNER, "delete": OWNER},
     # A club's drills: members read them, training staff change them.
     # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
-    "tournament-ceremony": {"get": STAFF, "put": STAFF},
+    # Published tournaments are public (TASK-035): a draft ceremony is still the staff's (test_public_views).
+    "tournament-ceremony": {"get": PUBLIC, "put": STAFF},
     "tournament-ceremony-generate": {"post": STAFF},
     "tournament-ceremony-publish": {"post": STAFF},
     "tournament-ceremony-reorder": {"post": STAFF},
@@ -254,12 +261,17 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-meeting-minutes": {"post": STAFF},
     "organization-meeting-answer": {"post": OWNER},  # Baraka's invitation
     "organization-meeting-check-in": {"post": OWNER},
+    # Attendance and issuing: governance staff (or the meeting's secretary, nobody here). Changing an
+    # issued penalty: the club admin only, which the staff check covers.
+    "organization-meeting-attendance": {"post": STAFF},
+    "organization-meeting-penalties": {"post": STAFF},
+    "organization-meeting-penalty": {"patch": STAFF},
     # Sponsorships: Coast's finance staff offer; a host's competition staff decide; sponsors are shown.
     "organization-sponsorships": {"get": STAFF, "post": STAFF},
     "organization-sponsorship-withdraw": {"post": STAFF},
-    "tournament-sponsors": {"get": SIGNED_IN},
+    "tournament-sponsors": {"get": PUBLIC},
     # Watch links (REQ-042): seen and reported by everyone who sees the tournament; staff manage them.
-    "tournament-streams": {"get": SIGNED_IN, "post": STAFF},
+    "tournament-streams": {"get": PUBLIC, "post": STAFF},
     "tournament-stream": {"patch": STAFF, "delete": STAFF},
     # A tournament's cover and documents (REQ-007): shown with it; its host's competition staff change them.
     "tournament-cover": {"put": STAFF, "delete": STAFF},
@@ -324,6 +336,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-activity-publish": {"post": STAFF},
     "organization-activity-cancel": {"post": STAFF},
     "organization-activity-rsvp": {"post": MEMBER},
+    "organization-activity-cost-share": {"post": STAFF},
     "organization-activity-attendees": {"get": MEMBER},
     "organization-activity-invitees": {"get": STAFF},
     "organization-schedule": {"get": MEMBER},
@@ -399,7 +412,8 @@ ACCESS: dict[str, dict[str, str]] = {
     # Tournaments: published ones are for every signed-in player (signed-out pages come with TASK-035);
     # drafts and every change are for the host's competition staff.
     "organization-tournaments": {"get": STAFF, "post": STAFF},
-    "tournament-list": {"get": SIGNED_IN},
+    "tournament-list": {"get": PUBLIC},
+    "tournament-dashboard": {"get": STAFF},
     "tournament-schedule": {"get": STAFF, "put": STAFF},
     "tournament-schedule-recommend": {"post": STAFF},
     "tournament-schedule-check": {"post": STAFF},
@@ -411,7 +425,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-schedule-session": {"patch": STAFF, "delete": STAFF},
     # Lists only the drafts the caller may approve; see test_authority.
     "tournament-awaiting-approval": {"get": SIGNED_IN},
-    "tournament-detail": {"get": SIGNED_IN, "patch": STAFF, "delete": STAFF},
+    "tournament-detail": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
     "tournament-publish": {"post": STAFF},
     "tournament-request-approval": {"post": STAFF},
     "tournament-reject-approval": {"post": APPROVER},
@@ -426,7 +440,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-cancel": {"post": STAFF},
     # Entries: accepted ones are for every signed-in player, the rest for their own players and for
     # competition staff. Anyone may enter; only an entry's own players withdraw it themselves.
-    "tournament-event-entries": {"get": SIGNED_IN, "post": SIGNED_IN},
+    "tournament-event-entries": {"get": PUBLIC, "post": SIGNED_IN},
     "tournament-event-entry-accept": {"post": STAFF},
     "tournament-event-entry-waitlist": {"post": STAFF},
     "tournament-event-entry-reject": {"post": STAFF},
@@ -437,9 +451,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-entry-withdraw": {"post": OWNER},
     "me-entries": {"get": OWNER},
     # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
-    "tournament-event-draw": {"get": SIGNED_IN},
-    "tournament-event-standings": {"get": SIGNED_IN},
-    "tournament-event-match": {"get": SIGNED_IN},  # of the published draw only
+    "tournament-event-draw": {"get": PUBLIC},
+    "tournament-event-standings": {"get": PUBLIC},
+    "tournament-event-match": {"get": PUBLIC},  # of the published draw only
     # A match's recap and result card are public for a published tournament (REQ-018).
     "tournament-event-match-recap": {"get": PUBLIC},
     "tournament-event-match-card": {"get": PUBLIC},
@@ -477,10 +491,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": SIGNED_IN},
-    "player-ratings": {"get": SIGNED_IN},
-    "rankings": {"get": SIGNED_IN},
-    "club-rankings": {"get": SIGNED_IN},
-    "geography-rankings": {"get": SIGNED_IN},
+    "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records
+    "rankings": {"get": PUBLIC},  # a club's own ranking needs a session
+    "club-rankings": {"get": PUBLIC},
+    "geography-rankings": {"get": PUBLIC},
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
@@ -525,6 +539,11 @@ BODIES = {
     ("organization-meeting-cancel", "post"): {"reason": "Venue closed"},
     ("organization-meeting-minutes", "post"): {"minutes": "Agreed the budget."},
     ("organization-meeting-answer", "post"): {"answer": "attending"},
+    ("organization-meeting-attendance", "post"): lambda: {
+        "invitee": str(MeetingInvitee.objects.get(meeting__title="MARK-MEETING-RUNNING").id),
+        "attendance": "late",
+    },
+    ("organization-meeting-penalty", "patch"): {"status": "waived"},
     ("organization-sponsorships", "post"): {"tournament_id": NYALI_CUP, "amount_minor": 100000},
     ("tournament-streams", "post"): {"url": "https://www.youtube.com/live/coast-open"},
     ("tournament-stream", "patch"): {"title": "Table 1"},
@@ -595,6 +614,10 @@ BODIES = {
     ("organization-activity", "patch"): {"place": "Moved to the beach"},
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
+    ("organization-activity-cost-share", "post"): lambda: {
+        "amount_minor": 50000,
+        "due_on": timezone.localdate().isoformat(),
+    },
     ("organization-soda-policy", "put"): {"games_enabled": True, "stakes_enabled": False},
     ("organization-announcements", "post"): {"title": "Hall closed", "audience": "members"},
     ("organization-charges", "post"): lambda: {
@@ -954,7 +977,7 @@ class World:
             receipt=self.receipt,
         )
 
-        # A welfare project with one anonymous gift from Faith; two more to hide and to close.
+        # A welfare project with one anonymous gift from Faith; more to hide, to close and to make a due.
         def project(title, **extra):
             return WelfareProject.objects.create(
                 organization=self.coast, title=title, suggested_minor=5000, **extra
@@ -963,6 +986,7 @@ class World:
         self.welfare = project("MARK-WELFARE", description="MARK-WELFARE-DESC")
         self.welfare_to_hide = project("Hide me")
         self.welfare_to_close = project("Close me")
+        self.welfare_to_due = project("Make me a due")
         self.welfare_contribution = welfare.contribute(
             self.welfare,
             self.amina,
@@ -997,6 +1021,14 @@ class World:
         self.alert = Notification.objects.create(
             recipient=self.baraka, category="announcement", title="MARK-ALERT", subject="matrix:1"
         )
+        # A browser that shows Baraka's alerts as push messages.
+        self.push_device = PushSubscription.objects.create(
+            user=self.baraka,
+            endpoint="https://fcm.googleapis.com/fcm/send/matrix-device",
+            p256dh="MARK-PUSH-KEY",
+            auth="MARK-PUSH-AUTH",
+            label="Chrome on Android",
+        )
         # A soda game Baraka challenged Imani to, with a pledge only the two of them may see.
         self.soda = Challenge.objects.create(
             challenger=self.baraka,
@@ -1028,6 +1060,14 @@ class World:
             ends_at=later + timedelta(hours=3),
             status=Activity.Status.PUBLISHED,
         )
+        self.activity_to_share = Activity.objects.create(
+            organization=self.coast,
+            title="Share my cost",
+            starts_at=later,
+            ends_at=later + timedelta(hours=3),
+            status=Activity.Status.PUBLISHED,
+        )
+        Rsvp.objects.create(activity=self.activity_to_share, user=self.baraka, answer=Rsvp.Answer.GOING)
         self.session_to_cancel = ClubSession.objects.create(
             organization=self.coast,
             title="To cancel",
@@ -1316,6 +1356,14 @@ class World:
             starts_at=now - timedelta(minutes=10),
             ends_at=now + timedelta(hours=2),
         )
+        over = {"status": Meeting.Status.PUBLISHED, "starts_at": now - timedelta(hours=3)}
+        over["ends_at"] = now - timedelta(hours=1)
+        rule = {"applies_to": "absent", "penalty": "MARK-PENALTY-RULE", "amount_minor": 5000}
+        self.ended_meeting = meeting("Ended", [self.baraka], rules=[rule], **over)
+        penalized = meeting("Penalized", [self.baraka], rules=[rule], **over)
+        self.penalty = MeetingPenalty.objects.create(
+            invitee=penalized.invitees.get(), applies_to="absent", penalty="MARK-PENALTY", amount_minor=5000
+        )
         nyali_cup = Tournament.objects.create(
             id=NYALI_CUP,
             organization=self.nyali,
@@ -1428,6 +1476,9 @@ class World:
             "organization-meeting-minutes": self.running_meeting.id,
             "organization-meeting-answer": self.running_meeting.id,
             "organization-meeting-check-in": self.running_meeting.id,
+            "organization-meeting-attendance": self.running_meeting.id,
+            "organization-meeting-penalties": self.ended_meeting.id,
+            "organization-meeting-penalty": self.penalty.invitee.meeting_id,
             "organization-sponsorship-withdraw": self.offer.id,
             "tournament-sponsorship-accept": self.offer_to_accept.id,
             "tournament-sponsorship-decline": self.offer_to_decline.id,
@@ -1546,6 +1597,7 @@ class World:
             "organization-welfare-project": self.welfare.id,
             "organization-welfare-project-hide": self.welfare_to_hide.id,
             "organization-welfare-project-close": self.welfare_to_close.id,
+            "organization-welfare-project-due": self.welfare_to_due.id,
             "organization-welfare-contributions": self.welfare.id,
             "organization-welfare-contribution-reverse": self.welfare.id,
             "organization-welfare-expenses": self.welfare.id,
@@ -1567,6 +1619,7 @@ class World:
             "organization-activity-publish": self.activity_draft.id,
             "organization-activity-cancel": self.activity_to_cancel.id,
             "organization-activity-rsvp": self.activity.id,
+            "organization-activity-cost-share": self.activity_to_share.id,
             "organization-activity-attendees": self.activity.id,
             "organization-activity-invitees": self.activity.id,
             "organization-club-session-cancel": self.session_to_cancel.id,
@@ -1589,6 +1642,10 @@ class World:
             found["session_pk"] = self.club_session.id
         if "contribution_pk" in names:
             found["contribution_pk"] = self.welfare_contribution.id
+        if "device_pk" in names:
+            found["device_pk"] = self.push_device.id
+        if "penalty_pk" in names:
+            found["penalty_pk"] = self.penalty.id
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
@@ -1706,6 +1763,9 @@ class World:
                 for r, t, a in Notification.objects.values_list("recipient_id", "title", "read_at")
             ),
             "alert_preferences": sorted(Preference.objects.values_list("user_id", "category")),
+            "push_devices": sorted(
+                (str(u), e) for u, e in PushSubscription.objects.values_list("user_id", "endpoint")
+            ),
             "charges": sorted((c.purpose, c.amount_minor, c.waived_at is None) for c in Charge.objects.all()),
             "payments": sorted(
                 (p.reference, p.amount_minor, p.reversed_at is None) for p in Payment.objects.all()
@@ -1739,7 +1799,12 @@ class World:
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
             "meetings": sorted(Meeting.objects.values_list("title", "status", "location", "minutes")),
             "meeting_invitees": sorted(
-                MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at")
+                MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
+            ),
+            "meeting_penalties": sorted(
+                MeetingPenalty.objects.values_list(
+                    "invitee__user__email", "penalty", "amount_minor", "status"
+                )
             ),
             "sponsorships": sorted(Sponsorship.objects.values_list("amount_minor", "status")),
             "streams": sorted(LiveStream.objects.values_list("url", "title")),
@@ -1833,6 +1898,7 @@ ALSO_STAFF = {
             "organization-welfare-project",
             "organization-welfare-project-hide",
             "organization-welfare-project-close",
+            "organization-welfare-project-due",
             "organization-welfare-contributions",
             "organization-welfare-contribution-reverse",
             "organization-welfare-expenses",
@@ -1856,6 +1922,7 @@ ALSO_STAFF = {
             "organization-activity-publish",
             "organization-activity-cancel",
             "organization-activity-invitees",
+            "organization-activity-cost-share",
         )
     },
 }
@@ -1976,8 +2043,9 @@ def test_owner_routes_refuse_everyone_else(world, who):
 
 
 def everything_served_to(world, user) -> str:
-    """The bodies of every GET route (with searches that would match the private markers)."""
-    client = logged_in(user)
+    """The bodies of every GET route (with searches that would match the private markers). `user=None`
+    reads them signed out."""
+    client = logged_in(user) if user else BrowserClient()
     urls = [world.url(name, names) for name, methods, names in ROUTES if "get" in methods]
     urls += [
         reverse("player-detail", kwargs={"pk": world.faith.id}),
@@ -2067,6 +2135,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ARTICLE-DRAFT": {"amina"},
         "MARK-MEETING-DRAFT": {"amina"},
         "MARK-MEETING-RUNNING": {"amina", "baraka"},
+        "MARK-PENALTY-RULE": {"amina", "baraka"},  # the meeting's invitees and staff
+        "MARK-PENALTY": {"amina", "baraka"},  # the penalized invitee and staff
         "MARK-SPONSOR-TERMS": {"amina"},
         "MARK-COACH-NOTE": {"baraka"},
         "MARK-COACHING-MESSAGE": {"baraka"},
@@ -2116,6 +2186,15 @@ def test_private_values_reach_only_the_people_they_are_for(world):
                 assert marker in served, f"{who} should be able to see {marker}"
             else:
                 assert marker not in served, f"{marker} leaked to {who}"
+    # Signed out (TASK-035): the published tournament and its accepted entries, and nothing the directory
+    # or a club keeps for signed-in players (Faith's listed style and photo are the control).
+    public = {"Published Cup", "Grace Achieng"}
+    served = everything_served_to(world, None)
+    for marker in allowed:
+        if marker in public:
+            assert marker in served, f"signed out should see {marker}"
+        else:
+            assert marker not in served, f"{marker} leaked to a signed-out caller"
 
 
 def test_views_of_other_people_carry_only_allowlisted_fields(world):

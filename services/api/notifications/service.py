@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 from django.db import IntegrityError, transaction
 
+from . import push
 from .models import ALWAYS_ON, Notification, Preference
 
 
@@ -33,7 +34,7 @@ def notify(
     for user_id in ids:
         try:
             with transaction.atomic():
-                Notification.objects.create(
+                alert = Notification.objects.create(
                     recipient_id=user_id,
                     category=category,
                     title=title[:140],
@@ -43,6 +44,7 @@ def notify(
                     version=version,
                     organization=organization,
                 )
+                push.queue(alert)
             made += 1
         except IntegrityError:
             continue  # this version was already sent to them

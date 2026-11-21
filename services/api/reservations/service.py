@@ -191,6 +191,10 @@ def dispatch(
     from notifications import triggers
 
     triggers.called_to_table(match, reservation, [user.pk for user in people])
+    if not automatic:  # automatic dispatch announces once it has sent everything it can
+        from . import board
+
+        board.announce_up_next(event.tournament)
     return reservation
 
 
@@ -331,6 +335,7 @@ def look_for_the_next(tournament: Tournament, actor=None) -> None:
     try:
         with transaction.atomic():
             board.run_auto(tournament, actor)
+        board.announce_up_next(tournament)
     except Exception:
         # Sending the next match out is a convenience. Whatever goes wrong with it, the result or the
         # recall that freed the table stands; a person can still send the match from the board.

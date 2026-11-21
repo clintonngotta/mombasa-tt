@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from accounts.models import VERIFIED, User
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
-from core.permissions import is_platform_super_admin
+from core.permissions import PublicReads, is_platform_super_admin
 from organizations.access import effective_permissions, managed_organizations, require_permission
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
@@ -177,7 +177,8 @@ class TournamentViewSet(viewsets.GenericViewSet):
     changes need competitions.manage in the host organization."""
 
     serializer_class = TournamentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("list", "retrieve")  # published tournaments are public (TASK-035)
     pagination_class = StandardPagination
 
     @extend_schema(
@@ -521,7 +522,8 @@ class EntryViewSet(viewsets.GenericViewSet):
     players; staff and the entry's own players can also see its other statuses."""
 
     serializer_class = EntrySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("list",)  # published tournaments are public (TASK-035)
     pagination_class = StandardPagination
 
     @property
@@ -554,8 +556,12 @@ class EntryViewSet(viewsets.GenericViewSet):
         _, event, staff = self._open(tournament_pk, event_pk, lock=False)
         found = entry_list().filter(event=event)
         if not staff:
-            own = Entry.objects.filter(event=event, players__user=request.user).values("pk")
-            found = found.filter(Q(status=Entry.Status.ACCEPTED) | Q(pk__in=own))
+            accepted = Q(status=Entry.Status.ACCEPTED)
+            if request.user.is_authenticated:
+                accepted |= Q(
+                    pk__in=Entry.objects.filter(event=event, players__user=request.user).values("pk")
+                )
+            found = found.filter(accepted)
         wanted = request.query_params.get("status")
         if wanted:
             if wanted not in Entry.Status.values:
@@ -743,7 +749,8 @@ class DrawViewSet(viewsets.GenericViewSet):
     preview, and making and publishing draws, are for the host's competition staff."""
 
     serializer_class = EventDrawSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("retrieve", "standings", "match")  # published tournaments are public (TASK-035)
 
     def _shown(self, event: Event, staff: bool) -> Response:
         status = DrawVersion.Status

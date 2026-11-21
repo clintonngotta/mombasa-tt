@@ -23,21 +23,24 @@ from rest_framework.views import APIView
 from competitions.models import Tournament
 from core.exceptions import ApiException
 from core.models import Region
-from core.permissions import is_platform_super_admin
+from core.permissions import PublicReads, is_platform_super_admin
 from organizations.access import effective_permissions, require_membership, require_permission
 from organizations.models import Membership, OfficialAppointment, Organization, seed_roles
 from organizations.permissions import Permission, RoleKey
 
 from . import service
-from .models import AgendaItem, Article, Meeting, MeetingInvitee, Sponsorship
+from .models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
 from .serializers import (
     AgendaItemSerializer,
     AnswerSerializer,
     ArticleSerializer,
+    AttendanceSerializer,
     CancelSerializer,
     DecisionSerializer,
     MeetingSerializer,
     MinutesSerializer,
+    PenaltySerializer,
+    PenaltyUpdateSerializer,
     RegionalBodyInputSerializer,
     RegionalBodySerializer,
     RegionClubSerializer,
@@ -347,12 +350,32 @@ def meetings():
     return Meeting.objects.select_related("organization").prefetch_related("invitees")
 
 
+def is_top(user, organization: Organization) -> bool:
+    """The organization's admin (the club, facility or body admin) or a platform super admin: the only
+    people who change a penalty once it is issued."""
+    return is_platform_super_admin(user) or Membership.objects.admins(organization).filter(user=user).exists()
+
+
 def meeting_reply(request, meeting: Meeting, staff: bool, code=status.HTTP_200_OK) -> Response:
+    host = meeting.organization
     data = MeetingSerializer(
         meetings().get(pk=meeting.pk),
-        context={"request": request, "staff": staff, "organization": meeting.organization},
+        context={"request": request, "staff": staff, "organization": host, "top": is_top(request.user, host)},
     ).data
     return Response(data, status=code)
+
+
+def secretary_of(organization: Organization, user_id):
+    """The secretary asked for: an active member of the host."""
+    if user_id is None:
+        return None
+    member = (
+        Membership.objects.active().filter(organization=organization, user_id=user_id).select_related("user")
+    )
+    found = member.first()
+    if found is None:
+        raise ValidationError({"secretary_id": "Choose an active member as secretary."})
+    return found.user
 
 
 def invite(meeting: Meeting) -> None:
@@ -397,7 +420,12 @@ class MeetingsView(APIView):
             found_meetings = found_meetings.filter(invitees__user=request.user).exclude(
                 status=Meeting.Status.DRAFT
             )
-        context = {"request": request, "staff": staff, "organization": found}
+        context = {
+            "request": request,
+            "staff": staff,
+            "organization": found,
+            "top": is_top(request.user, found),
+        }
         return Response(MeetingSerializer(found_meetings.distinct()[:100], many=True, context=context).data)
 
     @extend_schema(request=MeetingSerializer, responses={201: MeetingSerializer})
@@ -408,6 +436,9 @@ class MeetingsView(APIView):
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
         named = data.pop("named_ids", [])
+        data["secretary"] = (
+            secretary_of(found, data.pop("secretary_id")) if "secretary_id" in data else request.user
+        )
         with transaction.atomic():
             meeting = Meeting.objects.create(organization=found, created_by=request.user, **data)
             meeting.named.set(
@@ -429,8 +460,8 @@ class MeetingView(APIView):
         staff = GOVERNANCE in effective_permissions(request.user, found)
         query = Meeting.objects.select_for_update() if lock else meetings()
         meeting = get_object_or_404(query, organization=found, pk=pk)
-        invited = (
-            meeting.status != Meeting.Status.DRAFT and meeting.invitees.filter(user=request.user).exists()
+        invited = meeting.status != Meeting.Status.DRAFT and (
+            meeting.secretary_id == request.user.pk or meeting.invitees.filter(user=request.user).exists()
         )
         if not (staff or invited):
             raise Http404
@@ -459,6 +490,8 @@ class MeetingView(APIView):
             if meeting.status == Meeting.Status.PUBLISHED and ("audience" in data or "named_ids" in data):
                 raise ApiException("invitees_fixed", "Invitees are fixed once the meeting is published.", 409)
             named = data.pop("named_ids", None)
+            if "secretary_id" in data:
+                data["secretary"] = secretary_of(found, data.pop("secretary_id"))
             for name, value in data.items():
                 setattr(meeting, name, value)
             meeting.save()
@@ -592,8 +625,142 @@ class CheckInMeetingView(InviteeAction):
             if invitation.checked_in_at is None:
                 invitation.checked_in_at = now
                 invitation.answer = MeetingInvitee.Answer.ATTENDING
-                invitation.save(update_fields=["checked_in_at", "answer"])
+                fields = ["checked_in_at", "answer"]
+                if not invitation.attendance:  # the secretary's mark, if any, stands
+                    invitation.attendance = MeetingInvitee.Attendance.PRESENT
+                    invitation.marked_at = now
+                    fields += ["attendance", "marked_at"]
+                invitation.save(update_fields=fields)
         return meeting_reply(request, invitation.meeting, staff=False)
+
+
+class SecretaryAction(MeetingView):
+    """Attendance and penalties: the host's governance staff or the meeting's secretary."""
+
+    http_method_names = ["post"]
+
+    def held_meeting(self, request, organization_pk, pk) -> tuple[Meeting, bool]:
+        found = organization(organization_pk)
+        meeting = get_object_or_404(Meeting.objects.select_for_update(), organization=found, pk=pk)
+        staff = GOVERNANCE in effective_permissions(request.user, found)
+        if not (staff or meeting.secretary_id == request.user.pk):
+            if staff or meeting.invitees.filter(user=request.user).exists():
+                raise ApiException(
+                    "permission_denied", "Only the secretary or governance staff take attendance.", 403
+                )
+            raise Http404
+        if meeting.status != Meeting.Status.PUBLISHED or meeting.starts_at > timezone.now():
+            raise ApiException("meeting_not_held", "Attendance is taken once the meeting has started.", 409)
+        return meeting, staff
+
+
+class AttendanceView(SecretaryAction):
+    """POST .../meetings/{id}/attendance/: mark one invitee present, late, apologies or absent, during the
+    meeting or after it. A mark can't change once a penalty has been issued for it."""
+
+    @extend_schema(request=AttendanceSerializer, responses={200: MeetingSerializer})
+    def post(self, request, organization_pk, pk):
+        serializer = AttendanceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            meeting, staff = self.held_meeting(request, organization_pk, pk)
+            invitee = get_object_or_404(
+                MeetingInvitee.objects.select_for_update(),
+                meeting=meeting,
+                pk=serializer.validated_data["invitee"],
+            )
+            if MeetingPenalty.objects.filter(invitee=invitee).exists():
+                raise ApiException(
+                    "penalty_issued", "A penalty has been issued for this; the admin can change it.", 409
+                )
+            invitee.attendance = serializer.validated_data["attendance"]
+            invitee.marked_by = request.user
+            invitee.marked_at = timezone.now()
+            invitee.save(update_fields=["attendance", "marked_by", "marked_at"])
+        return meeting_reply(request, meeting, staff)
+
+
+def final_attendance(invitee: MeetingInvitee) -> str:
+    """What the record says once the meeting is over: the mark, else apologies if sent, else absent."""
+    if invitee.attendance:
+        return invitee.attendance
+    if invitee.answer == MeetingInvitee.Answer.APOLOGIES:
+        return MeetingInvitee.Attendance.APOLOGIES
+    return MeetingInvitee.Attendance.ABSENT
+
+
+class IssuePenaltiesView(SecretaryAction):
+    """POST .../meetings/{id}/penalties/: once the meeting is over, close the attendance record (anyone
+    unmarked is absent, or apologies if they sent them) and issue the penalties its rules set. Run again,
+    it issues only for invitees who have none yet."""
+
+    @extend_schema(request=None, responses={200: MeetingSerializer})
+    def post(self, request, organization_pk, pk):
+        with transaction.atomic():
+            meeting, staff = self.held_meeting(request, organization_pk, pk)
+            if meeting.ends_at > timezone.now():
+                raise ApiException("meeting_running", "Issue penalties once the meeting is over.", 409)
+            rules = {rule["applies_to"]: rule for rule in meeting.rules}
+            if not rules:
+                raise ApiException("no_rules", "This meeting has no penalty rules.", 409)
+            now = timezone.now()
+            for invitee in meeting.invitees.filter(penalty__isnull=True):  # the meeting row is locked
+                if not invitee.attendance:
+                    invitee.attendance = final_attendance(invitee)
+                    invitee.marked_by, invitee.marked_at = request.user, now
+                    invitee.save(update_fields=["attendance", "marked_by", "marked_at"])
+                rule = rules.get(invitee.attendance)
+                if rule:
+                    MeetingPenalty.objects.create(
+                        invitee=invitee,
+                        applies_to=invitee.attendance,
+                        penalty=rule["penalty"],
+                        amount_minor=rule.get("amount_minor"),
+                        issued_by=request.user,
+                    )
+        return meeting_reply(request, meeting, staff)
+
+
+class PenaltyView(APIView):
+    """PATCH .../meetings/{id}/penalties/{penalty}/: change, waive or mark paid an issued penalty. Only
+    the host's admin or a platform super admin; each change is kept in the penalty's history."""
+
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["patch"]
+
+    @extend_schema(request=PenaltyUpdateSerializer, responses={200: PenaltySerializer})
+    def patch(self, request, organization_pk, pk, penalty_pk):
+        found = organization(organization_pk)
+        if not is_top(request.user, found):
+            raise ApiException(
+                "permission_denied", "Only the admin can change a penalty once it is issued.", 403
+            )
+        serializer = PenaltyUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            penalty = get_object_or_404(
+                MeetingPenalty.objects.select_for_update(),
+                pk=penalty_pk,
+                invitee__meeting__pk=pk,
+                invitee__meeting__organization=found,
+            )
+            changes = {}
+            for name, value in serializer.validated_data.items():
+                if getattr(penalty, name) != value:
+                    changes[name] = [getattr(penalty, name), value]
+                    setattr(penalty, name, value)
+            if changes:
+                penalty.history = [
+                    *penalty.history,
+                    {
+                        "at": timezone.now().isoformat(),
+                        "by": str(request.user.pk),
+                        "by_name": request.user.display_name,
+                        "changes": changes,
+                    },
+                ]
+                penalty.save()
+        return Response(PenaltySerializer(penalty).data)
 
 
 class MyMeetingsView(APIView):
@@ -706,7 +873,8 @@ class TournamentSponsorshipsView(APIView):
 class TournamentSponsorsView(APIView):
     """GET /tournaments/{id}/sponsors/: the accepted sponsors, for everyone who can see the tournament."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(responses={200: SponsorSerializer(many=True)})
     def get(self, request, tournament_pk):

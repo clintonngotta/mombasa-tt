@@ -27,6 +27,7 @@ export const updateActivity = (orgId: string, id: string, body: Partial<Activity
 export const publishActivity = (orgId: string, id: string) => api<Activity>(`${base(orgId)}${id}/publish/`, { body: {} })
 export const cancelActivity = (orgId: string, id: string, reason: string) => api<Activity>(`${base(orgId)}${id}/cancel/`, { body: { reason } })
 export const answerActivity = (orgId: string, id: string, answer: Answer) => api<Activity>(`${base(orgId)}${id}/rsvp/`, { body: { answer } })
+export const shareActivityCost = (orgId: string, id: string, body: Schemas["ShareCostRequest"]) => api<Activity>(`${base(orgId)}${id}/cost-share/`, { body })
 export const listAttendees = (orgId: string, id: string) => api<Attendee[]>(`${base(orgId)}${id}/attendees/`)
 export const listInvitees = (orgId: string, id: string) => api<{ invitee_ids: string[] }>(`${base(orgId)}${id}/invitees/`)
 

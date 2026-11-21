@@ -1538,6 +1538,80 @@ export interface paths {
         patch: operations["me_profile_partial_update"];
         trace?: never;
     };
+    "/api/v1/me/push/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Browser push on the player's devices (TASK-034): whether the server sends push at all, the key to
+         *     subscribe with, and the devices that get the player's alerts. The inbox works without any of it.
+         */
+        get: operations["me_push_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/push/devices/{device_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Remove one of the player's devices from the list (one they no longer have, say). */
+        delete: operations["me_push_devices_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/push/subscribe/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Add this browser (or update its keys). A browser already subscribed for another account moves to
+         *     the one signed in now, so a shared device only ever shows the current player's alerts.
+         */
+        post: operations["me_push_subscribe_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/push/unsubscribe/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Remove this browser by its endpoint (switching push off, or logging out). */
+        post: operations["me_push_unsubscribe_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/scorecards/": {
         parameters: {
             query?: never;
@@ -2250,6 +2324,26 @@ export interface paths {
         put?: never;
         /** @description Cancel with a reason. The record stays, with the answers it had. */
         post: operations["organizations_activities_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/cost-share/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Share the cost among those going (REQ-039 Phase 2): a one-time due for each, through the
+         *     ledger. Takes activities.manage and finances.manage, since it makes members owe.
+         */
+        post: operations["organizations_activities_cost_share_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3586,6 +3680,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/attendance/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../meetings/{id}/attendance/: mark one invitee present, late, apologies or absent, during the
+         *     meeting or after it. A mark can't change once a penalty has been issued for it.
+         */
+        post: operations["organizations_meetings_attendance_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/meetings/{id}/cancel/": {
         parameters: {
             query?: never;
@@ -3635,6 +3749,47 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/penalties/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../meetings/{id}/penalties/: once the meeting is over, close the attendance record (anyone
+         *     unmarked is absent, or apologies if they sent them) and issue the penalties its rules set. Run again,
+         *     it issues only for invitees who have none yet.
+         */
+        post: operations["organizations_meetings_penalties_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/penalties/{penalty_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH .../meetings/{id}/penalties/{penalty}/: change, waive or mark paid an issued penalty. Only
+         *     the host's admin or a platform super admin; each change is kept in the penalty's history.
+         */
+        patch: operations["organizations_meetings_penalties_partial_update"];
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/meetings/{id}/publish/": {
@@ -4438,6 +4593,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/due/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Make giving required: a one-time due for the project's audience, the beneficiary excepted.
+         *     Needs both welfare.manage and finances.manage, since it makes members owe. It can't be undone
+         *     here; finance staff waive dues or close the campaign as for any other.
+         */
+        post: operations["organizations_welfare_projects_due_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/welfare-projects/{id}/expenses/": {
         parameters: {
             query?: never;
@@ -5135,6 +5311,26 @@ export interface paths {
         post?: never;
         /** @description PUT /tournaments/{id}/cover/ sets (or replaces) the cover picture; DELETE removes it. */
         delete: operations["tournaments_cover_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/dashboard/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/dashboard/: the tournament's entries, check-ins, draws, matches and open
+         *     corrections, event by event, for its host's competition staff.
+         */
+        get: operations["tournaments_dashboard_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -6405,12 +6601,6 @@ export interface components {
         AnswerRequest: {
             answer: components["schemas"]["AnswerAnswerEnum"];
         };
-        /**
-         * @description * `position` - Position
-         *     * `holder` - Holder
-         * @enum {string}
-         */
-        AppliesToEnum: "position" | "holder";
         AppointRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -6523,6 +6713,19 @@ export interface components {
             url: string;
             /** Format: date-time */
             expires_at: string;
+        };
+        /**
+         * @description * `present` - present
+         *     * `absent` - absent
+         *     * `late` - late
+         *     * `apologies` - apologies
+         * @enum {string}
+         */
+        AttendanceMarkEnum: "present" | "absent" | "late" | "apologies";
+        AttendanceRequest: {
+            /** Format: uuid */
+            invitee: string;
+            attendance: components["schemas"]["AttendanceMarkEnum"];
         };
         /** @description Who answered, as the audience sees it: display names only. */
         Attendee: {
@@ -6834,6 +7037,13 @@ export interface components {
             readonly published_at: string | null;
             readonly awards: components["schemas"]["Award"][];
         };
+        /**
+         * @description * `none` - none
+         *     * `draft` - draft
+         *     * `published` - published
+         * @enum {string}
+         */
+        CeremonyEnum: "none" | "draft" | "published";
         CeremonyRequest: {
             /** Format: date-time */
             starts_at?: string | null;
@@ -7011,6 +7221,11 @@ export interface components {
             rsvp_deadline: string | null;
             public: boolean;
             cost_note: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id: string | null;
             readonly status: components["schemas"]["ActivityStatusEnum"];
             readonly cancel_reason: string;
             readonly going: number;
@@ -7019,6 +7234,7 @@ export interface components {
             readonly my_waitlisted: boolean;
             /** @description In the audience (a member, and the activity is for all members or invites them) and open. */
             readonly can_answer: boolean;
+            readonly cost_share: components["schemas"]["CostShare"] | null;
             /** Format: date-time */
             readonly published_at: string | null;
         };
@@ -7057,6 +7273,11 @@ export interface components {
             rsvp_deadline?: string | null;
             public?: boolean;
             cost_note?: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id?: string | null;
         };
         ClubProfile: {
             /** Format: uuid */
@@ -7296,10 +7517,16 @@ export interface components {
             options: string[];
             required: boolean;
             visibility: components["schemas"]["MemberFieldVisibilityEnum"];
-            applies_to: components["schemas"]["AppliesToEnum"];
+            applies_to: components["schemas"]["CommitteeFieldAppliesToEnum"];
             /** Format: date-time */
             readonly retired_at: string | null;
         };
+        /**
+         * @description * `position` - Position
+         *     * `holder` - Holder
+         * @enum {string}
+         */
+        CommitteeFieldAppliesToEnum: "position" | "holder";
         CommitteeFieldEntry: {
             readonly field: components["schemas"]["CommitteeField"];
             readonly value: (string | number | boolean) | null;
@@ -7311,7 +7538,7 @@ export interface components {
             options?: string[];
             required?: boolean;
             visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
-            applies_to?: components["schemas"]["AppliesToEnum"];
+            applies_to?: components["schemas"]["CommitteeFieldAppliesToEnum"];
         };
         /**
          * @description The assignment the deck holds (a device cut off by a reassignment can't confirm) and the
@@ -7356,6 +7583,20 @@ export interface components {
             /** @description "Anonymous" for those who asked */
             name: string;
             amount_minor: number;
+        };
+        /**
+         * @description The shared cost: what each pays and by when, the viewer's own share, and (finance staff only)
+         *     received, spent and remaining.
+         */
+        CostShare: {
+            amount_minor: number;
+            currency: string;
+            /** Format: date */
+            due_on: string;
+            my_share: components["schemas"]["MyShare"] | null;
+            received_minor: number | null;
+            spent_minor: number | null;
+            remaining_minor: number | null;
         };
         CounterRequest: {
             /** Format: date-time */
@@ -7471,6 +7712,13 @@ export interface components {
             /** @description Whether the caller plays in it, so screens can point out their own matches. */
             readonly mine: boolean;
         };
+        /**
+         * @description * `none` - none
+         *     * `preview` - preview
+         *     * `published` - published
+         * @enum {string}
+         */
+        DrawEnum: "none" | "preview" | "published";
         DrawGroup: {
             number: number;
             name: string;
@@ -7600,6 +7848,14 @@ export interface components {
             /** @description Whether the caller plays in it, so may withdraw it. */
             readonly mine: boolean;
         };
+        EntryCounts: {
+            /** @description Waiting for staff to accept or decline. */
+            pending: number;
+            accepted: number;
+            waitlisted: number;
+            /** @description Accepted entries checked in (every player). */
+            checked_in: number;
+        };
         EntryEvent: {
             /** Format: uuid */
             readonly id: string;
@@ -7695,6 +7951,18 @@ export interface components {
             /** Format: date-time */
             readonly cancelled_at: string | null;
             readonly cancel_reason: string;
+        };
+        EventDashboard: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            status: components["schemas"]["EventStatusEnum"];
+            capacity: number | null;
+            entries: components["schemas"]["EntryCounts"];
+            draw: components["schemas"]["DrawEnum"];
+            matches: components["schemas"]["MatchCounts"];
+            /** @description Results corrections still to resolve. */
+            corrections: number;
         };
         /** @description The event's published draw and, for competition staff only, the preview being worked on. */
         EventDraw: {
@@ -8170,6 +8438,10 @@ export interface components {
             readonly answer: components["schemas"]["InviteeAnswerEnum"];
             /** Format: date-time */
             readonly checked_in_at: string | null;
+            readonly attendance: components["schemas"]["MeetingAttendanceEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date-time */
+            readonly marked_at: string | null;
+            readonly penalty: components["schemas"]["Penalty"] | null;
         };
         /**
          * @description * `none` - None
@@ -8396,6 +8668,14 @@ export interface components {
              */
             dispatched_at: string | null;
         };
+        MatchCounts: {
+            /** @description Matches of the published draw, byes left out. */
+            total: number;
+            decided: number;
+            on_table: number;
+            /** @description Undecided, both sides known and not on a table. */
+            ready: number;
+        };
         /** @description One match of the published draw on its own page. Reading it gives nobody a way to score it. */
         MatchDetail: {
             /** Format: uuid */
@@ -8560,6 +8840,8 @@ export interface components {
             online_link: string;
             audience: components["schemas"]["MeetingAudienceEnum"];
             agenda: components["schemas"]["AgendaRow"][];
+            rules: components["schemas"]["Rule"][];
+            readonly secretary: components["schemas"]["Secretary"] | null;
             readonly status: components["schemas"]["ActivityStatusEnum"];
             readonly minutes: string;
             /** Format: date-time */
@@ -8569,7 +8851,20 @@ export interface components {
             readonly published_at: string | null;
             readonly invitees: components["schemas"]["Invitee"][];
             readonly me: components["schemas"]["Invitee"] | null;
+            /** @description You may mark attendance and issue penalties: governance staff or the secretary. */
+            readonly can_take_attendance: boolean;
+            /** @description You may change issued penalties: the host's admin or a platform super admin. */
+            readonly can_edit_penalties: boolean;
         };
+        /**
+         * @description * `` - Unmarked
+         *     * `present` - Present
+         *     * `late` - Late
+         *     * `apologies` - Apologies
+         *     * `absent` - Absent
+         * @enum {string}
+         */
+        MeetingAttendanceEnum: "present" | "late" | "apologies" | "absent";
         /**
          * @description * `committee` - Committee
          *     * `club_admins` - Club Admins
@@ -8587,6 +8882,13 @@ export interface components {
          */
         MeetingKindEnum: "committee" | "general" | "representatives" | "special";
         /**
+         * @description * `issued` - Issued
+         *     * `waived` - Waived
+         *     * `paid` - Paid
+         * @enum {string}
+         */
+        MeetingPenaltyStatusEnum: "issued" | "waived" | "paid";
+        /**
          * @description A meeting. Invitees (names only), answers and attendance are for the host's governance staff;
          *     an invitee sees their own answer as `me`.
          */
@@ -8602,6 +8904,12 @@ export interface components {
             audience?: components["schemas"]["MeetingAudienceEnum"];
             named_ids?: string[];
             agenda?: components["schemas"]["AgendaRowRequest"][];
+            rules?: components["schemas"]["RuleRequest"][];
+            /**
+             * Format: uuid
+             * @description An active member of the host. Defaults to whoever calls the meeting.
+             */
+            secretary_id?: string | null;
         };
         /** @description Staff view of a member: display name and roles, never email or contact details. */
         Member: {
@@ -8843,6 +9151,10 @@ export interface components {
             readonly attended: boolean | null;
             readonly session: components["schemas"]["MySession"];
         };
+        MyShare: {
+            outstanding_minor: number;
+            status: components["schemas"]["OwedStatusEnum"];
+        };
         MySodaSettings: {
             /** @description Whether stake fields apply for this player. */
             stakes_available: boolean;
@@ -8869,6 +9181,13 @@ export interface components {
             readonly valid_until: string;
             readonly on_pass: boolean;
             readonly reversed: boolean;
+        };
+        MyWelfareDue: {
+            amount_minor: number;
+            outstanding_minor: number;
+            /** Format: date */
+            due_on: string;
+            status: components["schemas"]["OwedStatusEnum"];
         };
         NominateRequest: {
             /** Format: uuid */
@@ -9083,6 +9402,14 @@ export interface components {
          * @enum {string}
          */
         OverridesEnum: "check_in" | "rest";
+        /**
+         * @description * `paid` - paid
+         *     * `partial` - partial
+         *     * `pending` - pending
+         *     * `overdue` - overdue
+         * @enum {string}
+         */
+        OwedStatusEnum: "paid" | "partial" | "pending" | "overdue";
         PaginatedAdminHandoverList: {
             /** @example 123 */
             count: number;
@@ -9746,6 +10073,11 @@ export interface components {
             rsvp_deadline?: string | null;
             public?: boolean;
             cost_note?: string;
+            /**
+             * Format: uuid
+             * @description The welfare project this visit or support activity is for (REQ-038).
+             */
+            welfare_project_id?: string | null;
         };
         /** @description A club session as its training staff see it. */
         PatchedClubSessionRequest: {
@@ -9778,7 +10110,7 @@ export interface components {
             options?: string[];
             required?: boolean;
             visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
-            applies_to?: components["schemas"]["AppliesToEnum"];
+            applies_to?: components["schemas"]["CommitteeFieldAppliesToEnum"];
         };
         /** @description A drill. Instructions are required; everything else is optional. */
         PatchedDrillRequest: {
@@ -9865,6 +10197,12 @@ export interface components {
             audience?: components["schemas"]["MeetingAudienceEnum"];
             named_ids?: string[];
             agenda?: components["schemas"]["AgendaRowRequest"][];
+            rules?: components["schemas"]["RuleRequest"][];
+            /**
+             * Format: uuid
+             * @description An active member of the host. Defaults to whoever calls the meeting.
+             */
+            secretary_id?: string | null;
         };
         /**
          * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
@@ -9905,6 +10243,12 @@ export interface components {
             valid_days?: number | null;
             benefits?: string[];
             active?: boolean;
+        };
+        PatchedPenaltyUpdateRequest: {
+            penalty?: string;
+            amount_minor?: number | null;
+            status?: components["schemas"]["MeetingPenaltyStatusEnum"];
+            note?: string;
         };
         PatchedPersonalMatchRequest: {
             /** Format: date */
@@ -10129,6 +10473,37 @@ export interface components {
             request_key: string;
         };
         /**
+         * @description * `absent` - absent
+         *     * `late` - late
+         *     * `apologies` - apologies
+         * @enum {string}
+         */
+        PenalizedAttendanceEnum: "absent" | "late" | "apologies";
+        Penalty: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly applies_to: components["schemas"]["PenalizedAttendanceEnum"];
+            readonly penalty: string;
+            readonly amount_minor: number | null;
+            readonly currency: string;
+            readonly status: components["schemas"]["MeetingPenaltyStatusEnum"];
+            readonly note: string;
+            readonly issued_by_name: string | null;
+            /** Format: date-time */
+            readonly issued_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly history: components["schemas"]["PenaltyChange"][];
+        };
+        PenaltyChange: {
+            /** Format: date-time */
+            at: string;
+            by_name: string;
+            changes: {
+                [key: string]: unknown[] | null;
+            };
+        };
+        /**
          * @description * `day` - Day
          *     * `week` - Week
          *     * `month` - Month
@@ -10311,6 +10686,8 @@ export interface components {
             /** Format: uuid */
             user_id: string;
             display_name: string;
+            /** @description The player's photo: only for listed players and yourself. */
+            avatar: components["schemas"]["AttachmentLink"] | null;
             processing: boolean;
             summaries: components["schemas"]["RatingSummary"][];
             /**
@@ -10470,6 +10847,38 @@ export interface components {
             purposes: components["schemas"]["PurposeTotal"][];
             spending: components["schemas"]["Spending"][];
         };
+        PushDevice: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly label: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly last_sent_at: string | null;
+        };
+        PushKeysRequest: {
+            p256dh: string;
+            auth: string;
+        };
+        PushStatus: {
+            /** @description Whether this server sends push messages at all. */
+            configured: boolean;
+            /** @description The applicationServerKey to subscribe with (base64url). */
+            public_key: string;
+            devices: components["schemas"]["PushDevice"][];
+        };
+        /** @description A browser's PushSubscription as `subscription.toJSON()` gives it, plus a label for the device. */
+        PushSubscribeRequest: {
+            /** Format: uri */
+            endpoint: string;
+            keys: components["schemas"]["PushKeysRequest"];
+            expirationTime?: number | null;
+            label?: string;
+        };
+        PushUnsubscribeRequest: {
+            /** Format: uri */
+            endpoint: string;
+        };
         /**
          * @description A match in the ready queue. `ready` has a free table suggested; `waiting` could be played but
          *     waits for a table, for a match ahead of it that shares a player, or for staff; `blocked` can't.
@@ -10517,6 +10926,8 @@ export interface components {
             /** @description The player has a page in the directory. */
             listed: boolean;
             is_me: boolean;
+            /** @description The player's photo: only for listed players and yourself. */
+            avatar: components["schemas"]["AttachmentLink"] | null;
             /**
              * Format: double
              * @description Full precision; round only to show it.
@@ -10960,6 +11371,20 @@ export interface components {
          * @enum {string}
          */
         RubberStatusEnum: "scheduled" | "completed" | "not_played";
+        /** @description What missing the meeting costs: one rule each for absent, late and apologies. */
+        Rule: {
+            applies_to: components["schemas"]["PenalizedAttendanceEnum"];
+            penalty: string;
+            /** @description A fine in the smallest unit of KES, when the penalty is one. */
+            amount_minor: number | null;
+        };
+        /** @description What missing the meeting costs: one rule each for absent, late and apologies. */
+        RuleRequest: {
+            applies_to: components["schemas"]["PenalizedAttendanceEnum"];
+            penalty: string;
+            /** @description A fine in the smallest unit of KES, when the penalty is one. */
+            amount_minor?: number | null;
+        };
         Schedule: {
             tables: components["schemas"]["ScheduleTable"][];
             sessions: components["schemas"]["Session"][];
@@ -11174,6 +11599,16 @@ export interface components {
             /** @description The caller may assign or change the umpire now. */
             can_assign: boolean;
         };
+        Secretary: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        SecretaryRequest: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
         /**
          * @description * `rating` - Rating
          *     * `manual` - Manual
@@ -11255,6 +11690,15 @@ export interface components {
         };
         SessionTableRequest: {
             label: string;
+        };
+        /** @description An amount each, or a total split evenly among those going (rounded up to whole units). */
+        ShareCostRequest: {
+            amount_minor?: number;
+            total_minor?: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            due_on: string;
         };
         ShareRequest: {
             share: boolean;
@@ -11704,6 +12148,17 @@ export interface components {
             readonly cancel_reason: string;
             readonly events: components["schemas"]["Event"][];
         };
+        TournamentDashboard: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            status: components["schemas"]["TournamentStatusEnum"];
+            ceremony: components["schemas"]["CeremonyEnum"];
+            entries: components["schemas"]["EntryCounts"];
+            matches: components["schemas"]["MatchCounts"];
+            corrections: number;
+            events: components["schemas"]["EventDashboard"][];
+        };
         /** @description A document of a tournament with a fresh signed link to the PDF. */
         TournamentDocument: {
             /** Format: uuid */
@@ -12093,6 +12548,17 @@ export interface components {
             /** @default false */
             anonymous: boolean;
         };
+        /** @description Make giving required. The amount defaults to the suggested gift, the date to the deadline. */
+        WelfareDueRequest: {
+            amount_minor?: number;
+            /** Format: date */
+            due_on?: string;
+        };
+        WelfareDueTerms: {
+            amount_minor: number;
+            /** Format: date */
+            due_on: string;
+        };
         /**
          * @description A welfare project as the viewer may see it: totals for everyone in the audience, their own gift,
          *     and a contributor list only when the club shows one.
@@ -12120,6 +12586,12 @@ export interface components {
             readonly remaining_minor: number;
             readonly my_contribution_minor: number;
             readonly contributors: components["schemas"]["Contributor"][] | null;
+            /** @description Made a due (REQ-023): only then does anyone owe, or show as overdue. */
+            readonly required: boolean;
+            readonly due: components["schemas"]["WelfareDueTerms"] | null;
+            readonly expected_minor: number | null;
+            readonly my_due: components["schemas"]["MyWelfareDue"] | null;
+            readonly visits: components["schemas"]["WelfareVisit"][];
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -12143,6 +12615,26 @@ export interface components {
             member_ids?: string[];
             show_contributors?: boolean;
         };
+        WelfareVisit: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            place: string;
+            status: components["schemas"]["WelfareVisitStatusEnum"];
+            /** @description Display names */
+            going: string[];
+        };
+        /**
+         * @description * `draft` - draft
+         *     * `published` - published
+         *     * `cancelled` - cancelled
+         * @enum {string}
+         */
+        WelfareVisitStatusEnum: "draft" | "published" | "cancelled";
         /**
          * @description * `left` - left
          *     * `center` - center
@@ -15496,6 +15988,128 @@ export interface operations {
             };
         };
     };
+    me_push_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_push_devices_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_push_subscribe_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscribeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_push_unsubscribe_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushUnsubscribeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_scorecards_list: {
         parameters: {
             query?: {
@@ -17193,6 +17807,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CancelActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_cost_share_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareCostRequest"];
             };
         };
         responses: {
@@ -20458,6 +21107,41 @@ export interface operations {
             };
         };
     };
+    organizations_meetings_attendance_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_meetings_cancel_create: {
         parameters: {
             query?: never;
@@ -20546,6 +21230,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_penalties_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_penalties_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                penalty_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPenaltyUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Penalty"];
                 };
             };
             /** @description Error envelope */
@@ -22521,6 +23272,41 @@ export interface operations {
             };
         };
     };
+    organizations_welfare_projects_due_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WelfareDueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelfareProject"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_welfare_projects_expenses_list: {
         parameters: {
             query?: never;
@@ -23923,6 +24709,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dashboard_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentDashboard"];
                 };
             };
             /** @description Error envelope */

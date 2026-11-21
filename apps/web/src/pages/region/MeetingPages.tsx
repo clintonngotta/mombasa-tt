@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarClock, ChevronRight, Plus, Trash2, Users } from "lucide-react"
+import { CalendarClock, ChevronRight, Gavel, Plus, Trash2, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
@@ -9,23 +9,37 @@ import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { SelectField, TextAreaField } from "@/components/forms/SelectField"
 import { ApiError, errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
-import { can, useActiveMembership, useMemberships } from "@/lib/clubs"
+import { can, listMembers, useActiveMembership, useMemberships } from "@/lib/clubs"
+import { formatMoney } from "@/lib/coaching"
+import { toMinor } from "@/lib/finance"
 import { formatInstant, fromZonedInput } from "@/lib/dates"
 import {
   answerMeeting,
+  ATTENDANCE_LABEL,
   AUDIENCE_LABEL,
   cancelMeeting,
   createMeeting,
   deleteMeeting,
   getMeeting,
+  issuePenalties,
   listMeetings,
+  markAttendanceOrKeep,
+  checkInOrKeep,
   meetingAction,
   MEETING_KIND_LABEL,
+  PENALIZED,
+  PENALTY_STATUS_LABEL,
   recordMinutes,
   regionKeys,
+  RULE_LABEL,
+  updatePenalty,
+  type AttendanceMark,
   type Meeting,
   type MeetingAudience,
+  type MeetingInvitee,
   type MeetingKind,
+  type MeetingPenalty,
+  type Penalized,
 } from "@/lib/regions"
 import { cn } from "@/lib/utils"
 
@@ -86,6 +100,13 @@ function NewMeeting({ orgId, timeZone, body, onDone }: { orgId: string; timeZone
   const [location, setLocation] = useState("")
   const [link, setLink] = useState("")
   const [agenda, setAgenda] = useState<string[]>([""])
+  const [rules, setRules] = useState<Record<Penalized, { penalty: string; amount: string }>>({
+    absent: { penalty: "", amount: "" },
+    late: { penalty: "", amount: "" },
+    apologies: { penalty: "", amount: "" },
+  })
+  const [secretary, setSecretary] = useState("")
+  const members = useQuery({ queryKey: ["clubs", orgId, "members", ""], queryFn: () => listMembers(orgId, "") })
   const create = useMutation({
     mutationFn: () =>
       createMeeting(orgId, {
@@ -97,6 +118,12 @@ function NewMeeting({ orgId, timeZone, body, onDone }: { orgId: string; timeZone
         location: location.trim(),
         online_link: link.trim(),
         agenda: agenda.map((a) => a.trim()).filter(Boolean).map((item) => ({ title: item, presenter: "" })),
+        rules: PENALIZED.filter((key) => rules[key].penalty.trim()).map((key) => ({
+          applies_to: key,
+          penalty: rules[key].penalty.trim(),
+          amount_minor: toMinor(rules[key].amount),
+        })),
+        ...(secretary ? { secretary_id: secretary } : {}),
       }),
     onSuccess: async (meeting) => {
       await queryClient.invalidateQueries({ queryKey: regionKeys.meetings(orgId) })
@@ -139,6 +166,27 @@ function NewMeeting({ orgId, timeZone, body, onDone }: { orgId: string; timeZone
           <Plus aria-hidden className="size-4" /> Add an item
         </Button>
       </fieldset>
+      <SelectField
+        label="Secretary"
+        hint="Takes attendance during the meeting and issues the penalties afterwards."
+        options={[{ value: "", label: "Me" }, ...(members.data?.results ?? []).map((m) => ({ value: m.user, label: m.display_name }))]}
+        value={secretary}
+        onChange={setSecretary}
+        error={fields.secretary_id}
+      />
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 font-semibold">
+          Rules for missing it <span className="font-normal text-muted-foreground">(optional)</span>
+        </legend>
+        <p className="text-sm text-muted-foreground">Invitees see these when you publish. Leave a penalty empty for no rule. Fines are recorded, not collected here.</p>
+        {PENALIZED.map((key) => (
+          <div key={key} className="grid gap-2 sm:grid-cols-[1fr_9rem]">
+            <Field label={RULE_LABEL[key]} optional maxLength={200} placeholder="e.g. Fine, or a written warning" value={rules[key].penalty} onChange={(e) => setRules({ ...rules, [key]: { ...rules[key], penalty: e.target.value } })} />
+            <Field label="Fine (KES)" optional inputMode="decimal" value={rules[key].amount} disabled={!rules[key].penalty.trim()} onChange={(e) => setRules({ ...rules, [key]: { ...rules[key], amount: e.target.value } })} />
+          </div>
+        ))}
+        {fields.rules && <p className="text-sm text-destructive">{fields.rules}</p>}
+      </fieldset>
       <p className="text-sm text-muted-foreground">It's saved as a draft. Invitees are fixed and see it when you publish.</p>
       <div className="flex gap-2">
         <Button type="submit" disabled={create.isPending || !title.trim() || !starts || !ends}>
@@ -180,7 +228,16 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
     queryClient.setQueryData(regionKeys.meeting(orgId, meeting.id), data)
     return queryClient.invalidateQueries({ queryKey: regionKeys.all })
   }
-  const act = useMutation({ mutationFn: (action: "publish" | "check-in") => meetingAction(orgId, meeting.id, action), onSuccess: update })
+  const act = useMutation({ mutationFn: (action: "publish") => meetingAction(orgId, meeting.id, action), onSuccess: update })
+  // Kept on the device with no connection: shown as checked in at once, sent later (REQ-035).
+  const checkIn = useMutation({
+    mutationFn: () => checkInOrKeep(orgId, meeting),
+    onSuccess: (sent) => {
+      if (!sent.kept) return update(sent.data)
+      const now = new Date().toISOString()
+      queryClient.setQueryData<Meeting>(regionKeys.meeting(orgId, meeting.id), (m) => (m?.me ? { ...m, me: { ...m.me, checked_in_at: now, attendance: m.me.attendance || "present" } } : m))
+    },
+  })
   const answer = useMutation({ mutationFn: (value: "attending" | "apologies") => answerMeeting(orgId, meeting.id, value), onSuccess: update })
   const cancel = useMutation({ mutationFn: () => cancelMeeting(orgId, meeting.id, reason.trim()), onSuccess: update })
   const record = useMutation({ mutationFn: () => recordMinutes(orgId, meeting.id, minutes.trim()), onSuccess: update })
@@ -194,7 +251,7 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
   const [now] = useState(() => Date.now())
   const started = new Date(meeting.starts_at).getTime() <= now
   const running = started && now < new Date(meeting.ends_at).getTime()
-  const error = act.error ?? answer.error ?? cancel.error ?? record.error ?? remove.error
+  const error = act.error ?? checkIn.error ?? answer.error ?? cancel.error ?? record.error ?? remove.error
 
   return (
     <>
@@ -232,17 +289,36 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
         )}
       </section>
 
+      {(meeting.rules?.length ?? 0) > 0 && (
+        <section aria-labelledby="rules-heading" className="flex flex-col gap-2">
+          <h2 id="rules-heading" className="flex items-center gap-2 text-xl font-bold">
+            <Gavel aria-hidden className="size-5 text-brand-blue" /> Rules
+          </h2>
+          <ul className="flex flex-col gap-1">
+            {meeting.rules!.map((rule) => (
+              <li key={rule.applies_to}>
+                <span className="font-semibold">{RULE_LABEL[rule.applies_to]}:</span> {rule.penalty}
+                {rule.amount_minor ? ` (${formatMoney(rule.amount_minor, "KES")})` : ""}
+              </li>
+            ))}
+          </ul>
+          {meeting.secretary && <p className="text-sm text-muted-foreground">Secretary: {meeting.secretary.display_name}</p>}
+        </section>
+      )}
+
       {meeting.me && meeting.status === "published" && (
         <section aria-labelledby="you-heading" className="flex flex-col gap-3 rounded-xl border bg-card p-4">
           <h2 id="you-heading" className="text-xl font-bold">
             You're invited
           </h2>
           <p className="text-muted-foreground">
-            {meeting.me.checked_in_at ? "You're checked in." : meeting.me.answer === "attending" ? "You said you'll attend." : meeting.me.answer === "apologies" ? "You sent apologies." : "Let the organizers know if you're coming."}
+            {meeting.me.attendance ? `Recorded as ${ATTENDANCE_LABEL[meeting.me.attendance as AttendanceMark].toLowerCase()}.` : meeting.me.checked_in_at ? "You're checked in." : meeting.me.answer === "attending" ? "You said you'll attend." : meeting.me.answer === "apologies" ? "You sent apologies." : "Let the organizers know if you're coming."}
           </p>
+          {checkIn.data?.kept && <WaitingToSync />}
+          {meeting.me.penalty && <PenaltyLine penalty={meeting.me.penalty} />}
           <div className="flex flex-wrap gap-2">
             {running && !meeting.me.checked_in_at && (
-              <Button disabled={act.isPending} onClick={() => act.mutate("check-in")}>
+              <Button disabled={checkIn.isPending} onClick={() => checkIn.mutate()}>
                 Check in
               </Button>
             )}
@@ -259,6 +335,8 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
           </div>
         </section>
       )}
+
+      {meeting.can_take_attendance && meeting.invitees.length > 0 && <Attendance orgId={orgId} meeting={meeting} started={started} over={started && !running} onChange={update} />}
 
       {meeting.minutes && (
         <section aria-labelledby="minutes-heading" className="flex flex-col gap-2">
@@ -285,26 +363,7 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
               </Button>
             </div>
           )}
-          {meeting.invitees.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h3 className="flex items-center gap-2 font-semibold">
-                <Users aria-hidden className="size-4" /> Invitees ({meeting.invitees.length})
-              </h3>
-              <ul className="flex flex-col gap-1">
-                {meeting.invitees.map((invitee) => (
-                  <li key={invitee.id} className="flex flex-wrap justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
-                    <span>
-                      {invitee.display_name}
-                      {invitee.club && <span className="text-muted-foreground"> · {invitee.club}</span>}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {invitee.checked_in_at ? "Present" : invitee.answer === "attending" ? "Attending" : invitee.answer === "apologies" ? "Apologies" : "No answer"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {meeting.status === "draft" && meeting.invitees.length > 0 && <p className="text-muted-foreground">{meeting.invitees.length} invited</p>}
           {meeting.status === "published" && !started && (
             <div className="flex flex-col gap-2">
               <Field label="Reason to cancel" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -325,4 +384,147 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
       )}
     </>
   )
+}
+
+const MARKS: AttendanceMark[] = ["present", "late", "apologies", "absent"]
+
+function PenaltyLine({ penalty }: { penalty: MeetingPenalty }) {
+  return (
+    <p className={cn("text-sm", penalty.status === "issued" ? "font-semibold text-destructive" : "text-muted-foreground")}>
+      Penalty: {penalty.penalty}
+      {penalty.amount_minor ? ` · ${formatMoney(penalty.amount_minor, penalty.currency)}` : ""} · {PENALTY_STATUS_LABEL[penalty.status]}
+      {penalty.note && ` · ${penalty.note}`}
+    </p>
+  )
+}
+
+/** The attendance record: the secretary or governance staff mark invitees while the meeting runs or after
+ * it, then issue the penalties its rules set. Once issued, only the host's admin changes a penalty. */
+function Attendance({ orgId, meeting, started, over, onChange }: { orgId: string; meeting: Meeting; started: boolean; over: boolean; onChange: (m: Meeting) => void }) {
+  const queryClient = useQueryClient()
+  // Marks made with no connection are kept on the device and shown at once (REQ-035).
+  const [kept, setKept] = useState<Set<string>>(() => new Set())
+  const mark = useMutation({
+    mutationFn: ({ invitee, value }: { invitee: MeetingInvitee; value: AttendanceMark }) => markAttendanceOrKeep(orgId, meeting, invitee, value),
+    onSuccess: (sent, { invitee, value }) => {
+      if (!sent.kept) {
+        setKept((ids) => (ids.has(invitee.id) ? new Set([...ids].filter((id) => id !== invitee.id)) : ids))
+        return onChange(sent.data)
+      }
+      setKept((ids) => new Set(ids).add(invitee.id))
+      queryClient.setQueryData<Meeting>(regionKeys.meeting(orgId, meeting.id), (m) =>
+        m ? { ...m, invitees: m.invitees.map((i) => (i.id === invitee.id ? { ...i, attendance: value } : i)) } : m
+      )
+    },
+  })
+  const issue = useMutation({ mutationFn: () => issuePenalties(orgId, meeting.id), onSuccess: onChange })
+  const marked = meeting.invitees.filter((i) => i.attendance).length
+  const error = mark.error ?? issue.error
+  return (
+    <section aria-labelledby="attendance-heading" className="flex flex-col gap-3 border-t pt-6">
+      <h2 id="attendance-heading" className="flex items-center gap-2 text-xl font-bold">
+        <Users aria-hidden className="size-5" /> Attendance ({marked} of {meeting.invitees.length} marked)
+      </h2>
+      {!started && <p className="text-muted-foreground">You can mark attendance once the meeting starts.</p>}
+      {error && <FormAlert>{errorMessage(error)}</FormAlert>}
+      <ul className="flex flex-col gap-2">
+        {meeting.invitees.map((invitee) => (
+          <InviteeRow key={invitee.id} orgId={orgId} meeting={meeting} invitee={invitee} editable={started && meeting.status === "published"} pending={mark.isPending} waiting={kept.has(invitee.id)} onMark={(value) => mark.mutate({ invitee, value })} />
+        ))}
+      </ul>
+      {over && (meeting.rules?.length ?? 0) > 0 && meeting.invitees.some((i) => !i.penalty) && (
+        <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          <p>Issue the penalties the rules set. Anyone still unmarked is recorded as absent, or apologies if they sent them. After this only the admin can change a penalty.</p>
+          <Button className="self-start" disabled={issue.isPending} onClick={() => issue.mutate()}>
+            <Gavel aria-hidden className="size-4" /> {issue.isPending ? "Issuing…" : "Issue penalties"}
+          </Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function InviteeRow({ orgId, meeting, invitee, editable, pending, waiting, onMark }: { orgId: string; meeting: Meeting; invitee: MeetingInvitee; editable: boolean; pending: boolean; waiting: boolean; onMark: (value: AttendanceMark) => void }) {
+  const answer = invitee.answer === "attending" ? "Said they'll attend" : invitee.answer === "apologies" ? "Sent apologies" : "No answer"
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border bg-card px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          <span className="font-semibold">{invitee.display_name}</span>
+          {invitee.club && <span className="text-muted-foreground"> · {invitee.club}</span>}
+          <span className="block text-sm text-muted-foreground">
+            {answer}
+            {invitee.checked_in_at && " · checked in"}
+            {waiting && " · waiting to sync"}
+          </span>
+        </span>
+        {editable && !invitee.penalty ? (
+          <div role="group" aria-label={`Attendance of ${invitee.display_name}`} className="flex flex-wrap gap-1">
+            {MARKS.map((value) => (
+              <Button key={value} size="sm" variant={invitee.attendance === value ? "default" : "outline"} aria-pressed={invitee.attendance === value} disabled={pending} onClick={() => onMark(value)}>
+                {ATTENDANCE_LABEL[value]}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <span className="text-sm font-semibold">{invitee.attendance ? ATTENDANCE_LABEL[invitee.attendance as AttendanceMark] : "Not marked"}</span>
+        )}
+      </div>
+      {invitee.penalty && <PenaltyEditor orgId={orgId} meeting={meeting} penalty={invitee.penalty} />}
+    </li>
+  )
+}
+
+function PenaltyEditor({ orgId, meeting, penalty }: { orgId: string; meeting: Meeting; penalty: MeetingPenalty }) {
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(penalty.penalty)
+  const [amount, setAmount] = useState(penalty.amount_minor ? String(penalty.amount_minor / 100) : "")
+  const [status, setStatus] = useState<MeetingPenalty["status"]>(penalty.status)
+  const [note, setNote] = useState(penalty.note)
+  const save = useMutation({
+    mutationFn: () => updatePenalty(orgId, meeting.id, penalty.id, { penalty: text.trim(), amount_minor: toMinor(amount), status, note: note.trim() }),
+    onSuccess: async () => {
+      setEditing(false)
+      await queryClient.invalidateQueries({ queryKey: regionKeys.meeting(orgId, meeting.id) })
+    },
+  })
+  return (
+    <div className="flex flex-col gap-2">
+      <PenaltyLine penalty={penalty} />
+      {penalty.history.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Changed {penalty.history.length} time{penalty.history.length === 1 ? "" : "s"}, last by {penalty.history[penalty.history.length - 1].by_name}
+        </p>
+      )}
+      {meeting.can_edit_penalties && !editing && (
+        <Button size="sm" variant="ghost" className="self-start" onClick={() => setEditing(true)}>
+          Change penalty
+        </Button>
+      )}
+      {editing && (
+        <div className="flex flex-col gap-2 rounded-lg border p-3">
+          {save.isError && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+          <Field label="Penalty" maxLength={200} value={text} onChange={(e) => setText(e.target.value)} />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field label="Fine (KES)" optional inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <SelectField label="Status" options={(Object.keys(PENALTY_STATUS_LABEL) as MeetingPenalty["status"][]).map((v) => ({ value: v, label: PENALTY_STATUS_LABEL[v] }))} value={status} onChange={(v) => setStatus(v as MeetingPenalty["status"])} />
+          </div>
+          <Field label="Note" optional maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} hint="Why it changed, for the record." />
+          <div className="flex gap-2">
+            <Button size="sm" disabled={!text.trim() || save.isPending} onClick={() => save.mutate()}>
+              {save.isPending ? "Saving…" : "Save"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function WaitingToSync() {
+  return <p className="text-sm font-semibold text-muted-foreground">Saved on this device: it will be sent when you're back online.</p>
 }

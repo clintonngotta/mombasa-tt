@@ -3178,6 +3178,115 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/:
+    get:
+      operationId: me_push_retrieve
+      description: |-
+        Browser push on the player's devices (TASK-034): whether the server sends push at all, the key to
+        subscribe with, and the devices that get the player's alerts. The inbox works without any of it.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/devices/{device_pk}/:
+    delete:
+      operationId: me_push_devices_destroy
+      description: Remove one of the player's devices from the list (one they no longer
+        have, say).
+      parameters:
+      - in: path
+        name: device_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/subscribe/:
+    post:
+      operationId: me_push_subscribe_create
+      description: |-
+        Add this browser (or update its keys). A browser already subscribed for another account moves to
+        the one signed in now, so a shared device only ever shows the current player's alerts.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscribeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/unsubscribe/:
+    post:
+      operationId: me_push_unsubscribe_create
+      description: Remove this browser by its endpoint (switching push off, or logging
+        out).
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushUnsubscribeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/scorecards/:
     get:
       operationId: me_scorecards_list
@@ -4970,6 +5079,48 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CancelActivityRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/cost-share/:
+    post:
+      operationId: organizations_activities_cost_share_create
+      description: |-
+        Share the cost among those going (REQ-039 Phase 2): a one-time due for each, through the
+        ledger. Takes activities.manage and finances.manage, since it makes members owe.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareCostRequest'
         required: true
       security:
       - sessionAuth: []
@@ -8553,6 +8704,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/attendance/:
+    post:
+      operationId: organizations_meetings_attendance_create
+      description: |-
+        POST .../meetings/{id}/attendance/: mark one invitee present, late, apologies or absent, during the
+        meeting or after it. A mark can't change once a penalty has been issued for it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/meetings/{id}/cancel/:
     post:
       operationId: organizations_meetings_cancel_create
@@ -8662,6 +8855,90 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/penalties/:
+    post:
+      operationId: organizations_meetings_penalties_create
+      description: |-
+        POST .../meetings/{id}/penalties/: once the meeting is over, close the attendance record (anyone
+        unmarked is absent, or apologies if they sent them) and issue the penalties its rules set. Run again,
+        it issues only for invitees who have none yet.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/penalties/{penalty_pk}/:
+    patch:
+      operationId: organizations_meetings_penalties_partial_update
+      description: |-
+        PATCH .../meetings/{id}/penalties/{penalty}/: change, waive or mark paid an issued penalty. Only
+        the host's admin or a platform super admin; each change is kept in the penalty's history.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: penalty_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPenaltyUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Penalty'
           description: ''
         4XX:
           description: Error envelope
@@ -10916,6 +11193,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/welfare-projects/{id}/due/:
+    post:
+      operationId: organizations_welfare_projects_due_create
+      description: |-
+        Make giving required: a one-time due for the project's audience, the beneficiary excepted.
+        Needs both welfare.manage and finances.manage, since it makes members owe. It can't be undone
+        here; finance staff waive dues or close the campaign as for any other.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WelfareDueRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelfareProject'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/welfare-projects/{id}/expenses/:
     get:
       operationId: organizations_welfare_projects_expenses_list
@@ -12415,6 +12734,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/dashboard/:
+    get:
+      operationId: tournaments_dashboard_retrieve
+      description: |-
+        GET /tournaments/{id}/dashboard/: the tournament's entries, check-ins, draws, matches and open
+        corrections, event by event, for its host's competition staff.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDashboard'
           description: ''
         4XX:
           description: Error envelope
@@ -15204,14 +15553,6 @@ components:
           $ref: '#/components/schemas/AnswerAnswerEnum'
       required:
       - answer
-    AppliesToEnum:
-      enum:
-      - position
-      - holder
-      type: string
-      description: |-
-        * `position` - Position
-        * `holder` - Holder
     AppointRequest:
       type: object
       properties:
@@ -15455,6 +15796,29 @@ components:
       - expires_at
       - id
       - url
+    AttendanceMarkEnum:
+      enum:
+      - present
+      - absent
+      - late
+      - apologies
+      type: string
+      description: |-
+        * `present` - present
+        * `absent` - absent
+        * `late` - late
+        * `apologies` - apologies
+    AttendanceRequest:
+      type: object
+      properties:
+        invitee:
+          type: string
+          format: uuid
+        attendance:
+          $ref: '#/components/schemas/AttendanceMarkEnum'
+      required:
+      - attendance
+      - invitee
     Attendee:
       type: object
       description: 'Who answered, as the audience sees it: display names only.'
@@ -16213,6 +16577,16 @@ components:
       - published_at
       - starts_at
       - status
+    CeremonyEnum:
+      enum:
+      - none
+      - draft
+      - published
+      type: string
+      description: |-
+        * `none` - none
+        * `draft` - draft
+        * `published` - published
     CeremonyRequest:
       type: object
       properties:
@@ -16660,6 +17034,11 @@ components:
         cost_note:
           type: string
           maxLength: 200
+        welfare_project_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The welfare project this visit or support activity is for (REQ-038).
         status:
           allOf:
           - $ref: '#/components/schemas/ActivityStatusEnum'
@@ -16685,6 +17064,11 @@ components:
           description: In the audience (a member, and the activity is for all members
             or invites them) and open.
           readOnly: true
+        cost_share:
+          allOf:
+          - $ref: '#/components/schemas/CostShare'
+          nullable: true
+          readOnly: true
         published_at:
           type: string
           format: date-time
@@ -16696,6 +17080,7 @@ components:
       - cancel_reason
       - capacity
       - cost_note
+      - cost_share
       - description
       - ends_at
       - going
@@ -16711,6 +17096,7 @@ components:
       - status
       - title
       - waitlisted
+      - welfare_project_id
     ClubActivityAudienceEnum:
       enum:
       - members
@@ -16785,6 +17171,11 @@ components:
         cost_note:
           type: string
           maxLength: 200
+        welfare_project_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The welfare project this visit or support activity is for (REQ-038).
       required:
       - ends_at
       - starts_at
@@ -17453,7 +17844,7 @@ components:
         visibility:
           $ref: '#/components/schemas/MemberFieldVisibilityEnum'
         applies_to:
-          $ref: '#/components/schemas/AppliesToEnum'
+          $ref: '#/components/schemas/CommitteeFieldAppliesToEnum'
         retired_at:
           type: string
           format: date-time
@@ -17468,6 +17859,14 @@ components:
       - required
       - retired_at
       - visibility
+    CommitteeFieldAppliesToEnum:
+      enum:
+      - position
+      - holder
+      type: string
+      description: |-
+        * `position` - Position
+        * `holder` - Holder
     CommitteeFieldEntry:
       type: object
       properties:
@@ -17508,7 +17907,7 @@ components:
         visibility:
           $ref: '#/components/schemas/MemberFieldVisibilityEnum'
         applies_to:
-          $ref: '#/components/schemas/AppliesToEnum'
+          $ref: '#/components/schemas/CommitteeFieldAppliesToEnum'
       required:
       - kind
       - label
@@ -17602,6 +18001,40 @@ components:
       required:
       - amount_minor
       - name
+    CostShare:
+      type: object
+      description: |-
+        The shared cost: what each pays and by when, the viewer's own share, and (finance staff only)
+        received, spent and remaining.
+      properties:
+        amount_minor:
+          type: integer
+        currency:
+          type: string
+        due_on:
+          type: string
+          format: date
+        my_share:
+          allOf:
+          - $ref: '#/components/schemas/MyShare'
+          nullable: true
+        received_minor:
+          type: integer
+          nullable: true
+        spent_minor:
+          type: integer
+          nullable: true
+        remaining_minor:
+          type: integer
+          nullable: true
+      required:
+      - amount_minor
+      - currency
+      - due_on
+      - my_share
+      - received_minor
+      - remaining_minor
+      - spent_minor
     CounterRequest:
       type: object
       properties:
@@ -17874,6 +18307,16 @@ components:
       - players
       - pool
       - title
+    DrawEnum:
+      enum:
+      - none
+      - preview
+      - published
+      type: string
+      description: |-
+        * `none` - none
+        * `preview` - preview
+        * `published` - published
     DrawGroup:
       type: object
       properties:
@@ -18232,6 +18675,24 @@ components:
       - status
       - team_name
       - withdrawn_at
+    EntryCounts:
+      type: object
+      properties:
+        pending:
+          type: integer
+          description: Waiting for staff to accept or decline.
+        accepted:
+          type: integer
+        waitlisted:
+          type: integer
+        checked_in:
+          type: integer
+          description: Accepted entries checked in (every player).
+      required:
+      - accepted
+      - checked_in
+      - pending
+      - waitlisted
     EntryEvent:
       type: object
       properties:
@@ -18500,6 +18961,37 @@ components:
       - status
       - tie_rubbers
       - tie_wins_needed
+    EventDashboard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/EventStatusEnum'
+        capacity:
+          type: integer
+          nullable: true
+        entries:
+          $ref: '#/components/schemas/EntryCounts'
+        draw:
+          $ref: '#/components/schemas/DrawEnum'
+        matches:
+          $ref: '#/components/schemas/MatchCounts'
+        corrections:
+          type: integer
+          description: Results corrections still to resolve.
+      required:
+      - capacity
+      - corrections
+      - draw
+      - entries
+      - id
+      - matches
+      - name
+      - status
     EventDraw:
       type: object
       description: The event's published draw and, for competition staff only, the
@@ -19762,12 +20254,30 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        attendance:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/MeetingAttendanceEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        marked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        penalty:
+          allOf:
+          - $ref: '#/components/schemas/Penalty'
+          nullable: true
+          readOnly: true
       required:
       - answer
+      - attendance
       - checked_in_at
       - club
       - display_name
       - id
+      - marked_at
+      - penalty
     InviteeAnswerEnum:
       enum:
       - none
@@ -20291,6 +20801,24 @@ components:
       - table
       - tie_score
       - winner_id
+    MatchCounts:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Matches of the published draw, byes left out.
+        decided:
+          type: integer
+        on_table:
+          type: integer
+        ready:
+          type: integer
+          description: Undecided, both sides known and not on a table.
+      required:
+      - decided
+      - on_table
+      - ready
+      - total
     MatchDetail:
       type: object
       description: One match of the published draw on its own page. Reading it gives
@@ -20674,6 +21202,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AgendaRow'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rule'
+        secretary:
+          allOf:
+          - $ref: '#/components/schemas/Secretary'
+          readOnly: true
+          nullable: true
         status:
           allOf:
           - $ref: '#/components/schemas/ActivityStatusEnum'
@@ -20704,9 +21241,21 @@ components:
           - $ref: '#/components/schemas/Invitee'
           nullable: true
           readOnly: true
+        can_take_attendance:
+          type: boolean
+          readOnly: true
+          description: 'You may mark attendance and issue penalties: governance staff
+            or the secretary.'
+        can_edit_penalties:
+          type: boolean
+          readOnly: true
+          description: 'You may change issued penalties: the host''s admin or a platform
+            super admin.'
       required:
       - agenda
       - audience
+      - can_edit_penalties
+      - can_take_attendance
       - cancel_reason
       - ends_at
       - id
@@ -20719,9 +21268,24 @@ components:
       - online_link
       - organization
       - published_at
+      - rules
+      - secretary
       - starts_at
       - status
       - title
+    MeetingAttendanceEnum:
+      enum:
+      - present
+      - late
+      - apologies
+      - absent
+      type: string
+      description: |-
+        * `` - Unmarked
+        * `present` - Present
+        * `late` - Late
+        * `apologies` - Apologies
+        * `absent` - Absent
     MeetingAudienceEnum:
       enum:
       - committee
@@ -20746,6 +21310,16 @@ components:
         * `general` - General
         * `representatives` - Representatives
         * `special` - Special
+    MeetingPenaltyStatusEnum:
+      enum:
+      - issued
+      - waived
+      - paid
+      type: string
+      description: |-
+        * `issued` - Issued
+        * `waived` - Waived
+        * `paid` - Paid
     MeetingRequest:
       type: object
       description: |-
@@ -20787,6 +21361,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AgendaRowRequest'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleRequest'
+        secretary_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+          description: An active member of the host. Defaults to whoever calls the
+            meeting.
       required:
       - ends_at
       - starts_at
@@ -21465,6 +22050,16 @@ components:
       - responded_at
       - session
       - status
+    MyShare:
+      type: object
+      properties:
+        outstanding_minor:
+          type: integer
+        status:
+          $ref: '#/components/schemas/OwedStatusEnum'
+      required:
+      - outstanding_minor
+      - status
     MySodaSettings:
       type: object
       properties:
@@ -21550,6 +22145,23 @@ components:
       - venue_id
       - venue_name
       - visited_on
+    MyWelfareDue:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+        outstanding_minor:
+          type: integer
+        due_on:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/OwedStatusEnum'
+      required:
+      - amount_minor
+      - due_on
+      - outstanding_minor
+      - status
     NominateRequest:
       type: object
       properties:
@@ -22117,6 +22729,18 @@ components:
       description: |-
         * `check_in` - check_in
         * `rest` - rest
+    OwedStatusEnum:
+      enum:
+      - paid
+      - partial
+      - pending
+      - overdue
+      type: string
+      description: |-
+        * `paid` - paid
+        * `partial` - partial
+        * `pending` - pending
+        * `overdue` - overdue
     PaginatedAdminHandoverList:
       type: object
       required:
@@ -23339,6 +23963,11 @@ components:
         cost_note:
           type: string
           maxLength: 200
+        welfare_project_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The welfare project this visit or support activity is for (REQ-038).
     PatchedClubSessionRequest:
       type: object
       description: A club session as its training staff see it.
@@ -23428,7 +24057,7 @@ components:
         visibility:
           $ref: '#/components/schemas/MemberFieldVisibilityEnum'
         applies_to:
-          $ref: '#/components/schemas/AppliesToEnum'
+          $ref: '#/components/schemas/CommitteeFieldAppliesToEnum'
     PatchedDrillRequest:
       type: object
       description: A drill. Instructions are required; everything else is optional.
@@ -23668,6 +24297,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AgendaRowRequest'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleRequest'
+        secretary_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+          description: An active member of the host. Defaults to whoever calls the
+            meeting.
     PatchedMemberFieldRequest:
       type: object
       description: |-
@@ -23777,6 +24417,23 @@ components:
           maxItems: 12
         active:
           type: boolean
+    PatchedPenaltyUpdateRequest:
+      type: object
+      properties:
+        penalty:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+          nullable: true
+        status:
+          $ref: '#/components/schemas/MeetingPenaltyStatusEnum'
+        note:
+          type: string
+          maxLength: 300
     PatchedPersonalMatchRequest:
       type: object
       properties:
@@ -24280,6 +24937,91 @@ components:
       - payer_id
       - received_on
       - request_key
+    PenalizedAttendanceEnum:
+      enum:
+      - absent
+      - late
+      - apologies
+      type: string
+      description: |-
+        * `absent` - absent
+        * `late` - late
+        * `apologies` - apologies
+    Penalty:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        applies_to:
+          allOf:
+          - $ref: '#/components/schemas/PenalizedAttendanceEnum'
+          readOnly: true
+        penalty:
+          type: string
+          readOnly: true
+        amount_minor:
+          type: integer
+          readOnly: true
+          nullable: true
+        currency:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MeetingPenaltyStatusEnum'
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        issued_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PenaltyChange'
+          readOnly: true
+      required:
+      - amount_minor
+      - applies_to
+      - currency
+      - history
+      - id
+      - issued_at
+      - issued_by_name
+      - note
+      - penalty
+      - status
+      - updated_at
+    PenaltyChange:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        by_name:
+          type: string
+        changes:
+          type: object
+          additionalProperties:
+            type: array
+            items: {}
+            nullable: true
+      required:
+      - at
+      - by_name
+      - changes
     PeriodEnum:
       enum:
       - day
@@ -24708,6 +25450,11 @@ components:
           format: uuid
         display_name:
           type: string
+        avatar:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          nullable: true
+          description: 'The player''s photo: only for listed players and yourself.'
         processing:
           type: boolean
         summaries:
@@ -24739,6 +25486,7 @@ components:
           items:
             $ref: '#/components/schemas/RatingChange'
       required:
+      - avatar
       - count
       - discipline
       - display_name
@@ -25082,6 +25830,93 @@ components:
       required:
       - purposes
       - spending
+    PushDevice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - id
+      - label
+      - last_sent_at
+    PushKeysRequest:
+      type: object
+      properties:
+        p256dh:
+          type: string
+          minLength: 1
+          maxLength: 200
+        auth:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - auth
+      - p256dh
+    PushStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+          description: Whether this server sends push messages at all.
+        public_key:
+          type: string
+          description: The applicationServerKey to subscribe with (base64url).
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PushDevice'
+      required:
+      - configured
+      - devices
+      - public_key
+    PushSubscribeRequest:
+      type: object
+      description: A browser's PushSubscription as `subscription.toJSON()` gives it,
+        plus a label for the device.
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 1000
+        keys:
+          $ref: '#/components/schemas/PushKeysRequest'
+        expirationTime:
+          type: integer
+          minimum: 0
+          nullable: true
+        label:
+          type: string
+          maxLength: 80
+      required:
+      - endpoint
+      - keys
+    PushUnsubscribeRequest:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 1000
+      required:
+      - endpoint
     QueuedMatch:
       type: object
       description: |-
@@ -25190,6 +26025,11 @@ components:
           description: The player has a page in the directory.
         is_me:
           type: boolean
+        avatar:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          nullable: true
+          description: 'The player''s photo: only for listed players and yourself.'
         rating:
           type: number
           format: double
@@ -25208,6 +26048,7 @@ components:
           format: double
           nullable: true
       required:
+      - avatar
       - clubs
       - display_name
       - form
@@ -26200,6 +27041,46 @@ components:
         * `scheduled` - Scheduled
         * `completed` - Completed
         * `not_played` - Not Played
+    Rule:
+      type: object
+      description: 'What missing the meeting costs: one rule each for absent, late
+        and apologies.'
+      properties:
+        applies_to:
+          $ref: '#/components/schemas/PenalizedAttendanceEnum'
+        penalty:
+          type: string
+          maxLength: 200
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+          nullable: true
+          description: A fine in the smallest unit of KES, when the penalty is one.
+      required:
+      - amount_minor
+      - applies_to
+      - penalty
+    RuleRequest:
+      type: object
+      description: 'What missing the meeting costs: one rule each for absent, late
+        and apologies.'
+      properties:
+        applies_to:
+          $ref: '#/components/schemas/PenalizedAttendanceEnum'
+        penalty:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+          nullable: true
+          description: A fine in the smallest unit of KES, when the penalty is one.
+      required:
+      - applies_to
+      - penalty
     Schedule:
       type: object
       properties:
@@ -26766,6 +27647,29 @@ components:
       - scorecard_id
       - status
       - umpire_name
+    Secretary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
+    SecretaryRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          minLength: 1
+      required:
+      - display_name
+      - id
     SeedingEnum:
       enum:
       - rating
@@ -26959,6 +27863,29 @@ components:
           maxLength: 40
       required:
       - label
+    ShareCostRequest:
+      type: object
+      description: An amount each, or a total split evenly among those going (rounded
+        up to whole units).
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        total_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        due_on:
+          type: string
+          format: date
+      required:
+      - due_on
     ShareRequest:
       type: object
       properties:
@@ -28080,6 +29007,37 @@ components:
       - status
       - timezone
       - venue
+    TournamentDashboard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/TournamentStatusEnum'
+        ceremony:
+          $ref: '#/components/schemas/CeremonyEnum'
+        entries:
+          $ref: '#/components/schemas/EntryCounts'
+        matches:
+          $ref: '#/components/schemas/MatchCounts'
+        corrections:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventDashboard'
+      required:
+      - ceremony
+      - corrections
+      - entries
+      - events
+      - id
+      - matches
+      - name
+      - status
     TournamentDocument:
       type: object
       description: A document of a tournament with a fresh signed link to the PDF.
@@ -29087,6 +30045,29 @@ components:
       - method
       - received_on
       - request_key
+    WelfareDueRequest:
+      type: object
+      description: Make giving required. The amount defaults to the suggested gift,
+        the date to the deadline.
+      properties:
+        amount_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+        due_on:
+          type: string
+          format: date
+    WelfareDueTerms:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+        due_on:
+          type: string
+          format: date
+      required:
+      - amount_minor
+      - due_on
     WelfareProject:
       type: object
       description: |-
@@ -29156,6 +30137,30 @@ components:
             $ref: '#/components/schemas/Contributor'
           nullable: true
           readOnly: true
+        required:
+          type: boolean
+          description: 'Made a due (REQ-023): only then does anyone owe, or show as
+            overdue.'
+          readOnly: true
+        due:
+          allOf:
+          - $ref: '#/components/schemas/WelfareDueTerms'
+          nullable: true
+          readOnly: true
+        expected_minor:
+          type: integer
+          nullable: true
+          readOnly: true
+        my_due:
+          allOf:
+          - $ref: '#/components/schemas/MyWelfareDue'
+          nullable: true
+          readOnly: true
+        visits:
+          type: array
+          items:
+            $ref: '#/components/schemas/WelfareVisit'
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -29170,16 +30175,21 @@ components:
       - currency
       - deadline
       - description
+      - due
+      - expected_minor
       - hidden
       - id
       - my_contribution_minor
+      - my_due
       - received_minor
       - remaining_minor
+      - required
       - show_contributors
       - spent_minor
       - suggested_minor
       - target_minor
       - title
+      - visits
     WelfareProjectRequest:
       type: object
       description: |-
@@ -29228,6 +30238,47 @@ components:
           type: boolean
       required:
       - title
+    WelfareVisit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        place:
+          type: string
+        status:
+          $ref: '#/components/schemas/WelfareVisitStatusEnum'
+        going:
+          type: array
+          items:
+            type: string
+          description: Display names
+      required:
+      - ends_at
+      - going
+      - id
+      - place
+      - starts_at
+      - status
+      - title
+    WelfareVisitStatusEnum:
+      enum:
+      - draft
+      - published
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - draft
+        * `published` - published
+        * `cancelled` - cancelled
     XEnum:
       enum:
       - left

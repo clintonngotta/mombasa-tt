@@ -69,6 +69,11 @@ urlpatterns = [
         name="organization-welfare-project-close",
     ),
     path(
+        "welfare-projects/<uuid:pk>/due/",
+        views.WelfareDueView.as_view(),
+        name="organization-welfare-project-due",
+    ),
+    path(
         "welfare-projects/<uuid:pk>/contributions/",
         views.WelfareContributionsView.as_view(),
         name="organization-welfare-contributions",

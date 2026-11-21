@@ -251,6 +251,11 @@ class WelfareProject(models.Model):
     audience_members = models.ManyToManyField(USER, blank=True, related_name="+")
     # The club may show who gave; each contributor can still stay anonymous in that list.
     show_contributors = models.BooleanField(default=False)
+    # Set when staff make giving required (REQ-023): a one-time campaign whose dues count towards the
+    # project. Until then nobody owes anything.
+    campaign = models.OneToOneField(
+        Campaign, on_delete=models.PROTECT, null=True, blank=True, related_name="welfare_project"
+    )
     hidden_at = models.DateTimeField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")

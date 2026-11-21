@@ -50,7 +50,10 @@ OVERSIGHT: frozenset[str] = frozenset()
 
 def effective_permissions(user, organization: Organization) -> frozenset[str]:
     """The user's permissions here: everything for a platform super admin, otherwise what their own
-    active membership grants. An official's appointment adds nothing (see OVERSIGHT)."""
+    active membership grants. An official's appointment adds nothing (see OVERSIGHT). Nothing at all for
+    a signed-out caller of a public page."""
+    if not user.is_authenticated:
+        return frozenset()
     if is_platform_super_admin(user):
         return ALL_PERMISSIONS
     membership = (

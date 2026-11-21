@@ -60,6 +60,47 @@ self.addEventListener("fetch", (event) => {
   }
 })
 
+// Push messages (REQ-019, TASK-034): a copy of an inbox alert. The tag is the alert's subject, so a newer
+// alert about the same match or activity replaces the older one on the lock screen. Opening it goes to
+// the alert's link, which shows the subject as it is now.
+self.addEventListener("push", (event) => {
+  let alert = {}
+  try {
+    alert = event.data ? event.data.json() : {}
+  } catch {
+    alert = { title: event.data?.text() }
+  }
+  const title = alert.title || "Coast TT"
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: alert.body || "",
+      tag: alert.tag || alert.id,
+      renotify: Boolean(alert.tag),
+      requireInteraction: Boolean(alert.urgent),
+      icon: "/icons/icon-192.png",
+      badge: "/favicon-32.png",
+      data: { link: safeLink(alert.link) },
+    })
+  )
+})
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close()
+  const link = safeLink(event.notification.data?.link)
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((open) => {
+      const tab = open.find((client) => new URL(client.url).origin === self.location.origin)
+      if (tab) return tab.focus().then((focused) => (focused ?? tab).navigate(link).catch(() => undefined))
+      return self.clients.openWindow(link)
+    })
+  )
+})
+
+/** Only paths in this app: a message never opens another site. */
+function safeLink(link) {
+  return typeof link === "string" && link.startsWith("/") && !link.startsWith("//") ? link : "/notifications"
+}
+
 async function fromCacheThenNetwork(request) {
   const cache = await caches.open(CACHE)
   const kept = await cache.match(request)

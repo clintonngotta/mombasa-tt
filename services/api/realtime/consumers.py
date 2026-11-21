@@ -1,5 +1,6 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from django.contrib.auth.models import AnonymousUser
 
 from competitions.models import Tournament
 from organizations.access import effective_permissions
@@ -7,14 +8,13 @@ from organizations.permissions import Permission
 
 from .broadcast import tournament_group
 
-NOT_SIGNED_IN = 4401
 NOT_FOUND = 4404
 
 
 @database_sync_to_async
 def can_watch(user, tournament_id) -> bool:
-    """Who may see the tournament: everyone signed in once it is published, its host's competition staff
-    while it is a draft."""
+    """Who may see the tournament: everyone once it is published, signed in or not (its pages are public,
+    TASK-035), and its host's competition staff while it is a draft."""
     tournament = Tournament.objects.select_related("organization").filter(pk=tournament_id).first()
     if tournament is None:
         return False
@@ -30,10 +30,7 @@ class TournamentConsumer(AsyncJsonWebsocketConsumer):
     group = None
 
     async def connect(self):
-        user = self.scope.get("user")
-        if user is None or not user.is_authenticated:
-            await self.close(code=NOT_SIGNED_IN)
-            return
+        user = self.scope.get("user") or AnonymousUser()
         tournament_id = self.scope["url_route"]["kwargs"]["tournament_id"]
         if not await can_watch(user, tournament_id):
             await self.close(code=NOT_FOUND)

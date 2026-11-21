@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from accounts.models import User
+from coaching.models import CoachProfile
 from core.models import Region
 from facilities.models import Table, Venue
 from organizations.models import Membership, OfficialAppointment, Organization, Role, seed_roles
@@ -110,6 +111,12 @@ class Command(BaseCommand):
                 )
                 if role == COACH_ROLE:
                     roles = [_coach_role(organization)]
+                    # A coach profile is what makes someone a coach in the app (the Coaching page).
+                    coach, _ = CoachProfile.objects.get_or_create(
+                        user=user,
+                        defaults={"headline": "Club coach", "region": region.name, "town": "Mombasa"},
+                    )
+                    coach.organizations.add(organization)
                 elif role:
                     roles = [organization.roles.get(key=role)]
                 else:

@@ -35,6 +35,8 @@ def visible(user, organization: Organization):
     activities = organization.activities.all()
     if is_staff(user, organization):
         return activities
+    # A visit for a welfare project the beneficiary had hidden goes from member views with it.
+    activities = activities.exclude(welfare_project__hidden_at__isnull=False)
     public = Q(public=True, status__in=SHOWN)
     if not is_member(user, organization):
         return activities.filter(public)
@@ -44,6 +46,8 @@ def visible(user, organization: Organization):
 
 def in_audience(user, activity: Activity) -> bool:
     if not is_member(user, activity.organization):
+        return False
+    if activity.welfare_project_id and activity.welfare_project.hidden_at:
         return False
     return activity.audience == Activity.Audience.MEMBERS or activity.invitees.filter(pk=user.pk).exists()
 
@@ -192,3 +196,33 @@ def ics(organization: Organization, items: list[dict]) -> str:
         lines.append("END:VEVENT")
     lines.append("END:VCALENDAR")
     return "\r\n".join(_fold(line) for line in lines) + "\r\n"
+
+
+def check_welfare_link(
+    user, organization: Organization, project_id, *, audience, invitee_ids, public, changed=True
+):
+    """The welfare project a visit may be linked to, or None. Linking or unlinking (`changed`) takes
+    welfare.manage too, and links only an open project of the club. Whenever linked, the visit is never
+    public, and when the project is for selected members it is for some of them (or the beneficiary)."""
+    from finance import welfare
+    from finance.models import WelfareProject
+    from organizations.committee import local_today
+
+    if changed and Permission.WELFARE_MANAGE not in effective_permissions(user, organization):
+        raise ApiException("permission_denied", "Linking a welfare project takes welfare.manage.", 403)
+    if project_id is None:
+        return None
+    project = WelfareProject.objects.filter(organization=organization, pk=project_id).first()
+    if project is None:
+        raise ApiException("bad_welfare_project", "Choose one of the club's welfare projects.", 400)
+    if changed and welfare.is_closed(project, local_today(organization)):
+        raise ApiException("project_closed", "That welfare project is closed.", 409)
+    if public:
+        raise ApiException("welfare_not_public", "A welfare visit can't be public.", 400)
+    if project.audience == WelfareProject.Audience.SELECTED:
+        allowed = set(project.audience_members.values_list("pk", flat=True)) | {project.beneficiary_id}
+        if audience != Activity.Audience.SELECTED or not set(invitee_ids or ()) <= allowed:
+            raise ApiException(
+                "outside_welfare_audience", "Invite only members the welfare project is for.", 400
+            )
+    return project

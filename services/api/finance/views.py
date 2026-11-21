@@ -42,6 +42,7 @@ from .serializers import (
     ReceiptUploadSerializer,
     RemindedSerializer,
     WelfareContributionSerializer,
+    WelfareDueSerializer,
     WelfareProjectSerializer,
     WelfareUpdateSerializer,
 )
@@ -534,13 +535,21 @@ class PurposesView(APIView):
         return Response(PurposesSerializer(data).data)
 
 
+def _welfare_context(request, organization):
+    return {
+        "today": local_today(organization),
+        "user": request.user,
+        "staff": welfare.is_staff(request.user, organization),
+    }
+
+
 def _welfare_out(request, project, organization, status_code=status.HTTP_200_OK):
-    context = {"today": local_today(organization), "user": request.user}
+    context = _welfare_context(request, organization)
     return Response(WelfareProjectSerializer(project, context=context).data, status=status_code)
 
 
 def _welfare_projects(organization):
-    return organization.welfare_projects.select_related("beneficiary", "organization")
+    return organization.welfare_projects.select_related("beneficiary", "organization", "campaign")
 
 
 def _visible_project(request, organization_pk, pk):
@@ -567,7 +576,7 @@ class WelfareProjectsView(APIView):
         if not welfare.is_staff(request.user, organization):
             require_membership(request.user, organization)
             projects = [p for p in projects if welfare.visible_to_member(p, request.user)]
-        context = {"today": local_today(organization), "user": request.user}
+        context = _welfare_context(request, organization)
         return Response(WelfareProjectSerializer(projects, many=True, context=context).data)
 
     @extend_schema(request=WelfareProjectSerializer, responses={201: WelfareProjectSerializer})
@@ -643,11 +652,31 @@ class CloseWelfareView(APIView):
         """Close the project: its totals and records stay, read-only."""
         organization = _org(organization_pk)
         require_permission(request.user, organization, Permission.WELFARE_MANAGE)
+        project = welfare.close(get_object_or_404(_welfare_projects(organization), pk=pk))
+        return _welfare_out(request, _welfare_projects(organization).get(pk=project.pk), organization)
+
+
+class WelfareDueView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=WelfareDueSerializer, responses={200: WelfareProjectSerializer})
+    def post(self, request, organization_pk, pk):
+        """Make giving required: a one-time due for the project's audience, the beneficiary excepted.
+        Needs both welfare.manage and finances.manage, since it makes members owe. It can't be undone
+        here; finance staff waive dues or close the campaign as for any other."""
+        organization = _org(organization_pk)
+        require_permission(request.user, organization, Permission.WELFARE_MANAGE)
+        require_permission(request.user, organization, MANAGE)
         project = get_object_or_404(_welfare_projects(organization), pk=pk)
-        if not project.closed_at:
-            project.closed_at = timezone.now()
-            project.save(update_fields=["closed_at"])
-        return _welfare_out(request, project, organization)
+        body = WelfareDueSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        today = local_today(organization)
+        amount = body.validated_data.get("amount_minor") or project.suggested_minor
+        if amount is None:
+            raise ApiException("amount_required", "Set how much each member owes.", 400)
+        due_on = body.validated_data.get("due_on") or project.deadline or today
+        welfare.make_due(project, request.user, today, amount_minor=amount, due_on=due_on)
+        return _welfare_out(request, _welfare_projects(organization).get(pk=project.pk), organization)
 
 
 def _welfare_staff(request, organization_pk, pk, record=False):

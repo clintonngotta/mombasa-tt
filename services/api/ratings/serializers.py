@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from attachments.serializers import AttachmentLinkSerializer
+
 from .models import Discipline
 
 
@@ -10,6 +12,9 @@ class RankingRowSerializer(serializers.Serializer):
     clubs = serializers.ListField(child=serializers.CharField())
     listed = serializers.BooleanField(help_text="The player has a page in the directory.")
     is_me = serializers.BooleanField()
+    avatar = AttachmentLinkSerializer(
+        allow_null=True, help_text="The player's photo: only for listed players and yourself."
+    )
     rating = serializers.FloatField(help_text="Full precision; round only to show it.")
     played = serializers.IntegerField()
     won = serializers.IntegerField()
@@ -102,6 +107,9 @@ class RatingChangeSerializer(serializers.Serializer):
 class PlayerRatingsSerializer(serializers.Serializer):
     user_id = serializers.UUIDField()
     display_name = serializers.CharField()
+    avatar = AttachmentLinkSerializer(
+        allow_null=True, help_text="The player's photo: only for listed players and yourself."
+    )
     processing = serializers.BooleanField()
     summaries = RatingSummarySerializer(many=True)
     discipline = serializers.ChoiceField(choices=Discipline.choices, help_text="The one `history` is of.")
