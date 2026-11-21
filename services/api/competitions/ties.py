@@ -192,7 +192,7 @@ def result_of(match: Match) -> standings.Result:
         )
         # `credited` is from the rubber's winner; `games` is kept from the tie winner's side.
         games += credited if mine else [(lost_by, won_by) for won_by, lost_by in credited]
-    if match.outcome in (Match.Outcome.WALKOVER, Match.Outcome.RETIRED):
+    if match.outcome in (Match.Outcome.WALKOVER, Match.Outcome.RETIRED, Match.Outcome.DISQUALIFIED):
         # A tie that wasn't played, or wasn't finished, is completed in the winner's favour: the wins
         # still needed, each in straight games to nil.
         missing = max(event.tie_wins_needed - won, 0)

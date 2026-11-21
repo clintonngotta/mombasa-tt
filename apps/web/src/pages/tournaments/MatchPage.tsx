@@ -108,7 +108,9 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
           <p className="font-display text-[80px] leading-none font-bold tabular-nums max-sm:text-[56px]">
             <span aria-hidden>
               {counted ? `${games.a}–${games.b}` : decided ? "W/O" : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
-              {decided && m.outcome === "retired" && <span className="block text-center text-base font-semibold text-muted-foreground">ret.</span>}
+              {decided && (m.outcome === "retired" || m.outcome === "disqualified") && (
+                <span className="block text-center text-base font-semibold text-muted-foreground">{m.outcome === "retired" ? "ret." : "DQ"}</span>
+              )}
             </span>
             <span className="sr-only">{spokenScore(m)}</span>
           </p>
@@ -177,7 +179,9 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
               </tbody>
             </table>
           </div>
-          {m.outcome === "retired" && <p className="text-sm text-muted-foreground">The match was not finished. The points shown are the ones that were played.</p>}
+          {(m.outcome === "retired" || m.outcome === "disqualified") && (
+            <p className="text-sm text-muted-foreground">The match was not finished. The points shown are the ones that were played.</p>
+          )}
         </section>
       )}
 

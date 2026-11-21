@@ -89,7 +89,7 @@ const names = (players: Rubber["a_players"]) => players.map((player) => player.d
 function RubberRow({ rubber, match, next, ids }: { rubber: Rubber; match: MatchDetail; next: boolean; ids: Ids }) {
   const won = (side: SideKey) => rubber.status === "completed" && rubber.winner_id === (side === "a" ? match.a.entry?.id : match.b?.entry?.id)
   const games = gamesWon(rubber)
-  const score = rubber.status === "not_played" ? "Not played" : rubber.status === "scheduled" ? "v" : rubber.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}${rubber.outcome === "retired" ? " ret." : ""}`
+  const score = rubber.status === "not_played" ? "Not played" : rubber.status === "scheduled" ? "v" : rubber.outcome === "walkover" ? "W/O" : `${games.a}–${games.b}${rubber.outcome === "retired" ? " ret." : rubber.outcome === "disqualified" ? " DQ" : ""}`
   return (
     <li className={cn("flex flex-col gap-1.5 rounded-xl border bg-card px-3 py-2.5", rubber.status === "not_played" && "bg-muted text-muted-foreground")}>
       <span className="text-sm font-semibold text-muted-foreground">

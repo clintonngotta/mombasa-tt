@@ -119,8 +119,9 @@ def is_dispatchable(match: Match) -> bool:
 
 def rest_until(user, event: Event):
     """When the player's rest after the last match they played is over, by this event's rest period.
-    A walkover, a rubber that wasn't needed or a match called back is not play."""
-    at_the_table = [Match.Outcome.PLAYED, Match.Outcome.RETIRED]
+    A walkover, a rubber that wasn't needed or a match called back is not play; a disqualification may
+    come part-way, so it counts as play."""
+    at_the_table = [Match.Outcome.PLAYED, Match.Outcome.RETIRED, Match.Outcome.DISQUALIFIED]
     played = Q(
         rubber__isnull=True,
         reservation__ending=Reservation.Ending.DECIDED,

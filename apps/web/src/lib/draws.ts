@@ -68,22 +68,22 @@ export function gamesWon(match: { games: number[][] }) {
 /** Whether `side` won the match. */
 export const sideWon = (match: Pick<DrawMatch, "status" | "winner_id">, side: DrawSide | null) => !!side?.entry && match.status === "completed" && match.winner_id === side.entry.id
 
-/** The score as it is read out: "3 games to 1", "walkover", "not played yet". */
+/** The score as it is read out: "3 games to 1", "walkover", "1 game to 0, disqualification", "not played yet". */
 export function spokenScore(match: Pick<DrawMatch, "games" | "status" | "outcome" | "tie_score">) {
   const { a, b } = sideScores(match)
   const unit = match.tie_score ? "rubbers" : "games"
   if (match.status !== "completed") return match.tie_score ? `${a} ${unit} to ${b} so far` : "not played yet"
   if (match.outcome === "walkover") return "walkover"
-  return `${a} ${unit} to ${b}${match.outcome === "retired" ? ", retired" : ""}`
+  return `${a} ${unit} to ${b}${match.outcome === "retired" ? ", retired" : match.outcome === "disqualified" ? ", disqualification" : ""}`
 }
 
-/** "3–1", "W/O" for a walkover, "2–1 ret." for a retirement; null while the match isn't decided. */
+/** "3–1", "W/O" for a walkover, "2–1 ret." for a retirement, "1–0 DQ" for a disqualification; null while the match isn't decided. */
 export function scoreLine(match: Pick<DrawMatch, "games" | "status" | "outcome" | "tie_score">) {
   const { a, b } = sideScores(match)
   // A tie under way shows its rubbers so far.
   if (match.status !== "completed") return match.tie_score ? `${a}–${b}` : null
   if (match.outcome === "walkover") return "W/O"
-  return match.outcome === "retired" ? `${a}–${b} ret.` : `${a}–${b}`
+  return match.outcome === "retired" ? `${a}–${b} ret.` : match.outcome === "disqualified" ? `${a}–${b} DQ` : `${a}–${b}`
 }
 
 /** What a decided match's outcome means, in words, for screen readers and the match page. */
@@ -91,6 +91,7 @@ export const OUTCOME_LABEL: Record<Exclude<DrawMatch["outcome"], "">, string> = 
   played: "Played to a finish",
   walkover: "Walkover: the match was not played",
   retired: "Retirement: the match was not finished",
+  disqualified: "Disqualification: the referee disqualified the loser",
 }
 
 /** Whether one of the caller's own entries plays in the match. */

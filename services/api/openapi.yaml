@@ -21063,11 +21063,13 @@ components:
       - played
       - walkover
       - retired
+      - disqualified
       type: string
       description: |-
         * `played` - Played
         * `walkover` - Walkover
         * `retired` - Retired
+        * `disqualified` - Disqualified
     MatchResultEnum:
       enum:
       - win
@@ -25045,6 +25047,7 @@ components:
       - roles.manage
       - competitions.manage
       - results.manage
+      - results.referee
       - scoring.assigned
       - facilities.manage
       - finances.view
@@ -25060,6 +25063,7 @@ components:
         * `roles.manage` - Create and edit roles and assign them to members
         * `competitions.manage` - Set up and run tournaments, events and match days
         * `results.manage` - Confirm and correct official results
+        * `results.referee` - Award walkovers and disqualifications as the referee
         * `scoring.assigned` - Score matches they are assigned to
         * `facilities.manage` - Manage venues, tables, opening hours and bookings
         * `finances.view` - See club finances and contribution records
@@ -26917,6 +26921,7 @@ components:
       - captain
       - assistant_captain
       - committee
+      - referee
       - member
       type: string
       description: |-
@@ -26924,6 +26929,7 @@ components:
         * `captain` - Captain
         * `assistant_captain` - Assistant Captain
         * `committee` - Committee
+        * `referee` - Referee
         * `member` - Member
     RoleRef:
       type: object

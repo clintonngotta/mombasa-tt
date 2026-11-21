@@ -8776,9 +8776,10 @@ export interface components {
          * @description * `played` - Played
          *     * `walkover` - Walkover
          *     * `retired` - Retired
+         *     * `disqualified` - Disqualified
          * @enum {string}
          */
-        MatchOutcomeEnum: "played" | "walkover" | "retired";
+        MatchOutcomeEnum: "played" | "walkover" | "retired" | "disqualified";
         /**
          * @description * `win` - Win
          *     * `loss` - Loss
@@ -10523,6 +10524,7 @@ export interface components {
          *     * `roles.manage` - Create and edit roles and assign them to members
          *     * `competitions.manage` - Set up and run tournaments, events and match days
          *     * `results.manage` - Confirm and correct official results
+         *     * `results.referee` - Award walkovers and disqualifications as the referee
          *     * `scoring.assigned` - Score matches they are assigned to
          *     * `facilities.manage` - Manage venues, tables, opening hours and bookings
          *     * `finances.view` - See club finances and contribution records
@@ -10534,7 +10536,7 @@ export interface components {
          *     * `governance.manage` - Set the committee, nominate representatives and run meetings
          * @enum {string}
          */
-        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage";
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "results.referee" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage";
         PermissionInfo: {
             code: components["schemas"]["PermissionEnum"];
             label: string;
@@ -11323,10 +11325,11 @@ export interface components {
          *     * `captain` - Captain
          *     * `assistant_captain` - Assistant Captain
          *     * `committee` - Committee
+         *     * `referee` - Referee
          *     * `member` - Member
          * @enum {string}
          */
-        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "member";
+        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "referee" | "member";
         RoleRef: {
             /** Format: uuid */
             id: string;

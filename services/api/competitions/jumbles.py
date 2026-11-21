@@ -117,7 +117,8 @@ def table(draw: DrawVersion) -> tuple[list[standings.Row], bool]:
     for match in matches:
         if match.status != Match.Status.COMPLETED:
             continue
-        walkover = match.outcome == Match.Outcome.WALKOVER
+        # A player who didn't play, or was disqualified, earns nothing for the match.
+        walkover = match.outcome in (Match.Outcome.WALKOVER, Match.Outcome.DISQUALIFIED)
         for side, entry in (("a", match.entry_a), ("b", match.entry_b)):
             won = match.winner_id == entry.id
             mine = [game[0] if side == "a" else game[1] for game in match.games]

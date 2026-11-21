@@ -14,7 +14,8 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
-TOPICS = {"scores", "results"}
+# "board": the match-day board of tables and calls (TASK-082) changed.
+TOPICS = {"scores", "results", "board"}
 
 
 def tournament_group(tournament_id) -> str:

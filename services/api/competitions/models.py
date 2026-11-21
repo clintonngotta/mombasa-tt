@@ -430,6 +430,7 @@ class Match(models.Model):
         PLAYED = "played"  # finished at the table
         WALKOVER = "walkover"  # never started: the loser didn't play
         RETIRED = "retired"  # started but not finished: the loser couldn't go on
+        DISQUALIFIED = "disqualified"  # the referee disqualified the loser, before or during play
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     draw = models.ForeignKey(DrawVersion, on_delete=models.CASCADE, related_name="matches")
@@ -448,7 +449,7 @@ class Match(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
     # How a completed match ended, and the points of each game as [a, b] pairs in playing order.
-    outcome = models.CharField(max_length=10, choices=Outcome.choices, blank=True)
+    outcome = models.CharField(max_length=12, choices=Outcome.choices, blank=True)
     games = models.JSONField(default=list, blank=True)
     # Where and when it is expected to be played; both empty until the organizers schedule it. The time
     # is an estimate, never a promise (REQ-014).
@@ -526,7 +527,7 @@ class Rubber(models.Model):
     kind = models.CharField(max_length=10, choices=Kind.choices)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
-    outcome = models.CharField(max_length=10, choices=Match.Outcome.choices, blank=True)
+    outcome = models.CharField(max_length=12, choices=Match.Outcome.choices, blank=True)
     # Points of each game as [a, b] pairs, a being the tie's side a.
     games = models.JSONField(default=list, blank=True)
 
@@ -577,7 +578,7 @@ class OfficialResult(models.Model):
     )
     version = models.PositiveSmallIntegerField(default=1)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name="+")
-    outcome = models.CharField(max_length=10, choices=Match.Outcome.choices)
+    outcome = models.CharField(max_length=12, choices=Match.Outcome.choices)
     games = models.JSONField(default=list, blank=True)
     source = models.CharField(max_length=12, choices=Source.choices)
     reason = models.CharField(max_length=300, blank=True)  # corrections only
