@@ -8,7 +8,7 @@ import { tournamentKeys } from "@/lib/tournaments"
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1"
 const MAX_WAIT = 30_000
 
-type Changed = { type: "changed"; topic: "scores" | "results"; event: string | null }
+type Changed = { type: "changed"; topic: "scores" | "results" | "board"; event: string | null }
 
 /** The WebSocket address of a tournament's live updates, on the API's host (same origin in development). */
 function socketUrl(tournamentId: string) {
@@ -32,8 +32,8 @@ export function useLiveTournament(tournamentId: string | undefined) {
     const refresh = (message: Changed) => {
       const stale: (readonly string[])[] = [scoringKeys.overview(tournamentId), tournamentKeys.detail(tournamentId), tournamentKeys.dashboard(tournamentId), [...drawKeys.all, "match"]]
       if (message.event) stale.push(drawKeys.event(message.event), drawKeys.standings(message.event))
-      // A result frees its table and players on the dispatch board.
-      if (message.topic === "results") stale.push(reservationKeys.board(tournamentId))
+      // A result frees its table and players on the dispatch board; "board" is a change to the board itself.
+      if (message.topic === "results" || message.topic === "board") stale.push(reservationKeys.board(tournamentId))
       for (const queryKey of stale) void queryClient.invalidateQueries({ queryKey })
     }
 

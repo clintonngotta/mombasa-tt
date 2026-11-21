@@ -13,7 +13,7 @@ import { TableControl } from "@/components/tournaments/TableControl"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
+import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, OUTCOME_MARK, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
 import { canManageTournament, eventTabPath, firstTab, getTournament, tieSummary, tournamentKeys, type TournamentEvent } from "@/lib/tournaments"
 import { useMemberships } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
@@ -108,7 +108,7 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
           <p className="font-display text-[80px] leading-none font-bold tabular-nums max-sm:text-[56px]">
             <span aria-hidden>
               {counted ? `${games.a}–${games.b}` : decided ? "W/O" : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
-              {decided && m.outcome === "retired" && <span className="block text-center text-base font-semibold text-muted-foreground">ret.</span>}
+              {decided && OUTCOME_MARK[m.outcome] && <span className="block text-center text-base font-semibold text-muted-foreground">{OUTCOME_MARK[m.outcome]?.short.trim()}</span>}
             </span>
             <span className="sr-only">{spokenScore(m)}</span>
           </p>
@@ -177,7 +177,8 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
               </tbody>
             </table>
           </div>
-          {m.outcome === "retired" && <p className="text-sm text-muted-foreground">The match was not finished. The points shown are the ones that were played.</p>}
+          {OUTCOME_MARK[m.outcome] && m.games.length > 0 && <p className="text-sm text-muted-foreground">The match was not finished. The points shown are the ones that were played.</p>}
+          {m.outcome === "disqualified" && m.games.length === 0 && <p className="text-sm text-muted-foreground">The referee disqualified the loser before play.</p>}
         </section>
       )}
 

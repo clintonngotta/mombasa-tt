@@ -151,7 +151,13 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     shown["result"] = standing
     shown["result_history"] = versions if staff else []
     closed = draw.event.is_closed or draw.event.tournament.is_closed
-    shown["can_record_result"] = staff and not closed and draw.status == DrawVersion.Status.PUBLISHED
+    # The host's referee records results too, and only the referee changes a disqualification (D5).
+    referee = Permission.RESULTS_REFEREE in effective_permissions(
+        request.user, draw.event.tournament.organization
+    )
+    disqualified = standing is not None and standing["outcome"] == Match.Outcome.DISQUALIFIED
+    may_record = referee or (staff and not disqualified)
+    shown["can_record_result"] = may_record and not closed and draw.status == DrawVersion.Status.PUBLISHED
     shown["held_for_correction"] = match.resolutions.filter(resolved_at__isnull=True).exists()
     held = (
         match.reservations.filter(status=Reservation.Status.ACTIVE)

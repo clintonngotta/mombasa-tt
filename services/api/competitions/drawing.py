@@ -209,7 +209,8 @@ def record_result(
     event = match.draw.event
     if event.is_team:
         # A tie has no games of its own. It is played to its end through its rubbers; or it is awarded:
-        # before any rubber is decided (walkover) or part-way, when a team can't go on (retired).
+        # before any rubber is decided (walkover), part-way when a team can't go on (retired), or at
+        # any point before it is won when the referee disqualifies a team.
         most = max(tie_score(match))
         needed = event.tie_wins_needed or 0
         any_decided = match.rubbers.exclude(status=Rubber.Status.SCHEDULED).exists()
@@ -217,6 +218,7 @@ def record_result(
             Match.Outcome.PLAYED: tie_score(match)[winner.id != match.entry_a_id] >= needed > 0,
             Match.Outcome.WALKOVER: not any_decided,
             Match.Outcome.RETIRED: any_decided and most < needed,
+            Match.Outcome.DISQUALIFIED: most < needed,
         }
         if games or not fits.get(outcome, False):
             raise ApiException(
@@ -245,7 +247,8 @@ def record_result(
 
 def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
     """Refuse games (as [a, b] points) that don't fit how an individual match is said to have ended: a
-    played match has exactly the games its winner needed, a walkover none, a retirement too few."""
+    played match has exactly the games its winner needed, a walkover none, a retirement too few, a
+    disqualification whatever was played before it (none at all if it came before play)."""
     needed = best_of // 2 + 1
     won = sum(1 for a, b in games if (a > b) == a_won and a != b)
     lost = len(games) - won
@@ -253,6 +256,7 @@ def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
         Match.Outcome.PLAYED: won == needed and lost < needed,
         Match.Outcome.WALKOVER: not games,
         Match.Outcome.RETIRED: won < needed and lost < needed,
+        Match.Outcome.DISQUALIFIED: won < needed and lost < needed,
     }
     if not plausible.get(outcome, False):
         raise ApiException("invalid_result", "The games don't fit how this match is said to have ended.", 400)

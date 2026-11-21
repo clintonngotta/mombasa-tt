@@ -119,13 +119,20 @@ def is_dispatchable(match: Match) -> bool:
 
 def rest_until(user, event: Event):
     """When the player's rest after the last match they played is over, by this event's rest period.
-    A walkover, a rubber that wasn't needed or a match called back is not play."""
+    A walkover, a rubber that wasn't needed or a match called back is not play; nor is a disqualification
+    before any game, though one part-way through is."""
     at_the_table = [Match.Outcome.PLAYED, Match.Outcome.RETIRED]
-    played = Q(
-        rubber__isnull=True,
-        reservation__ending=Reservation.Ending.DECIDED,
-        reservation__match__outcome__in=at_the_table,
-    ) | Q(rubber__status=Rubber.Status.COMPLETED, rubber__outcome__in=at_the_table)
+    dq = Match.Outcome.DISQUALIFIED
+    played = (
+        Q(rubber__isnull=True, reservation__ending=Reservation.Ending.DECIDED)
+        & (
+            Q(reservation__match__outcome__in=at_the_table)
+            | (Q(reservation__match__outcome=dq) & ~Q(reservation__match__games=[]))
+        )
+    ) | (
+        Q(rubber__status=Rubber.Status.COMPLETED)
+        & (Q(rubber__outcome__in=at_the_table) | (Q(rubber__outcome=dq) & ~Q(rubber__games=[])))
+    )
     last = (
         Hold.objects.filter(played, user=user, active=False)
         .order_by("-released_at")

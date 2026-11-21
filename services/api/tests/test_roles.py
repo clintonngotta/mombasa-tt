@@ -61,6 +61,7 @@ def test_new_organization_gets_role_templates_and_admin_holds_everything(admin, 
         "captain",
         "committee",
         "member",
+        "referee",
     ]
     client = logged_in(admin)
     mine = client.get(MEMBERSHIPS).json()["results"][0]
@@ -306,7 +307,16 @@ def test_roles_are_listed_templates_first_then_custom_then_member(admin, club):
     client.post(roles_url(club), {"name": "Treasurer"}, format="json")
     client.post(roles_url(club), {"name": "coach"}, format="json")
     names = [r["name"] for r in client.get(roles_url(club)).json()]
-    assert names == ["Admin", "Captain", "Assistant captain", "Committee", "coach", "Treasurer", "Member"]
+    assert names == [
+        "Admin",
+        "Captain",
+        "Assistant captain",
+        "Committee",
+        "Referee",
+        "coach",
+        "Treasurer",
+        "Member",
+    ]
 
 
 def test_role_update_reports_its_real_member_count(admin, club):

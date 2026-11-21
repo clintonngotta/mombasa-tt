@@ -13,6 +13,7 @@ class Permission(models.TextChoices):
     ROLES_MANAGE = "roles.manage", "Create and edit roles and assign them to members"
     COMPETITIONS_MANAGE = "competitions.manage", "Set up and run tournaments, events and match days"
     RESULTS_MANAGE = "results.manage", "Confirm and correct official results"
+    RESULTS_REFEREE = "results.referee", "Award and change disqualifications as the referee"
     SCORING_ASSIGNED = "scoring.assigned", "Score matches they are assigned to"
     FACILITIES_MANAGE = "facilities.manage", "Manage venues, tables, opening hours and bookings"
     FINANCES_VIEW = "finances.view", "See club finances and contribution records"
@@ -34,6 +35,7 @@ class RoleKey(models.TextChoices):
     CAPTAIN = "captain"
     ASSISTANT_CAPTAIN = "assistant_captain"
     COMMITTEE = "committee"
+    REFEREE = "referee"
     MEMBER = "member"
 
 
@@ -74,5 +76,7 @@ ROLE_TEMPLATES: list[tuple[str, str, frozenset[str]]] = [
             }
         ),
     ),
+    # The referee decides matches that aren't played to a finish (decision D5, 2026-11-21).
+    (RoleKey.REFEREE, "Referee", frozenset({P.RESULTS_REFEREE, P.RESULTS_MANAGE, P.SCORING_ASSIGNED})),
     (RoleKey.MEMBER, "Member", frozenset()),
 ]
