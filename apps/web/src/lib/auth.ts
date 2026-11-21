@@ -19,7 +19,12 @@ export const verifyEmail = (token: string) => api<User>("/auth/verification/conf
 export const confirmPasswordReset = (input: { uid: string; token: string; password: string }) =>
   api<void>("/auth/password-reset/confirm/", { body: input })
 
-export const logOut = () => api<void>("/auth/logout/", { body: {} })
+/** Log out. This browser stops getting the player's push messages first (TASK-034). */
+export const logOut = async () => {
+  const { forgetThisDevice } = await import("@/lib/push")
+  await forgetThisDevice()
+  return api<void>("/auth/logout/", { body: {} })
+}
 
 export const resendVerification = (email: string) => api<void>("/auth/verification/resend/", { body: { email } })
 

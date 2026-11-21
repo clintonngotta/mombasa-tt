@@ -1,6 +1,7 @@
 """The inbox, preferences and announcements (REQ-019, TASK-033)."""
 
 import uuid
+from datetime import UTC, datetime
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -19,12 +20,15 @@ from organizations.access import require_permission
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
-from . import service
-from .models import ALWAYS_ON, Category, Notification, Preference
+from . import push, service
+from .models import ALWAYS_ON, Category, Notification, Preference, PushSubscription
 from .serializers import (
     AnnouncementSerializer,
     NotificationSerializer,
     PreferencesSerializer,
+    PushStatusSerializer,
+    PushSubscribeSerializer,
+    PushUnsubscribeSerializer,
     SentSerializer,
     UnreadSerializer,
 )
@@ -136,3 +140,79 @@ class AnnouncementView(APIView):
             link="/club",
         )
         return Response(SentSerializer({"sent": sent}).data)
+
+
+def _push_status(user) -> Response:
+    return Response(
+        PushStatusSerializer(
+            {
+                "configured": push.configured(),
+                "public_key": push.public_key(),
+                "devices": PushSubscription.objects.filter(user=user),
+            }
+        ).data
+    )
+
+
+class PushView(APIView):
+    """Browser push on the player's devices (TASK-034): whether the server sends push at all, the key to
+    subscribe with, and the devices that get the player's alerts. The inbox works without any of it."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: PushStatusSerializer})
+    def get(self, request):
+        return _push_status(request.user)
+
+
+class PushSubscribeView(APIView):
+    """Add this browser (or update its keys). A browser already subscribed for another account moves to
+    the one signed in now, so a shared device only ever shows the current player's alerts."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=PushSubscribeSerializer, responses={200: PushStatusSerializer})
+    @transaction.atomic
+    def post(self, request):
+        if not push.configured():
+            raise ValidationError({"detail": "Push messages aren't switched on for this server."})
+        body = PushSubscribeSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+        expires = data.get("expirationTime")
+        PushSubscription.objects.update_or_create(
+            endpoint=data["endpoint"],
+            defaults={
+                "user": request.user,
+                "p256dh": data["keys"]["p256dh"],
+                "auth": data["keys"]["auth"],
+                "label": data.get("label", ""),
+                "expires_at": datetime.fromtimestamp(expires / 1000, tz=UTC) if expires else None,
+                "failures": 0,
+            },
+        )
+        return _push_status(request.user)
+
+
+class PushUnsubscribeView(APIView):
+    """Remove this browser by its endpoint (switching push off, or logging out)."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=PushUnsubscribeSerializer, responses={200: PushStatusSerializer})
+    def post(self, request):
+        body = PushUnsubscribeSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        PushSubscription.objects.filter(user=request.user, endpoint=body.validated_data["endpoint"]).delete()
+        return _push_status(request.user)
+
+
+class PushDeviceView(APIView):
+    """Remove one of the player's devices from the list (one they no longer have, say)."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: PushStatusSerializer})
+    def delete(self, request, device_pk):
+        get_object_or_404(PushSubscription, pk=device_pk, user=request.user).delete()
+        return _push_status(request.user)

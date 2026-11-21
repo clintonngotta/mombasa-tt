@@ -274,6 +274,18 @@ REDIS_URL = os.environ.get("REDIS_URL", "")
 # Raise it only when a change breaks older cached apps; 0 serves every build.
 MIN_CLIENT_BUILD = int(os.environ.get("MIN_CLIENT_BUILD", "0") or 0)
 # Soda game stakes (REQ-040) stay off until the legal and policy sign-off is recorded (TASK-078).
+# Browser push (REQ-019, TASK-034). Off until a VAPID private key is set: make one with
+# `manage.py push_keys`. The subject is how push services reach the operator (mailto: or https URL).
+WEB_PUSH_PRIVATE_KEY = os.environ.get("WEB_PUSH_PRIVATE_KEY", "").strip()
+WEB_PUSH_SUBJECT = os.environ.get("WEB_PUSH_SUBJECT", "") or FRONTEND_URL
+# The only hosts the server sends push messages to: the browsers' own push services. Anything else a
+# client sends as an endpoint is refused, so the server can't be made to post to other addresses.
+WEB_PUSH_HOSTS = env_list(
+    "WEB_PUSH_HOSTS",
+    "fcm.googleapis.com,updates.push.services.mozilla.com,push.services.mozilla.com,"
+    "web.push.apple.com,*.push.apple.com,*.notify.windows.com",
+)
+
 SODA_STAKES_ENABLED = os.environ.get("SODA_STAKES_ENABLED", "").lower() in ("1", "true", "yes")
 
 CELERY_BROKER_URL = REDIS_URL or "memory://"
@@ -288,6 +300,10 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BEAT_SCHEDULE = {
     "outbox-sweep": {"task": "outbox.work", "schedule": 5.0},
     "forget-idempotency-keys": {"task": "core.forget_idempotency_keys", "schedule": 6 * 60 * 60.0},
+    "drop-expired-push-devices": {
+        "task": "notifications.drop_expired_push_devices",
+        "schedule": 6 * 60 * 60.0,
+    },
 }
 # How long the answer to a change sent with an Idempotency-Key is kept (core.middleware).
 IDEMPOTENCY_KEEP_DAYS = 14

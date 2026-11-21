@@ -1538,6 +1538,80 @@ export interface paths {
         patch: operations["me_profile_partial_update"];
         trace?: never;
     };
+    "/api/v1/me/push/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Browser push on the player's devices (TASK-034): whether the server sends push at all, the key to
+         *     subscribe with, and the devices that get the player's alerts. The inbox works without any of it.
+         */
+        get: operations["me_push_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/push/devices/{device_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Remove one of the player's devices from the list (one they no longer have, say). */
+        delete: operations["me_push_devices_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/push/subscribe/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Add this browser (or update its keys). A browser already subscribed for another account moves to
+         *     the one signed in now, so a shared device only ever shows the current player's alerts.
+         */
+        post: operations["me_push_subscribe_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/push/unsubscribe/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Remove this browser by its endpoint (switching push off, or logging out). */
+        post: operations["me_push_unsubscribe_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/scorecards/": {
         parameters: {
             query?: never;
@@ -10711,6 +10785,38 @@ export interface components {
             purposes: components["schemas"]["PurposeTotal"][];
             spending: components["schemas"]["Spending"][];
         };
+        PushDevice: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly label: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly last_sent_at: string | null;
+        };
+        PushKeysRequest: {
+            p256dh: string;
+            auth: string;
+        };
+        PushStatus: {
+            /** @description Whether this server sends push messages at all. */
+            configured: boolean;
+            /** @description The applicationServerKey to subscribe with (base64url). */
+            public_key: string;
+            devices: components["schemas"]["PushDevice"][];
+        };
+        /** @description A browser's PushSubscription as `subscription.toJSON()` gives it, plus a label for the device. */
+        PushSubscribeRequest: {
+            /** Format: uri */
+            endpoint: string;
+            keys: components["schemas"]["PushKeysRequest"];
+            expirationTime?: number | null;
+            label?: string;
+        };
+        PushUnsubscribeRequest: {
+            /** Format: uri */
+            endpoint: string;
+        };
         /**
          * @description A match in the ready queue. `ready` has a free table suggested; `waiting` could be played but
          *     waits for a table, for a match ahead of it that shares a player, or for staff; `blocked` can't.
@@ -15796,6 +15902,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_push_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_push_devices_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_push_subscribe_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscribeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_push_unsubscribe_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushUnsubscribeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatus"];
                 };
             };
             /** @description Error envelope */

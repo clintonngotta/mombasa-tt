@@ -10,6 +10,7 @@ one goes through `service.dispatch`, which looks at everything again. Automatic 
 organizers switch it on, sends the same suggestions by itself and never sets a check aside.
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -25,6 +26,7 @@ from . import service
 from .models import Hold, Reservation
 
 READY, WAITING, BLOCKED = "ready", "waiting", "blocked"
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -234,6 +236,32 @@ def build(tournament: Tournament) -> dict:
         ],
         "to_come": to_come,
     }
+
+
+# How many matches, after those going to a table now, hear they are up next.
+UP_NEXT = 2
+
+
+def up_next(tournament: Tournament) -> list[Row]:
+    """The matches next in line once a table or a player frees up: the first ready ones in queue order
+    that have no table suggested now (REQ-019 "Up next", distinct from "Called to table")."""
+    rows, _to_come = _rows(tournament)
+    _suggest(rows, _free_tables(tournament) if tournament.venue_id else [])
+    waiting = [row for row in rows if row.position is not None and row.table is None and not row.called_back]
+    return waiting[:UP_NEXT]
+
+
+def announce_up_next(tournament: Tournament) -> None:
+    """Tell the players of the matches next in line. Each match is announced once; being called to a
+    table supersedes it. A failure here never undoes the dispatch or result that led to it."""
+    from notifications import triggers
+
+    try:
+        with transaction.atomic():
+            for row in up_next(tournament):
+                triggers.up_next(row.match, [user.pk for user in row.people])
+    except Exception:
+        logger.exception("Up next alerts failed for tournament %s", tournament.id)
 
 
 def run_auto(tournament: Tournament, actor=None) -> list[Reservation]:

@@ -1,3 +1,5 @@
 # Findings checked by hand and known not to be secrets (gitleaks fingerprint: commit:file:rule:line).
 # A made-up Idempotency-Key UUID in a test, replaced in the next commit.
 4f52bf06bc16002b896aeb701bd7a43b903f8a68:services/api/tests/test_idempotency.py:generic-api-key:18
+# The RFC 8291 example auth secret in the push encryption test (public test vector).
+02f1e31b14f3c536e72233a4d0c73c32d42e0e62:services/api/tests/test_push.py:generic-api-key:30

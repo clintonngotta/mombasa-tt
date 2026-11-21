@@ -33,6 +33,8 @@ services:
       PYTEST_ADDOPTS: -p no:cacheprovider
       # The scoring fixtures shared with the TypeScript reducer (tests/test_scoring.py).
       SCORING_FIXTURES: /scoring-fixtures
+      # Browser push (TASK-034) is off unless a key is given: `manage.py push_keys` makes one.
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
       # Emails (verification, password reset) print to `docker compose logs -f api`.
     ports:
       - "127.0.0.1:${API_PORT:-8020}:8000"
@@ -74,6 +76,7 @@ services:
       DJANGO_DEBUG: "true"
       DATABASE_URL: postgres://mombasa:mombasa-dev-only@db:5432/mombasa_tt
       REDIS_URL: redis://redis:6379/0
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
     volumes:
       - ./services/api:/app
     depends_on:

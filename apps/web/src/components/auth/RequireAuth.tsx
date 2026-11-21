@@ -1,13 +1,20 @@
+import { useEffect } from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { LoaderCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { ApiError, errorMessage } from "@/lib/api"
+import { syncThisDevice } from "@/lib/push"
 import { useMe } from "@/lib/session"
 
 export function RequireAuth() {
   const location = useLocation()
   const me = useMe()
+  const userId = me.data?.id
+  // A browser with push on tells the server who is signed in on it now (TASK-034).
+  useEffect(() => {
+    if (userId && navigator.onLine) void syncThisDevice()
+  }, [userId])
 
   if (me.isPending) {
     return (

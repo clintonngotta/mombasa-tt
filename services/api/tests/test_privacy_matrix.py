@@ -64,7 +64,7 @@ from finance.models import (
 from guests import service as guests
 from guests.models import GuestClaim, GuestInvitation
 from matchlog.models import MatchNote, PersonalMatch
-from notifications.models import Notification, Preference
+from notifications.models import Notification, Preference, PushSubscription
 from organizations.models import (
     AdminHandover,
     CommitteeField,
@@ -171,6 +171,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "notification-read": {"post": OWNER},
     "notification-read-all": {"post": OWNER},
     "my-notification-preferences": {"get": OWNER, "put": OWNER},
+    # Browser push (TASK-034): the player's own devices.
+    "my-push": {"get": OWNER},
+    "my-push-subscribe": {"post": OWNER},
+    "my-push-unsubscribe": {"post": OWNER},
+    "my-push-device": {"delete": OWNER},
     "organization-announcements": {"post": STAFF},
     # The manual ledger (REQ-022): finance staff record and read; a member reads their own.
     "organization-charges": {"get": STAFF, "post": STAFF},
@@ -1014,6 +1019,14 @@ class World:
         self.alert = Notification.objects.create(
             recipient=self.baraka, category="announcement", title="MARK-ALERT", subject="matrix:1"
         )
+        # A browser that shows Baraka's alerts as push messages.
+        self.push_device = PushSubscription.objects.create(
+            user=self.baraka,
+            endpoint="https://fcm.googleapis.com/fcm/send/matrix-device",
+            p256dh="MARK-PUSH-KEY",
+            auth="MARK-PUSH-AUTH",
+            label="Chrome on Android",
+        )
         # A soda game Baraka challenged Imani to, with a pledge only the two of them may see.
         self.soda = Challenge.objects.create(
             challenger=self.baraka,
@@ -1627,6 +1640,8 @@ class World:
             found["session_pk"] = self.club_session.id
         if "contribution_pk" in names:
             found["contribution_pk"] = self.welfare_contribution.id
+        if "device_pk" in names:
+            found["device_pk"] = self.push_device.id
         if "penalty_pk" in names:
             found["penalty_pk"] = self.penalty.id
         if "plan_pk" in names:
@@ -1746,6 +1761,9 @@ class World:
                 for r, t, a in Notification.objects.values_list("recipient_id", "title", "read_at")
             ),
             "alert_preferences": sorted(Preference.objects.values_list("user_id", "category")),
+            "push_devices": sorted(
+                (str(u), e) for u, e in PushSubscription.objects.values_list("user_id", "endpoint")
+            ),
             "charges": sorted((c.purpose, c.amount_minor, c.waived_at is None) for c in Charge.objects.all()),
             "payments": sorted(
                 (p.reference, p.amount_minor, p.reversed_at is None) for p in Payment.objects.all()

@@ -36,7 +36,23 @@ def _match_link(match) -> str:
     return f"/tournaments/{event.tournament_id}/events/{event.id}/matches/{match.id}"
 
 
+def up_next(match, players) -> None:
+    """The match is next in line for a table: get ready. Once per match; the call supersedes it."""
+    event = match.draw.event
+    notify(
+        players,
+        Category.UP_NEXT,
+        "You're up next",
+        body=f"{event.name}: your match is next in line for a table. Stay close to the hall.",
+        subject=f"match:{match.id}",
+        version="up-next",
+        link=_match_link(match),
+        organization=event.tournament.organization,
+    )
+
+
 def called_to_table(match, reservation, players) -> None:
+    supersede(f"match:{match.id}", Category.UP_NEXT)
     notify(
         players,
         Category.TABLE_CALL,
