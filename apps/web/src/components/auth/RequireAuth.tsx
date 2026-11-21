@@ -22,7 +22,8 @@ export function RequireAuth() {
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
 
-  if (me.isError) {
+  // No connection, but this device saved who is signed in: carry on with the saved screens (REQ-035).
+  if (me.isError && !me.data) {
     return (
       <div className="flex max-w-[640px] flex-col gap-3">
         <FormAlert>{errorMessage(me.error)}</FormAlert>

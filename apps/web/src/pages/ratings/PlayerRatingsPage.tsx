@@ -5,6 +5,7 @@ import { FormAlert } from "@/components/forms/Field"
 import { Segmented } from "@/components/forms/Segmented"
 import { Form } from "@/components/ratings/Form"
 import { Processing } from "@/components/ratings/Processing"
+import { Avatar } from "@/components/profile/Avatar"
 import { RatingHistory } from "@/components/ratings/RatingHistory"
 import { ApiError, errorMessage } from "@/lib/api"
 import { DISCIPLINE_LABEL, getPlayerRatings, ratingKeys, shown, winRate, type Discipline, type RatingSummary, type ResultFilter } from "@/lib/ratings"
@@ -43,9 +44,12 @@ export function PlayerRatingsPage() {
       {ratings.isError && <FormAlert>{gone ? "This player has no ratings to show." : errorMessage(ratings.error, "We couldn't load these ratings.")}</FormAlert>}
       {data && (
         <>
-          <header className="flex flex-col gap-1">
-            <h1 className="text-[28px] leading-8 font-bold break-words">{data.display_name}</h1>
-            <p className="text-muted-foreground">Ratings on the whole platform, from played tournament matches.</p>
+          <header className="flex items-center gap-4">
+            <Avatar link={data.avatar} className="size-16" />
+            <div className="flex min-w-0 flex-col gap-1">
+              <h1 className="text-[28px] leading-8 font-bold break-words">{data.display_name}</h1>
+              <p className="text-muted-foreground">Ratings on the whole platform, from played tournament matches.</p>
+            </div>
           </header>
           {data.processing && <Processing />}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -12,6 +12,7 @@ from events.urls import club_urls as event_club_urls
 from facilities.urls import finder_urls
 from facilities.urls import my_urls as facility_my_urls
 from guests.urls import club_urlpatterns as club_guests
+from guests.urls import link_urlpatterns as guest_links
 from guests.urls import me_urlpatterns as my_guest_claims
 from notifications.urls import club_urls as notification_club_urls
 from notifications.urls import my_urls as notification_my_urls
@@ -29,6 +30,7 @@ from training.urls import club_drills, library_urls
 
 api_v1 = [
     path("auth/", include("accounts.urls")),
+    path("auth/", include(guest_links)),
     path("attachments/", include("attachments.urls")),
     path("me/", include("matchlog.urls")),
     path("me/", include("profiles.urls")),

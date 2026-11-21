@@ -43,6 +43,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Choose club, facility or both.")
         if self.instance and self.instance.is_body and value != body:
             raise serializers.ValidationError("A regional body stays a regional body.")
+        # A coach's organizing desk is made from their coach profile (POST /me/coach-profile/organizer/).
+        coaching = Organization.Kind.COACHING
+        if value == coaching and not (self.instance and self.instance.is_coaching):
+            raise serializers.ValidationError("Choose club, facility or both.")
+        if self.instance and self.instance.is_coaching and value != coaching:
+            raise serializers.ValidationError("A coach's organizing desk stays one.")
         return value
 
     def validate(self, attrs):

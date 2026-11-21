@@ -16,6 +16,7 @@ from profiles.models import PlayerProfile
 from . import emails
 from .models import User
 from .serializers import (
+    AccountUpdateSerializer,
     EmailOnlySerializer,
     LogInSerializer,
     PasswordResetConfirmSerializer,
@@ -110,11 +111,20 @@ class LogInView(PublicAuthView):
     def post(self, request):
         serializer = LogInSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = authenticate(request, **serializer.validated_data)
+        given = serializer.validated_data
+        email = given.get("email")
+        if "phone" in given:
+            # A phone number signs in as the account holding it. An unknown or malformed number still
+            # goes through authenticate() with an address nobody has, so it costs the same password hash.
+            holder = User.objects.filter(phone=given["phone"]).first() if given["phone"] else None
+            email = holder.email if holder else "no-account@invalid"
+        user = authenticate(request, email=email, password=given["password"])
         if user is None:
-            # Unknown email and wrong password are indistinguishable (Django still hashes for unknown users).
-            raise ApiException("invalid_credentials", "That email and password don't match an account.")
-        if not user.is_email_verified:
+            # Unknown email or phone and wrong password are indistinguishable (Django still hashes).
+            raise ApiException(
+                "invalid_credentials", "That email or phone number and password don't match an account."
+            )
+        if not user.is_verified:
             # Only revealed after the correct password, so it doesn't enumerate accounts.
             raise ApiException(
                 "email_unverified", "Verify your email before logging in.", status.HTTP_403_FORBIDDEN
@@ -173,6 +183,36 @@ class PasswordResetConfirmView(PublicAuthView):
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_throttles(self):
+        # Changing the phone tells whether a number is taken, so changes are rate limited.
+        self.throttle_scope = "auth_email" if self.request.method == "PATCH" else None
+        return super().get_throttles()
+
     @extend_schema(responses={200: UserSerializer})
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    @extend_schema(request=AccountUpdateSerializer, responses={200: UserSerializer})
+    def patch(self, request):
+        serializer = AccountUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = request.user
+        changed = []
+        if "display_name" in data:
+            user.display_name = data["display_name"]
+            changed.append("display_name")
+        if "phone" in data and data["phone"] != user.phone:
+            if not user.is_email_verified:
+                # The phone may be how this account signs in: keep it until a verified email can.
+                raise ApiException(
+                    "phone_locked", "Your phone number can change once your email address is verified.", 409
+                )
+            if data["phone"] and User.objects.filter(phone=data["phone"]).exclude(pk=user.pk).exists():
+                raise ApiException("phone_taken", "That phone number is on another account.", 409)
+            user.phone = data["phone"]
+            user.phone_verified_at = None
+            changed += ["phone", "phone_verified_at"]
+        if changed:
+            user.save(update_fields=changed)
+        return Response(UserSerializer(user).data)

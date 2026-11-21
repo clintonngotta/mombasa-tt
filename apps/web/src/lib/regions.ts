@@ -1,4 +1,5 @@
 import { api } from "@/lib/api"
+import { sendOrKeep } from "@/lib/offline"
 import type { Schemas } from "@/lib/schema"
 
 // Regional bodies (REQ-048): the region's clubs, yearly agenda, articles, meetings and sponsorships.
@@ -75,6 +76,22 @@ export const answerMeeting = (orgId: string, id: string, answer: "attending" | "
   api<Meeting>(`${org(orgId)}/meetings/${id}/answer/`, { body: { answer } })
 export const recordMinutes = (orgId: string, id: string, minutes: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/minutes/`, { body: { minutes } })
 
+// Meeting rules and penalties (REQ-046): the secretary or governance staff take attendance and issue the
+// penalties the rules set once the meeting is over; only the host's admin changes one after that.
+export type Penalized = Schemas["PenalizedAttendanceEnum"]
+export type AttendanceMark = Schemas["AttendanceMarkEnum"]
+export type MeetingPenalty = Schemas["Penalty"]
+export type MeetingInvitee = Schemas["Invitee"]
+export const PENALIZED: Penalized[] = ["absent", "late", "apologies"]
+export const ATTENDANCE_LABEL: Record<AttendanceMark, string> = { present: "Present", late: "Late", apologies: "Apologies", absent: "Absent" }
+export const RULE_LABEL: Record<Penalized, string> = { absent: "Absent without apologies", late: "Arriving late", apologies: "Sending apologies" }
+export const PENALTY_STATUS_LABEL: Record<MeetingPenalty["status"], string> = { issued: "Issued", waived: "Waived", paid: "Paid" }
+export const markAttendance = (orgId: string, id: string, invitee: string, attendance: AttendanceMark) =>
+  api<Meeting>(`${org(orgId)}/meetings/${id}/attendance/`, { body: { invitee, attendance } })
+export const issuePenalties = (orgId: string, id: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/penalties/`, { method: "POST" })
+export const updatePenalty = (orgId: string, id: string, penaltyId: string, body: Schemas["PatchedPenaltyUpdateRequest"]) =>
+  api<MeetingPenalty>(`${org(orgId)}/meetings/${id}/penalties/${penaltyId}/`, { method: "PATCH", body })
+
 export const listSponsorships = (orgId: string) => api<Sponsorship[]>(`${org(orgId)}/sponsorships/`)
 export const offerSponsorship = (orgId: string, body: Schemas["SponsorshipRequest"]) => api<Sponsorship>(`${org(orgId)}/sponsorships/`, { body })
 export const withdrawSponsorship = (orgId: string, id: string) => api<Sponsorship>(`${org(orgId)}/sponsorships/${id}/withdraw/`, { body: { reason: "" } })
@@ -95,3 +112,15 @@ export function describeSponsorship(offer: { amount_minor?: number | null; curre
   for (const goods of offer.in_kind ?? []) parts.push(`${goods.quantity} × ${goods.item}`)
   return parts.join(" · ")
 }
+
+// Offline (REQ-035): checking in and taking attendance happen in the room, where the connection may
+// drop. These keep the change on the device and send it later when there is no connection.
+export const checkInOrKeep = (orgId: string, meeting: Pick<Meeting, "id" | "title">) =>
+  sendOrKeep<Meeting>({ path: `${org(orgId)}/meetings/${meeting.id}/check-in/`, label: `Check in to ${meeting.title}`, refresh: [regionKeys.all] })
+export const markAttendanceOrKeep = (orgId: string, meeting: Pick<Meeting, "id" | "title">, invitee: Pick<MeetingInvitee, "id" | "display_name">, attendance: AttendanceMark) =>
+  sendOrKeep<Meeting>({
+    path: `${org(orgId)}/meetings/${meeting.id}/attendance/`,
+    body: { invitee: invitee.id, attendance },
+    label: `Mark ${invitee.display_name} ${ATTENDANCE_LABEL[attendance].toLowerCase()} at ${meeting.title}`,
+    refresh: [regionKeys.all],
+  })

@@ -39,8 +39,24 @@ docker compose down                   # stop; add -v to also delete the database
 ```
 
 Ports bind to `127.0.0.1` only. If 8080 or 8020 is taken, pick others: `WEB_PORT=3000 API_PORT=8030 docker compose up`.
-This setup is for local development only (debug on, dev-only password, seeded logins); production is planned in
-`deployment.md` (TASK-058).
+This setup is for local development only (debug on, dev-only password, seeded logins).
+
+### Production images
+
+`infra/compose.production.yml` runs the production images: Caddy (HTTPS, the PWA build, Django's static files,
+proxying `/api/` with WebSockets, `/admin/` and `/health/`), the API under Daphne, the Celery worker and beat,
+PostgreSQL and Redis. Only Caddy publishes ports. Copy `infra/production.env.example` to `.env.production`, fill
+it in, then:
+
+```bash
+docker compose --env-file .env.production -f infra/compose.production.yml build
+docker compose --env-file .env.production -f infra/compose.production.yml run --rm api python manage.py migrate --noinput
+docker compose --env-file .env.production -f infra/compose.production.yml up -d --wait
+```
+
+To try it on your machine set `APP_DOMAIN=localhost`, `HTTP_PORT=8081`, `HTTPS_PORT=8443` and
+`DJANGO_CSRF_TRUSTED_ORIGINS=https://localhost:8443`, and give it its own `COMPOSE_PROJECT_NAME`; Caddy serves
+`https://localhost:8443` with its local certificate. The release and rollback procedure is in `deployment.md`.
 
 To run the API and web app directly on your machine instead, see `services/api/README.md` (database only:
 `docker compose -f infra/compose.dev.yml up -d`).

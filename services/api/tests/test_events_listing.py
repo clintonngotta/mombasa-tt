@@ -20,7 +20,8 @@ EVENTS = "/api/v1/events/"
 
 
 def day(offset=0):
-    return (timezone.now() + timedelta(days=offset)).date().isoformat()
+    """A date in Nairobi, where these events are: late in the UTC evening it is already tomorrow there."""
+    return (timezone.localdate() + timedelta(days=offset)).isoformat()
 
 
 @pytest.fixture

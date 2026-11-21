@@ -8,6 +8,7 @@ import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { SelectField, TextAreaField } from "@/components/forms/SelectField"
 import { MeetingsPanel } from "@/pages/region/MeetingPages"
+import { OrganizeAsBody, OverseenTournaments } from "@/components/region/RegionTournaments"
 import { api, ApiError, errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
 import { can, useActiveMembership, type Membership } from "@/lib/clubs"
@@ -34,13 +35,14 @@ import { listTournaments, type Tournament } from "@/lib/tournaments"
 import type { Schemas } from "@/lib/schema"
 import { cn } from "@/lib/utils"
 
-type Tab = "clubs" | "agenda" | "articles" | "meetings" | "sponsorships" | "approvals"
+type Tab = "clubs" | "agenda" | "articles" | "meetings" | "sponsorships" | "tournaments" | "approvals"
 const TABS: { value: Tab; label: string }[] = [
   { value: "agenda", label: "Agenda" },
   { value: "clubs", label: "Clubs" },
   { value: "articles", label: "Articles" },
   { value: "meetings", label: "Meetings" },
   { value: "sponsorships", label: "Sponsorships" },
+  { value: "tournaments", label: "Tournaments" },
   { value: "approvals", label: "Approvals" },
 ]
 
@@ -86,6 +88,12 @@ export function RegionPage() {
         {tab === "articles" && <Articles membership={active} />}
         {tab === "meetings" && <MeetingsPanel orgId={body.id} timeZone={body.timezone ?? "Africa/Nairobi"} staff={can(active, "governance.manage")} body />}
         {tab === "sponsorships" && <Sponsorships membership={active} />}
+        {tab === "tournaments" && (
+          <>
+            <OrganizeAsBody body={active} />
+            <OverseenTournaments />
+          </>
+        )}
         {tab === "approvals" && <Approvals />}
       </div>
     </div>
@@ -468,7 +476,7 @@ export function Approvals() {
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="font-semibold">{t.name}</span>
                 <span className="text-sm text-muted-foreground">
-                  {t.organization.name} · {formatDayRange(t.starts_on, t.ends_on)} · {t.scope}
+                  {t.organizer.name} · {formatDayRange(t.starts_on, t.ends_on)} · {t.scope}
                 </span>
               </span>
               <ChevronRight aria-hidden className="size-5 text-muted-foreground" />

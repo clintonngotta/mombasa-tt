@@ -67,6 +67,27 @@ export const moveTournament = (id: string, action: TournamentAction) => api<Tour
 export const rejectTournamentApproval = (id: string, reason: string) => api<Tournament>(`${one(id)}approval/reject/`, { body: { reason } })
 export const cancelTournament = (id: string, reason: string) => api<Tournament>(`${one(id)}cancel/`, { body: { reason } })
 export const getTournamentHistory = (id: string) => api<LifecycleEntry[]>(`${one(id)}history/`)
+/** Published tournaments hosted in the caller's jurisdiction, for officials; empty for everyone else. */
+export const listOverseenTournaments = (when: When) => api<Schemas["PaginatedTournamentList"]>(`${BASE}overseen/?${new URLSearchParams({ when, page_size: "50" })}`)
+
+// The cover picture and documents (PDFs) reply with the whole tournament.
+export function uploadTournamentCover(id: string, file: File) {
+  const body = new FormData()
+  body.append("file", file)
+  return api<Tournament>(`${one(id)}cover/`, { method: "PUT", body })
+}
+export const removeTournamentCover = (id: string) => api<Tournament>(`${one(id)}cover/`, { method: "DELETE" })
+export function addTournamentDocument(id: string, title: string, file: File) {
+  const body = new FormData()
+  body.append("title", title)
+  body.append("file", file)
+  return api<Tournament>(`${one(id)}documents/`, { body })
+}
+export const removeTournamentDocument = (id: string, documentId: string) => api<Tournament>(`${one(id)}documents/${documentId}/`, { method: "DELETE" })
+export const MAX_TOURNAMENT_DOCUMENTS = 10
+
+/** "Organized by …": the host club, facility or regional body, or a coach or their firm. */
+export const organizerLine = (t: Pick<Tournament, "organizer">) => `${t.organizer.name} · ${t.organizer.label}`
 
 // Event changes reply with the whole tournament.
 export const createEvent = (id: string, body: EventInput) => api<Tournament>(`${one(id)}events/`, { body })

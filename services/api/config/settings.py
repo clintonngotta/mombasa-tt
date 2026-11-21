@@ -76,6 +76,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.IdempotencyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -197,6 +198,10 @@ SPECTACULAR_SETTINGS = {
         # Campaigns and welfare projects share one audience choice set (all or selected members).
         "FinanceAudienceEnum": "finance.models.Campaign.Audience",
         "MembershipStatusEnum": "organizations.models.Membership.Status",
+        "MeetingAttendanceEnum": "regions.models.MeetingInvitee.Attendance",
+        "AttendanceMarkEnum": "regions.serializers.MARKS",
+        "PenalizedAttendanceEnum": "regions.serializers.PENALIZED",
+        "MeetingPenaltyStatusEnum": "regions.models.MeetingPenalty.Status",
         "SkillEnum": "training.models.Skill",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",
@@ -278,7 +283,12 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_BEAT_SCHEDULE = {"outbox-sweep": {"task": "outbox.work", "schedule": 5.0}}
+CELERY_BEAT_SCHEDULE = {
+    "outbox-sweep": {"task": "outbox.work", "schedule": 5.0},
+    "forget-idempotency-keys": {"task": "core.forget_idempotency_keys", "schedule": 6 * 60 * 60.0},
+}
+# How long the answer to a change sent with an Idempotency-Key is kept (core.middleware).
+IDEMPOTENCY_KEEP_DAYS = 14
 
 CHANNEL_LAYERS = {
     "default": (

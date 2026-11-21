@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import ceremony
+from . import ceremony, media
 from .result_views import MatchCardView, MatchRecapView, ResultViewSet
 from .schedule_views import ScheduleSessionViewSet, ScheduleViewSet
 from .streams import ReportStreamView, StreamsView, StreamView
@@ -28,6 +28,18 @@ urlpatterns = [
         ReportStreamView.as_view(),
         name="tournament-stream-report",
     ),
+    path("<uuid:tournament_pk>/cover/", media.TournamentCoverView.as_view(), name="tournament-cover"),
+    path(
+        "<uuid:tournament_pk>/documents/",
+        media.TournamentDocumentsView.as_view(),
+        name="tournament-documents",
+    ),
+    path(
+        "<uuid:tournament_pk>/documents/<uuid:pk>/",
+        media.TournamentDocumentView.as_view(),
+        name="tournament-document",
+    ),
+    path("overseen/", TournamentViewSet.as_view({"get": "overseen"}), name="tournament-overseen"),
     path(
         "awaiting-approval/",
         TournamentViewSet.as_view({"get": "awaiting_approval"}),

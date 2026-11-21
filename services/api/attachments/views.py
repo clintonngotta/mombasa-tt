@@ -36,7 +36,7 @@ class AttachmentContentView(APIView):
 
     @extend_schema(
         parameters=[OpenApiParameter("token", str, required=True, description="From a signed link")],
-        responses={(200, "image/webp"): OpenApiTypes.BINARY},
+        responses={(200, "image/webp"): OpenApiTypes.BINARY, (200, "application/pdf"): OpenApiTypes.BINARY},
     )
     def get(self, request, pk):
         if not token_is_valid(request.query_params.get("token", ""), pk):
@@ -49,6 +49,11 @@ class AttachmentContentView(APIView):
         except FileNotFoundError:
             raise Http404 from None
         response = FileResponse(content, content_type=attachment.content_type)
+        if not attachment.content_type.startswith("image/"):
+            # A document is downloaded, never opened inside the API origin.
+            extension = attachment.EXTENSIONS.get(attachment.content_type, "")
+            response["Content-Disposition"] = f'attachment; filename="{attachment.id}{extension}"'
+
         # Private data: keep it out of shared and service-worker caches, and never let it run as a page.
         response["Cache-Control"] = "private, no-store"
         response["X-Content-Type-Options"] = "nosniff"

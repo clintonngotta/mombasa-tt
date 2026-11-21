@@ -98,6 +98,17 @@ Hand-worked from the clauses in spec.md, not taken from the code under test. The
 
 The guest routes are in the privacy matrix.
 
+*Adding players and phone sign-in (TASK-120, 2026-11-20).* `tests/test_player_invites.py` covers:
+- phone numbers in their typed forms are stored as one E.164 value, and malformed ones are refused;
+- an organizer adds a player with a phone, enters them, and the shared link shows the entries. Joining from it makes the guest the account (same id, the entry untouched), signs them in, and logs in again by phone. The link then answers 404, and only its hash is stored;
+- an emailed invitation sends the link, and joining with that email and a phone lets the player log in with either;
+- a different email must be verified before the account signs in;
+- an email or phone on another account is refused without using up the link, and that account claims the entries by the link once logged in;
+- inviting needs an email or phone; a new invitation kills the old link; outsiders are refused;
+- players add, change and remove a sign-in phone, and numbers stay unique. A phone-only account keeps its phone until it has a verified email. The old `email` login field still works.
+
+The invitation routes are in the privacy matrix: `auth-invitation` is public (the link is the proof), and `auth-invitation-claim` and `PATCH auth-me` are the caller's own.
+
 ### EVAL-004
 
 **Organizations — integration.** Setup: P1 with A/B memberships, pending membership and public event at C. Steps: create organization, request/approve join, switch context, enter C event without joining C. Pass: creator is admin; membership status and switching are correct; entering public event does not fabricate membership. Outsider cannot approve self. Evidence: API and ownership assertions.
@@ -303,6 +314,8 @@ The privacy matrix covers every new route, keeps walk-in names and references wi
 
 **Meetings and non-competition events — integration/browser.** Setup: a regional body with committee and representatives of two clubs, plus an unrelated player. Steps: schedule a representatives meeting with a three-item agenda and attachment, publish, revise an item, RSVP; check in before the start (refused), during it (accepted), and mark one apology; record decisions, two action items and the next meeting date, create the next draft, approve the minutes and amend one decision; host a coaching clinic for invited reps and an open award night; the unrelated player opens each. Pass: invitees are notified of publish, change and cancel only; check-in works only while the meeting runs; attendance is kept with times; approved minutes are read-only and the amendment shows beside the original; action owners see their items; the unrelated player sees the open event but not the meeting, agenda, minutes or the invite-only clinic; a club's own meetings never appear to the body. Evidence: API tests, notification records, browser screenshots of agenda, check-in and minutes.
 
+**TASK-121 rules and penalties — integration/browser.** Setup: a club with its admin, a member holding only the governance permission, a secretary and four members. Steps: call a members' meeting with rules for absent and late and the secretary named; try two rules for the same case and a non-member secretary; publish; one member sends apologies; start it; one member checks in, the secretary marks one late; a plain member tries to mark; try issuing while it runs; end it and issue; issue again; the secretary tries to change a penalized mark; the governance member, the secretary and the penalized member try to waive; the admin waives with a note, then lowers the fine and marks it paid. Expected: duplicate rules and an outside secretary are refused; invitees see the rules but not the attendance list; marks from anyone but the secretary or staff are refused; issuing waits for the end; the checked-in member is present with no penalty, the apologies member is recorded as apologies with no penalty (no rule), the late member gets the late fine and the unmarked member is absent with the absent fine; issuing again adds nothing; a penalized mark can't change; only the admin's edits succeed and each is in the penalty's history; the penalized member sees their penalty and its status. Automated: tests/test_meeting_penalties.py and tests/test_privacy_matrix.py.
+
 ### EVAL-049
 
 **Award ceremonies — integration/browser.** Setup: a four-player knockout and a three-player round robin, each played out and completed; a player outside the tournament. Steps: generate before and after completion and again; add a fair play award for the winner, one for a named umpire and one for the outsider; try to change a placement's recipient; reorder with one award missing, then properly; present before publishing; publish; the winner opens the ceremony and their profile; present every award; generate again. Pass: placements appear third, runner-up, winner, nothing before completion and no duplicates; the outsider is refused; a placement recipient can't change; reordering needs every award; a draft is 404 to players and presenting needs publication; after the last award the ceremony is done and the winner's honours list the place and the fair play award; presented awards survive generating again. Evidence: tests/test_ceremony.py, routes in tests/test_privacy_matrix.py, browser screenshots of planning, the published running order and honours.
@@ -471,6 +484,12 @@ The privacy matrix covers every new route, and the session note reaches only the
 **PWA release/compatibility — real browsers/devices.** Setup: HTTPS staging PWA, cached old bundle, IndexedDB with pending scores, a waiting service-worker update and a compatible API release. Steps: install/open from home screen, reopen offline, offer update during scoring, finish/sync then apply update, migrate local schema, roll back web release, open notification link. Pass: correct manifest/scope/icons; app shell reopens offline; no forced reload or loss of pending events; updates activate safely; cached supported clients operate; credentials/private data absent from bundles/generic caches. Evidence: manifest/service-worker versions, IndexedDB before/after and Android/iOS browser recordings. Later native extension: TASK-070 adds signed build/runtime/token/push/SQLite-upgrade and store tests before native release; it is not a Phase 1 prerequisite.
 
 *Built in TASK-009 (2026-11-19).* Automated: `tests/test_client_build.py` (an older build gets 426 `client_outdated` and a refused write changes nothing; builds without the header and non-API paths pass) and `apps/web/test/deck.test.ts` (an upgrade from version 2 keeps unsent actions; unsent actions are counted across accounts). Desktop Chrome check of a production build: shell cached without API responses, reopened offline, update deferred while scoring and while an action was unsent, then applied with the journal intact and the old cache removed. Android and iOS devices remain for TASK-062.
+
+*Offline app and sync, TASK-122 (2026-11-21).*
+- **Automated:**
+  - `tests/test_idempotency.py`: a repeat with the same key returns the first answer and makes nothing twice; refusals are kept; keys are per account; bad, reused and unfinished keys; signed out is unaffected; old keys are forgotten.
+  - `apps/web/test/offline.test.ts`: changes made offline are sent once, in order, after a lost reply; a refusal is set aside and the rest still go; a retry uses a new key; an ended session pauses sending; two accounts on one device are kept apart; a failed write is not reported as kept; order survives a restart.
+- **Still owed:** a browser and real-device run: open screens, go offline, reopen, mark attendance and log a match, reconnect, and see each change once on the server.
 
 ### EVAL-036
 

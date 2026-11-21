@@ -10,7 +10,8 @@ import { LocationFields } from "@/components/forms/LocationFields"
 import { AvatarField } from "@/components/profile/AvatarField"
 import { BioField } from "@/components/profile/BioField"
 import { ApiError, errorMessage } from "@/lib/api"
-import { meQueryKey } from "@/lib/session"
+import { meQueryKey, useMe } from "@/lib/session"
+import { updateAccount } from "@/lib/auth"
 import {
   DETAIL_LABEL,
   EXPERIENCE,
@@ -42,6 +43,7 @@ export function ProfileEditPage() {
       {profile.isError && <FormAlert>{errorMessage(profile.error, "We couldn't load your profile.")}</FormAlert>}
       {profile.data && <AvatarField avatar={profile.data.avatar} />}
       {profile.data && <ProfileForm initial={profile.data} />}
+      <SignInPhone />
     </div>
   )
 }
@@ -173,6 +175,58 @@ function ProfileForm({ initial }: { initial: Profile }) {
       {hasFieldErrors && <FormAlert>Check the highlighted fields.</FormAlert>}
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : "Save profile"}
+      </Button>
+    </form>
+  )
+}
+
+/** The sign-in phone (REQ-003): players log in with their email or this number. */
+function SignInPhone() {
+  const queryClient = useQueryClient()
+  const me = useMe()
+  const [phone, setPhone] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => updateAccount({ phone: (phone ?? "").trim() }),
+    onSuccess: (user) => {
+      queryClient.setQueryData(meQueryKey, user)
+      setPhone(null)
+    },
+  })
+  if (!me.data) return null
+  const value = phone ?? me.data.phone ?? ""
+  const fields = save.error instanceof ApiError ? save.error.fieldErrors() : {}
+  return (
+    <form
+      noValidate
+      aria-labelledby="sign-in-phone"
+      className="flex flex-col gap-3 rounded-xl border bg-card p-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        save.mutate()
+      }}
+    >
+      <h2 id="sign-in-phone" className="text-xl font-bold">
+        Log in with your phone
+      </h2>
+      <Field
+        label="Phone number"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        optional
+        value={value}
+        onChange={(e) => setPhone(e.target.value)}
+        error={fields.phone}
+        hint="Log in with this number or your email. Only you see it."
+      />
+      {save.isError && !fields.phone && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      {save.isSuccess && phone === null && (
+        <p role="status" className="text-sm font-semibold text-success">
+          Saved.
+        </p>
+      )}
+      <Button type="submit" variant="outline" className="self-start" disabled={save.isPending || phone === null || value.trim() === (me.data.phone ?? "")}>
+        {save.isPending ? "Saving…" : "Save phone"}
       </Button>
     </form>
   )

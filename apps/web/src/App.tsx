@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { queryClient } from "@/lib/queryClient"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
 import { GalleryPage } from "@/pages/dev/GalleryPage"
@@ -6,6 +7,7 @@ import { WelcomePage } from "@/pages/auth/WelcomePage"
 import { SignUpPage } from "@/pages/auth/SignUpPage"
 import { CheckEmailPage } from "@/pages/auth/CheckEmailPage"
 import { LogInPage } from "@/pages/auth/LogInPage"
+import { JoinPage } from "@/pages/auth/JoinPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
 import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage"
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
@@ -94,15 +96,7 @@ import { FacilityHomePage } from "@/pages/facilities/FacilityHomePage"
 import { CoachingPage } from "@/pages/coaching/CoachingPage"
 import { RegionalPage } from "@/pages/region/RegionalPage"
 import { MorePage } from "@/pages/MorePage"
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      retry: 1,
-    },
-  },
-})
+import { SyncPage } from "@/pages/profile/SyncPage"
 
 function App() {
   return (
@@ -113,6 +107,8 @@ function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/signup/check-email" element={<CheckEmailPage />} />
           <Route path="/login" element={<LogInPage />} />
+          {/* An invitation link: open signed out, the link itself is the proof (REQ-003). */}
+          <Route path="/join/:token" element={<JoinPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -219,6 +215,7 @@ function App() {
               <Route path="/club/fields/:id" element={<MemberFieldEditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/edit" element={<ProfileEditPage />} />
+              <Route path="/profile/sync" element={<SyncPage />} />
               <Route path="/profile/claims" element={<GuestClaimsPage />} />
               <Route path="/profile/visits" element={<MyVisitsPage />} />
               <Route path="/profile/bookings" element={<MyBookingsPage />} />

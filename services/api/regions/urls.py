@@ -20,6 +20,21 @@ organization_urlpatterns = [
     path("meetings/<uuid:pk>/minutes/", views.MinutesView.as_view(), name="organization-meeting-minutes"),
     path("meetings/<uuid:pk>/answer/", views.AnswerMeetingView.as_view(), name="organization-meeting-answer"),
     path(
+        "meetings/<uuid:pk>/attendance/",
+        views.AttendanceView.as_view(),
+        name="organization-meeting-attendance",
+    ),
+    path(
+        "meetings/<uuid:pk>/penalties/",
+        views.IssuePenaltiesView.as_view(),
+        name="organization-meeting-penalties",
+    ),
+    path(
+        "meetings/<uuid:pk>/penalties/<uuid:penalty_pk>/",
+        views.PenaltyView.as_view(),
+        name="organization-meeting-penalty",
+    ),
+    path(
         "meetings/<uuid:pk>/check-in/",
         views.CheckInMeetingView.as_view(),
         name="organization-meeting-check-in",
