@@ -5316,6 +5316,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/dashboard/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/dashboard/: the tournament's entries, check-ins, draws, matches and open
+         *     corrections, event by event, for its host's competition staff.
+         */
+        get: operations["tournaments_dashboard_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/dispatch/": {
         parameters: {
             query?: never;
@@ -7017,6 +7037,13 @@ export interface components {
             readonly published_at: string | null;
             readonly awards: components["schemas"]["Award"][];
         };
+        /**
+         * @description * `none` - none
+         *     * `draft` - draft
+         *     * `published` - published
+         * @enum {string}
+         */
+        CeremonyEnum: "none" | "draft" | "published";
         CeremonyRequest: {
             /** Format: date-time */
             starts_at?: string | null;
@@ -7685,6 +7712,13 @@ export interface components {
             /** @description Whether the caller plays in it, so screens can point out their own matches. */
             readonly mine: boolean;
         };
+        /**
+         * @description * `none` - none
+         *     * `preview` - preview
+         *     * `published` - published
+         * @enum {string}
+         */
+        DrawEnum: "none" | "preview" | "published";
         DrawGroup: {
             number: number;
             name: string;
@@ -7814,6 +7848,14 @@ export interface components {
             /** @description Whether the caller plays in it, so may withdraw it. */
             readonly mine: boolean;
         };
+        EntryCounts: {
+            /** @description Waiting for staff to accept or decline. */
+            pending: number;
+            accepted: number;
+            waitlisted: number;
+            /** @description Accepted entries checked in (every player). */
+            checked_in: number;
+        };
         EntryEvent: {
             /** Format: uuid */
             readonly id: string;
@@ -7909,6 +7951,18 @@ export interface components {
             /** Format: date-time */
             readonly cancelled_at: string | null;
             readonly cancel_reason: string;
+        };
+        EventDashboard: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            status: components["schemas"]["EventStatusEnum"];
+            capacity: number | null;
+            entries: components["schemas"]["EntryCounts"];
+            draw: components["schemas"]["DrawEnum"];
+            matches: components["schemas"]["MatchCounts"];
+            /** @description Results corrections still to resolve. */
+            corrections: number;
         };
         /** @description The event's published draw and, for competition staff only, the preview being worked on. */
         EventDraw: {
@@ -8613,6 +8667,14 @@ export interface components {
              * @description When it was sent to its table. Null while it isn't on one.
              */
             dispatched_at: string | null;
+        };
+        MatchCounts: {
+            /** @description Matches of the published draw, byes left out. */
+            total: number;
+            decided: number;
+            on_table: number;
+            /** @description Undecided, both sides known and not on a table. */
+            ready: number;
         };
         /** @description One match of the published draw on its own page. Reading it gives nobody a way to score it. */
         MatchDetail: {
@@ -12085,6 +12147,17 @@ export interface components {
             readonly cancelled_at: string | null;
             readonly cancel_reason: string;
             readonly events: components["schemas"]["Event"][];
+        };
+        TournamentDashboard: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            status: components["schemas"]["TournamentStatusEnum"];
+            ceremony: components["schemas"]["CeremonyEnum"];
+            entries: components["schemas"]["EntryCounts"];
+            matches: components["schemas"]["MatchCounts"];
+            corrections: number;
+            events: components["schemas"]["EventDashboard"][];
         };
         /** @description A document of a tournament with a fresh signed link to the PDF. */
         TournamentDocument: {
@@ -24636,6 +24709,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_dashboard_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentDashboard"];
                 };
             };
             /** @description Error envelope */

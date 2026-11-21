@@ -188,6 +188,7 @@ class MatchRecapView(APIView):
     """A match's recap for sharing (REQ-018): public for a published tournament, signed in or not."""
 
     permission_classes = [AllowAny]
+    public_actions = ("get",)  # throttled for signed-out callers (core/throttling.py)
 
     @extend_schema(responses={200: RecapSerializer})
     def get(self, request, tournament_pk, event_pk, pk):
@@ -201,6 +202,7 @@ class MatchCardView(APIView):
     """The recap as a branded square image (SVG) to download or share."""
 
     permission_classes = [AllowAny]
+    public_actions = ("get",)  # throttled for signed-out callers (core/throttling.py)
 
     @extend_schema(responses={(200, "image/svg+xml"): OpenApiTypes.STR})
     def get(self, request, tournament_pk, event_pk, pk):

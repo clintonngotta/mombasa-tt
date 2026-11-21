@@ -5,12 +5,12 @@ from django.db.models import Count, F, Min, Sum
 from django.db.models.functions import Lower
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import NotAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
-from core.permissions import is_platform_super_admin
+from core.permissions import PublicReads, is_platform_super_admin
 from organizations.access import official_for
 from organizations.models import Membership, Organization
 from profiles.models import PlayerProfile
@@ -45,8 +45,11 @@ def _discipline(request) -> str:
     return asked
 
 
-def _listed(user_ids) -> set:
-    """Those of the players who have a page in the directory (REQ-006)."""
+def _listed(user_ids, viewer=None) -> set:
+    """Those of the players who have a page in the directory (REQ-006). The directory is for signed-in
+    players: to a signed-out viewer of a public page nobody is listed, so no photo or club shows."""
+    if viewer is not None and not viewer.is_authenticated:
+        return set()
     listed = PlayerProfile.objects.filter(user_id__in=user_ids, directory_opt_in=True, user__is_active=True)
     return set(listed.values_list("user_id", flat=True))
 
@@ -82,7 +85,8 @@ def _rank(rating: Rating | None) -> tuple[int | None, int]:
 class RankingView(APIView):
     """The ranking of one discipline: over the whole platform, or among one club's members."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(
         parameters=[
@@ -96,6 +100,8 @@ class RankingView(APIView):
         rated = Rating.objects.filter(discipline=discipline, played__gt=0, user__is_active=True)
         organization = None
         if request.query_params.get("organization"):
+            if not request.user.is_authenticated:
+                raise NotAuthenticated("Log in to see a club's ranking.")
             try:
                 asked = uuid.UUID(request.query_params["organization"])
             except ValueError:
@@ -112,7 +118,7 @@ class RankingView(APIView):
         count = rated.count()
         top = list(rated.select_related("user").order_by("-rating", "user__display_name")[:RANKING_LIMIT])
         user_ids = [rating.user_id for rating in top]
-        form, listed = _form(discipline, user_ids), _listed(user_ids)
+        form, listed = _form(discipline, user_ids), _listed(user_ids, request.user)
         avatars = _avatars(user_ids, listed, request.user.id)
         clubs: dict = {}
         # Clubs are shown as the directory shows them: only for players who chose to be listed.
@@ -155,7 +161,8 @@ class RankingView(APIView):
 class ClubRankingView(APIView):
     """Rank clubs by the sum of their active members' ratings for one discipline."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(
         parameters=[
@@ -191,7 +198,8 @@ class ClubRankingView(APIView):
 class GeographyRankingView(APIView):
     """Aggregate player ratings by the location each player provides in their profile."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(
         parameters=[
@@ -239,7 +247,8 @@ class PlayerRatingsView(APIView):
     Ratings come from competition results, which signed-in players can already read in the draws; a
     player who has none and no page in the directory is not found."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(
         parameters=[
@@ -255,7 +264,8 @@ class PlayerRatingsView(APIView):
             raise ApiException("unknown_filter", "Choose all, won or lost.", 400)
         player = get_object_or_404(get_user_model(), pk=pk, is_active=True)
         known = player.id == request.user.id or RatingEvent.objects.filter(user=player).exists()
-        if not known and not _listed([player.id]):
+        # Signed out, only competition records make a player findable: the directory is for players.
+        if not known and not (request.user.is_authenticated and _listed([player.id])):
             raise ApiException("not_found", "Not found.", 404)
         summaries = []
         for one in Discipline.values:
@@ -278,7 +288,9 @@ class PlayerRatingsView(APIView):
         shown = {
             "user_id": player.id,
             "display_name": player.display_name,
-            "avatar": _avatars([player.id], _listed([player.id]), request.user.id).get(player.id),
+            "avatar": _avatars([player.id], _listed([player.id], request.user), request.user.id).get(
+                player.id
+            ),
             "processing": service.pending(),
             "summaries": summaries,
             "discipline": discipline,

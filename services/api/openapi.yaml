@@ -12741,6 +12741,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/dashboard/:
+    get:
+      operationId: tournaments_dashboard_retrieve
+      description: |-
+        GET /tournaments/{id}/dashboard/: the tournament's entries, check-ins, draws, matches and open
+        corrections, event by event, for its host's competition staff.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentDashboard'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/dispatch/:
     get:
       operationId: tournaments_dispatch_retrieve
@@ -16547,6 +16577,16 @@ components:
       - published_at
       - starts_at
       - status
+    CeremonyEnum:
+      enum:
+      - none
+      - draft
+      - published
+      type: string
+      description: |-
+        * `none` - none
+        * `draft` - draft
+        * `published` - published
     CeremonyRequest:
       type: object
       properties:
@@ -18267,6 +18307,16 @@ components:
       - players
       - pool
       - title
+    DrawEnum:
+      enum:
+      - none
+      - preview
+      - published
+      type: string
+      description: |-
+        * `none` - none
+        * `preview` - preview
+        * `published` - published
     DrawGroup:
       type: object
       properties:
@@ -18625,6 +18675,24 @@ components:
       - status
       - team_name
       - withdrawn_at
+    EntryCounts:
+      type: object
+      properties:
+        pending:
+          type: integer
+          description: Waiting for staff to accept or decline.
+        accepted:
+          type: integer
+        waitlisted:
+          type: integer
+        checked_in:
+          type: integer
+          description: Accepted entries checked in (every player).
+      required:
+      - accepted
+      - checked_in
+      - pending
+      - waitlisted
     EntryEvent:
       type: object
       properties:
@@ -18893,6 +18961,37 @@ components:
       - status
       - tie_rubbers
       - tie_wins_needed
+    EventDashboard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/EventStatusEnum'
+        capacity:
+          type: integer
+          nullable: true
+        entries:
+          $ref: '#/components/schemas/EntryCounts'
+        draw:
+          $ref: '#/components/schemas/DrawEnum'
+        matches:
+          $ref: '#/components/schemas/MatchCounts'
+        corrections:
+          type: integer
+          description: Results corrections still to resolve.
+      required:
+      - capacity
+      - corrections
+      - draw
+      - entries
+      - id
+      - matches
+      - name
+      - status
     EventDraw:
       type: object
       description: The event's published draw and, for competition staff only, the
@@ -20702,6 +20801,24 @@ components:
       - table
       - tie_score
       - winner_id
+    MatchCounts:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Matches of the published draw, byes left out.
+        decided:
+          type: integer
+        on_table:
+          type: integer
+        ready:
+          type: integer
+          description: Undecided, both sides known and not on a table.
+      required:
+      - decided
+      - on_table
+      - ready
+      - total
     MatchDetail:
       type: object
       description: One match of the published draw on its own page. Reading it gives
@@ -28890,6 +29007,37 @@ components:
       - status
       - timezone
       - venue
+    TournamentDashboard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/TournamentStatusEnum'
+        ceremony:
+          $ref: '#/components/schemas/CeremonyEnum'
+        entries:
+          $ref: '#/components/schemas/EntryCounts'
+        matches:
+          $ref: '#/components/schemas/MatchCounts'
+        corrections:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventDashboard'
+      required:
+      - ceremony
+      - corrections
+      - entries
+      - events
+      - id
+      - matches
+      - name
+      - status
     TournamentDocument:
       type: object
       description: A document of a tournament with a fresh signed link to the PDF.

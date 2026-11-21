@@ -415,7 +415,11 @@ def test_only_staff_decide_and_only_its_players_withdraw_an_entry(staff, club, c
     )
     assert logged_in(ama).post(entries_url(draft, draft["events"][0]), {}, format="json").status_code == 404
     assert logged_in(ama).get(entries_url(draft, draft["events"][0])).status_code == 404
-    assert BrowserlessGet(entries_url(cup, singles)) == 401
+    # A published event's accepted entries are public (TASK-035); entering still needs a session.
+    from .conftest import BrowserClient
+
+    assert BrowserClient().post(entries_url(cup, singles), {}, format="json").status_code == 401
+    assert BrowserlessGet(entries_url(cup, singles)) == 200
 
 
 def BrowserlessGet(path) -> int:

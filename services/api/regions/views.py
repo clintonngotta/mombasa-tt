@@ -23,7 +23,7 @@ from rest_framework.views import APIView
 from competitions.models import Tournament
 from core.exceptions import ApiException
 from core.models import Region
-from core.permissions import is_platform_super_admin
+from core.permissions import PublicReads, is_platform_super_admin
 from organizations.access import effective_permissions, require_membership, require_permission
 from organizations.models import Membership, OfficialAppointment, Organization, seed_roles
 from organizations.permissions import Permission, RoleKey
@@ -873,7 +873,8 @@ class TournamentSponsorshipsView(APIView):
 class TournamentSponsorsView(APIView):
     """GET /tournaments/{id}/sponsors/: the accepted sponsors, for everyone who can see the tournament."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # TASK-035
 
     @extend_schema(responses={200: SponsorSerializer(many=True)})
     def get(self, request, tournament_pk):

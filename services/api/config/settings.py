@@ -174,14 +174,22 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
     # Applies only to views that set `throttle_scope` (anonymous auth endpoints, sending invitations).
-    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    # ...and, for signed-out callers, the public competition pages (core/throttling.py).
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+        "core.throttling.PublicReadThrottle",
+    ],
     "DEFAULT_THROTTLE_RATES": {
         "auth_login": os.environ.get("THROTTLE_AUTH_LOGIN", "10/min"),
         "auth_email": os.environ.get("THROTTLE_AUTH_EMAIL", "5/min"),
         "invitations": os.environ.get("THROTTLE_INVITATIONS", "30/hour"),
         "uploads": os.environ.get("THROTTLE_UPLOADS", "30/hour"),
         "entries": os.environ.get("THROTTLE_ENTRIES", "30/hour"),
+        "public_reads": os.environ.get("THROTTLE_PUBLIC_READS", "120/min"),
     },
+    # The client address is the last X-Forwarded-For hop added by the one proxy in front (Caddy), so a
+    # client can't dodge a throttle by sending its own X-Forwarded-For. With no header, REMOTE_ADDR.
+    "NUM_PROXIES": int(os.environ.get("TRUSTED_PROXY_COUNT", "1")),
 }
 
 SPECTACULAR_SETTINGS = {
