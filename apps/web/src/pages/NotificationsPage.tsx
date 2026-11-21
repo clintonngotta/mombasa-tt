@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
+import { PushSettings } from "@/components/notifications/PushSettings"
 import { errorMessage } from "@/lib/api"
 import { alertKeys, getPreferences, listAlerts, markAllRead, markRead, savePreferences, type Alert } from "@/lib/notifications"
 import { cn } from "@/lib/utils"
@@ -60,6 +61,7 @@ export function NotificationsPage() {
         ))}
       </ul>
       <Preferences />
+      <PushSettings />
     </div>
   )
 }

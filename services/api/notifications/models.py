@@ -83,3 +83,30 @@ class Preference(models.Model):
 
     def __str__(self):
         return f"{self.user_id} off {self.category}"
+
+
+class PushSubscription(models.Model):
+    """One browser that agreed to show this player's alerts as push messages (TASK-034). The endpoint is
+    the push service's address for that browser; p256dh and auth are the browser's keys, which encrypt
+    every message so the push service can't read it. A browser has one endpoint: if another account
+    signs in on it and subscribes, the subscription moves to that account."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_devices")
+    endpoint = models.URLField(max_length=1000, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=50)
+    # What the player sees in their list of devices, e.g. "Chrome on Android".
+    label = models.CharField(max_length=80, blank=True)
+    # The browser may say when the subscription runs out; it is dropped then.
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    # Refusals in a row from the push service that weren't "gone"; dropped after a few.
+    failures = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.label or 'browser'} for {self.user_id}"

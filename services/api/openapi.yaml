@@ -3178,6 +3178,115 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/:
+    get:
+      operationId: me_push_retrieve
+      description: |-
+        Browser push on the player's devices (TASK-034): whether the server sends push at all, the key to
+        subscribe with, and the devices that get the player's alerts. The inbox works without any of it.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/devices/{device_pk}/:
+    delete:
+      operationId: me_push_devices_destroy
+      description: Remove one of the player's devices from the list (one they no longer
+        have, say).
+      parameters:
+      - in: path
+        name: device_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/subscribe/:
+    post:
+      operationId: me_push_subscribe_create
+      description: |-
+        Add this browser (or update its keys). A browser already subscribed for another account moves to
+        the one signed in now, so a shared device only ever shows the current player's alerts.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscribeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/push/unsubscribe/:
+    post:
+      operationId: me_push_unsubscribe_create
+      description: Remove this browser by its endpoint (switching push off, or logging
+        out).
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushUnsubscribeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatus'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/scorecards/:
     get:
       operationId: me_scorecards_list
@@ -25604,6 +25713,93 @@ components:
       required:
       - purposes
       - spending
+    PushDevice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - id
+      - label
+      - last_sent_at
+    PushKeysRequest:
+      type: object
+      properties:
+        p256dh:
+          type: string
+          minLength: 1
+          maxLength: 200
+        auth:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - auth
+      - p256dh
+    PushStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+          description: Whether this server sends push messages at all.
+        public_key:
+          type: string
+          description: The applicationServerKey to subscribe with (base64url).
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PushDevice'
+      required:
+      - configured
+      - devices
+      - public_key
+    PushSubscribeRequest:
+      type: object
+      description: A browser's PushSubscription as `subscription.toJSON()` gives it,
+        plus a label for the device.
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 1000
+        keys:
+          $ref: '#/components/schemas/PushKeysRequest'
+        expirationTime:
+          type: integer
+          minimum: 0
+          nullable: true
+        label:
+          type: string
+          maxLength: 80
+      required:
+      - endpoint
+      - keys
+    PushUnsubscribeRequest:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 1000
+      required:
+      - endpoint
     QueuedMatch:
       type: object
       description: |-
