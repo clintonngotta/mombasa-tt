@@ -27,7 +27,7 @@ ON = override_settings(WEB_PUSH_PRIVATE_KEY=PRIVATE, WEB_PUSH_SUBJECT="mailto:op
 
 # A browser's own keys (from RFC 8291's example).
 P256DH = "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4"
-AUTH = "BTBZMqHH6r4Tts7J_aSIgg"
+AUTH = "BTBZMqHH6r4Tts7J_aSIgg"  # gitleaks:allow (the RFC 8291 example, not a secret)
 
 
 def subscription(endpoint="https://fcm.googleapis.com/fcm/send/abc123", **extra):
