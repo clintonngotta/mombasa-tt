@@ -462,7 +462,7 @@ function OfferSponsorship({ orgId }: { orgId: string }) {
   )
 }
 
-function Approvals() {
+export function Approvals() {
   const pending = useQuery({ queryKey: ["tournaments", "awaiting-approval"], queryFn: () => api<Schemas["PaginatedTournamentList"]>("/tournaments/awaiting-approval/") })
   return (
     <section aria-label="Waiting for approval" className="flex flex-col gap-3">

@@ -1,4 +1,4 @@
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 import type { PlanApi, Recommendation, TrainingPlan } from "@/lib/training"
 
@@ -39,6 +39,9 @@ export const coachingKeys = {
 }
 
 export const getMyCoachProfile = () => api<CoachProfile>("/me/coach-profile/")
+/** The signed-in player's coach profile, or null when they don't coach (the API answers 404). */
+export const getMyCoachProfileOrNull = () =>
+  getMyCoachProfile().catch((error) => (error instanceof ApiError && error.status === 404 ? null : Promise.reject(error)))
 /** Open the coach's organizing desk (made on first use) named after the coach or their firm. */
 export const openCoachOrganizer = (presented_as: "coach" | "firm") =>
   api<Schemas["CoachOrganizer"]>("/me/coach-profile/organizer/", { body: { presented_as } })
