@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react"
-import { useParams } from "react-router-dom"
+import { Link, useLocation, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CircleCheck, Crown } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { SelectField } from "@/components/forms/SelectField"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
@@ -44,7 +44,10 @@ export function EntriesPage() {
   const staff = !!t && canManageTournament(memberships, t)
   const missing = (tournament.error instanceof ApiError && tournament.error.status === 404) || (!!t && !event)
   // The caller's own entries come from their own list, so they are found however many the event has.
-  const own = useQuery({ queryKey: entryKeys.mine, queryFn: listMyEntries, enabled: tournament.isSuccess })
+  // Signed out there is no "own" list: the page shows who is in and asks the visitor to log in to enter (TASK-035).
+  const me = useMe()
+  const signedIn = me.isSuccess
+  const own = useQuery({ queryKey: entryKeys.mine, queryFn: listMyEntries, enabled: tournament.isSuccess && signedIn })
   const all = entries.data?.results ?? []
   const mine = (own.data?.results ?? []).filter((entry) => entry.event.id === eventId)
 
@@ -79,13 +82,42 @@ export function EntriesPage() {
                   Showing the first {all.length} of {entries.data.count} entries.
                 </FormAlert>
               )}
-              <MyEntry tournament={t} event={event} staff={staff} entries={mine} />
+              {signedIn ? <MyEntry tournament={t} event={event} staff={staff} entries={mine} /> : !me.isPending && <LogInToEnter tournament={t} event={event} />}
               {staff ? <Desk tournament={t} event={event} entries={all} /> : <Accepted entries={all.filter((entry) => entry.status === "accepted")} />}
             </>
           )}
         </>
       )}
     </div>
+  )
+}
+
+/** For a signed-out visitor: entering needs an account. Logging in comes back here; a new account goes through email verification first. */
+function LogInToEnter({ tournament: t, event }: { tournament: Tournament; event: TournamentEvent }) {
+  const location = useLocation()
+  const next = encodeURIComponent(location.pathname + location.search)
+  const block = entryBlock(t, event)
+  return (
+    <section aria-labelledby="my-entry-heading" className="flex flex-col items-start gap-3 rounded-xl border bg-card p-4">
+      <h2 id="my-entry-heading" className="text-2xl font-bold">
+        Your entry
+      </h2>
+      {block ? (
+        <p className="text-muted-foreground">{block}</p>
+      ) : (
+        <>
+          <p className="text-muted-foreground">Log in or create a free account to enter this event.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link to={`/login?next=${next}`} className={buttonVariants()}>
+              Log in to enter
+            </Link>
+            <Link to={`/signup?next=${next}`} className={buttonVariants({ variant: "outline" })}>
+              Create an account
+            </Link>
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 

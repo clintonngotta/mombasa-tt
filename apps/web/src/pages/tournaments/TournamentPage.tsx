@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, Clock, Globe, MapPin, Pencil, Plus, Users } from "lucide-react"
+import { CalendarDays, Clock, Globe, LayoutDashboard, MapPin, Pencil, Plus, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { CeremonyLink } from "@/components/ceremony/CeremonyLink"
 import { SponsorsPanel } from "@/components/region/SponsorsPanel"
@@ -15,6 +15,7 @@ import { useLiveTournament } from "@/lib/live"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
 import { formatDayRange, formatInstant } from "@/lib/dates"
+import { useMe } from "@/lib/session"
 import { entryBlock, placesTaken } from "@/lib/entries"
 import { countryName } from "@/lib/geography"
 import {
@@ -49,6 +50,7 @@ export function TournamentPage() {
   const { id = "" } = useParams()
   useLiveTournament(id)
   const { results: memberships } = useMemberships()
+  const me = useMe()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const t = tournament.data
   const staff = !!t && canManageTournament(memberships, t)
@@ -56,7 +58,7 @@ export function TournamentPage() {
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <BackLink to="/play">Play</BackLink>
+      {me.isSuccess ? <BackLink to="/play">Play</BackLink> : !me.isPending && <BackLink to="/events">Events</BackLink>}
       {tournament.isPending && <p className="text-muted-foreground">Loading tournament…</p>}
       {missing && <FormAlert>This tournament doesn't exist or hasn't been published.</FormAlert>}
       {tournament.isError && !missing && <FormAlert>{errorMessage(tournament.error, "We couldn't load this tournament.")}</FormAlert>}
@@ -397,6 +399,10 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
         </h2>
         <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organizer.name} see this.</p>
       </div>
+
+      <Link to={`/tournaments/${t.id}/dashboard`} className={buttonVariants({ className: "self-start" })}>
+        <LayoutDashboard aria-hidden className="size-4" /> Dashboard: entries, draws and matches
+      </Link>
 
       {open && <TournamentMediaManager tournament={t} />}
 

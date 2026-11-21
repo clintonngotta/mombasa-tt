@@ -30,7 +30,7 @@ export function useLiveTournament(tournamentId: string | undefined) {
     let stopped = false
 
     const refresh = (message: Changed) => {
-      const stale: (readonly string[])[] = [scoringKeys.overview(tournamentId), tournamentKeys.detail(tournamentId), [...drawKeys.all, "match"]]
+      const stale: (readonly string[])[] = [scoringKeys.overview(tournamentId), tournamentKeys.detail(tournamentId), tournamentKeys.dashboard(tournamentId), [...drawKeys.all, "match"]]
       if (message.event) stale.push(drawKeys.event(message.event), drawKeys.standings(message.event))
       // A result frees its table and players on the dispatch board.
       if (message.topic === "results") stale.push(reservationKeys.board(tournamentId))

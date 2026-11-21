@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useMutation } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { AuthLayout } from "@/components/layout/AuthLayout"
@@ -11,6 +11,8 @@ import { EMPTY_LOCATION, locationErrors } from "@/lib/geography"
 
 export function SignUpPage() {
   const navigate = useNavigate()
+  // Someone who already has an account and follows "Log in" from here still goes back where they came from.
+  const next = useSearchParams()[0].get("next")
   const [form, setForm] = useState({ display_name: "", email: "", password: "", ...EMPTY_LOCATION })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -45,7 +47,7 @@ export function SignUpPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-brand-blue underline-offset-4 hover:underline">
+          <Link to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
             Log in
           </Link>
         </>

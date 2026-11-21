@@ -44,8 +44,11 @@ export function HostedTournamentsPage() {
       )}
       <ul className="flex flex-col gap-3">
         {items.map((tournament) => (
-          <li key={tournament.id}>
+          <li key={tournament.id} className="flex flex-col gap-2">
             <TournamentCard tournament={tournament} />
+            <Link to={`/tournaments/${tournament.id}/dashboard`} aria-label={`Dashboard for ${tournament.name}`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+              Dashboard
+            </Link>
           </li>
         ))}
       </ul>

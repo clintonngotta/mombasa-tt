@@ -79,6 +79,7 @@ import { VenueEditPage } from "@/pages/club/VenueEditPage"
 import { HostedTournamentsPage } from "@/pages/club/HostedTournamentsPage"
 import { PlayPage } from "@/pages/tournaments/PlayPage"
 import { TournamentPage } from "@/pages/tournaments/TournamentPage"
+import { TournamentDashboardPage } from "@/pages/tournaments/TournamentDashboardPage"
 import { TournamentFormPage } from "@/pages/tournaments/TournamentFormPage"
 import { EventFormPage } from "@/pages/tournaments/EventFormPage"
 import { EntriesPage } from "@/pages/tournaments/EntriesPage"
@@ -130,12 +131,25 @@ function App() {
             <Route path="/home" element={<HomeRoute />} />
             {/* The events listing is public (REQ-042). */}
             <Route path="/events" element={<EventsPage />} />
+            {/* Published tournaments, their results, rankings and ratings are public (REQ-020, TASK-035). A
+                facility acting as itself is still sent back to its desk from rankings (PersonOnly). */}
+            <Route path="/tournaments/:id" element={<TournamentPage />} />
+            <Route path="/tournaments/:id/events/:eventId/entries" element={<EntriesPage />} />
+            <Route path="/tournaments/:id/events/:eventId/brackets" element={<EventPage tab="brackets" />} />
+            <Route path="/tournaments/:id/events/:eventId/groups" element={<EventPage tab="groups" />} />
+            <Route path="/tournaments/:id/events/:eventId/schedule" element={<EventPage tab="schedule" />} />
+            <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
+            <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
+            <Route path="/tournaments/:id/ceremony" element={<CeremonyPage />} />
+            <Route element={<PersonOnly />}>
+              <Route path="/rankings" element={<RankingsPage />} />
+              <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
+            </Route>
             <Route element={<RequireAuth />}>
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route element={<PersonOnly />}>
                 <Route path="/play" element={<PlayPage />} />
                 <Route path="/play/soda" element={<SodaGamesPage />} />
-                <Route path="/rankings" element={<RankingsPage />} />
                 <Route path="/training" element={<TrainingPage />} />
                 <Route path="/training/plans/:id" element={<PlanPage />} />
                 <Route path="/training/club-plans/:id" element={<ClubPlanPage />} />
@@ -148,7 +162,6 @@ function App() {
                 <Route path="/training/drills/new" element={<DrillEditPage />} />
                 <Route path="/training/drills/:id" element={<DrillDetailPage />} />
                 <Route path="/training/drills/:id/edit" element={<DrillEditPage />} />
-                <Route path="/ratings/:id" element={<PlayerRatingsPage />} />
                 <Route path="/matches" element={<MatchLogPage />} />
                 <Route path="/matches/new" element={<MatchFormPage />} />
                 <Route path="/matches/:id" element={<MatchDetailPage />} />
@@ -158,22 +171,15 @@ function App() {
               <Route path="/facility" element={<FacilityHomePage />} />
               <Route path="/regional" element={<RegionalPage />} />
               <Route path="/more" element={<MorePage />} />
-              <Route path="/tournaments/:id" element={<TournamentPage />} />
               <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
+              <Route path="/tournaments/:id/dashboard" element={<TournamentDashboardPage />} />
               <Route path="/tournaments/:id/scoring" element={<ScoringOverviewPage />} />
               <Route path="/tournaments/:id/dispatch" element={<DispatchBoardPage />} />
               <Route path="/tournaments/:id/schedule-plan" element={<SchedulePage />} />
               <Route path="/tournaments/:id/corrections" element={<CorrectionsPage />} />
               <Route path="/tournaments/:id/events/new" element={<EventFormPage />} />
               <Route path="/tournaments/:id/events/:eventId" element={<EventFormPage />} />
-              <Route path="/tournaments/:id/events/:eventId/entries" element={<EntriesPage />} />
               <Route path="/tournaments/:id/events/:eventId/draw" element={<DrawPage />} />
-              <Route path="/tournaments/:id/events/:eventId/brackets" element={<EventPage tab="brackets" />} />
-              <Route path="/tournaments/:id/events/:eventId/groups" element={<EventPage tab="groups" />} />
-              <Route path="/tournaments/:id/events/:eventId/schedule" element={<EventPage tab="schedule" />} />
-              <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
-              <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
-              <Route path="/tournaments/:id/ceremony" element={<CeremonyPage />} />
               <Route path="/club/tournaments" element={<HostedTournamentsPage />} />
               <Route path="/club/tournaments/new" element={<TournamentFormPage />} />
               <Route path="/club/venues" element={<VenuesPage />} />
