@@ -8,6 +8,7 @@ tournament's host club decides the sponsorships offered to it; everyone who sees
 accepted sponsors.
 """
 
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.http import Http404
@@ -22,10 +23,10 @@ from rest_framework.views import APIView
 
 from competitions.models import Tournament
 from core.exceptions import ApiException
-from core.models import Region
+from core.models import Country, Region
 from core.permissions import PublicReads, is_platform_super_admin
 from organizations.access import effective_permissions, require_membership, require_permission
-from organizations.models import Membership, OfficialAppointment, Organization, seed_roles
+from organizations.models import BODY_KINDS, Membership, Organization, seed_roles
 from organizations.permissions import Permission, RoleKey
 
 from . import service
@@ -48,6 +49,8 @@ from .serializers import (
     SponsorshipSerializer,
 )
 
+User = get_user_model()
+
 GOVERNANCE = Permission.GOVERNANCE_MANAGE
 ANNOUNCEMENTS = Permission.ANNOUNCEMENTS_MANAGE
 
@@ -68,51 +71,50 @@ def body(pk) -> Organization:
 
 
 class RegionalBodiesView(APIView):
-    """GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
-    appointed to a region (or a platform super admin naming one) becomes its first admin."""
+    """GET /regional-bodies/: every regional and national body. POST creates one (TASK-107): only a
+    platform super admin, who names its first admin. One body per region and one per country."""
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(responses={200: RegionalBodySerializer(many=True)})
     def get(self, request):
-        bodies = Organization.objects.filter(kind=service.BODY).order_by("name")
+        bodies = Organization.objects.filter(kind__in=BODY_KINDS).order_by("kind", "name")
         return Response(RegionalBodySerializer(bodies, many=True).data)
 
     @extend_schema(request=RegionalBodyInputSerializer, responses={201: RegionalBodySerializer})
     def post(self, request):
+        if not is_platform_super_admin(request.user):
+            raise ApiException("permission_denied", "Only a platform super admin creates a body.", 403)
         serializer = RegionalBodyInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        appointed = OfficialAppointment.objects.filter(
-            user=request.user, region__isnull=False
-        ).select_related("region")
-        if data.get("region_id"):
-            region = get_object_or_404(Region.objects.select_related("country"), pk=data["region_id"])
-            if not is_platform_super_admin(request.user) and not appointed.filter(region=region).exists():
-                raise ApiException(
-                    "permission_denied", "Only the region's official can set up its body.", 403
-                )
+        found = Country.objects.filter(pk=data["country"]).first()
+        if found is None:
+            raise ValidationError({"country": "Choose a country from the list."})
+        if data["kind"] == service.BODY:
+            region = Region.objects.filter(country=found, name__iexact=data["region"]).first()
+            if region is None:
+                raise ValidationError({"region": "Choose a region of that country from the list."})
+            country, region_name, place = found.pk, region.name, region.name
         else:
-            regions = [a.region for a in appointed]
-            if len(regions) != 1:
-                raise ValidationError({"region_id": "Choose the region the body is for."})
-            region = regions[0]
+            country, region_name, place = found.pk, "", found.name
+        admin = User.objects.filter(email__iexact=data["admin_email"], is_active=True).first()
+        if admin is None:
+            raise ValidationError({"admin_email": "No active account uses that email."})
         try:
             with transaction.atomic():
                 made = Organization.objects.create(
                     name=data["name"],
-                    town=data.get("town") or region.name,
-                    country=region.country_id,
-                    region=region.name,
-                    kind=service.BODY,
+                    town=data.get("town") or place,
+                    country=country,
+                    region=region_name,
+                    kind=data["kind"],
                     created_by=request.user,
                 )
                 roles = seed_roles(made)
-                Membership.objects.create(organization=made, user=request.user).roles.add(
-                    roles[RoleKey.ADMIN]
-                )
+                Membership.objects.create(organization=made, user=admin).roles.add(roles[RoleKey.ADMIN])
         except IntegrityError as error:
-            raise ApiException("body_exists", f"{region.name} already has a regional body.", 409) from error
+            raise ApiException("body_exists", f"{place} already has a body of that kind.", 409) from error
         return Response(RegionalBodySerializer(made).data, status=status.HTTP_201_CREATED)
 
 

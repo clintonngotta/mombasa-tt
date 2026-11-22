@@ -4781,6 +4781,7 @@ paths:
             - club_facility
             - coaching
             - facility
+            - national_body
             - regional_body
         description: Only these kinds
       - name: page
@@ -11693,8 +11694,8 @@ paths:
     get:
       operationId: regional_bodies_list
       description: |-
-        GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
-        appointed to a region (or a platform super admin naming one) becomes its first admin.
+        GET /regional-bodies/: every regional and national body. POST creates one (TASK-107): only a
+        platform super admin, who names its first admin. One body per region and one per country.
       tags:
       - regional-bodies
       security:
@@ -11717,8 +11718,8 @@ paths:
     post:
       operationId: regional_bodies_create
       description: |-
-        GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
-        appointed to a region (or a platform super admin naming one) becomes its first admin.
+        GET /regional-bodies/: every regional and national body. POST creates one (TASK-107): only a
+        platform super admin, who names its first admin. One body per region and one per country.
       tags:
       - regional-bodies
       requestBody:
@@ -21760,6 +21761,7 @@ components:
       - facility
       - club_facility
       - regional_body
+      - national_body
       - coaching
       type: string
       description: |-
@@ -21767,6 +21769,7 @@ components:
         * `facility` - Facility
         * `club_facility` - Club Facility
         * `regional_body` - Regional Body
+        * `national_body` - National Body
         * `coaching` - Coaching
     LabelTally:
       type: object
@@ -24602,6 +24605,7 @@ components:
       - facility
       - club_facility
       - regional_body
+      - national_body
       - coach
       - firm
       type: string
@@ -24610,6 +24614,7 @@ components:
         * `facility` - facility
         * `club_facility` - club_facility
         * `regional_body` - regional_body
+        * `national_body` - national_body
         * `coach` - coach
         * `firm` - firm
     OverridesEnum:
@@ -26986,6 +26991,7 @@ components:
       - welfare.manage
       - activities.manage
       - governance.manage
+      - tournaments.approve
       type: string
       description: |-
         * `members.manage` - Invite members, decide join requests and remove members
@@ -27002,6 +27008,7 @@ components:
         * `welfare.manage` - Run welfare projects
         * `activities.manage` - Plan club activities such as nights out
         * `governance.manage` - Set the committee, nominate representatives and run meetings
+        * `tournaments.approve` - Approve regional or national tournaments for publication
     PermissionInfo:
       type: object
       properties:
@@ -27009,7 +27016,10 @@ components:
           $ref: '#/components/schemas/PermissionEnum'
         label:
           type: string
+        body_only:
+          type: boolean
       required:
+      - body_only
       - code
       - label
     Person:
@@ -28467,7 +28477,7 @@ components:
       - upcoming_tournaments
     RegionalBody:
       type: object
-      description: A regional body as anyone signed in may see it.
+      description: A regional or national body as anyone signed in may see it.
       properties:
         id:
           type: string
@@ -28475,6 +28485,10 @@ components:
           readOnly: true
         name:
           type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
           readOnly: true
         town:
           type: string
@@ -28488,22 +28502,50 @@ components:
       required:
       - country
       - id
+      - kind
       - name
       - region
       - town
+    RegionalBodyInputKindEnum:
+      enum:
+      - regional_body
+      - national_body
+      type: string
+      description: |-
+        * `regional_body` - regional_body
+        * `national_body` - national_body
     RegionalBodyInputRequest:
       type: object
+      description: |-
+        A platform super admin creates a body (TASK-107): a regional body for one catalogue region of the
+        country, or the national body for the country, and names its first admin by their account's email.
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 120
-        region_id:
-          type: integer
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/RegionalBodyInputKindEnum'
+          default: regional_body
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+        region:
+          type: string
+          maxLength: 100
         town:
           type: string
           maxLength: 80
+        admin_email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
       required:
+      - admin_email
+      - country
       - name
     RegistrationFee:
       type: object
@@ -28884,6 +28926,7 @@ components:
       - assistant_captain
       - committee
       - referee
+      - official
       - member
       type: string
       description: |-
@@ -28892,6 +28935,7 @@ components:
         * `assistant_captain` - Assistant Captain
         * `committee` - Committee
         * `referee` - Referee
+        * `official` - Official
         * `member` - Member
     RoleRef:
       type: object

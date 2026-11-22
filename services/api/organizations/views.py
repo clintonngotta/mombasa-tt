@@ -41,7 +41,7 @@ from .models import (
     invitation_expiry,
     seed_roles,
 )
-from .permissions import ALL_PERMISSIONS, ROLE_TEMPLATES, Permission, RoleKey
+from .permissions import ALL_PERMISSIONS, BODY_ONLY, ROLE_TEMPLATES, Permission, RoleKey
 from .serializers import (
     InvitationCreateSerializer,
     InvitationSerializer,
@@ -451,7 +451,18 @@ class PermissionCatalogView(generics.GenericAPIView):
 
     @extend_schema(responses={200: PermissionInfoSerializer(many=True)})
     def get(self, request):
-        return Response([{"code": code, "label": label} for code, label in Permission.choices])
+        return Response(
+            [
+                {"code": code, "label": label, "body_only": code in BODY_ONLY}
+                for code, label in Permission.choices
+            ]
+        )
+
+
+def require_body_for(organization: Organization, permissions) -> None:
+    """Tournament approval belongs to regional and national bodies (TASK-107): a club's role can't hold it."""
+    if not organization.is_body and BODY_ONLY.intersection(permissions):
+        raise ValidationError({"permissions": "Only a regional or national body grants tournament approval."})
 
 
 class RoleViewSet(viewsets.GenericViewSet):
@@ -495,6 +506,7 @@ class RoleViewSet(viewsets.GenericViewSet):
             granted = require_permission(request.user, organization, MANAGE_ROLES)
             permissions = serializer.validated_data.get("permissions", [])
             require_within_authority(granted, permissions)
+            require_body_for(organization, permissions)
             role = self._save(serializer, organization=organization, permissions=permissions)
         return Response(RoleSerializer(role).data, status=status.HTTP_201_CREATED)  # new: no members yet
 
@@ -516,6 +528,8 @@ class RoleViewSet(viewsets.GenericViewSet):
                         "admin_role_locked", "The Admin role always has every permission.", 409
                     )
                 require_within_authority(granted, new)
+                if not role.is_admin:
+                    require_body_for(organization, new)
             role = self._save(serializer)
             role.member_count = role.memberships.active().count()
         return Response(RoleSerializer(role).data)

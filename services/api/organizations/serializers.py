@@ -12,7 +12,7 @@ from core.timezones import validate_timezone
 
 from .access import membership_permissions
 from .member_fields import MAX_OPTIONS
-from .models import Invitation, JoinRequest, MemberField, Membership, Organization, Role
+from .models import BODY_KINDS, Invitation, JoinRequest, MemberField, Membership, Organization, Role
 from .permissions import Permission
 
 
@@ -36,13 +36,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields += ["description", "kind", "timezone"]
 
     def validate_kind(self, value):
-        """A regional body is set up by its region's official (POST /regional-bodies/), never by picking
-        the kind, and no organization changes into or out of one."""
-        body = Organization.Kind.REGIONAL_BODY
-        if value == body and not (self.instance and self.instance.is_body):
+        """A regional or national body is created by a platform super admin (POST /regional-bodies/),
+        never by picking the kind, and no organization changes into or out of one."""
+        current = self.instance.kind if self.instance else None
+        if value in BODY_KINDS and value != current:
             raise serializers.ValidationError("Choose club, facility or both.")
-        if self.instance and self.instance.is_body and value != body:
-            raise serializers.ValidationError("A regional body stays a regional body.")
+        if self.instance and self.instance.is_body and value != current:
+            raise serializers.ValidationError("A governing body stays what it is.")
         # A coach's organizing desk is made from their coach profile (POST /me/coach-profile/organizer/).
         coaching = Organization.Kind.COACHING
         if value == coaching and not (self.instance and self.instance.is_coaching):
@@ -57,7 +57,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         if self.instance and self.instance.is_body:
             for name in ("country", "region"):
                 if name in attrs and attrs[name] != getattr(self.instance, name):
-                    raise serializers.ValidationError({name: "A regional body's region doesn't change."})
+                    raise serializers.ValidationError({name: "A governing body's region doesn't change."})
         return attrs
 
 
@@ -120,6 +120,8 @@ class RoleSerializer(serializers.ModelSerializer):
 class PermissionInfoSerializer(serializers.Serializer):
     code = serializers.ChoiceField(choices=Permission.choices)
     label = serializers.CharField()
+    # Held only in regional and national bodies; the role editor hides it elsewhere.
+    body_only = serializers.BooleanField()
 
 
 class MembershipSerializer(serializers.ModelSerializer):

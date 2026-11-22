@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from core.timezones import DEFAULT_TIMEZONE
 
-from .permissions import ALL_PERMISSIONS, ROLE_TEMPLATES, Permission, RoleKey
+from .permissions import ALL_PERMISSIONS, BODY_ROLES, ROLE_TEMPLATES, Permission, RoleKey
 
 INVITATION_TTL = timedelta(days=14)
 
@@ -24,6 +24,9 @@ class Organization(models.Model):
         # The table tennis body of one catalogue region (REQ-045, REQ-048): it runs regional tournaments,
         # meetings, the yearly agenda, articles to the region's clubs and sponsorships.
         REGIONAL_BODY = "regional_body"
+        # The country's table tennis body (REQ-045): one per country; its officials approve national
+        # tournaments. Like a regional body it is created by a platform super admin (TASK-107).
+        NATIONAL_BODY = "national_body"
         # A coach's own organizing desk (REQ-047): set up from their coach profile so they can run
         # tournaments under their own name or their firm's. Never listed in the club directory.
         COACHING = "coaching"
@@ -60,6 +63,13 @@ class Organization(models.Model):
                 condition=~models.Q(kind="regional_body") | (~models.Q(country="") & ~models.Q(region="")),
                 name="regional_body_has_region",
             ),
+            models.UniqueConstraint(
+                "country", condition=models.Q(kind="national_body"), name="one_body_per_country"
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(kind="national_body") | (~models.Q(country="") & models.Q(region="")),
+                name="national_body_has_country",
+            ),
             models.CheckConstraint(
                 condition=models.Q(latitude__isnull=True, longitude__isnull=True)
                 | models.Q(latitude__gte=-90, latitude__lte=90, longitude__gte=-180, longitude__lte=180),
@@ -72,11 +82,20 @@ class Organization(models.Model):
 
     @property
     def is_body(self) -> bool:
-        return self.kind == self.Kind.REGIONAL_BODY
+        """A governing body: regional or national (REQ-045)."""
+        return self.kind in BODY_KINDS
+
+    @property
+    def is_national_body(self) -> bool:
+        return self.kind == self.Kind.NATIONAL_BODY
 
     @property
     def is_coaching(self) -> bool:
         return self.kind == self.Kind.COACHING
+
+
+# Governing bodies (REQ-045): their members are officials and committee, not players.
+BODY_KINDS: frozenset[str] = frozenset({Organization.Kind.REGIONAL_BODY, Organization.Kind.NATIONAL_BODY})
 
 
 class Role(models.Model):
@@ -119,7 +138,9 @@ class Role(models.Model):
 
 
 class OfficialAppointment(models.Model):
-    """A platform-appointed official's geographic jurisdiction."""
+    """A platform-appointed official's geographic jurisdiction, kept read-only as history (decision D4).
+    Since TASK-107 authority comes from holding `tournaments.approve` in the region's or country's body;
+    migration 0015 made each appointment a membership of the matching body."""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="official_appointments"
@@ -147,10 +168,12 @@ class OfficialAppointment(models.Model):
 
 
 def seed_roles(organization: Organization) -> dict[str, Role]:
-    """Create the template roles for a new organization, keyed by RoleKey."""
+    """Create the template roles for a new organization, keyed by RoleKey. Only bodies get the body
+    templates (Official)."""
     return {
         key: Role.objects.create(organization=organization, key=key, name=name, permissions=sorted(perms))
         for key, name, perms in ROLE_TEMPLATES
+        if organization.is_body or key not in BODY_ROLES
     }
 
 

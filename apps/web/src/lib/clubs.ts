@@ -56,8 +56,12 @@ export const KIND_LABEL: Record<OrganizationKind, string> = {
   facility: "Facility",
   club_facility: "Club and facility",
   regional_body: "Regional body",
+  national_body: "National body",
   coaching: "Coaching desk",
 }
+
+/** A regional or national body (REQ-045): the governing bodies, whose members are officials and committee. */
+export const isBodyKind = (kind?: OrganizationKind) => kind === "regional_body" || kind === "national_body"
 
 export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {
   text: "Text",

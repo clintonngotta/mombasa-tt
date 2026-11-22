@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { BatIcon } from "@/components/brand/BatIcon"
-import { can, useActiveMembership, type Membership } from "@/lib/clubs"
+import { can, isBodyKind, useActiveMembership, type Membership } from "@/lib/clubs"
 import { coachingKeys, getMyCoachProfileOrNull } from "@/lib/coaching"
 import { useMe } from "@/lib/session"
 
@@ -46,7 +46,7 @@ export const actsAsFacility = (membership: Membership | undefined) =>
 
 /** Someone who oversees organizations as a regional, country or platform official, or belongs to a regional body. */
 export const isOfficial = (all: Membership[]) =>
-  all.some((m) => !!m.authority || (m.organization.kind === "regional_body" && !m.managedOnly))
+  all.some((m) => !!m.authority || (isBodyKind(m.organization.kind) && !m.managedOnly))
 
 function facilityItems(membership: Membership): NavItem[] {
   const facilities = can(membership, "facilities.manage")

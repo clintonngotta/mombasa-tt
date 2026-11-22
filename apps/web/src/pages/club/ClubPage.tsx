@@ -23,6 +23,7 @@ import {
   listMyAdminNominations,
   listMyInvitations,
   listMyJoinRequests,
+  isBodyKind,
   revokeInvitation,
   roleNames,
   saveMyFieldValues,
@@ -93,7 +94,7 @@ export function ClubPage() {
       )}
 
       {active && <ActiveOrganization key={active.organization.id} membership={active} />}
-      {active && !active.managedOnly && active.organization.kind !== "regional_body" && <RegionFeed />}
+      {active && !active.managedOnly && !isBodyKind(active.organization.kind) && <RegionFeed />}
 
       {pendingRequests.length > 0 && (
         <section aria-labelledby="my-requests-heading" className="flex flex-col gap-3">

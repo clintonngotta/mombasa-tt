@@ -9,7 +9,7 @@ import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { SelectField, TextAreaField } from "@/components/forms/SelectField"
 import { ApiError, errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
-import { can, listMembers, useActiveMembership, useMemberships } from "@/lib/clubs"
+import { can, isBodyKind, listMembers, useActiveMembership, useMemberships } from "@/lib/clubs"
 import { formatMoney } from "@/lib/coaching"
 import { toMinor } from "@/lib/finance"
 import { formatInstant, fromZonedInput } from "@/lib/dates"
@@ -49,9 +49,9 @@ export function MeetingsPage() {
   if (!active) return null
   return (
     <div className="flex max-w-[860px] flex-col gap-6">
-      <BackLink to={active.organization.kind === "regional_body" ? "/region" : "/club"}>{active.organization.name}</BackLink>
+      <BackLink to={isBodyKind(active.organization.kind) ? "/region" : "/club"}>{active.organization.name}</BackLink>
       <h1 className="text-[32px] leading-9 font-bold">Meetings</h1>
-      <MeetingsPanel orgId={active.organization.id} timeZone={active.organization.timezone ?? "Africa/Nairobi"} staff={can(active, "governance.manage")} body={active.organization.kind === "regional_body"} />
+      <MeetingsPanel orgId={active.organization.id} timeZone={active.organization.timezone ?? "Africa/Nairobi"} staff={can(active, "governance.manage")} body={isBodyKind(active.organization.kind)} />
     </div>
   )
 }

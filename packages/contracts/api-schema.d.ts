@@ -4827,14 +4827,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
-         *     appointed to a region (or a platform super admin naming one) becomes its first admin.
+         * @description GET /regional-bodies/: every regional and national body. POST creates one (TASK-107): only a
+         *     platform super admin, who names its first admin. One body per region and one per country.
          */
         get: operations["regional_bodies_list"];
         put?: never;
         /**
-         * @description GET /regional-bodies/: every regional body. POST sets up the body of your region: an official
-         *     appointed to a region (or a platform super admin naming one) becomes its first admin.
+         * @description GET /regional-bodies/: every regional and national body. POST creates one (TASK-107): only a
+         *     platform super admin, who names its first admin. One body per region and one per country.
          */
         post: operations["regional_bodies_create"];
         delete?: never;
@@ -9104,10 +9104,11 @@ export interface components {
          *     * `facility` - Facility
          *     * `club_facility` - Club Facility
          *     * `regional_body` - Regional Body
+         *     * `national_body` - National Body
          *     * `coaching` - Coaching
          * @enum {string}
          */
-        KindEnum: "club" | "facility" | "club_facility" | "regional_body" | "coaching";
+        KindEnum: "club" | "facility" | "club_facility" | "regional_body" | "national_body" | "coaching";
         LabelTally: {
             label: string;
             played: number;
@@ -10217,11 +10218,12 @@ export interface components {
          *     * `facility` - facility
          *     * `club_facility` - club_facility
          *     * `regional_body` - regional_body
+         *     * `national_body` - national_body
          *     * `coach` - coach
          *     * `firm` - firm
          * @enum {string}
          */
-        OrganizerKindEnum: "club" | "facility" | "club_facility" | "regional_body" | "coach" | "firm";
+        OrganizerKindEnum: "club" | "facility" | "club_facility" | "regional_body" | "national_body" | "coach" | "firm";
         /**
          * @description * `check_in` - check_in
          *     * `rest` - rest
@@ -11374,12 +11376,14 @@ export interface components {
          *     * `welfare.manage` - Run welfare projects
          *     * `activities.manage` - Plan club activities such as nights out
          *     * `governance.manage` - Set the committee, nominate representatives and run meetings
+         *     * `tournaments.approve` - Approve regional or national tournaments for publication
          * @enum {string}
          */
-        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "results.referee" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage";
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "results.referee" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage" | "tournaments.approve";
         PermissionInfo: {
             code: components["schemas"]["PermissionEnum"];
             label: string;
+            body_only: boolean;
         };
         Person: {
             /** Format: uuid */
@@ -12012,19 +12016,35 @@ export interface components {
             readonly members: number;
             readonly upcoming_tournaments: number;
         };
-        /** @description A regional body as anyone signed in may see it. */
+        /** @description A regional or national body as anyone signed in may see it. */
         RegionalBody: {
             /** Format: uuid */
             readonly id: string;
             readonly name: string;
+            readonly kind: components["schemas"]["KindEnum"];
             readonly town: string;
             readonly country: string;
             readonly region: string;
         };
+        /**
+         * @description * `regional_body` - regional_body
+         *     * `national_body` - national_body
+         * @enum {string}
+         */
+        RegionalBodyInputKindEnum: "regional_body" | "national_body";
+        /**
+         * @description A platform super admin creates a body (TASK-107): a regional body for one catalogue region of the
+         *     country, or the national body for the country, and names its first admin by their account's email.
+         */
         RegionalBodyInputRequest: {
             name: string;
-            region_id?: number;
+            /** @default regional_body */
+            kind: components["schemas"]["RegionalBodyInputKindEnum"];
+            country: string;
+            region?: string;
             town?: string;
+            /** Format: email */
+            admin_email: string;
         };
         RegistrationFee: {
             amount_minor: number;
@@ -12192,10 +12212,11 @@ export interface components {
          *     * `assistant_captain` - Assistant Captain
          *     * `committee` - Committee
          *     * `referee` - Referee
+         *     * `official` - Official
          *     * `member` - Member
          * @enum {string}
          */
-        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "referee" | "member";
+        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "referee" | "official" | "member";
         RoleRef: {
             /** Format: uuid */
             id: string;
@@ -18574,7 +18595,7 @@ export interface operations {
                 /** @description Country code, e.g. KE */
                 country?: string;
                 /** @description Only these kinds */
-                kind?: ("club" | "club_facility" | "coaching" | "facility" | "regional_body")[];
+                kind?: ("club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body")[];
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */

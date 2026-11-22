@@ -9,12 +9,12 @@ from accounts.models import User
 from coaching.models import CoachProfile
 from core.models import Region
 from facilities.models import Table, Venue
-from organizations.models import Membership, OfficialAppointment, Organization, Role, seed_roles
+from organizations.models import Membership, Organization, Role, seed_roles
 from organizations.permissions import Permission, RoleKey
 from profiles.models import profile_for
 
 # Mirrors apps/web/src/lib/devAccounts.ts. Each user's place: (organization, role key or custom role name),
-# or None for someone with no membership (the regional officer acts through an appointment instead).
+# or None for the regional officer, an official of the dev region's body (TASK-107).
 DEV_CLUB = "Mombasa Dev TT Club"
 DEV_FACILITY = "Coast Dev TT Centre"
 DEV_REGION = ("KE", "Mombasa")
@@ -63,6 +63,41 @@ def _coach_role(club: Organization) -> Role:
     return role
 
 
+def _regional_body(region: Region) -> Organization:
+    """The dev region's body, made here if the officer hasn't one yet."""
+    body = Organization.objects.filter(
+        kind=Organization.Kind.REGIONAL_BODY, country=region.country_id, region__iexact=region.name
+    ).first()
+    if body is None:
+        body = Organization.objects.create(
+            name=f"{region.name} Region TT",
+            town=region.name,
+            country=region.country_id,
+            region=region.name,
+            kind=Organization.Kind.REGIONAL_BODY,
+        )
+        seed_roles(body)
+    return body
+
+
+def _make_official(user: User, region: Region) -> Organization:
+    """An active member of the region's body holding tournament approval: its admin if it has none, its
+    Official otherwise."""
+    body = _regional_body(region)
+    membership, _ = Membership.objects.update_or_create(
+        organization=body, user=user, defaults={"status": Membership.Status.ACTIVE}
+    )
+    if not membership.roles.filter(key=RoleKey.ADMIN).exists():
+        has_admin = Membership.objects.admins(body).exclude(user=user).exists()
+        official, _ = Role.objects.get_or_create(
+            organization=body,
+            key=RoleKey.OFFICIAL,
+            defaults={"name": "Official", "permissions": [Permission.TOURNAMENTS_APPROVE]},
+        )
+        membership.roles.add(official if has_admin else body.roles.get(key=RoleKey.ADMIN))
+    return body
+
+
 def _region() -> Region:
     country, name = DEV_REGION
     region = Region.objects.filter(country_id=country, name=name).first()
@@ -101,8 +136,8 @@ class Command(BaseCommand):
                 profile.save(update_fields=["onboarding_completed_at", "updated_at"])
 
             if place is None:
-                OfficialAppointment.objects.get_or_create(user=user, country=region.country, region=region)
-                where = f"regional official for {region}"
+                body = _make_official(user, region)
+                where = f"official of {body.name}"
             else:
                 org_name, role = place
                 organization = organizations[org_name]

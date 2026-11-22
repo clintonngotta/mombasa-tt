@@ -124,3 +124,10 @@ export const markAttendanceOrKeep = (orgId: string, meeting: Pick<Meeting, "id" 
     label: `Mark ${invitee.display_name} ${ATTENDANCE_LABEL[attendance].toLowerCase()} at ${meeting.title}`,
     refresh: [regionKeys.all],
   })
+
+// Governing bodies (REQ-045, TASK-107): listed for everyone signed in, created by platform super admins.
+export type GoverningBody = Schemas["RegionalBody"]
+export type GoverningBodyInput = Schemas["RegionalBodyInputRequest"]
+export const bodyKeys = { all: ["governing-bodies"] as const }
+export const listGoverningBodies = () => api<GoverningBody[]>("/regional-bodies/")
+export const createGoverningBody = (body: GoverningBodyInput) => api<GoverningBody>("/regional-bodies/", { body })

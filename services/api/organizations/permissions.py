@@ -23,9 +23,15 @@ class Permission(models.TextChoices):
     WELFARE_MANAGE = "welfare.manage", "Run welfare projects"
     ACTIVITIES_MANAGE = "activities.manage", "Plan club activities such as nights out"
     GOVERNANCE_MANAGE = "governance.manage", "Set the committee, nominate representatives and run meetings"
+    # Held in a regional or national body (decision D4, 2026-11-21): approves the publication of regional
+    # tournaments of the body's region, or national tournaments of its country (REQ-045, TASK-107).
+    TOURNAMENTS_APPROVE = "tournaments.approve", "Approve regional or national tournaments for publication"
 
 
 ALL_PERMISSIONS: frozenset[str] = frozenset(Permission.values)
+# Permissions that mean something only in a regional or national body. A club's roles can't be granted
+# them (its Admin holds every permission, but no check reads these outside a body).
+BODY_ONLY: frozenset[str] = frozenset({Permission.TOURNAMENTS_APPROVE})
 
 
 class RoleKey(models.TextChoices):
@@ -36,6 +42,7 @@ class RoleKey(models.TextChoices):
     ASSISTANT_CAPTAIN = "assistant_captain"
     COMMITTEE = "committee"
     REFEREE = "referee"
+    OFFICIAL = "official"
     MEMBER = "member"
 
 
@@ -78,5 +85,10 @@ ROLE_TEMPLATES: list[tuple[str, str, frozenset[str]]] = [
     ),
     # The referee decides matches that aren't played to a finish (decision D5, 2026-11-21).
     (RoleKey.REFEREE, "Referee", frozenset({P.RESULTS_REFEREE, P.RESULTS_MANAGE, P.SCORING_ASSIGNED})),
+    # A governing body's officials approve publication in its jurisdiction (TASK-107). Bodies only.
+    (RoleKey.OFFICIAL, "Official", frozenset({P.TOURNAMENTS_APPROVE})),
     (RoleKey.MEMBER, "Member", frozenset()),
 ]
+
+# Template roles seeded only in regional and national bodies.
+BODY_ROLES: frozenset[str] = frozenset({RoleKey.OFFICIAL})

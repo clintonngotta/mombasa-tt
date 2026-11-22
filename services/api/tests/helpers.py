@@ -13,6 +13,26 @@ def make_user(email, **extra):
     return User.objects.create_user(email=email, password=PASSWORD, email_verified_at=timezone.now(), **extra)
 
 
+def make_official(user, country: str, region: str = "", *, role="official"):
+    """Make the user an official (TASK-107): an active member of the region's body, or of the country's
+    national body when no region is given, holding the body's Official role (or `role`, a RoleKey). The
+    body is created if missing. Returns the body."""
+    from organizations.models import Membership, Organization, seed_roles
+
+    kind = Organization.Kind.REGIONAL_BODY if region else Organization.Kind.NATIONAL_BODY
+    body = Organization.objects.filter(kind=kind, country=country, region__iexact=region).first()
+    if body is None:
+        place = region or country
+        body = Organization.objects.create(
+            name=f"{place} body", town=place, country=country, region=region, kind=kind
+        )
+        seed_roles(body)
+    membership, _ = Membership.objects.get_or_create(organization=body, user=user)
+    if role:
+        membership.roles.add(body.roles.get(key=role))
+    return body
+
+
 def logged_in(user):
     client = BrowserClient()
     response = client.post("/api/v1/auth/login/", {"email": user.email, "password": PASSWORD}, format="json")

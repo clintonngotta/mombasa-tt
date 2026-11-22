@@ -8,10 +8,8 @@ import pytest
 from django.utils import timezone
 
 from coaching.models import MatchComment
-from core.models import Country
-from organizations.models import OfficialAppointment
 
-from .helpers import logged_in, make_user
+from .helpers import logged_in, make_official, make_user
 from .test_reservations import started
 from .test_roles import add_member, create_club
 from .test_venues import add_table, make_venue
@@ -288,9 +286,7 @@ def test_coach_notes_are_read_by_the_trainee_alone(people, staff, club):
 
     # Nobody else reads them: not the club's staff, not an official, not another player.
     official_user = make_user("official@example.com")
-    OfficialAppointment.objects.create(
-        user=official_user, country=Country.objects.create(code="KE", name="Kenya")
-    )
+    make_official(official_user, "KE")
     for outsider in (staff, logged_in(official_user), logged_in(make_user("nosy@example.com"))):
         assert outsider.get(f"{ME}coach-notes/").json() == []
         assert outsider.get(f"{ME}trainees/{coaching_id}/").status_code == 404

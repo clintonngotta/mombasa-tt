@@ -2,6 +2,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from competitions.models import Tournament
+from organizations.access import jurisdiction
 from organizations.models import Organization
 
 from .models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
@@ -22,18 +23,35 @@ class TournamentRefSerializer(serializers.Serializer):
 
 
 class RegionalBodySerializer(serializers.ModelSerializer):
-    """A regional body as anyone signed in may see it."""
+    """A regional or national body as anyone signed in may see it."""
 
     class Meta:
         model = Organization
-        fields = ["id", "name", "town", "country", "region"]
+        fields = ["id", "name", "kind", "town", "country", "region"]
         read_only_fields = fields
 
 
 class RegionalBodyInputSerializer(serializers.Serializer):
+    """A platform super admin creates a body (TASK-107): a regional body for one catalogue region of the
+    country, or the national body for the country, and names its first admin by their account's email."""
+
     name = serializers.CharField(max_length=120, trim_whitespace=True)
-    region_id = serializers.IntegerField(required=False)
+    kind = serializers.ChoiceField(
+        choices=[Organization.Kind.REGIONAL_BODY, Organization.Kind.NATIONAL_BODY],
+        default=Organization.Kind.REGIONAL_BODY,
+    )
+    country = serializers.CharField(max_length=2, min_length=2)
+    region = serializers.CharField(max_length=100, trim_whitespace=True, required=False, allow_blank=True)
     town = serializers.CharField(max_length=80, trim_whitespace=True, required=False, allow_blank=True)
+    admin_email = serializers.EmailField(max_length=254)
+
+    def validate(self, attrs):
+        if attrs["kind"] == Organization.Kind.REGIONAL_BODY and not attrs.get("region"):
+            raise serializers.ValidationError({"region": "Choose the region the body is for."})
+        if attrs["kind"] == Organization.Kind.NATIONAL_BODY and attrs.get("region"):
+            raise serializers.ValidationError({"region": "A national body is for the whole country."})
+        attrs["country"] = attrs["country"].upper()
+        return attrs
 
 
 class RegionClubSerializer(serializers.ModelSerializer):
@@ -84,8 +102,7 @@ class AgendaItemSerializer(serializers.ModelSerializer):
             tournament = (
                 Tournament.objects.filter(
                     pk=attrs["tournament_id"],
-                    organization__country=body.country,
-                    organization__region__iexact=body.region,
+                    organization__in=Organization.objects.filter(jurisdiction(body)),
                 )
                 .exclude(status=Tournament.Status.DRAFT)
                 .first()
@@ -344,11 +361,10 @@ class MeetingSerializer(serializers.ModelSerializer):
         audience = attrs.get(
             "audience", self.instance.audience if self.instance else Meeting.Audience.COMMITTEE
         )
-        if (
-            audience == Meeting.Audience.CLUB_ADMINS
-            and self.context["organization"].kind != Organization.Kind.REGIONAL_BODY
-        ):
-            raise serializers.ValidationError({"audience": "Only a regional body invites its clubs' admins."})
+        if audience == Meeting.Audience.CLUB_ADMINS and not self.context["organization"].is_body:
+            raise serializers.ValidationError(
+                {"audience": "Only a governing body invites its clubs' admins."}
+            )
         if len(attrs.get("agenda", [])) > 30:
             raise serializers.ValidationError({"agenda": "Keep the agenda to 30 items."})
         rules = attrs.get("rules", [])

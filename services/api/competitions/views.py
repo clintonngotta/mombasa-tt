@@ -15,8 +15,13 @@ from accounts.models import VERIFIED, User
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
 from core.permissions import PublicReads, is_platform_super_admin
-from organizations.access import effective_permissions, managed_organizations, require_permission
-from organizations.models import Membership, Organization
+from organizations.access import (
+    effective_permissions,
+    jurisdiction,
+    managed_organizations,
+    require_permission,
+)
+from organizations.models import BODY_KINDS, Membership, Organization
 from organizations.permissions import Permission
 
 from . import drawing, entries, lifecycle, matchday, official, ties
@@ -256,11 +261,9 @@ class TournamentViewSet(viewsets.GenericViewSet):
         found = tournaments().exclude(status=T.DRAFT)
         if not is_platform_super_admin(request.user):
             region = Q(pk__in=managed_organizations(request.user).values("pk"))
-            bodies = Membership.objects.active().filter(
-                user=request.user, organization__kind=Organization.Kind.REGIONAL_BODY
-            )
+            bodies = Membership.objects.active().filter(user=request.user, organization__kind__in=BODY_KINDS)
             for body in bodies.select_related("organization"):
-                region |= Q(country=body.organization.country, region__iexact=body.organization.region)
+                region |= jurisdiction(body.organization)
             found = found.filter(organization__in=Organization.objects.filter(region))
         today = timezone.localdate()
         over = Q(status__in=[T.COMPLETED, T.CANCELLED]) | Q(ends_on__lt=today, status=T.PUBLISHED)

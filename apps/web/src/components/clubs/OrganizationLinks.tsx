@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { ROW } from "@/lib/clubAdmin"
-import { can, type Membership } from "@/lib/clubs"
+import { can, isBodyKind, type Membership } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
 
 type OrgLink = { to: string; label: string; icon: LucideIcon }
@@ -85,7 +85,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     links: pick(
       { to: "/club/committee", label: governance ? "Committee and its positions" : "Committee", icon: Landmark },
       member && { to: "/club/meetings", label: "Meetings", icon: CalendarClock },
-      membership.organization.kind === "regional_body" && { to: "/region", label: "Region: agenda, clubs, articles, meetings, sponsorships and approvals", icon: Map },
+      isBodyKind(membership.organization.kind) && { to: "/region", label: "Region: agenda, clubs, articles, meetings, sponsorships and approvals", icon: Map },
     ),
   }
   const mine: Group = {

@@ -252,7 +252,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-honours": {"get": OWNER},
     # Regional bodies (REQ-048). Coast Spinners is in the Mombasa region of "Coast Region TT", whose
     # admin is Amina: the region's clubs read the agenda and published articles; body staff write them.
-    "regional-bodies": {"get": SIGNED_IN, "post": SIGNED_IN},  # setting one up needs an appointment
+    # Creating a body is for platform super admins only (TASK-107), see test_governing_bodies.
+    "regional-bodies": {"get": SIGNED_IN, "post": APPROVER},
     "organization-region-clubs": {"get": STAFF},
     "organization-agenda": {"get": MEMBER, "post": STAFF},
     "organization-agenda-item": {"patch": STAFF, "delete": STAFF},

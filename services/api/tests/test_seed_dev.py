@@ -8,7 +8,7 @@ from accounts.models import User
 from coaching.models import CoachProfile
 from facilities.models import Table
 from organizations.access import effective_permissions, managed_organizations
-from organizations.models import Membership, OfficialAppointment, Organization
+from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
 
@@ -45,6 +45,8 @@ def test_seed_dev_creates_every_test_login_and_runs_again_cleanly(db, settings):
     assert Table.objects.filter(venue__organization=facility, active=True).count() == 4
 
     officer = User.objects.get(email="regional@mombasa-tt.test")
-    assert OfficialAppointment.objects.filter(user=officer, region__name="Mombasa").count() == 1
-    assert not Membership.objects.filter(user=officer).exists()
+    # An official of the region's body (TASK-107), not a member of any club.
+    body = Organization.objects.get(kind=Organization.Kind.REGIONAL_BODY, country="KE", region="Mombasa")
+    assert [m.organization for m in Membership.objects.filter(user=officer)] == [body]
+    assert Permission.TOURNAMENTS_APPROVE in effective_permissions(officer, body)
     assert set(managed_organizations(officer)) >= {club, facility}
