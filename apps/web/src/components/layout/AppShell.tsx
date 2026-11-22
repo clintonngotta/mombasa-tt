@@ -18,6 +18,7 @@ export function AppShell() {
   const facility = mode === "facility"
   const bar = more.length ? [...tabs, MORE] : tabs
   const location = useLocation()
+  const current = currentEntry(location.pathname, [...items, MORE])
   const next = encodeURIComponent(location.pathname + location.search)
 
   const logIn = (
@@ -45,7 +46,7 @@ export function AppShell() {
         <OrganizationSwitcher className={cn(facility && "text-white")} />
         <nav aria-label="Main" className="-mx-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1">
           {items.map((item) => (
-            <SidebarLink key={item.to} item={item} facility={facility} />
+            <SidebarLink key={item.to} item={item} facility={facility} selected={item.to === current} />
           ))}
         </nav>
         {!signedIn && <div className="flex flex-col">{logIn}</div>}
@@ -80,7 +81,7 @@ export function AppShell() {
           )}
         >
           {bar.map((item) => (
-            <TabLink key={item.to} item={item} facility={facility} active={item === MORE && more.some((m) => location.pathname.startsWith(m.to))} />
+            <TabLink key={item.to} item={item} facility={facility} selected={item.to === current || (item === MORE && more.some((m) => m.to === current))} />
           ))}
         </nav>
       </div>
@@ -88,15 +89,23 @@ export function AppShell() {
   )
 }
 
-function TabLink({ item: { to, label, icon: Icon }, facility, active }: { item: NavItem; facility: boolean; active?: boolean }) {
+/** The menu entry for this page: the longest `to` the path sits under, so /club/tournaments lights up
+ * Tournaments and not Club as well. */
+function currentEntry(pathname: string, entries: readonly NavItem[]): string | undefined {
+  const under = entries.filter((e) => pathname === e.to || pathname.startsWith(`${e.to}/`))
+  return under.sort((a, b) => b.to.length - a.to.length)[0]?.to
+}
+
+function TabLink({ item: { to, label, icon: Icon }, facility, selected }: { item: NavItem; facility: boolean; selected: boolean }) {
   return (
     <NavLink
       to={to}
-      className={({ isActive }) =>
+      aria-current={selected ? "page" : undefined}
+      className={() =>
         cn(
           "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-xs font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:text-sm",
           facility ? "text-white/70" : "text-muted-foreground",
-          (isActive || active) && (facility ? "text-brand-gold" : "text-brand-blue"),
+          selected && (facility ? "text-brand-gold" : "text-brand-blue"),
         )
       }
     >
@@ -106,15 +115,16 @@ function TabLink({ item: { to, label, icon: Icon }, facility, active }: { item: 
   )
 }
 
-function SidebarLink({ item: { to, label, icon: Icon }, facility }: { item: NavItem; facility: boolean }) {
+function SidebarLink({ item: { to, label, icon: Icon }, facility, selected }: { item: NavItem; facility: boolean; selected: boolean }) {
   return (
     <NavLink
       to={to}
-      className={({ isActive }) =>
+      aria-current={selected ? "page" : undefined}
+      className={() =>
         cn(
           "flex h-12 shrink-0 items-center gap-3 rounded-lg px-3 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           facility ? "text-white/75 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          isActive && (facility ? "bg-white/15 text-white" : "bg-surface-selected text-brand-blue"),
+          selected && (facility ? "bg-white/15 text-white" : "bg-surface-selected text-brand-blue"),
         )
       }
     >
