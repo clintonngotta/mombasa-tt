@@ -233,6 +233,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
     # Published tournaments are public (TASK-035): a draft ceremony is still the staff's (test_public_views).
     "tournament-ceremony": {"get": PUBLIC, "put": STAFF},
+    "tournament-live": {"get": PUBLIC},
     "tournament-ceremony-generate": {"post": STAFF},
     "tournament-ceremony-publish": {"post": STAFF},
     "tournament-ceremony-reorder": {"post": STAFF},

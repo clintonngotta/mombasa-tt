@@ -14432,6 +14432,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/live/:
+    get:
+      operationId: tournaments_live_list
+      description: |-
+        GET /tournaments/{id}/live/: the matches being scored now, for anybody who may see the
+        tournament (published, or a draft its organizers and approvers see). Pages fetch it again when the
+        tournament's socket says a score changed, and on a timer when the socket is down (TASK-084).
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LiveMatch'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/match-day-log/:
     get:
       operationId: tournaments_match_day_log_list
@@ -16864,6 +16897,16 @@ components:
       required:
       - display_name
       - id
+    CardEnum:
+      enum:
+      - yellow
+      - yellow_red
+      - red
+      type: string
+      description: |-
+        * `yellow` - Yellow
+        * `yellow_red` - Yellow Red
+        * `red` - Red
     Carry:
       type: object
       description: 'What a tie''s later rubber starts with: offences by position in
@@ -21069,6 +21112,79 @@ components:
         * `postponed` - postponed
         * `cancelled` - cancelled
         * `completed` - completed
+    LiveCard:
+      type: object
+      properties:
+        side:
+          $ref: '#/components/schemas/SideEnum'
+        player_name:
+          type: string
+        card:
+          $ref: '#/components/schemas/CardEnum'
+        penalty_points:
+          type: integer
+        adviser:
+          type: boolean
+        reason:
+          type: string
+        game_number:
+          type: integer
+      required:
+      - adviser
+      - card
+      - game_number
+      - penalty_points
+      - player_name
+      - reason
+      - side
+    LiveMatch:
+      type: object
+      description: One match being scored now, for the score strip and the tournament's
+        live page.
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        round:
+          type: string
+        table:
+          type: string
+        a:
+          type: string
+        b:
+          type: string
+        rubber:
+          type: integer
+          nullable: true
+          description: The rubber being played, in a team tie.
+        rubbers_won:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        score:
+          $ref: '#/components/schemas/MatchScore'
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveCard'
+      required:
+      - a
+      - b
+      - cards
+      - event_id
+      - event_name
+      - match_id
+      - round
+      - rubber
+      - rubbers_won
+      - score
+      - table
     LiveScore:
       type: object
       properties:
@@ -21649,6 +21765,94 @@ components:
         * `win` - Win
         * `loss` - Loss
         * `draw` - Draw
+    MatchScore:
+      type: object
+      description: |-
+        A match being scored, as everybody may watch it (REQ-043): the server's replay of the umpire's
+        events, with nothing the deck scores with.
+      properties:
+        status:
+          $ref: '#/components/schemas/MatchScoreStatusEnum'
+        outcome:
+          type: string
+          nullable: true
+          description: 'How a finished sheet ended: played, retired, disqualified.'
+        winner:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SideEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        game_number:
+          type: integer
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+          description: Finished games, side a's points first.
+        games_won:
+          type: array
+          items:
+            type: integer
+        points:
+          type: array
+          items:
+            type: integer
+          description: The game in play.
+        server:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SideEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        server_name:
+          type: string
+          description: Who serves, named in doubles and singles alike.
+        timeouts:
+          type: array
+          items:
+            type: boolean
+          description: Time-out used, side a then b.
+        timeout_running:
+          type: array
+          items:
+            type: boolean
+        suspended:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SideEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        expedite:
+          type: boolean
+        revision:
+          type: integer
+          description: 'Grows with every accepted event: a newer score has a higher
+            one.'
+      required:
+      - expedite
+      - game_number
+      - games
+      - games_won
+      - outcome
+      - points
+      - revision
+      - server
+      - server_name
+      - status
+      - suspended
+      - timeout_running
+      - timeouts
+      - winner
+    MatchScoreStatusEnum:
+      enum:
+      - not_started
+      - in_progress
+      - completed
+      type: string
+      description: |-
+        * `not_started` - not_started
+        * `in_progress` - in_progress
+        * `completed` - completed
     MatchSide:
       type: object
       description: |-
@@ -28346,10 +28550,16 @@ components:
           items:
             $ref: '#/components/schemas/Incident'
           description: Time-outs, cards and other incidents so far.
+        live:
+          allOf:
+          - $ref: '#/components/schemas/MatchScore'
+          nullable: true
+          description: The score so far, once scoring has started.
       required:
       - can_assign
       - can_score
       - incidents
+      - live
       - scorecard_id
       - status
       - umpire_name

@@ -6094,6 +6094,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/live/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/live/: the matches being scored now, for anybody who may see the
+         *     tournament (published, or a draft its organizers and approvers see). Pages fetch it again when the
+         *     tournament's socket says a score changed, and on a timer when the socket is down (TASK-084).
+         */
+        get: operations["tournaments_live_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/match-day-log/": {
         parameters: {
             query?: never;
@@ -7180,6 +7201,13 @@ export interface components {
             id: string;
             display_name: string;
         };
+        /**
+         * @description * `yellow` - Yellow
+         *     * `yellow_red` - Yellow Red
+         *     * `red` - Red
+         * @enum {string}
+         */
+        CardEnum: "yellow" | "yellow_red" | "red";
         /** @description What a tie's later rubber starts with: offences by position in this match and adviser cards. */
         Carry: {
             offences: components["schemas"]["Offences"];
@@ -8812,6 +8840,32 @@ export interface components {
          * @enum {string}
          */
         ListedEventStatusEnum: "scheduled" | "postponed" | "cancelled" | "completed";
+        LiveCard: {
+            side: components["schemas"]["SideEnum"];
+            player_name: string;
+            card: components["schemas"]["CardEnum"];
+            penalty_points: number;
+            adviser: boolean;
+            reason: string;
+            game_number: number;
+        };
+        /** @description One match being scored now, for the score strip and the tournament's live page. */
+        LiveMatch: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            round: string;
+            table: string;
+            a: string;
+            b: string;
+            /** @description The rubber being played, in a team tie. */
+            rubber: number | null;
+            rubbers_won: number[] | null;
+            score: components["schemas"]["MatchScore"];
+            cards: components["schemas"]["LiveCard"][];
+        };
         LiveScore: {
             games_won: number[];
             points: number[];
@@ -9041,6 +9095,39 @@ export interface components {
          * @enum {string}
          */
         MatchResultEnum: "win" | "loss" | "draw";
+        /**
+         * @description A match being scored, as everybody may watch it (REQ-043): the server's replay of the umpire's
+         *     events, with nothing the deck scores with.
+         */
+        MatchScore: {
+            status: components["schemas"]["MatchScoreStatusEnum"];
+            /** @description How a finished sheet ended: played, retired, disqualified. */
+            outcome: string | null;
+            winner: (components["schemas"]["SideEnum"] | components["schemas"]["NullEnum"]) | null;
+            game_number: number;
+            /** @description Finished games, side a's points first. */
+            games: number[][];
+            games_won: number[];
+            /** @description The game in play. */
+            points: number[];
+            server: (components["schemas"]["SideEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** @description Who serves, named in doubles and singles alike. */
+            server_name: string;
+            /** @description Time-out used, side a then b. */
+            timeouts: boolean[];
+            timeout_running: boolean[];
+            suspended: (components["schemas"]["SideEnum"] | components["schemas"]["NullEnum"]) | null;
+            expedite: boolean;
+            /** @description Grows with every accepted event: a newer score has a higher one. */
+            revision: number;
+        };
+        /**
+         * @description * `not_started` - not_started
+         *     * `in_progress` - in_progress
+         *     * `completed` - completed
+         * @enum {string}
+         */
+        MatchScoreStatusEnum: "not_started" | "in_progress" | "completed";
         /**
          * @description An entry, or (while `entry` is null) `awaiting` says whose place it is, e.g. "Winner of
          *     semi-final 1" or "Group A winner".
@@ -11927,6 +12014,8 @@ export interface components {
             can_assign: boolean;
             /** @description Time-outs, cards and other incidents so far. */
             incidents: components["schemas"]["Incident"][];
+            /** @description The score so far, once scoring has started. */
+            live: components["schemas"]["MatchScore"] | null;
         };
         Secretary: {
             /** Format: uuid */
@@ -26424,6 +26513,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_live_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveMatch"][];
                 };
             };
             /** @description Error envelope */

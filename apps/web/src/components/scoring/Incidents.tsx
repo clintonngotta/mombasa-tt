@@ -1,20 +1,12 @@
 import { useEffect, useState } from "react"
 import { CARD_REASONS, offencesOf, sideOf, type CardReason, type Player, type ScoreEvent, type Side, type State } from "@scoring"
-import type { Names } from "@/lib/scoring"
+import { CARD_REASON_LABEL, type Names } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 
 const deckButton =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-4 text-base font-semibold text-white outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-brand-cyan disabled:opacity-40"
 const warnButton =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-brand-gold px-4 text-base font-bold text-brand-navy outline-none hover:bg-brand-gold/90 focus-visible:ring-3 focus-visible:ring-brand-cyan disabled:opacity-40"
-
-const CARD_REASON_LABEL: Record<CardReason, string> = {
-  bad_behaviour: "Bad behaviour",
-  racket_abuse: "Racket abuse",
-  illegal_advice: "Illegal advice",
-  delay: "Delay",
-  other: "Other",
-}
 
 const TIMEOUT_SECONDS = 60 // 3.4.4.2: up to 1 minute
 const SUSPENSION_SECONDS = 10 * 60 // 3.4.2.3: up to 10 minutes

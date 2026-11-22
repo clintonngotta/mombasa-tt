@@ -12,6 +12,7 @@ import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
 import { TournamentCover, TournamentDocuments, TournamentMediaManager } from "@/components/tournaments/TournamentMedia"
 import { useLiveTournament } from "@/lib/live"
+import { ScoreStrip } from "@/components/tournaments/LiveScore"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
 import { formatDayRange, formatInstant } from "@/lib/dates"
@@ -48,7 +49,7 @@ import {
 /** One tournament (REQ-007): what everyone sees, plus the controls of the host's competition staff. */
 export function TournamentPage() {
   const { id = "" } = useParams()
-  useLiveTournament(id)
+  const socketOpen = useLiveTournament(id)
   const { results: memberships } = useMemberships()
   const me = useMe()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
@@ -65,6 +66,7 @@ export function TournamentPage() {
       {t && (
         <>
           <Overview tournament={t} />
+          {t.status === "in_progress" && <ScoreStrip tournamentId={t.id} socketOpen={socketOpen} />}
           <CeremonyLink tournamentId={t.id} staff={staff} open={t.status !== "draft" && t.status !== "cancelled"} />
           <WatchLinks tournament={t} staff={staff} live={t.status === "in_progress"} />
           <SponsorsPanel tournamentId={t.id} staff={staff} />

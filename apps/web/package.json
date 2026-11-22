@@ -14,7 +14,8 @@
     "typecheck:scoring": "tsc -p ../../packages/scoring",
     "gen:parity": "node --experimental-strip-types ../../packages/scoring/scripts/make-parity.ts",
     "gen:api": "openapi-typescript ../../services/api/openapi.yaml -o ../../packages/contracts/api-schema.d.ts",
-    "test:offline": "node --experimental-strip-types --test test/offline.test.ts"
+    "test:offline": "node --experimental-strip-types --test test/offline.test.ts",
+    "test:live": "node --experimental-strip-types --test test/live.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

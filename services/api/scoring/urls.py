@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import ScorecardViewSet, ScoringOverviewViewSet, UmpireViewSet
+from .views import LiveViewSet, ScorecardViewSet, ScoringOverviewViewSet, UmpireViewSet
 
 # Mounted under /scorecards/.
 urlpatterns = [
@@ -18,6 +18,7 @@ me_urlpatterns = [
 
 # Mounted under /tournaments/.
 tournament_urlpatterns = [
+    path("<uuid:tournament_pk>/live/", LiveViewSet.as_view({"get": "list"}), name="tournament-live"),
     path(
         "<uuid:tournament_pk>/scoring/",
         ScoringOverviewViewSet.as_view({"get": "retrieve"}),

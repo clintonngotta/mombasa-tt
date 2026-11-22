@@ -68,7 +68,7 @@ def test_a_signed_in_viewer_hears_that_a_tournament_changed_but_not_what(
 
         def change():
             with django_capture_on_commit_callbacks(execute=True):
-                broadcast.tournament_changed(tournament["id"], "scores", event_id="e1")
+                broadcast.tournament_changed(tournament["id"], "scores", event_id="e1", match_id="m1")
 
         await sync_to_async(change)()
         heard = await socket.receive_json_from(timeout=2)
@@ -77,7 +77,7 @@ def test_a_signed_in_viewer_hears_that_a_tournament_changed_but_not_what(
         await socket.disconnect()
         return heard
 
-    assert async_to_sync(scenario)() == {"type": "changed", "topic": "scores", "event": "e1"}
+    assert async_to_sync(scenario)() == {"type": "changed", "topic": "scores", "event": "e1", "match": "m1"}
 
 
 @pytest.mark.django_db(transaction=True)

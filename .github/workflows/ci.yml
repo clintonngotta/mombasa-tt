@@ -92,6 +92,8 @@ jobs:
           pnpm test:deck
       - name: Changes kept offline (send order, retries, accounts, storage failures)
         run: pnpm test:offline
+      - name: Live views carry no umpire controls
+        run: pnpm test:live
       - name: Typecheck and build
         run: pnpm build
       - name: Dependency audit

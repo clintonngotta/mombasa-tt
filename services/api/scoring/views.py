@@ -13,19 +13,22 @@ from accounts.models import User
 from competitions import matchday
 from competitions.models import DrawVersion, Event, Match, Rubber, Tournament
 from competitions.serializers import MatchDetailSerializer
-from competitions.views import match_reply, require_staff, staff_tournament
+from competitions.views import match_reply, require_staff, sees_draft, staff_tournament
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
+from core.permissions import PublicReads
+from core.throttling import LiveReadThrottle
 from organizations.access import membership_permissions
 from organizations.models import Membership
 
-from . import service
+from . import live, service
 from .models import Scorecard, ScoreConflict
 from .serializers import (
     AssignUmpireSerializer,
     ConfirmSerializer,
     ConflictReceiptSerializer,
     ConflictReportSerializer,
+    LiveMatchSerializer,
     MyScorecardSerializer,
     ResolveConflictSerializer,
     ScorecardSerializer,
@@ -280,3 +283,21 @@ class ScorecardViewSet(viewsets.GenericViewSet):
                 scorecard, request.user, asked["assignment_id"], asked["revision"], device_of(request)
             )
         return self._reply(scorecard)
+
+
+class LiveViewSet(viewsets.GenericViewSet):
+    """GET /tournaments/{id}/live/: the matches being scored now, for anybody who may see the
+    tournament (published, or a draft its organizers and approvers see). Pages fetch it again when the
+    tournament's socket says a score changed, and on a timer when the socket is down (TASK-084)."""
+
+    permission_classes = [PublicReads]
+    public_actions = ("list",)
+    throttle_classes = [LiveReadThrottle]
+    pagination_class = None
+
+    @extend_schema(responses=LiveMatchSerializer(many=True))
+    def list(self, request, tournament_pk):
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        if tournament.status == Tournament.Status.DRAFT and not sees_draft(request.user, tournament):
+            raise Http404
+        return Response(LiveMatchSerializer(live.live_matches(tournament), many=True).data)

@@ -14,3 +14,11 @@ class PublicReadThrottle(SimpleRateThrottle):
         if not getattr(view, "public_actions", None):
             return None
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
+class LiveReadThrottle(PublicReadThrottle):
+    """Signed-out reads of the live score list (TASK-084). A venue's spectators often share one address
+    (the hall's Wi-Fi) and their pages fetch the list again after every point, so it has a limit of its
+    own, still counted per client address."""
+
+    scope = "live_reads"

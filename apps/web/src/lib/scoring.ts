@@ -1,6 +1,6 @@
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
-import type { Config, Player, ScoreEvent, Side, State } from "@scoring"
+import type { CardReason, Config, Player, ScoreEvent, Side, State } from "@scoring"
 
 export type Scorecard = Schemas["Scorecard"]
 export type MyScorecard = Schemas["MyScorecard"]
@@ -11,6 +11,15 @@ export type SubmitResult = Schemas["SubmitResult"]
 
 /** A score event on its way to the server: its own id (a retry is recognised) and its place in the stream. */
 export type Envelope = { id: string; sequence: number; event: ScoreEvent; device_time: string; expected_revision?: number }
+
+/** The reason categories a card is shown for (REQ-043), as the deck, its log and the live views name them. */
+export const CARD_REASON_LABEL: Record<CardReason, string> = {
+  bad_behaviour: "Bad behaviour",
+  racket_abuse: "Racket abuse",
+  illegal_advice: "Illegal advice",
+  delay: "Delay",
+  other: "Other",
+}
 
 export const scoringKeys = {
   mine: ["scoring", "mine"] as const,

@@ -19,7 +19,7 @@ from organizations.access import effective_permissions
 from organizations.permissions import Permission
 from realtime import broadcast
 
-from . import incidents
+from . import incidents, live
 from .engine import Scoring, ScoringError, initial_state
 from .models import ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
 
@@ -106,6 +106,7 @@ def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
         "can_score": mine and scorable and not scorecard.confirmed_at,
         "can_assign": staff and scorable,
         "incidents": incidents_of(scorecard) if scorecard else [],
+        "live": live.score_of(scorecard, players_of(scorecard)) if scorecard and scorecard.revision else None,
     }
 
 
@@ -351,7 +352,9 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
         if sent_types & INCIDENT_TYPES:  # points alone leave the incidents as they were
             incidents.rebuild(scorecard, config, players_of(scorecard))
         event = event_of(scorecard)
-        broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id)
+        # Said per match, so a page showing other matches has nothing to fetch again (TASK-084).
+        match_id = scorecard.rubber.match_id if scorecard.rubber_id else scorecard.match_id
+        broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id, match_id=match_id)
     return {"accepted": accepted, "refused": refused}
 
 

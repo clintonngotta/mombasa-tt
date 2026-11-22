@@ -33,6 +33,63 @@ class SheetIncidentSerializer(IncidentSerializer):
     note = serializers.CharField(allow_blank=True, help_text="The umpire's note; on the sheet only.")
 
 
+class MatchScoreSerializer(serializers.Serializer):
+    """A match being scored, as everybody may watch it (REQ-043): the server's replay of the umpire's
+    events, with nothing the deck scores with."""
+
+    status = serializers.ChoiceField(choices=["not_started", "in_progress", "completed"])
+    outcome = serializers.CharField(
+        allow_null=True, help_text="How a finished sheet ended: played, retired, disqualified."
+    )
+    winner = serializers.ChoiceField(choices=["a", "b"], allow_null=True)
+    game_number = serializers.IntegerField()
+    games = serializers.ListField(
+        child=serializers.ListField(child=serializers.IntegerField()),
+        help_text="Finished games, side a's points first.",
+    )
+    games_won = serializers.ListField(child=serializers.IntegerField())
+    points = serializers.ListField(child=serializers.IntegerField(), help_text="The game in play.")
+    server = serializers.ChoiceField(choices=["a", "b"], allow_null=True)
+    server_name = serializers.CharField(
+        allow_blank=True, help_text="Who serves, named in doubles and singles alike."
+    )
+    timeouts = serializers.ListField(
+        child=serializers.BooleanField(), help_text="Time-out used, side a then b."
+    )
+    timeout_running = serializers.ListField(child=serializers.BooleanField())
+    suspended = serializers.ChoiceField(choices=["a", "b"], allow_null=True)
+    expedite = serializers.BooleanField()
+    revision = serializers.IntegerField(
+        help_text="Grows with every accepted event: a newer score has a higher one."
+    )
+
+
+class LiveCardSerializer(serializers.Serializer):
+    side = serializers.ChoiceField(choices=["a", "b"])
+    player_name = serializers.CharField(allow_blank=True)
+    card = serializers.ChoiceField(choices=MatchIncident.Card.choices)
+    penalty_points = serializers.IntegerField()
+    adviser = serializers.BooleanField()
+    reason = serializers.CharField(allow_blank=True)
+    game_number = serializers.IntegerField()
+
+
+class LiveMatchSerializer(serializers.Serializer):
+    """One match being scored now, for the score strip and the tournament's live page."""
+
+    match_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    round = serializers.CharField()
+    table = serializers.CharField(allow_blank=True)
+    a = serializers.CharField(allow_blank=True)
+    b = serializers.CharField(allow_blank=True)
+    rubber = serializers.IntegerField(allow_null=True, help_text="The rubber being played, in a team tie.")
+    rubbers_won = serializers.ListField(child=serializers.IntegerField(), allow_null=True)
+    score = MatchScoreSerializer()
+    cards = LiveCardSerializer(many=True)
+
+
 class ScoringSummarySerializer(serializers.Serializer):
     """Where the scoring of a match or rubber stands. `can_score` is true only for the umpire assigned
     to it, so nobody else is ever offered a way into the scoring deck (REQ-010)."""
@@ -43,6 +100,7 @@ class ScoringSummarySerializer(serializers.Serializer):
     can_score = serializers.BooleanField()
     can_assign = serializers.BooleanField(help_text="The caller may assign or change the umpire now.")
     incidents = IncidentSerializer(many=True, help_text="Time-outs, cards and other incidents so far.")
+    live = MatchScoreSerializer(allow_null=True, help_text="The score so far, once scoring has started.")
 
 
 class UmpireSerializer(serializers.Serializer):

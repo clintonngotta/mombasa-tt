@@ -5,7 +5,7 @@ import { Scoring, type ScoreEvent, type State } from "@scoring"
 import { ApiError } from "@/lib/api"
 import { Journal } from "@/lib/deck/journal"
 import { DeckStore, HEARTBEAT_MS, type DeckView, type Transport } from "@/lib/deck/store"
-import { configOf, getScorecard, REFUSAL, reportConflict, sendEvents, takeDevice, type Names, type Scorecard } from "@/lib/scoring"
+import { CARD_REASON_LABEL, configOf, getScorecard, REFUSAL, reportConflict, sendEvents, takeDevice, type Names, type Scorecard } from "@/lib/scoring"
 
 export type { Sync } from "@/lib/deck/store"
 
@@ -26,14 +26,6 @@ export function describeLog(card: Scorecard, stream: Stream, names: Names): LogL
     lines.push({ sequence, text: describe(event, before, after, names) })
   }
   return lines.reverse()
-}
-
-const REASON: Record<string, string> = {
-  bad_behaviour: "bad behaviour",
-  racket_abuse: "racket abuse",
-  illegal_advice: "illegal advice",
-  delay: "delay",
-  other: "other",
 }
 
 function describe(event: ScoreEvent, before: State, after: State, names: Names): string {
@@ -60,11 +52,11 @@ function describe(event: ScoreEvent, before: State, after: State, names: Names):
       const given = after.offences[event.player] // one up the ladder from the player's or the pair's count
       const points = given - 1
       const shown = given === 1 ? "Yellow card" : `Yellow and red card, ${points} penalty point${points === 1 ? "" : "s"}`
-      return `${shown}: ${names[event.player]} (${REASON[event.reason] ?? event.reason}).${event.note ? ` ${event.note}` : ""}`
+      return `${shown}: ${names[event.player]} (${(CARD_REASON_LABEL[event.reason] ?? event.reason).toLowerCase()}).${event.note ? ` ${event.note}` : ""}`
     }
     case "adviser_card": {
       const index = event.side === "a" ? 0 : 1
-      return `${after.advisers[index] === 1 ? "Yellow card" : "Red card, sent away"}: ${names[event.side]}'s adviser (${REASON[event.reason] ?? event.reason}).`
+      return `${after.advisers[index] === 1 ? "Yellow card" : "Red card, sent away"}: ${names[event.side]}'s adviser (${(CARD_REASON_LABEL[event.reason] ?? event.reason).toLowerCase()}).`
     }
     case "suspension":
       return `Play suspended: ${names[event.side]} injured.`
