@@ -231,6 +231,8 @@ export async function restoreScreens(queryClient: QueryClient): Promise<void> {
     const saved = await Promise.race([kept.loadScreens(userId), new Promise<undefined>((resolve) => setTimeout(resolve, 1500))])
     if (!saved || Date.now() - Date.parse(saved.savedAt) > SCREENS_MAX_AGE) return
     hydrate(queryClient, saved.state as DehydratedState)
+    // Saved screens are shown at once but count as out of date, so each asks the server when it opens.
+    void queryClient.invalidateQueries({ refetchType: "none" })
     set({ savedAt: saved.savedAt })
   } catch {
     // Nothing saved, or no storage: the app works online as before.
