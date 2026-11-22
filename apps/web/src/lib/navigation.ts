@@ -8,6 +8,7 @@ import {
   House,
   Map,
   MapPin,
+  Medal,
   Swords,
   Trophy,
   UserRound,
@@ -38,6 +39,9 @@ const RANKINGS: NavItem = { to: "/rankings", label: "Rankings", icon: Trophy }
 const CLUB: NavItem = { to: "/club", label: "Club", icon: Users }
 const COACHING: NavItem = { to: "/coaching", label: "Coaching", icon: GraduationCap }
 const REGIONAL: NavItem = { to: "/regional", label: "Regional", icon: Map }
+// The organizer's tournaments (hosted list, dashboards, New tournament) for whoever runs competitions in
+// the active organization.
+const TOURNAMENTS: NavItem = { to: "/club/tournaments", label: "Tournaments", icon: Medal }
 const PROFILE: NavItem = { to: "/profile", label: "Profile", icon: UserRound }
 
 /** The facility is the active organization and the person works there, not a regional official looking in. */
@@ -53,8 +57,10 @@ function facilityItems(membership: Membership): NavItem[] {
   const finances = can(membership, "finances.view", "finances.manage")
   const people = can(membership, "members.manage", "roles.manage")
   const training = can(membership, "training.manage")
+  const competitions = can(membership, "competitions.manage")
   return [
     { to: "/facility", label: "Facility", icon: Building2 },
+    ...(competitions ? [TOURNAMENTS] : []),
     ...(facilities ? [{ to: "/club/venues", label: "Branches", icon: MapPin }] : []),
     ...(facilities ? [{ to: "/club/bookings", label: "Bookings", icon: CalendarCheck }] : []),
     ...(finances ? [{ to: "/club/takings", label: "Takings", icon: Banknote }] : []),
@@ -79,7 +85,12 @@ export function useNavigation() {
   })
 
   const mode: NavMode = facility ? "facility" : "person"
-  const roles = [...(coach.data ? [COACHING] : []), ...(isOfficial(all) ? [REGIONAL] : [])]
+  const organizer = !!active && !active.managedOnly && can(active, "competitions.manage")
+  const roles = [
+    ...(organizer ? [TOURNAMENTS] : []),
+    ...(coach.data ? [COACHING] : []),
+    ...(isOfficial(all) ? [REGIONAL] : []),
+  ]
   // Until the memberships arrive we can't tell a facility from a person, so show no menu rather than the wrong one.
   const loading = signedIn && memberships.isPending
   const items = loading ? [] : facility && active ? facilityItems(active) : [HOME, PLAY, TRAINING, RANKINGS, ...roles, CLUB, PROFILE]
