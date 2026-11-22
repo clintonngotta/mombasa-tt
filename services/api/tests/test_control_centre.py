@@ -2,7 +2,7 @@
 moves, blocked tables, the check-in desk, the match-day log, and walkovers for the referee alone."""
 
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from django.db import transaction
@@ -158,6 +158,9 @@ def test_a_match_moves_to_another_table_with_its_call_and_who_reported(staff, cl
     old, new = Reservation.objects.filter(match=game["match"]).order_by("created_at")
     assert (old.status, old.ending, new.status) == ("released", "moved", "active")
     assert new.called_at == first_call
+    # The move calls the match to its new table, and the count of calls goes on from before.
+    assert moved["call"]["calls"] == 2
+    assert datetime.fromisoformat(moved["call"]["called_at"]) == first_call
     assert Hold.objects.filter(reservation=new, active=True, user__isnull=False).count() == 2
     assert fresh(game["match"]).table_id == two.id
     entry = log(staff, game["cup"])[0]
@@ -293,3 +296,65 @@ def test_the_match_page_offers_walkovers_to_the_referee_alone(staff, club, hall)
     enter(referee, game, first, first.entry_a, outcome="walkover", reason="No-show after the grace period")
     assert not captain.get(page).json()["can_record_result"]
     assert referee.get(page).json()["can_record_result"]
+
+
+def test_control_routes_refuse_what_is_not_theirs_to_change(staff, club, hall, admin):
+    from facilities.models import Table
+
+    one, two, _three = tables(hall)
+    game = started(staff, club, hall, [["Amina"], ["Brian"]])
+    # A table of another venue is not found, whatever its id.
+    elsewhere = Table.objects.create(
+        venue=one.venue.__class__.objects.create(
+            organization=one.venue.organization, name="Other hall", town="Mombasa"
+        ),
+        label="Far table",
+    )
+    assert block(staff, game, elsewhere, expect=404)
+    # A match that isn't on a table can't be called or reported.
+    assert act(staff, game, "call", expect=409)["code"] == "not_on_table"
+    assert act(staff, game, "report", expect=409, side="a")["code"] == "not_on_table"
+    assert act(staff, game, "move", expect=404, table_id=str(elsewhere.id), reason="x")
+    send(staff, game, one)
+    umpire = person("Umpire Una")
+    add_member(club, umpire, "assistant_captain")
+    score_a_point(game, umpire)
+    assert act(staff, game, "call", expect=409)["code"] == "already_playing"
+
+
+def test_switching_automatic_dispatch_is_logged(staff, club, hall):
+    game = started(staff, club, hall, [["Amina"], ["Brian"]])
+    for enabled in (True, True, False):
+        assert (
+            staff.post(url(game["cup"]) + "dispatch/auto/", {"enabled": enabled}, format="json").status_code
+            == 200
+        )
+    actions = [e["action"] for e in log(staff, game["cup"])]
+    assert actions.count("auto_on") == 1 and actions[0] == "auto_off"
+
+
+def test_a_walkovers_reason_stays_with_the_official_result(staff, club, hall):
+    from competitions.models import OfficialResult
+
+    game = knockout(staff, club, hall)
+    first = game["semis"][0]
+    enter(staff, game, first, first.entry_a, outcome="walkover", reason="Withdrew before the start")
+    assert OfficialResult.objects.get(match=first, current=True).reason == "Withdrew before the start"
+
+
+def test_only_the_referee_strikes_out_a_walkover_when_settling_a_correction(staff, club, hall):
+    game = knockout(staff, club, hall)
+    first, second = game["semis"]
+    played = [[11, 1], [11, 2], [11, 3]]
+    enter(staff, game, first, first.entry_a, games=played)
+    enter(staff, game, second, second.entry_a, games=played)
+    final = fresh(game["final"])
+    enter(staff, game, final, final.entry_a, outcome="walkover")
+    correct(staff, game, first, first.entry_b, games=[[1, 11], [2, 11], [3, 11]])
+    waiting = staff.get(url(game["cup"]) + "corrections/").json()[0]
+    path = url(game["cup"]) + f"corrections/{waiting['id']}/resolve/"
+    captain = staff_member(club, "captain@example.com", "captain")
+    refused = captain.post(path, {"choice": "replace", "note": "Replay"}, format="json")
+    assert (refused.status_code, refused.json()["code"]) == (403, "referee_only")
+    assert captain.post(path, {"choice": "keep", "note": "Stands"}, format="json").status_code == 200
+    assert log(staff, game["cup"])[0]["action"] == "correction_settled"

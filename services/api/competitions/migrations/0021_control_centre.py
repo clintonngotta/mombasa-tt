@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
             name='MatchDayLog',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('action', models.CharField(choices=[('called', 'Called to a table'), ('called_again', 'Called again'), ('recalled', 'Taken off the table'), ('moved', 'Moved to another table'), ('reported', 'Reported at the table'), ('report_undone', 'Report undone'), ('checked_in', 'Checked in'), ('check_in_undone', 'Check-in undone'), ('umpire_assigned', 'Umpire assigned'), ('umpire_removed', 'Umpire taken off'), ('table_blocked', 'Table blocked'), ('table_unblocked', 'Table back in use'), ('result_entered', 'Result entered'), ('result_corrected', 'Result corrected')], max_length=20)),
+                ('action', models.CharField(choices=[('called', 'Called to a table'), ('called_again', 'Called again'), ('recalled', 'Taken off the table'), ('moved', 'Moved to another table'), ('reported', 'Reported at the table'), ('report_undone', 'Report undone'), ('checked_in', 'Checked in'), ('check_in_undone', 'Check-in undone'), ('umpire_assigned', 'Umpire assigned'), ('umpire_removed', 'Umpire taken off'), ('table_blocked', 'Table blocked'), ('table_unblocked', 'Table back in use'), ('result_entered', 'Result entered'), ('result_corrected', 'Result corrected'), ('correction_settled', 'Later match settled after a correction'), ('auto_on', 'Automatic dispatch switched on'), ('auto_off', 'Automatic dispatch switched off')], max_length=20)),
                 ('summary', models.CharField(max_length=300)),
                 ('reason', models.CharField(blank=True, max_length=300)),
                 ('at', models.DateTimeField(auto_now_add=True)),

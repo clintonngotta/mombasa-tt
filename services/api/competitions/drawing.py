@@ -193,6 +193,7 @@ def record_result(
     games=(),
     actor=None,
     source: str = official.Source.UMPIRE,
+    reason: str = "",
 ) -> None:
     """The match is decided: the winner moves into the match it feeds, and a finished group sends its
     qualifiers into the knockout. `games` are [a, b] points in playing order. Who may decide a match,
@@ -236,7 +237,7 @@ def record_result(
     match.games = [list(game) for game in games]
     match.save(update_fields=["winner", "status", "outcome", "games"])
     # The official record and the work that follows from it, written with the result itself.
-    official.accept(match, None, winner, outcome, match.games, actor=actor, source=source)
+    official.accept(match, None, winner, outcome, match.games, actor=actor, source=source, reason=reason)
     _send_on(match)
     if match.stage == Match.Stage.GROUP:
         place_qualifiers(match.draw, match.group)

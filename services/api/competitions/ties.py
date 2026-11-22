@@ -131,6 +131,7 @@ def record_rubber(
     games=(),
     actor=None,
     source: str = official.Source.UMPIRE,
+    reason: str = "",
 ) -> None:
     """A rubber is decided. Only the next rubber in order can be: one is played at a time. `games` are
     [a, b] points in playing order, a being the tie's side a. Who may decide a rubber arrives with
@@ -156,7 +157,7 @@ def record_rubber(
     rubber.outcome = outcome
     rubber.games = games
     rubber.save(update_fields=["winner", "status", "outcome", "games"])
-    official.accept(match, rubber, winner, outcome, games, actor=actor, source=source)
+    official.accept(match, rubber, winner, outcome, games, actor=actor, source=source, reason=reason)
     decided = max(tie_score(match)) >= match.draw.event.tie_wins_needed
     signals.rubber_decided.send(sender=Rubber, rubber=rubber, tie_decided=decided)
     if decided:

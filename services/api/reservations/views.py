@@ -7,6 +7,7 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from competitions import matchday
 from competitions.models import DrawVersion, Match, Tournament
 from competitions.serializers import MatchDetailSerializer
 from competitions.views import match_reply, require_staff, staff_tournament
@@ -28,16 +29,29 @@ from .serializers import (
 )
 
 
-class DispatchViewSet(viewsets.GenericViewSet):
-    """Tables and the matches on them (REQ-014), for the host's competition staff."""
-
-    permission_classes = [IsAuthenticated]
-    serializer_class = TableStateSerializer
+class TournamentTables:
+    """Finding the tournament for its competition staff, and its published matches."""
 
     def _tournament(self, request, tournament_pk) -> Tournament:
         tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
         require_staff(request.user, tournament)
         return tournament
+
+    def _match(self, tournament: Tournament, event_pk, pk) -> Match:
+        return get_object_or_404(
+            Match.objects.select_related("draw__event__tournament__organization", "entry_a", "entry_b"),
+            pk=pk,
+            draw__event_id=event_pk,
+            draw__event__tournament=tournament,
+            draw__status=DrawVersion.Status.PUBLISHED,
+        )
+
+
+class DispatchViewSet(TournamentTables, viewsets.GenericViewSet):
+    """Tables and the matches on them (REQ-014), for the host's competition staff."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = TableStateSerializer
 
     @extend_schema(responses={200: TableStateSerializer(many=True)})
     def tables(self, request, tournament_pk):
@@ -69,8 +83,12 @@ class DispatchViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             tournament = staff_tournament(request.user, tournament_pk)
-            tournament.auto_dispatch = serializer.validated_data["enabled"]
-            tournament.save(update_fields=["auto_dispatch", "updated_at"])
+            enabled = serializer.validated_data["enabled"]
+            if tournament.auto_dispatch != enabled:
+                tournament.auto_dispatch = enabled
+                tournament.save(update_fields=["auto_dispatch", "updated_at"])
+                action = matchday.Action.AUTO_ON if enabled else matchday.Action.AUTO_OFF
+                matchday.log(tournament, action, tournament.name, actor=request.user)
             board.run_auto(tournament, request.user)
         return Response(BoardSerializer(board.build(tournament)).data)
 
@@ -83,15 +101,6 @@ class DispatchViewSet(viewsets.GenericViewSet):
             tournament = staff_tournament(request.user, tournament_pk)
             board.run_auto(tournament, request.user)
         return Response(BoardSerializer(board.build(tournament)).data)
-
-    def _match(self, tournament: Tournament, event_pk, pk) -> Match:
-        return get_object_or_404(
-            Match.objects.select_related("draw__event__tournament__organization", "entry_a", "entry_b"),
-            pk=pk,
-            draw__event_id=event_pk,
-            draw__event__tournament=tournament,
-            draw__status=DrawVersion.Status.PUBLISHED,
-        )
 
     @extend_schema(request=DispatchSerializer, responses={200: MatchDetailSerializer})
     def dispatch_match(self, request, tournament_pk, event_pk, pk):
@@ -124,10 +133,13 @@ class DispatchViewSet(viewsets.GenericViewSet):
         return match_reply(request, match.draw, match.id)
 
 
-class ControlViewSet(DispatchViewSet):
+class ControlViewSet(TournamentTables, viewsets.GenericViewSet):
     """The match-day control centre (REQ-043): calls, players reporting, moves, blocked tables, the
     check-in desk and the match-day log, for the host's competition staff. Each change answers with the
     board as it now stands."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = BoardSerializer
 
     def _board(self, tournament: Tournament) -> Response:
         return Response(BoardSerializer(board.build(tournament)).data)
@@ -163,7 +175,7 @@ class ControlViewSet(DispatchViewSet):
         with transaction.atomic():
             tournament = staff_tournament(request.user, tournament_pk)
             match = self._match(tournament, event_pk, pk)
-            table = get_object_or_404(Table, pk=asked["table_id"])
+            table = get_object_or_404(control.tables_in_use(tournament), pk=asked["table_id"])
             control.move(match, table, request.user, asked["reason"])
         return self._board(tournament)
 
@@ -175,7 +187,7 @@ class ControlViewSet(DispatchViewSet):
         asked = serializer.validated_data
         with transaction.atomic():
             tournament = staff_tournament(request.user, tournament_pk)
-            table = get_object_or_404(Table, pk=table_pk)
+            table = get_object_or_404(control.tables_in_use(tournament), pk=table_pk)
             control.block(tournament, table, asked["reason"], asked["note"], request.user)
         return self._board(tournament)
 
@@ -184,7 +196,7 @@ class ControlViewSet(DispatchViewSet):
         """Put a blocked table back in use."""
         with transaction.atomic():
             tournament = staff_tournament(request.user, tournament_pk)
-            table = get_object_or_404(Table, pk=table_pk)
+            table = get_object_or_404(control.tables_in_use(tournament), pk=table_pk)
             control.unblock(tournament, table, request.user)
         return self._board(tournament)
 

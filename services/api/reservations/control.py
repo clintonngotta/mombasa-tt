@@ -4,8 +4,8 @@ Each table is in one state: free, called (its match was sent and not every side 
 up (both sides are at the table, no point scored yet), in play (scoring has started) or blocked (staff
 took it out of use, with a reason). A side that hasn't reported within its event's grace period of the
 first call is flagged as a no-show; the flag is a fact for the referee, who alone may then award a
-walkover through the results desk. Every action here is written to the match-day log in its own
-transaction.
+walkover through the results desk. Every action here is written to the match-day log in the
+transaction of the action itself.
 """
 
 from datetime import timedelta
@@ -33,9 +33,13 @@ def active_reservation(match: Match) -> Reservation:
     return reservation
 
 
+def entry_on(match: Match, side: str) -> Entry:
+    return match.entry_a if side == "a" else match.entry_b
+
+
 def side_players(match: Match, reservation: Reservation, side: str) -> list:
     """The held players of one side: the entry's players, or for a tie those of the current rubber."""
-    entry = match.entry_a if side == "a" else match.entry_b
+    entry = entry_on(match, side)
     team = {place.user_id for place in entry.players.all()}
     held = reservation.holds.filter(active=True, user__isnull=False).select_related("user")
     return [hold.user for hold in held if hold.user_id in team]
@@ -79,7 +83,7 @@ def report(match: Match, side: str, actor, *, undo: bool = False) -> Reservation
         return reservation
     setattr(reservation, field, None if undo else timezone.now())
     reservation.save(update_fields=[field])
-    entry = match.entry_a if side == "a" else match.entry_b
+    entry = entry_on(match, side)
     matchday.log(
         match.draw.event.tournament_id,
         Action.REPORT_UNDONE if undo else Action.REPORTED,
@@ -99,7 +103,7 @@ def move(match: Match, table: Table, actor, reason: str) -> Reservation:
         raise ApiException("same_table", "The match is already on that table.", 409)
     service.lock()
     service.release(old, actor, Reservation.Ending.MOVED, reason)
-    service._off_the_table(match)
+    service.off_the_table(match)
     # The players were at a table a moment ago: dispatch's check-in and rest checks still apply, but a
     # match that went out with them set aside keeps what was set aside.
     new = service.dispatch(
@@ -125,7 +129,6 @@ def move(match: Match, table: Table, actor, reason: str) -> Reservation:
 
 def block(tournament: Tournament, table: Table, reason: str, note: str, actor) -> TableBlock:
     """Take a free table out of use. A table with a match on it is freed first (recall or move)."""
-    ensure_tournament_table(tournament, table)
     service.lock()
     if Hold.objects.filter(table=table, active=True).exists():
         raise ApiException("table_busy", f"{table.label} has a match on it: move or recall it first.", 409)
@@ -145,7 +148,6 @@ def block(tournament: Tournament, table: Table, reason: str, note: str, actor) -
 
 
 def unblock(tournament: Tournament, table: Table, actor) -> None:
-    ensure_tournament_table(tournament, table)
     blocked = TableBlock.objects.filter(table=table, ended_at__isnull=True).first()
     if blocked is None:
         raise ApiException("not_blocked", f"{table.label} isn't blocked.", 409)
@@ -155,11 +157,13 @@ def unblock(tournament: Tournament, table: Table, actor) -> None:
     service.look_for_the_next(tournament, actor)
 
 
-def ensure_tournament_table(tournament: Tournament, table: Table) -> None:
-    if tournament.venue_id is None or table.venue_id != tournament.venue_id or not table.active:
-        raise ApiException(
-            "table_unavailable", "That table isn't one of this tournament's tables in use.", 409
-        )
+def tables_in_use(tournament: Tournament):
+    """The tournament's tables in use: a table anywhere else is not found."""
+    return (
+        Table.objects.filter(venue_id=tournament.venue_id, active=True)
+        if tournament.venue_id
+        else Table.objects.none()
+    )
 
 
 def blocks_at(venue_id) -> dict:
@@ -170,31 +174,55 @@ def blocks_at(venue_id) -> dict:
     return {block.table_id: block for block in found}
 
 
-def _sheet_in_play(match: Match):
-    """The score sheet being played now: the match's own, or the current rubber's of a tie."""
-    from scoring.models import Scorecard  # scoring builds on competitions, as reservations does
+class Live:
+    """What the board needs about the matches on tables, loaded once for all of them: the score sheet in
+    play for each (the match's own, or the current rubber's of a tie) and the rubbers each tie has
+    decided."""
 
-    if match.draw.event.is_team:
-        rubber = service.current_rubber(match)
-        return Scorecard.objects.filter(rubber=rubber).select_related("umpire").first() if rubber else None
-    return Scorecard.objects.filter(match=match).select_related("umpire").first()
+    def __init__(self, reservations: list[Reservation]):
+        from scoring.models import Scorecard  # scoring builds on competitions, as reservations does
+
+        matches = [reservation.match for reservation in reservations]
+        ties = [match.id for match in matches if match.draw.event.is_team]
+        rubbers = Rubber.objects.filter(match_id__in=ties).order_by("position") if ties else []
+        self.decided: dict = {match_id: [] for match_id in ties}
+        current: dict = {}
+        for rubber in rubbers:
+            if rubber.status == Rubber.Status.COMPLETED:
+                self.decided[rubber.match_id].append(rubber.winner_id)
+            elif rubber.status == Rubber.Status.SCHEDULED and rubber.match_id not in current:
+                current[rubber.match_id] = rubber
+        singles = [match.id for match in matches if match.id not in self.decided]
+        found = Scorecard.objects.filter(
+            Q(match_id__in=singles) | Q(rubber_id__in=[rubber.id for rubber in current.values()])
+        ).select_related("umpire", "rubber")
+        by_match = {card.match_id: card for card in found if card.match_id}
+        by_rubber = {card.rubber_id: card for card in found if card.rubber_id}
+        self.sheets = {
+            match.id: by_rubber.get(current[match.id].id) if match.id in current else by_match.get(match.id)
+            for match in matches
+        }
+
+    def in_play(self, match: Match) -> bool:
+        """Scoring has started: a point on the sheet, or for a tie an earlier rubber already decided."""
+        if self.decided.get(match.id):
+            return True
+        sheet = self.sheets.get(match.id)
+        return sheet is not None and sheet.revision > 0
 
 
 def in_play(match: Match) -> bool:
-    """Scoring has started: a point on the sheet, or for a tie an earlier rubber already decided."""
-    if match.draw.event.is_team and match.rubbers.filter(status=Rubber.Status.COMPLETED).exists():
-        return True
-    sheet = _sheet_in_play(match)
-    return sheet is not None and sheet.revision > 0
+    reservation = match.reservations.filter(status=Reservation.Status.ACTIVE).first()
+    return reservation is not None and Live([reservation]).in_play(match)
 
 
-def describe_table(reservation: Reservation, now=None) -> dict:
+def describe_table(reservation: Reservation, live: Live, now=None) -> dict:
     """What the board shows about the match on a table: its state, its call, its umpire and its score."""
     now = now or timezone.now()
     match = reservation.match
     event: Event = match.draw.event
-    sheet = _sheet_in_play(match)
-    playing = in_play(match)
+    sheet = live.sheets.get(match.id)
+    playing = live.in_play(match)
     reported = {side: getattr(reservation, f"{side}_reported_at") for side in SIDES}
     called_at = reservation.called_at or reservation.created_at
     grace_until = called_at + timedelta(minutes=event.call_grace_minutes)
@@ -205,7 +233,8 @@ def describe_table(reservation: Reservation, now=None) -> dict:
     else:
         state = CALLED
     no_show = [side for side in SIDES if state == CALLED and reported[side] is None and now >= grace_until]
-    calls = list(reservation.calls.all())
+    # Calls since the first call of this stint: a move to another table calls the match there too.
+    calls = [call for call in reservation.match.calls.all() if call.called_at >= called_at]
     score = None
     if sheet is not None and sheet.revision > 0:
         score = {
@@ -214,7 +243,7 @@ def describe_table(reservation: Reservation, now=None) -> dict:
             "rubber": sheet.rubber.position if sheet.rubber_id else None,
         }
     if event.is_team:
-        won = list(match.rubbers.filter(status=Rubber.Status.COMPLETED).values_list("winner_id", flat=True))
+        won = live.decided.get(match.id, [])
         score = {
             **(score or {"games_won": [0, 0], "points": [0, 0], "rubber": None}),
             "rubbers_won": [won.count(match.entry_a_id), won.count(match.entry_b_id)],
@@ -235,6 +264,16 @@ def describe_table(reservation: Reservation, now=None) -> dict:
     }
 
 
+def table_state(blocked, live: dict | None, free: bool) -> str:
+    """One word for the board: blocked first, then what the match on it is doing; a table another
+    tournament's match holds at a shared venue counts as in play."""
+    if blocked:
+        return BLOCKED
+    if live:
+        return live["state"]
+    return FREE if free else IN_PLAY
+
+
 def desk(tournament: Tournament) -> list[dict]:
     """The check-in desk: every accepted entry of the tournament's events still to play, those not yet
     checked in first, then by event and name."""
@@ -252,7 +291,7 @@ def desk(tournament: Tournament) -> list[dict]:
             "id": entry.id,
             "event_id": entry.event_id,
             "event_name": entry.event.name,
-            "title": service._entry_title(entry),
+            "title": service.entry_title(entry),
             "checked_in_at": entry.checked_in_at,
             "checked_in_by": entry.checked_in_by.display_name if entry.checked_in_by else "",
         }

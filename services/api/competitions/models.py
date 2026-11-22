@@ -862,6 +862,9 @@ class MatchDayLog(models.Model):
         TABLE_UNBLOCKED = "table_unblocked", "Table back in use"
         RESULT_ENTERED = "result_entered", "Result entered"
         RESULT_CORRECTED = "result_corrected", "Result corrected"
+        CORRECTION_SETTLED = "correction_settled", "Later match settled after a correction"
+        AUTO_ON = "auto_on", "Automatic dispatch switched on"
+        AUTO_OFF = "auto_off", "Automatic dispatch switched off"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")

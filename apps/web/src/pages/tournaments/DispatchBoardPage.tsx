@@ -10,7 +10,8 @@ import { Toggle } from "@/components/forms/Toggle"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys } from "@/lib/draws"
+import { drawKeys, getMatch } from "@/lib/draws"
+import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import {
   blockTable,
   callAgain,
@@ -362,7 +363,7 @@ function OnTable({ tournamentId, table, freeTables, timeZone }: { tournamentId: 
           Rubbers {table.score.rubbers_won[0]}–{table.score.rubbers_won[1]}
         </p>
       )}
-      <p className="text-sm">{table.umpire ? `Umpire: ${table.umpire}.` : "No umpire yet: choose one on the match page."}</p>
+      <BoardUmpire tournamentId={tournamentId} table={table} />
       {call && !inPlay && (
         <>
           <p className="text-sm text-muted-foreground">
@@ -434,6 +435,27 @@ function OnTable({ tournamentId, table, freeTables, timeZone }: { tournamentId: 
         </form>
       )}
     </>
+  )
+}
+
+/** The umpire of the match on a table, and choosing or changing them without leaving the board. */
+function BoardUmpire({ tournamentId, table }: { tournamentId: string; table: BoardTable }) {
+  const playing = table.playing!
+  const [open, setOpen] = useState(false)
+  const match = useQuery({ queryKey: drawKeys.match(playing.match_id), queryFn: () => getMatch(tournamentId, playing.event_id, playing.match_id), enabled: open })
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="flex flex-wrap items-center gap-x-2 text-sm">
+        {table.umpire ? `Umpire: ${table.umpire}.` : "No umpire yet."}
+        <button type="button" className="min-h-10 font-semibold text-brand-blue underline-offset-4 hover:underline" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Close" : table.umpire ? "Change" : "Choose one"}
+        </button>
+      </p>
+      {open && match.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {open && match.isError && <FormAlert>{errorMessage(match.error)}</FormAlert>}
+      {open && match.data && !match.data.scoring && <p className="text-sm text-muted-foreground">A tie's umpires are chosen rubber by rubber on the match page.</p>}
+      {open && match.data?.scoring && <UmpireControl scoring={match.data.scoring} ids={{ tournamentId, eventId: playing.event_id, matchId: playing.match_id }} what="this match" />}
+    </div>
   )
 }
 

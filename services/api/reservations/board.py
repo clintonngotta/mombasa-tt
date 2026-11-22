@@ -136,7 +136,7 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
         # A tie's later rubbers need its other players: the whole team counts as about to play.
         teams = [match.entry_a, match.entry_b] if match.draw.event.is_team else []
         needed = [(user.id, user.display_name) for user in row.people]
-        needed += [(entry.id, service._entry_title(entry)) for entry in teams]
+        needed += [(entry.id, service.entry_title(entry)) for entry in teams]
         if row.umpire is not None:
             needed.append((row.umpire.id, f"The umpire, {row.umpire.display_name},"))
         shared = next((name for key, name in needed if key in going), None)
@@ -162,7 +162,7 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
 
 
 def _title(match: Match) -> str:
-    return f"{service._entry_title(match.entry_a)} v {service._entry_title(match.entry_b)}"
+    return f"{service.entry_title(match.entry_a)} v {service.entry_title(match.entry_b)}"
 
 
 def _label(match: Match, shape: dict) -> str:
@@ -207,23 +207,18 @@ def build(tournament: Tournament) -> dict:
     on_tables = {held.table_id: held for held in service.active_for(tournament)}
     idle = _idle(tournament, rows, to_come)
     blocks = control.blocks_at(tournament.venue_id) if tournament.venue_id else {}
+    live_now = control.Live(list(on_tables.values()))
     now = timezone.now()
     tables = []
     for state in service.tables_of(tournament):
         held = on_tables.get(state["id"])
         row = suggested.get(state["id"])
         blocked = blocks.get(state["id"])
-        live = control.describe_table(held, now) if held else None
+        live = control.describe_table(held, live_now, now) if held else None
         tables.append(
             {
                 **state,
-                "state": control.BLOCKED
-                if blocked
-                else live["state"]
-                if live
-                else control.FREE
-                if state["free"]
-                else control.IN_PLAY,  # another tournament's match at a shared venue
+                "state": control.table_state(blocked, live, state["free"]),
                 "block": {
                     "reason": blocked.reason,
                     "reason_label": blocked.get_reason_display(),
@@ -251,8 +246,8 @@ def build(tournament: Tournament) -> dict:
                 "event_id": row.match.draw.event_id,
                 "event_name": row.match.draw.event.name,
                 "label": _label(row.match, shape),
-                "a": service._entry_title(row.match.entry_a),
-                "b": service._entry_title(row.match.entry_b),
+                "a": service.entry_title(row.match.entry_a),
+                "b": service.entry_title(row.match.entry_b),
                 "planned_at": row.match.scheduled_at,
                 "ready_since": row.ready_since,
                 "state": row.state,

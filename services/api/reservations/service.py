@@ -252,7 +252,7 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
             for entry in (held.match.entry_a, held.match.entry_b):
                 if entry.id in sides:
                     found.append(
-                        Blocked("team_busy", f"{_entry_title(entry)} is playing a tie on {held.table.label}.")
+                        Blocked("team_busy", f"{entry_title(entry)} is playing a tie on {held.table.label}.")
                     )
     busy = Hold.objects.filter(user__in=people, active=True).select_related("user", "reservation__table")
     for hold in busy:
@@ -269,7 +269,7 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
         found.append(Blocked("umpire_busy", f"The umpire, {_name(umpire)}, is playing a match right now."))
     absent = [e for e in (match.entry_a, match.entry_b) if not jumbles.checked_in(e)]
     if absent:
-        names = " and ".join(_entry_title(entry) for entry in absent)
+        names = " and ".join(entry_title(entry) for entry in absent)
         verb = "hasn't" if len(absent) == 1 else "haven't"
         found.append(Blocked("not_checked_in", f"{names} {verb} checked in."))
     now = timezone.now()
@@ -287,7 +287,7 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
     return found
 
 
-def _entry_title(entry: Entry) -> str:
+def entry_title(entry: Entry) -> str:
     return entry.team_name or " / ".join(place.user.display_name for place in entry.players.all())
 
 
@@ -371,7 +371,7 @@ def recall(match: Match, actor, reason: str) -> None:
         table=reservation.table,
         reason=reason,
     )
-    _off_the_table(match)
+    off_the_table(match)
     look_for_the_next(match.draw.event.tournament, actor)
 
 
@@ -389,7 +389,7 @@ def look_for_the_next(tournament: Tournament, actor=None) -> None:
         logger.exception("Automatic dispatch failed for tournament %s", tournament.id)
 
 
-def _off_the_table(match: Match) -> None:
+def off_the_table(match: Match) -> None:
     match.table = None
     match.dispatched_at = None
     match.save(update_fields=["table", "dispatched_at"])
@@ -410,7 +410,7 @@ def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
     for reservation in left.select_related("match"):
         lock()
         release(reservation, actor, Reservation.Ending.CLOSED)
-        _off_the_table(reservation.match)
+        off_the_table(reservation.match)
     look_for_the_next(event.tournament, actor)
 
 
@@ -483,7 +483,7 @@ def active_for(tournament: Tournament) -> list[Reservation]:
         )
         .select_related("table", "match__draw__event", "match__entry_a", "match__entry_b", "created_by")
         .prefetch_related(
-            "holds__user", "calls", "match__entry_a__players__user", "match__entry_b__players__user"
+            "holds__user", "match__calls", "match__entry_a__players__user", "match__entry_b__players__user"
         )
         .order_by("table__position", "created_at")
     )
@@ -499,8 +499,8 @@ def describe(reservation: Reservation) -> dict:
         "event_id": match.draw.event_id,
         "event_name": match.draw.event.name,
         "match_id": match.id,
-        "a": _entry_title(match.entry_a),
-        "b": _entry_title(match.entry_b),
+        "a": entry_title(match.entry_a),
+        "b": entry_title(match.entry_b),
         "since": reservation.created_at,
         "automatic": reservation.automatic,
         "people": sorted(
