@@ -317,7 +317,7 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
         if sent["sequence"] != scorecard.revision + 1:
             refused = {"sequence": sent["sequence"], "code": "sequence_gap"}
             break
-        refusal = _refused_for(scorecard, actor, sent["event"])
+        refusal = _refused_for(scorecard, actor, sent["event"], scoring.state)
         if refusal:
             refused = {"sequence": sent["sequence"], "code": refusal}
             break
@@ -355,9 +355,11 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
     return {"accepted": accepted, "refused": refused}
 
 
-def _refused_for(scorecard: Scorecard, actor, event) -> str | None:
-    """What the server refuses beyond the rules: a note too long to keep, and a disqualification from
-    anybody but the referee (decision D5)."""
+def _refused_for(scorecard: Scorecard, actor, event, state: dict) -> str | None:
+    """What the server refuses beyond the engine: a note too long to keep, a disqualification from
+    anybody but the referee (decision D5), and a time-out before a game's first rally (3.4.4.2.3). The
+    engine accepted that time-out until TASK-083, so it is refused here, when an event arrives, and a
+    sheet recorded before still replays."""
     if not isinstance(event, dict):
         return None
     note = event.get("note")
@@ -365,6 +367,8 @@ def _refused_for(scorecard: Scorecard, actor, event) -> str | None:
         return "invalid_note"
     if event.get("type") == "disqualify" and not may_disqualify(scorecard, actor):
         return "referee_only"
+    if event.get("type") == "timeout" and state["status"] == "in_progress" and not sum(state["points"]):
+        return "not_between_rallies"
     return None
 
 

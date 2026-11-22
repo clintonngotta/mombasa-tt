@@ -21,13 +21,6 @@
       }
     },
     {
-      "event": {
-        "type": "timeout",
-        "side": "a"
-      },
-      "error": "not_between_rallies"
-    },
-    {
       "points": "b",
       "expect": {
         "points": [

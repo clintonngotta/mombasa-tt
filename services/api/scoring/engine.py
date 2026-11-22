@@ -219,9 +219,6 @@ def _timeout(config: dict, state: dict, event: dict) -> dict:
     # 3.4.4.2: one time-out for each player or pair in an individual match.
     if state["timeouts"][SIDES.index(side)]:
         raise ScoringError("timeout_used")
-    # 3.4.4.2.3: claimed only between rallies in a game, not before a game's first rally.
-    if sum(state["points"]) == 0:
-        raise ScoringError("not_between_rallies")
     # 3.4.4.2.3: both sides may claim one at the same time; play resumes when both are ready.
     state["timeouts"][SIDES.index(side)] = True
     state["timeout_running"][SIDES.index(side)] = True

@@ -3,6 +3,8 @@ time-outs, suspensions, expedite, retirement and disqualification as the umpire 
 referee disqualifies; a retirement or disqualification keeps the points played and rates nothing; a team
 tie carries its warnings into later rubbers."""
 
+import uuid
+
 import pytest
 
 from competitions.models import Match, OfficialResult, Rubber
@@ -173,3 +175,16 @@ def test_what_a_rubber_carries_in_is_fixed_once_it_is_scored(staff, tie):  # noq
     later.refresh_from_db()
     assert service.config_of(later)["carry"]["advisers"] == [1, 0]
     assert "carry" not in service.config_of(later, with_carry=False)
+
+
+def test_a_time_out_is_refused_before_a_games_first_rally_but_an_old_sheet_still_replays(staff, club, final):  # noqa: F811
+    from scoring import service
+
+    deck = deck_for(staff, club, final, umpire_with(club, "zuri@example.com", scorers(club)))
+    deck.send(START)
+    assert deck.send({"type": "timeout", "side": "a"})["refused"]["code"] == "not_between_rallies"
+    deck.sequence -= 1
+    # A sheet recorded before the rule, with its time-out at 0-0, replays as it was.
+    sheet = Scorecard.objects.get(pk=deck.path.rstrip("/").split("/")[-1])
+    sheet.events.create(id=uuid.uuid4(), sequence=2, payload={"type": "timeout", "side": "a"})
+    assert service.replayed(sheet).state["timeouts"] == [True, False]

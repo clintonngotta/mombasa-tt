@@ -106,7 +106,6 @@ export type ErrorCode =
   | "not_suspended"
   | "expedite_on"
   | "expedite_too_late"
-  | "not_between_rallies"
   | "nothing_to_undo"
   | "unknown_event"
   | "invalid_config"
@@ -310,8 +309,6 @@ function timeout(state: State, side: Side): State {
   if (side !== "a" && side !== "b") throw new ScoringError("unknown_event")
   // 3.4.4.2: one time-out for each player or pair in an individual match.
   if (state.timeouts[index(side)]) throw new ScoringError("timeout_used")
-  // 3.4.4.2.3: claimed only between rallies in a game, not before a game's first rally.
-  if (state.points[0] + state.points[1] === 0) throw new ScoringError("not_between_rallies")
   const next = copy(state)
   next.timeouts[index(side)] = true
   next.timeout_running[index(side)] = true
