@@ -62,8 +62,10 @@ export const joinFromInvitation = (token: string, input: Schemas["InvitationJoin
 export const claimByLink = (token: string) => api<MyClaim>(`/auth/invitations/${encodeURIComponent(token)}/claim/`, { body: {} })
 
 /** A WhatsApp share link for an invitation, to the player's number when staff have it. */
-export function whatsappLink(link: string, name: string, club: string | undefined, phone?: string | null) {
-  const text = `Hi ${name}, ${club || "an organizer"} has entered you on Coast TT. Join here to see your entries and check your details: ${link}`
+export function whatsappLink(link: string, name: string, club: string | undefined, phone?: string | null, member = false) {
+  const text = member
+    ? `Hi ${name}, ${club || "the club"} has added you as a member on Coast TT. Set your password and sign in here: ${link}`
+    : `Hi ${name}, ${club || "an organizer"} has entered you on Coast TT. Join here to see your entries and check your details: ${link}`
   const to = phone ? phone.replace(/^\+/, "") : ""
   return `https://wa.me/${to}?text=${encodeURIComponent(text)}`
 }

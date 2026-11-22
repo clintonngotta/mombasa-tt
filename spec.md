@@ -52,6 +52,8 @@ The PWA uses secure HttpOnly session cookies with CSRF protection. Revoke sessio
 
 **Organizations — Phase 1.** Register club, facility, or both. Creator becomes first admin. Players can join multiple organizations. Join requests are pending/approved/rejected; invited members explicitly accept. Public tournament entry is independent of host membership. Organization switching changes operational context, not the global player identity. Platform operator authority is separate from club roles.
 
+*Adding members directly (user request, 2026-11-22).* Besides invitations, club staff with members.manage can add someone directly by name and an email, a phone or both. The person is a member at once (shown to staff as "added by staff, hasn't signed in yet") and gets a single-use link, valid 14 days, by email, or shared by staff over WhatsApp or SMS. From it they set a password and sign in. Somebody already on Coast TT signs in from the same link and the membership moves to their account (REQ-003 guest claim; a clash goes to staff). Adding answers the same whether or not the address is registered. Tournament staff add entrants the same way: they pick registered players from the directory, and anyone else gets a guest entry and the same link (REQ-003).
+
 *Finding a club (user decision, 2026-11-19).* Signed-in players find clubs by name, country, region and city, and open a club's profile before joining: location and directions, its venues in use, a description, weekly training hours and its published tournaments that have not ended. Nothing else (members, roles, training plans, drills, finances) is shown until they join. Club staff with roles.manage edit the description; training.manage edits the training hours.
 
 ### REQ-005

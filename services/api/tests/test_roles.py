@@ -283,7 +283,7 @@ def test_members_list_shows_names_and_roles_only(admin, club):
     add_member(club, player, "captain")
     results = logged_in(admin).get(f"{ORGS}{club.id}/members/?search=player").json()["results"]
     assert len(results) == 1
-    assert set(results[0]) == {"id", "user", "display_name", "roles", "joined_at"}
+    assert set(results[0]) == {"id", "user", "display_name", "roles", "joined_at", "is_guest"}
     assert [r["key"] for r in results[0]["roles"]] == ["captain"]
 
 

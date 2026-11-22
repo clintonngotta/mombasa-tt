@@ -3911,7 +3911,13 @@ export interface paths {
          */
         get: operations["organizations_members_list"];
         put?: never;
-        post?: never;
+        /**
+         * @description Add someone to the club directly. They become a member at once and get a link (by email, or
+         *     `invite_link` for staff to share by phone, shown this once) to set a password and sign in. If they
+         *     already have an account, the same link signs them in and moves the membership to it. The reply is
+         *     the same either way, so adding never reveals who is registered.
+         */
+        post: operations["organizations_members_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6495,6 +6501,19 @@ export interface components {
          * @enum {string}
          */
         ActivityStatusEnum: "draft" | "published" | "cancelled";
+        /** @description A member just added, with the link to share. Shown this once: only its hash is kept. */
+        AddedMember: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly user: string;
+            readonly display_name: string;
+            readonly roles: components["schemas"]["RoleSummary"][];
+            /** Format: date-time */
+            readonly joined_at: string;
+            readonly is_guest: boolean;
+            readonly invite_link: string;
+        };
         AdminHandover: {
             /** Format: uuid */
             readonly id: string;
@@ -8384,6 +8403,8 @@ export interface components {
             phone: string;
             /** Format: date-time */
             expires_at: string;
+            /** @description Staff added them to the club as a member. */
+            is_member: boolean;
             entries: components["schemas"]["InvitationEntry"][];
         };
         InvitationEntry: {
@@ -8919,7 +8940,10 @@ export interface components {
              */
             secretary_id?: string | null;
         };
-        /** @description Staff view of a member: display name and roles, never email or contact details. */
+        /**
+         * @description Staff view of a member: display name and roles, never email or contact details. `is_guest` marks a
+         *     member staff added who hasn't joined from their link yet.
+         */
         Member: {
             /** Format: uuid */
             readonly id: string;
@@ -8929,6 +8953,16 @@ export interface components {
             readonly roles: components["schemas"]["RoleSummary"][];
             /** Format: date-time */
             readonly joined_at: string;
+            readonly is_guest: boolean;
+        };
+        /**
+         * @description Someone staff add to the club directly: a name, and an email (we send the link), a phone (staff
+         *     share the link) or both.
+         */
+        MemberAddRequest: {
+            display_name: string;
+            email?: string;
+            phone?: string | null;
         };
         /**
          * @description A custom member field definition (REQ-005). Its type is fixed once created, so existing values
@@ -21542,6 +21576,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedMemberList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_members_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberAddRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddedMember"];
                 };
             };
             /** @description Error envelope */

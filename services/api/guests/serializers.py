@@ -156,6 +156,7 @@ class InvitationDetailSerializer(serializers.Serializer):
     email = serializers.CharField()
     phone = serializers.CharField()
     expires_at = serializers.DateTimeField()
+    is_member = serializers.BooleanField(help_text="Staff added them to the club as a member.")
     entries = InvitationEntrySerializer(many=True)
 
 

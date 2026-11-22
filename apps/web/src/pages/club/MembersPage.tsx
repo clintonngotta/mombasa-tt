@@ -5,8 +5,10 @@ import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
-import { errorMessage } from "@/lib/api"
+import { ApiError, errorMessage } from "@/lib/api"
+import { InviteLink } from "@/components/guests/InviteLink"
 import {
+  addMember,
   can,
   clubKeys,
   getMemberValues,
@@ -57,6 +59,7 @@ function MemberList({ membership }: { membership: Membership }) {
     <>
       <p className="text-muted-foreground">{membership.organization.name}</p>
       <AdminPanel membership={membership} />
+      {can(membership, "members.manage") && <AddMember membership={membership} />}
       <Field label="Search members" type="search" value={term} onChange={(e) => setTerm(e.target.value)} hint="By display name" />
       {accessLost && <AccessLost />}
       {members.isPending && <p className="text-muted-foreground">Loading members…</p>}
@@ -71,6 +74,75 @@ function MemberList({ membership }: { membership: Membership }) {
         <p className="text-sm text-muted-foreground">
           Showing {items.length} of {members.data.count}. Search to narrow the list.
         </p>
+      )}
+    </>
+  )
+}
+
+/** Add someone to the club directly. They are a member at once and get a link to set a password and sign
+ * in; somebody already on Coast TT uses the same link to sign in and take the membership. */
+function AddMember({ membership }: { membership: Membership }) {
+  const orgId = membership.organization.id
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({ display_name: "", email: "", phone: "" })
+  const add = useMutation({
+    mutationFn: (sent: typeof form) => addMember(orgId, { display_name: sent.display_name, email: sent.email, phone: sent.phone || null }),
+    onSuccess: () => {
+      setForm({ display_name: "", email: "", phone: "" })
+      setOpen(false)
+      void queryClient.invalidateQueries({ queryKey: clubKeys.membersAll(orgId) })
+    },
+  })
+  const fieldErrors = add.error instanceof ApiError ? add.error.fieldErrors() : {}
+  const added = add.data
+  const hasFieldError = Object.keys(fieldErrors).length > 0
+
+  return (
+    <>
+      {added?.invite_link && (
+        <InviteLink
+          member
+          link={added.invite_link}
+          name={added.display_name}
+          club={membership.organization.name}
+          phone={add.variables?.phone || null}
+          emailed={!!add.variables?.email}
+          onDone={() => add.reset()}
+        />
+      )}
+      {!open ? (
+        <Button variant="outline" className="self-start" onClick={() => setOpen(true)}>
+          Add a member
+        </Button>
+      ) : (
+        <form
+          className="flex flex-col gap-3 rounded-xl border bg-card p-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            add.mutate({ display_name: form.display_name.trim(), email: form.email.trim(), phone: form.phone.trim() })
+          }}
+        >
+          <h2 className="text-lg font-bold">Add a member</h2>
+          <p className="text-sm text-muted-foreground">
+            They join the club now and get a link to set a password and sign in. If they already use Coast TT, the same link
+            signs them in and adds the membership to their account.
+          </p>
+          <Field label="Name" required maxLength={80} value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} error={fieldErrors.display_name} />
+          <div className="flex flex-wrap gap-3">
+            <Field label="Email" type="email" optional className="min-w-[200px] flex-1" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} error={fieldErrors.email} hint="We email the link." />
+            <Field label="Phone" type="tel" inputMode="tel" optional className="min-w-[160px] flex-1" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} error={fieldErrors.phone} hint="You share the link by WhatsApp or SMS." />
+          </div>
+          {add.isError && !hasFieldError && <FormAlert>{errorMessage(add.error, "We couldn't add the member.")}</FormAlert>}
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" disabled={add.isPending || !form.display_name.trim() || (!form.email.trim() && !form.phone.trim())}>
+              {add.isPending ? "Adding…" : "Add and send link"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       )}
     </>
   )
@@ -127,7 +199,10 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
           {name}
           {isSelf && <span className="font-normal text-muted-foreground"> (you)</span>}
         </span>
-        <span className="text-sm text-muted-foreground">{roleNames(member.roles)}</span>
+        <span className="text-sm text-muted-foreground">
+          {roleNames(member.roles)}
+          {member.is_guest && " · added by staff, hasn't signed in yet"}
+        </span>
       </span>
       {!editing && !confirmRemove && !showDetails && !confirmAdmin && (
         <div className="flex gap-2">
@@ -149,7 +224,7 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
               Roles
             </Button>
           )}
-          {iAmAdmin && !isSelf && (
+          {iAmAdmin && !isSelf && !member.is_guest && (
             <Button variant="outline" aria-label={`Make ${name} the admin`} onClick={() => setConfirmAdmin(true)}>
               Make admin
             </Button>

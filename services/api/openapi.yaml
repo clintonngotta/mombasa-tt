@@ -9214,6 +9214,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_members_create
+      description: |-
+        Add someone to the club directly. They become a member at once and get a link (by email, or
+        `invite_link` for staff to share by phone, shown this once) to set a password and sign in. If they
+        already have an account, the same link signs them in and moves the membership to it. The reply is
+        the same either way, so adding never reveals who is registered.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberAddRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddedMember'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/members/{id}/fields/:
     get:
       operationId: organizations_members_fields_list
@@ -15303,6 +15340,45 @@ components:
         * `draft` - Draft
         * `published` - Published
         * `cancelled` - Cancelled
+    AddedMember:
+      type: object
+      description: 'A member just added, with the link to share. Shown this once:
+        only its hash is kept.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleSummary'
+          readOnly: true
+        joined_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_guest:
+          type: boolean
+          readOnly: true
+        invite_link:
+          type: string
+          readOnly: true
+      required:
+      - display_name
+      - id
+      - invite_link
+      - is_guest
+      - joined_at
+      - roles
+      - user
     AdminHandover:
       type: object
       properties:
@@ -20090,6 +20166,9 @@ components:
         expires_at:
           type: string
           format: date-time
+        is_member:
+          type: boolean
+          description: Staff added them to the club as a member.
         entries:
           type: array
           items:
@@ -20100,6 +20179,7 @@ components:
       - expires_at
       - guest_name
       - invited_by_name
+      - is_member
       - organization_name
       - phone
     InvitationEntry:
@@ -21385,8 +21465,9 @@ components:
       - title
     Member:
       type: object
-      description: 'Staff view of a member: display name and roles, never email or
-        contact details.'
+      description: |-
+        Staff view of a member: display name and roles, never email or contact details. `is_guest` marks a
+        member staff added who hasn't joined from their link yet.
       properties:
         id:
           type: string
@@ -21408,12 +21489,38 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_guest:
+          type: boolean
+          readOnly: true
       required:
       - display_name
       - id
+      - is_guest
       - joined_at
       - roles
       - user
+    MemberAddRequest:
+      type: object
+      description: |-
+        Someone staff add to the club directly: a name, and an email (we send the link), a phone (staff
+        share the link) or both.
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          nullable: true
+          maxLength: 32
+      required:
+      - display_name
     MemberField:
       type: object
       description: |-

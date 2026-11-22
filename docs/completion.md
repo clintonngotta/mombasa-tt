@@ -1,14 +1,14 @@
 # Coast TT: project completion
 
-Updated 2026-11-21. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #84 and TASK-035's web half, with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21. Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
+Updated 2026-11-22. Counted from the checkboxes in [tasks.md](../tasks.md) on `feat/staff-add-members` (cut from `dev`), with TASK-132 (staff add members directly) added and done from the owner's request of 2026-11-22. PRs #89 to #93 (TASK-082 to TASK-085 and shared throttles) are still open, so their tasks aren't counted here. Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
 
 ## Summary
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 81 | 131 | 50 | 62% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 81 | 127 | 46 | 64% |
-| **Phase 1 launch** | **70** | **96** | **26** | **73%** |
+| All tasks | 82 | 132 | 50 | 62% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 82 | 128 | 46 | 64% |
+| **Phase 1 launch** | **71** | **97** | **26** | **73%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -22,7 +22,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: competitions and operations | 19 | 24 | TASK-034, TASK-082, TASK-083, TASK-084, TASK-085 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
-| Current feature checklist | 31 | 44 | TASK-107 to TASK-110, TASK-123 to TASK-131 |
+| Current feature checklist | 32 | 45 | TASK-107 to TASK-110, TASK-123 to TASK-131 |
 | Phase 2: reservations and finances | 7 | 8 | TASK-079 |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
@@ -30,7 +30,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **81** | **131** | **50** |
+| **All tasks** | **82** | **132** | **50** |
 
 ## Left for Phase 1 launch (26)
 
@@ -59,3 +59,4 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-21 | 80 | 122 | 66% | 79% (69/87) | TASK-075 (welfare dues and linked visits) and TASK-116 (role-based navigation) merged into dev |
 | 2026-11-21 | 80 | 131 | 61% | 72% (69/96) | TASK-123 to TASK-131 added (squads, external finance, location check-in, apologies, order of play, next match, penalties, reviews, feedback forms) |
 | 2026-11-21 | 81 | 131 | 62% | 73% (70/96) | TASK-035 done (public tournament, results, rankings and ratings pages signed out; organizer dashboard screen) |
+| 2026-11-22 | 82 | 132 | 62% | 73% (71/97) | TASK-132 added and done (staff add club members directly; they set a password from a link) |
