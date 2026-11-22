@@ -235,9 +235,10 @@ ACCESS: dict[str, dict[str, str]] = {
     # Published tournaments are public (TASK-035): a draft ceremony is still the staff's (test_public_views).
     "tournament-ceremony": {"get": PUBLIC, "put": STAFF},
     # Results announcements (TASK-085): the feed of a published tournament is public; drafts and every
-    # change are the host's competition staff's. The detail route is exercised on a draft (see kwargs).
+    # change are the host's competition staff's. The detail route is exercised on a draft (see kwargs),
+    # which is "not found" for everyone else: its text is checked with the private markers below.
     "tournament-announcements": {"get": PUBLIC, "post": STAFF},
-    "tournament-announcement": {"get": STAFF, "patch": STAFF, "delete": STAFF},
+    "tournament-announcement": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
     "tournament-announcement-publish": {"post": STAFF},
     "tournament-announcement-amend": {"post": STAFF},
     "tournament-announcement-card": {"get": PUBLIC},

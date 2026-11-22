@@ -159,7 +159,7 @@ def test_publishing_freezes_it_notifies_and_a_correction_brings_an_amendment(sta
     assert published.json()["status"] == "published" and published.json()["published_at"]
     players = {place.user_id for entry in (first.entry_a, first.entry_b) for place in entry.players.all()}
     told = set(
-        Notification.objects.filter(subject=f"announcement:{made['id']}").values_list("user_id", flat=True)
+        Notification.objects.filter(subject=f"announcement:{made['id']}").values_list("recipient_id", flat=True)
     )
     assert players <= told
     # Frozen.
