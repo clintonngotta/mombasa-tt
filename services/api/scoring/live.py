@@ -7,7 +7,7 @@ view has nothing it could score with (REQ-010). Pages hear that a match changed 
 socket and fetch this again; it is never pushed with the message.
 """
 
-import logging
+from collections.abc import Callable
 
 from django.core.cache import cache
 from django.db.models import Max, Prefetch, Q
@@ -15,10 +15,9 @@ from redis.exceptions import RedisError
 
 from competitions import drawing, official
 from competitions.models import DrawVersion, Match, Rubber, Tournament
+from core.cache import warn_unavailable
 
 from .models import MatchIncident, Scorecard
-
-logger = logging.getLogger(__name__)
 
 # A tournament has as many matches in play as it has tables; this is a ceiling, not a page size.
 MAX_LIVE = 64
@@ -203,28 +202,27 @@ def cache_key(tournament_id) -> str:
     return f"live:{tournament_id}"
 
 
-def shown_live(tournament: Tournament) -> list[dict]:
-    """live_matches, shared by every viewer for a second. The list is the same for everybody who may see
-    the tournament (the caller checks that first), so sharing it shows nobody anything new."""
+def shown_live(tournament: Tournament, render: Callable[[list[dict]], list]) -> list:
+    """live_matches as `render` turns it into the answer, shared by every viewer for a second. The list
+    is the same for everybody who may see the tournament (the caller checks that first), so sharing it
+    shows nobody anything new. While Redis is down every viewer gets it worked out afresh."""
     key = cache_key(tournament.id)
-    try:
-        found = cache.get(key)
-    except RedisError:
-        logger.warning("live list cache unavailable")
-        return live_matches(tournament)
+    found = _quietly(cache.get, key)
     if found is None:
-        found = live_matches(tournament)
-        try:
-            cache.set(key, found, CACHE_SECONDS)
-        except RedisError:
-            logger.warning("live list cache unavailable")
+        found = render(live_matches(tournament))
+        _quietly(cache.set, key, found, CACHE_SECONDS)
     return found
 
 
 def forget(tournament_id) -> None:
     """A score changed: the next viewer gets it fresh, not the second-old list. If Redis is down the
     score is still saved; the old list lasts at most a second there."""
+    _quietly(cache.delete, cache_key(tournament_id))
+
+
+def _quietly(call, *args):
     try:
-        cache.delete(cache_key(tournament_id))
+        return call(*args)
     except RedisError:
-        logger.warning("live list cache unavailable")
+        warn_unavailable("live list")
+        return None

@@ -3,17 +3,22 @@ the login, email and invitation allowances refuse, the others count in the proce
 list and scoring carry on without its one-second copy."""
 
 import pytest
+from django.contrib.auth.models import AnonymousUser
 from django.core.cache import caches
+from django.test import RequestFactory
 from redis.exceptions import ConnectionError as RedisConnectionError
+from rest_framework.request import Request
 from rest_framework.test import APIClient
 from rest_framework.throttling import SimpleRateThrottle
 
 from core import throttling
+from core.cache import JsonSerializer
 from scoring import live
 
 from .conftest import PASSWORD, BrowserClient
-from .helpers import make_user
+from .helpers import logged_in, make_user
 from .test_live_scores import live_url, umpire_deck
+from .test_organizations import invitations_url
 from .test_umpire_scoring import START, final, point  # noqa: F401
 
 pytestmark = pytest.mark.django_db
@@ -25,7 +30,7 @@ class RedisDown:
     def _down(self, *args, **kwargs):
         raise RedisConnectionError("Redis is down")
 
-    get = set = delete = add = _down
+    get = set = delete = add = incr = _down
 
 
 @pytest.fixture
@@ -65,6 +70,46 @@ def test_sending_a_sign_in_email_is_refused_while_the_count_is_out_of_reach(coun
         "/api/v1/auth/password-reset/", {"email": "ama@example.com"}, format="json"
     )
     assert response.status_code == 429
+
+
+def test_sending_invitations_is_refused_while_the_count_is_out_of_reach(admin, club, monkeypatch):
+    sender = logged_in(admin)
+    monkeypatch.setattr(throttling, "caches", {"default": RedisDown(), "local": caches["local"]})
+    response = sender.post(invitations_url(club), {"email": "new@example.com"}, format="json")
+    assert response.status_code == 429
+
+
+def test_uploads_count_in_the_process_while_the_count_is_out_of_reach(counts_down, rates):
+    rates(uploads="2/min")
+
+    class UploadView:
+        throttle_scope = "uploads"
+
+    def allowed():
+        request = RequestFactory().post("/", REMOTE_ADDR="198.51.100.7")
+        request.user = AnonymousUser()
+        return throttling.ScopedThrottle().allow_request(Request(request), UploadView())
+
+    assert [allowed() for _ in range(3)] == [True, True, False]
+
+
+def test_requests_arriving_together_are_all_counted(rates):
+    """Each request adds one to the window's counter; none overwrites another's count."""
+    rates(uploads="5/min")
+    throttle = throttling.ScopedThrottle()
+    throttle.scope, throttle.num_requests, throttle.duration = "uploads", 5, 60
+    store = caches["default"]
+    assert [throttle.count(store, "same-client") for _ in range(6)] == [True] * 5 + [False]
+    assert 1.0 <= throttle.wait() <= 60
+
+
+def test_the_shared_cache_keeps_json_not_pickle():
+    serializer = JsonSerializer()
+    assert serializer.dumps(7) == 7  # Redis adds to plain numbers in place
+    stored = serializer.dumps([{"a": "Ama", "points": [3, 1], "rubber": None}])
+    assert stored == b'[{"a":"Ama","points":[3,1],"rubber":null}]'
+    assert serializer.loads(stored) == [{"a": "Ama", "points": [3, 1], "rubber": None}]
+    assert serializer.loads(b"7") == 7 and serializer.loads(b'"7"') == "7"
 
 
 def test_admin_login_is_refused_while_the_count_is_out_of_reach(client, counts_down):

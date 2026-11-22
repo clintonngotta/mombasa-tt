@@ -321,7 +321,13 @@ CACHES = {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": REDIS_URL,
             "KEY_PREFIX": "coast-tt",
-            "OPTIONS": {"socket_connect_timeout": 0.5, "socket_timeout": 0.5},
+            # JSON, not pickle (core/cache.py). No retries: one failed call is the answer.
+            "OPTIONS": {
+                "serializer": "core.cache.JsonSerializer",
+                "socket_connect_timeout": 0.5,
+                "socket_timeout": 0.5,
+                "retry_on_timeout": False,
+            },
         }
         if REDIS_URL
         else {**_LOCAL_CACHE, "LOCATION": "coast-tt-default"}
