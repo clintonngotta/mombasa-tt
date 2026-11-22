@@ -84,9 +84,18 @@ export function PlayPage() {
           {tournaments.isPending && <p className="text-muted-foreground">Loading tournaments…</p>}
           {tournaments.isError && <FormAlert>{errorMessage(tournaments.error, "We couldn't load tournaments.")}</FormAlert>}
           {tournaments.isSuccess && items.length === 0 && (
-            <p className="rounded-xl border border-dashed bg-card p-6 text-muted-foreground">
-              {term ? `No ${when} tournament matches “${term}”.` : when === "upcoming" ? "No tournaments are coming up yet." : "No past tournaments yet."}
-            </p>
+            <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed bg-card p-6 text-muted-foreground">
+              <p>{term ? `No ${when} tournament matches “${term}”.` : when === "upcoming" ? "No tournaments are coming up yet." : "No past tournaments yet."}</p>
+              {term ? (
+                <Button type="button" variant="outline" onClick={() => { setInput(""); setTerm("") }}>
+                  Clear search
+                </Button>
+              ) : (
+                <Link to="/events" className="font-semibold text-brand-blue underline">
+                  See the events calendar
+                </Link>
+              )}
+            </div>
           )}
           <ul className="flex flex-col gap-3">
             {items.map((tournament) => (
@@ -103,12 +112,17 @@ export function PlayPage() {
         </div>
       </section>
 
-      <NavCard to="/events" icon={CalendarRange} title="Events calendar" description="Tournaments across the country, on Coast TT and elsewhere, with live links" />
-      <NavCard to="/rankings" icon={Trophy} title="Rankings" description="Singles and doubles ratings from tournament matches" />
-      <NavCard to="/facilities" icon={Warehouse} title="Find a place to play" description="Halls with tables: hours, open now and what a visit includes" />
-      <NavCard to="/play/soda" icon={CupSoda} title="Soda games" description="Challenge a friend to a friendly match: unrated, no booking" />
-      <NavCard to="/quick-score" icon={Timer} title="Quick Score" description="Score a casual game on this phone: no rating, no booking" />
-      <NavCard to="/matches" icon={NotebookPen} title="Your match log" description="Matches you recorded yourself, with your progress" />
+      <section aria-labelledby="more-heading" className="flex flex-col gap-3">
+        <h2 id="more-heading" className="text-2xl font-bold">
+          More ways to play
+        </h2>
+        <NavCard to="/events" icon={CalendarRange} title="Events calendar" description="Tournaments across the country, on Coast TT and elsewhere, with live links" />
+        <NavCard to="/rankings" icon={Trophy} title="Rankings" description="Singles and doubles ratings from tournament matches" />
+        <NavCard to="/facilities" icon={Warehouse} title="Find a place to play" description="Halls with tables: hours, open now and what a visit includes" />
+        <NavCard to="/play/soda" icon={CupSoda} title="Soda games" description="Challenge a friend to a friendly match: unrated, no booking" />
+        <NavCard to="/quick-score" icon={Timer} title="Quick Score" description="Score a casual game on this phone: no rating, no booking" />
+        <NavCard to="/matches" icon={NotebookPen} title="Your match log" description="Matches you recorded yourself, with your progress" />
+      </section>
     </div>
   )
 }

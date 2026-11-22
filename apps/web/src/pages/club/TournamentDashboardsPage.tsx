@@ -32,7 +32,7 @@ export function TournamentDashboardsPage() {
           {active && <p className="text-muted-foreground">Hosted by {active.organization.name}. Open one for its dashboard.</p>}
         </div>
         {allowed && (
-          <Link to="/club/tournaments/new" className={buttonVariants({ variant: "outline" })}>
+          <Link to="/club/tournaments/new" className={buttonVariants()}>
             <Plus aria-hidden className="size-5" /> New tournament
           </Link>
         )}
@@ -41,9 +41,17 @@ export function TournamentDashboardsPage() {
       {hosted.isPending && allowed && <p className="text-muted-foreground">Loading tournaments…</p>}
       {hosted.isError && !accessLost && <FormAlert>{errorMessage(hosted.error, "We couldn't load your tournaments.")}</FormAlert>}
       {hosted.isSuccess && items.length === 0 && !accessLost && (
-        <p className="rounded-xl border border-dashed bg-card p-6 text-muted-foreground">
-          No tournaments yet. Create a draft, add its events, then publish it for players to see.
-        </p>
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed bg-card p-6">
+          <p className="font-semibold">No tournaments yet.</p>
+          <ol className="list-decimal pl-5 text-muted-foreground">
+            <li>Create a draft with the dates and venue.</li>
+            <li>Add its events, such as Men's Singles.</li>
+            <li>Publish it so players can enter.</li>
+          </ol>
+          <Link to="/club/tournaments/new" className={buttonVariants()}>
+            <Plus aria-hidden className="size-5" /> New tournament
+          </Link>
+        </div>
       )}
       <ul className="flex flex-col gap-3">
         {items.map((tournament) => (

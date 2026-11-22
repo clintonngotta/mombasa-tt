@@ -54,14 +54,16 @@ export function ClubPage() {
     <div className="flex max-w-[720px] flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-[32px] leading-9 font-bold">{active?.organization.name ?? "Club"}</h1>
-        <div className="flex gap-2">
-          <Link to="/club/find" className={buttonVariants({ variant: "outline" })}>
-            <Search aria-hidden className="size-5" /> Find a club
-          </Link>
-          <Link to="/club/new" className={buttonVariants({ variant: "outline" })}>
-            <Plus aria-hidden className="size-5" /> Register
-          </Link>
-        </div>
+        {active && (
+          <div className="flex gap-2">
+            <Link to="/club/find" className={buttonVariants({ variant: "outline" })}>
+              <Search aria-hidden className="size-5" /> Find a club
+            </Link>
+            <Link to="/club/new" className={buttonVariants({ variant: "outline" })}>
+              <Plus aria-hidden className="size-5" /> Register a club
+            </Link>
+          </div>
+        )}
       </div>
 
       {invitationCount > 0 && (
@@ -90,6 +92,14 @@ export function ClubPage() {
         <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed bg-card p-6">
           <p className="font-semibold">You haven't joined a club yet.</p>
           <p className="text-muted-foreground">Find your club and ask to join, or register one you run.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/club/find" className={buttonVariants()}>
+              <Search aria-hidden className="size-5" /> Find a club
+            </Link>
+            <Link to="/club/new" className={buttonVariants({ variant: "outline" })}>
+              <Plus aria-hidden className="size-5" /> Register a club
+            </Link>
+          </div>
         </div>
       )}
 
