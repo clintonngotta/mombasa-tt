@@ -300,4 +300,4 @@ class LiveViewSet(viewsets.GenericViewSet):
         tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
         if tournament.status == Tournament.Status.DRAFT and not sees_draft(request.user, tournament):
             raise Http404
-        return Response(LiveMatchSerializer(live.live_matches(tournament), many=True).data)
+        return Response(LiveMatchSerializer(live.shown_live(tournament), many=True).data)

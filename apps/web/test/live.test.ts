@@ -27,7 +27,9 @@ for (const path of LIVE_VIEWS) {
 
 test("the match page's live score is the read-only component", () => {
   const page = source("src/pages/tournaments/MatchPage.tsx")
-  const live = page.slice(page.indexOf("function Live("))
-  assert.ok(live.length > 0 && live.includes("<LiveScoreboard"))
+  const at = page.indexOf("function Live(")
+  assert.ok(at >= 0, "MatchPage has its Live component")
+  const live = page.slice(at)
+  assert.ok(live.includes("<LiveScoreboard"))
   assert.doesNotMatch(live, /UmpireControl|ResultControl|<button|onClick=/)
 })

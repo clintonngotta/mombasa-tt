@@ -69,7 +69,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - Shared incident fixtures run in both languages. Regenerate the parity file (`pnpm gen:parity`).
 - Umpire deck controls for each incident, at 390 px and on tablet.
 
-**TASK-084: live score channel (M)** `feat/live-scores`, after 035 (and 083 for incident display)
+**TASK-084: live score channel (M)** `feat/live-scores`, after 035 (and 083 for incident display). Done 2026-11-22 (see tasks.md); local trace p95 666 ms.
 - A per-match topic. The payload stays data-free; clients refetch, as now.
 - Score strip component. Live match detail showing server, games, timeouts, cards and status. Public and member live views, with polling as the fallback.
 - A test that live views never render umpire controls.

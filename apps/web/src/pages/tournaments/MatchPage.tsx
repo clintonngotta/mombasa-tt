@@ -33,7 +33,7 @@ export function MatchPage() {
     queryFn: () => getMatch(id, eventId, matchId),
     enabled: tournament.isSuccess,
     // While the match is being played and the socket is down, the page asks again every few seconds.
-    refetchInterval: (query) => (query.state.data?.status === "scheduled" && tournament.data?.status === "in_progress" ? pollUnless(socketOpen) : false),
+    refetchInterval: (query) => (query.state.data?.status !== "completed" && tournament.data?.status === "in_progress" ? pollUnless(socketOpen) : false),
   })
   const t = tournament.data
   const event = t?.events.find((candidate) => candidate.id === eventId)

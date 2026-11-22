@@ -7,16 +7,18 @@ view has nothing it could score with (REQ-010). Pages hear that a match changed 
 socket and fetch this again; it is never pushed with the message.
 """
 
+from django.core.cache import cache
 from django.db.models import Max, Prefetch, Q
 
 from competitions import drawing, official
-from competitions.models import DrawVersion, Match, Tournament
+from competitions.models import DrawVersion, Match, Rubber, Tournament
 
 from .models import MatchIncident, Scorecard
 
 # A tournament has as many matches in play as it has tables; this is a ceiling, not a page size.
 MAX_LIVE = 64
-NOT_RUNNING = [False, False]
+# Every viewer fetches the list again after each point; for a second they share one answer.
+CACHE_SECONDS = 1
 
 
 def score_of(scorecard: Scorecard | None, players: dict[str, list] | None = None) -> dict | None:
@@ -41,8 +43,8 @@ def score_of(scorecard: Scorecard | None, players: dict[str, list] | None = None
         "points": state.get("points", [0, 0]),
         "server": server[0] if server else None,
         "server_name": server_name,
-        "timeouts": state.get("timeouts", NOT_RUNNING),
-        "timeout_running": state.get("timeout_running", NOT_RUNNING),
+        "timeouts": state.get("timeouts", [False, False]),
+        "timeout_running": state.get("timeout_running", [False, False]),
         "suspended": state.get("suspended"),
         "expedite": state.get("expedite", False),
         "revision": scorecard.revision,
@@ -85,8 +87,19 @@ def live_matches(tournament: Tournament) -> list[dict]:
     sheets = list(
         Scorecard.objects.filter(revision__gt=0, confirmed_at__isnull=True)
         .filter(
-            Q(match__draw__event__tournament=tournament, match__draw__status=published)
-            | Q(rubber__match__draw__event__tournament=tournament, rubber__match__draw__status=published)
+            # Decided matches and rubbers are left out before the cap, so a sheet nobody confirmed never
+            # takes the place of a match being played.
+            Q(
+                match__draw__event__tournament=tournament,
+                match__draw__status=published,
+                match__status=Match.Status.SCHEDULED,
+            )
+            | Q(
+                rubber__match__draw__event__tournament=tournament,
+                rubber__match__draw__status=published,
+                rubber__match__status=Match.Status.SCHEDULED,
+                rubber__status=Rubber.Status.SCHEDULED,
+            )
         )
         .select_related(
             "match__draw__event",
@@ -115,8 +128,6 @@ def live_matches(tournament: Tournament) -> list[dict]:
     ties = _rubbers_won([match.id for match in matches if match.draw.event.is_team])
     shown = []
     for sheet, match in zip(sheets, matches, strict=True):
-        if match.status == Match.Status.COMPLETED:
-            continue
         shown.append(
             {
                 "match_id": match.id,
@@ -171,13 +182,33 @@ def _round_label(match: Match, rounds: dict) -> str:
 
 def _rubbers_won(tie_ids: list) -> dict:
     """[rubbers won by side a, by side b] for each tie under way."""
-    from competitions.models import Rubber
-
     won: dict = {tie_id: [0, 0] for tie_id in tie_ids}
     decided = Rubber.objects.filter(match_id__in=tie_ids, status=Rubber.Status.COMPLETED).select_related(
         "match"
     )
     for rubber in decided:
+        if rubber.winner_id is None:
+            continue
         side = 0 if rubber.winner_id == rubber.match.entry_a_id else 1
         won[rubber.match_id][side] += 1
     return won
+
+
+def cache_key(tournament_id) -> str:
+    return f"live:{tournament_id}"
+
+
+def shown_live(tournament: Tournament) -> list[dict]:
+    """live_matches, shared by every viewer for a second. The list is the same for everybody who may see
+    the tournament (the caller checks that first), so sharing it shows nobody anything new."""
+    key = cache_key(tournament.id)
+    found = cache.get(key)
+    if found is None:
+        found = live_matches(tournament)
+        cache.set(key, found, CACHE_SECONDS)
+    return found
+
+
+def forget(tournament_id) -> None:
+    """A score changed: the next viewer gets it fresh, not the second-old list."""
+    cache.delete(cache_key(tournament_id))

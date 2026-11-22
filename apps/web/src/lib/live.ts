@@ -9,6 +9,7 @@ import { tournamentKeys } from "@/lib/tournaments"
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1"
 const MAX_WAIT = 30_000
+const LIST_EVERY = 1_000
 /** How often a live view asks again when the socket is down: the polling fallback (REQ-043). */
 export const POLL_WHILE_OFFLINE = 5_000
 
@@ -36,8 +37,9 @@ function socketUrl(tournamentId: string) {
 function staleKeys(tournamentId: string, message: Changed): (readonly string[])[] {
   const stale: (readonly string[])[] = [liveKeys.matches(tournamentId), scoringKeys.overview(tournamentId)]
   if (message.topic === "scores" && message.match) {
-    // The board shows each table's score; standings and draws change only with a result.
-    stale.push(drawKeys.match(message.match), reservationKeys.board(tournamentId))
+    // The board shows each table's score and the draw marks the match live; standings change only with a result.
+    stale.push(drawKeys.match(message.match), reservationKeys.board(tournamentId), tournamentKeys.dashboard(tournamentId))
+    if (message.event) stale.push(drawKeys.event(message.event))
     return stale
   }
   stale.push(tournamentKeys.detail(tournamentId), tournamentKeys.dashboard(tournamentId), [...drawKeys.all, "match"])
@@ -63,8 +65,20 @@ export function useLiveTournament(tournamentId: string | undefined): boolean {
     let stopped = false
     let dropped = false
 
+    // Points at several tables come close together: the live list is fetched again at most once a second.
+    let listDue: ReturnType<typeof setTimeout> | undefined
+    const listKey = liveKeys.matches(tournamentId)
     const refresh = (message: Changed) => {
-      for (const queryKey of staleKeys(tournamentId, message)) void queryClient.invalidateQueries({ queryKey })
+      for (const queryKey of staleKeys(tournamentId, message)) {
+        if (queryKey.join() === listKey.join()) {
+          listDue ??= setTimeout(() => {
+            listDue = undefined
+            void queryClient.invalidateQueries({ queryKey: listKey })
+          }, LIST_EVERY)
+          continue
+        }
+        void queryClient.invalidateQueries({ queryKey })
+      }
     }
 
     const connect = () => {
@@ -97,6 +111,7 @@ export function useLiveTournament(tournamentId: string | undefined): boolean {
     return () => {
       stopped = true
       clearTimeout(retry)
+      clearTimeout(listDue)
       socket?.close()
     }
   }, [tournamentId, queryClient])

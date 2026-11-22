@@ -11,7 +11,10 @@
  * point and its undo, again and again, so the score ends where it started.
  *
  *   node scripts/live-latency.mjs --base http://localhost:8090 --scorecard <id> \
- *        --login umpire@mombasa-tt.test [--count 60] [--target 2000] [--gap 250]
+ *        --login umpire@mombasa-tt.test [--view list|match] [--count 60] [--target 2000] [--gap 250]
+ *
+ * --view list (the default) reads the tournament's live list, as the score strip and live page do; --view match
+ * reads the match page's data. One viewer and one sheet: the 8-table, 100-viewer run of EVAL-033 is TASK-061's.
  *
  * The password is read from LIVE_TRACE_PASSWORD, never from the command line, so it stays out of shell history.
  * --base is the site's origin; the API is under /api/v1 and the socket under /api/v1/ws. Node 22 or later.
@@ -27,6 +30,7 @@ const { values: args } = parseArgs({
     count: { type: "string", default: "60" },
     target: { type: "string", default: "2000" },
     gap: { type: "string", default: "250" },
+    view: { type: "string", default: "list" },
     timeout: { type: "string", default: "10000" },
   },
 })
@@ -74,7 +78,17 @@ async function main() {
   const device = randomUUID()
   const deviceHeaders = { "X-Device-Id": device }
   let sheet = await call(`/scorecards/${args.scorecard}/device/`, { method: "POST", body: { device_id: device, label: "Latency trace", take_over: true }, headers: deviceHeaders })
-  const { tournament_id: tournamentId, match_id: matchId } = sheet
+  const { tournament_id: tournamentId, event_id: eventId, match_id: matchId } = sheet
+  /** The revision the viewer holds now, read the way the chosen view reads it. */
+  async function shownRevision() {
+    if (args.view === "match") {
+      const match = await call(`/tournaments/${tournamentId}/events/${eventId}/matches/${matchId}/`, { signedIn: false })
+      const rubber = match.tie?.rubbers.find((candidate) => candidate.scoring?.live)
+      return (match.scoring?.live ?? rubber?.scoring?.live)?.revision ?? 0
+    }
+    const live = await call(`/tournaments/${tournamentId}/live/`, { signedIn: false })
+    return live.find((shown) => shown.match_id === matchId)?.score.revision ?? 0
+  }
   let revision = sheet.revision
 
   async function send(event) {
@@ -93,19 +107,24 @@ async function main() {
   // The viewer: signed out, listening on the tournament's socket, fetching the live list as a live page does.
   const socketUrl = `${api.replace(/^http/, "ws")}/ws/tournaments/${tournamentId}/`
   const socket = new WebSocket(socketUrl, { headers: { Origin: origin } })
+  let opening
   await new Promise((resolve, reject) => {
     socket.onopen = resolve
     socket.onerror = () => reject(new Error(`Could not open ${socketUrl}`))
-    setTimeout(() => reject(new Error("The socket didn't open in time.")), timeout)
-  })
+    opening = setTimeout(() => reject(new Error("The socket didn't open in time.")), timeout)
+  }).finally(() => clearTimeout(opening))
   let waiting = null
   socket.onmessage = async (frame) => {
-    const message = JSON.parse(String(frame.data))
-    if (message.type !== "changed" || message.match !== matchId || !waiting) return
-    const live = await call(`/tournaments/${tournamentId}/live/`, { signedIn: false })
-    const shown = live.find((match) => match.match_id === matchId)
-    if (waiting && shown && shown.score.revision >= waiting.revision) {
-      waiting.resolve(performance.now())
+    try {
+      const message = JSON.parse(String(frame.data))
+      if (message.type !== "changed" || message.match !== matchId || !waiting) return
+      const revision = await shownRevision()
+      if (waiting && revision >= waiting.revision) {
+        waiting.resolve(performance.now())
+        waiting = null
+      }
+    } catch (error) {
+      waiting?.reject(error)
       waiting = null
     }
   }
@@ -114,20 +133,26 @@ async function main() {
   for (let n = 0; n < count; n++) {
     const event = n % 2 === 0 ? { type: "point", side: "a" } : { type: "undo" }
     const started = performance.now()
+    let timer
     const seen = new Promise((resolve, reject) => {
-      waiting = { revision: revision + 1, resolve }
-      setTimeout(() => reject(new Error(`No viewer update for event ${n + 1} within ${timeout} ms`)), timeout)
+      waiting = { revision: revision + 1, resolve, reject }
+      timer = setTimeout(() => reject(new Error(`No viewer update for event ${n + 1} within ${timeout} ms`)), timeout)
     })
     await send(event)
-    times.push((await seen) - started)
+    try {
+      times.push((await seen) - started)
+    } finally {
+      clearTimeout(timer)
+    }
     await sleep(gap)
   }
   // An odd count leaves the last point standing: take it back.
   if (count % 2 === 1) await send({ type: "undo" })
   socket.close()
+  await call("/auth/logout/", { method: "POST" })
 
   const sorted = [...times].sort((a, b) => a - b)
-  const result = { events: times.length, p50_ms: Math.round(percentile(sorted, 50)), p95_ms: Math.round(percentile(sorted, 95)), max_ms: Math.round(sorted.at(-1)), target_p95_ms: target }
+  const result = { view: args.view, events: times.length, p50_ms: Math.round(percentile(sorted, 50)), p95_ms: Math.round(percentile(sorted, 95)), max_ms: Math.round(sorted.at(-1)), target_p95_ms: target }
   console.log(JSON.stringify(result, null, 2))
   process.exit(result.p95_ms <= target ? 0 : 1)
 }

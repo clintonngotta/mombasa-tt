@@ -356,6 +356,7 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
         event = event_of(scorecard)
         # Said per match, so a page showing other matches has nothing to fetch again (TASK-084).
         match_id = scorecard.rubber.match_id if scorecard.rubber_id else scorecard.match_id
+        live.forget(event.tournament_id)
         broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id, match_id=match_id)
     return {"accepted": accepted, "refused": refused}
 
@@ -408,6 +409,7 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
     scorecard.confirmed_by = actor
     scorecard.save(update_fields=["state", "confirmed_at", "confirmed_by"])
     event = event_of(scorecard)
+    live.forget(event.tournament_id)
     broadcast.tournament_changed(event.tournament_id, "results", event_id=event.id)
 
 

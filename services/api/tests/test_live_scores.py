@@ -5,6 +5,7 @@ names its match; the live list costs the same few queries however many matches a
 from unittest import mock
 
 import pytest
+from django.core.cache import cache
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
@@ -126,6 +127,7 @@ def test_the_live_list_costs_the_same_queries_for_one_match_or_several(staff, cl
     viewer = APIClient()
 
     def queries() -> int:
+        cache.clear()  # the list as worked out, not the second-old copy every viewer shares
         with CaptureQueriesContext(connection) as ran:
             assert viewer.get(live_url(tournament)).status_code == 200
         return len(ran)
@@ -142,7 +144,6 @@ def test_the_live_list_costs_the_same_queries_for_one_match_or_several(staff, cl
 
 
 def test_signed_out_live_reads_have_their_own_allowance_per_address(staff, club, final, settings):  # noqa: F811
-    from django.core.cache import cache
     from rest_framework.settings import api_settings
     from rest_framework.throttling import SimpleRateThrottle
 
@@ -164,3 +165,15 @@ def test_signed_out_live_reads_have_their_own_allowance_per_address(staff, club,
         settings.REST_FRAMEWORK = {**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates}
         SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
         cache.clear()
+
+
+def test_a_match_decided_without_its_sheet_confirmed_leaves_the_list(staff, club, final):  # noqa: F811
+    from competitions import drawing
+
+    deck = umpire_deck(staff, club, final)
+    deck.send(START, point("a"))
+    assert len(APIClient().get(live_url(final["cup"])).json()) == 1
+    match = Match.objects.get(pk=final["match"].pk)
+    drawing.record_result(match, match.entry_b, outcome="walkover", games=[])
+    cache.clear()
+    assert APIClient().get(live_url(final["cup"])).json() == []

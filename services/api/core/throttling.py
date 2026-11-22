@@ -18,7 +18,8 @@ class PublicReadThrottle(SimpleRateThrottle):
 
 class LiveReadThrottle(PublicReadThrottle):
     """Signed-out reads of the live score list (TASK-084). A venue's spectators often share one address
-    (the hall's Wi-Fi) and their pages fetch the list again after every point, so it has a limit of its
-    own, still counted per client address."""
+    (the hall's Wi-Fi) and their pages fetch the list again after points (at most once a second each),
+    so it has a limit of its own, still counted per client address. The list itself is cached for a
+    second, so the database sees one read a second per tournament however many people watch."""
 
     scope = "live_reads"
