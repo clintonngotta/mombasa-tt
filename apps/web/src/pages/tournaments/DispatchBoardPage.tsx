@@ -245,7 +245,10 @@ function TableCard({ tournamentId, table, freeTables, next, timeZone }: { tourna
           <Icon aria-hidden className="size-5" /> {state.label}
         </span>
       </div>
-      <p className="text-sm text-muted-foreground">{table.table_umpire ? `Table umpire: ${table.table_umpire.name}` : "No table umpire"}</p>
+      <p className="text-sm text-muted-foreground">
+        {[table.table_umpire ? `Table umpire: ${table.table_umpire.name}` : "No table umpire", table.use_today != null && `In use ${table.use_today}% of today`].filter(Boolean).join(" · ")}
+      </p>
+      {table.idle_since && <IdleFor since={table.idle_since} />}
       {table.block && (
         <>
           <p className="text-sm">
@@ -285,10 +288,24 @@ function TableCard({ tournamentId, table, freeTables, next, timeZone }: { tourna
   )
 }
 
-/** Counts of tables in each state, at a glance. */
+/** How long a free table has stood empty (REQ-053): amber after five minutes. */
+function IdleFor({ since }: { since: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [])
+  const minutes = Math.max(0, Math.floor((now - new Date(since).getTime()) / 60_000))
+  return <p className={cn("text-sm font-semibold", minutes >= 5 ? "text-warning" : "text-muted-foreground")}>{minutes < 1 ? "Free just now" : `Idle for ${minutes} min`}</p>
+}
+
+/** Counts of tables in each state, at a glance, and the day's table use. */
 function Summary({ tables }: { tables: BoardTable[] }) {
+  const used = tables.filter((table) => table.use_today != null)
+  const average = used.length ? Math.round(used.reduce((sum, table) => sum + (table.use_today ?? 0), 0) / used.length) : null
   return (
     <ul className="flex flex-wrap gap-2" aria-label="Tables by state">
+      {average != null && <li className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-semibold">Table use today <span className="tabular-nums">{average}%</span></li>}
       {(Object.keys(TABLE_STATE) as BoardTable["state"][]).map((key) => {
         const shown = TABLE_STATE[key]
         const n = tables.filter((table) => table.state === key).length

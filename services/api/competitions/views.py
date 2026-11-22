@@ -128,11 +128,11 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     from reservations.models import Reservation
     from scoring import service as scoring
 
-    shown = drawing.describe_match(draw, pk) if draw else None
+    staff = bool(draw) and manages(request.user, draw.event.tournament.organization)
+    shown = drawing.describe_match(draw, pk, staff) if draw else None
     if shown is None:
         raise Http404
     match = shown.pop("match")
-    staff = manages(request.user, draw.event.tournament.organization)
     if draw.event.is_team:
         shown["tie"] = ties.describe(match, request.user, staff)
         shown["scoring"] = None
@@ -778,8 +778,8 @@ class DrawViewSet(viewsets.GenericViewSet):
         return Response(
             EventDrawSerializer(
                 {
-                    "published": drawing.describe(published) if published else None,
-                    "preview": drawing.describe(preview) if preview else None,
+                    "published": drawing.describe(published, staff) if published else None,
+                    "preview": drawing.describe(preview, staff) if preview else None,
                     "recommended_seeds": drawing.rating_seeds(event)
                     if staff and event.status == E.SCHEDULED
                     else [],

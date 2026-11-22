@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, Clock, Globe, LayoutDashboard, MapPin, Pencil, Plus, Users } from "lucide-react"
+import { CalendarDays, Clock, Globe, LayoutDashboard, ListOrdered, MapPin, Pencil, Plus, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { CeremonyLink } from "@/components/ceremony/CeremonyLink"
 import { SponsorsPanel } from "@/components/region/SponsorsPanel"
@@ -153,11 +153,18 @@ function Events({ tournament: t, staff }: { tournament: Tournament; staff: boole
         <h2 id="events-heading" className="text-2xl font-bold">
           Events
         </h2>
-        {staff && open && (
-          <Link to={`/tournaments/${t.id}/events/new`} className={buttonVariants({ variant: "outline" })}>
-            <Plus aria-hidden className="size-5" /> Add event
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {t.status !== "draft" && (
+            <Link to={`/tournaments/${t.id}/order-of-play`} className={buttonVariants({ variant: "outline" })}>
+              <ListOrdered aria-hidden className="size-5" /> Order of play
+            </Link>
+          )}
+          {staff && open && (
+            <Link to={`/tournaments/${t.id}/events/new`} className={buttonVariants({ variant: "outline" })}>
+              <Plus aria-hidden className="size-5" /> Add event
+            </Link>
+          )}
+        </div>
       </div>
       {t.events.length === 0 && <p className="text-muted-foreground">{staff ? "No events yet. Add the first one to publish." : "No events yet."}</p>}
       <ul className="flex flex-col gap-3">
@@ -221,6 +228,9 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
             )}
             <Link to={eventTabPath(t.id, event.id, firstTab(event.format))} aria-label={`Draw and results for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
               Draw and results
+            </Link>
+            <Link to={`/tournaments/${t.id}/order-of-play?event=${event.id}`} aria-label={`Order of play for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
+              Order of play
             </Link>
             <Link to={`/tournaments/${t.id}/events/${event.id}/entries`} aria-label={`Entries for ${event.name}`} className={buttonVariants({ variant: entryBlock(t, event) ? "outline" : "default" })}>
               {entryBlock(t, event) ? "See entries" : "Enter or see entries"}
@@ -413,6 +423,11 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
       {(t.status === "published" || t.status === "in_progress") && (
         <Link to={`/tournaments/${t.id}/schedule-plan`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
           Schedule: plan times and tables
+        </Link>
+      )}
+      {(t.status === "published" || t.status === "in_progress") && (
+        <Link to={`/tournaments/${t.id}/order-of-play`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Order of play: stage order, release time and late starts
         </Link>
       )}
       {t.status === "in_progress" && (

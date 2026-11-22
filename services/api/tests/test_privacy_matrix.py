@@ -504,6 +504,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-table-unblock": {"post": STAFF},
     "tournament-table-umpire": {"put": STAFF},
     "tournament-umpires": {"get": STAFF, "post": STAFF},
+    "tournament-order-of-play": {"get": PUBLIC},
+    "tournament-order-of-play-stages": {"put": STAFF},
+    "tournament-order-of-play-release": {"put": STAFF},
+    "tournament-order-of-play-player": {"put": STAFF, "delete": STAFF},
+    "tournament-order-of-play-move": {"post": STAFF},
     "tournament-umpire-candidates": {"get": STAFF},
     "tournament-umpire": {"delete": STAFF},
     "tournament-check-in-desk": {"get": STAFF},
@@ -534,6 +539,21 @@ NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tourname
 # Routes that take a file upload rather than JSON.
 MULTIPART = {"organization-expense-receipt", "tournament-cover", "tournament-documents"}
 PDF = b"%PDF-1.4\n%%EOF\n"
+
+
+def order_time(hour: int) -> datetime:
+    """Tomorrow at `hour`, in the Order Cup's timezone."""
+    from zoneinfo import ZoneInfo
+
+    zone = ZoneInfo(Tournament.objects.get(name="Order Cup").timezone)
+    return datetime.combine(
+        timezone.localdate() + timedelta(days=1), datetime.min.time(), tzinfo=zone
+    ).replace(hour=hour)
+
+
+def order_stages() -> dict:
+    match = Match.objects.get(draw__event__tournament__name="Order Cup")
+    return {"stages": [{"event_id": str(match.draw.event_id), "stage": match.stage}]}
 
 
 def pdf_upload():
@@ -777,6 +797,10 @@ BODIES = {
     },
     ("tournament-event-match-dispatch", "post"): {"table_id": SPARE_TABLE},
     ("tournament-umpires", "post"): {"user_id": UMPIRE_USER},
+    ("tournament-order-of-play-stages", "put"): order_stages,
+    ("tournament-order-of-play-release", "put"): {"release_at": None},
+    ("tournament-order-of-play-player", "put"): lambda: {"at": order_time(13).isoformat(), "move": True},
+    ("tournament-order-of-play-move", "post"): lambda: {"scheduled_at": order_time(15).isoformat()},
     ("tournament-table-umpire", "put"): {"user_id": None},
     ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
@@ -1331,6 +1355,18 @@ class World:
         )
         self.session.tables.add(self.spare_table)
         ScheduleVersion.objects.create(tournament=self.planned_cup, number=1, kind="published")
+        # The order of play (REQ-053): play starts tomorrow, its one match published at noon.
+        self.order_cup, ordered = under_way("Order Cup", ("o1", "o2"))
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        Tournament.objects.filter(pk=self.order_cup.pk).update(starts_on=tomorrow, ends_on=tomorrow)
+        Match.objects.filter(pk=ordered.pk).update(
+            planned_table=self.spare_table,
+            scheduled_at=order_time(12),
+            draft_table=self.spare_table,
+            draft_at=order_time(12),
+        )
+        ScheduleVersion.objects.create(tournament=self.order_cup, number=1, kind="published")
+        self.order_player = User.objects.get(email="o1@dispatch.example")
         self.resolution = Resolution.objects.create(
             event=self.question_cup.event,
             match=self.in_question,
@@ -1721,6 +1757,13 @@ class World:
             found["table_pk"] = self.table.id
         if name == "tournament-umpire":
             found["tournament_pk"], found["user_pk"] = self.scored_cup.id, UMPIRE_USER
+            return found
+        if name.startswith("tournament-order-of-play"):
+            found["tournament_pk"] = self.order_cup.id
+            if "user_pk" in names:
+                found["user_pk"] = self.order_player.id
+            if "match_pk" in names:
+                found["match_pk"] = Match.objects.get(draw__event__tournament=self.order_cup).id
             return found
         if name in ("tournament-table-block", "tournament-table-unblock", "tournament-table-umpire"):
             found["tournament_pk"] = self.scored_cup.id

@@ -27,7 +27,7 @@ from .views import match_reply, require_staff, staff_tournament
 def describe_resolution(resolution: Resolution) -> dict:
     """A resolution as ResolutionSerializer shows it."""
     match = resolution.match
-    shown = drawing.describe_match(match.draw, match.id) or {}
+    shown = drawing.describe_match(match.draw, match.id, staff=True) or {}
     progress = (
         "decided"
         if match.status == Match.Status.COMPLETED

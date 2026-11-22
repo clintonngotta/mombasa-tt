@@ -84,6 +84,10 @@ class Tournament(models.Model):
     # A published match moved by more than this many minutes, or to another table, is news for its
     # players and umpire (REQ-043).
     schedule_notice_minutes = models.PositiveSmallIntegerField(default=15)
+    # When the published order of play becomes public (REQ-053): no earlier than three days before the
+    # first day's start. Set when the schedule is first published; until then only staff see times.
+    order_of_play_release_at = models.DateTimeField(null=True, blank=True)
+    order_of_play_announced_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -682,10 +686,12 @@ class ScheduleVersion(models.Model):
     class Kind(models.TextChoices):
         PUBLISHED = "published"  # the organizers published their plan
         DELAY = "delay"  # a table started late or went out of service
+        MOVED = "moved"  # a match, or a player's matches, moved later
 
     class Reason(models.TextChoices):
         LATE_START = "late_start", "Late start"
         OUT_OF_SERVICE = "out_of_service", "Table out of service"
+        PLAYER_REQUEST = "player_request", "A player's request"
         OTHER = "other", "Other"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -717,6 +723,51 @@ class ScheduleVersion(models.Model):
 
     def __str__(self):
         return f"{self.tournament_id} v{self.number}"
+
+
+class StageOrder(models.Model):
+    """One place in a tournament's order of play (REQ-053): an event's group or knockout stage. Dispatch
+    and the recommended schedule take stages in this order, falling through to a later stage whose
+    players are free rather than leave a table idle."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="stage_order")
+    position = models.PositiveSmallIntegerField()
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="+")
+    stage = models.CharField(max_length=10, choices=Match.Stage.choices)
+
+    class Meta:
+        ordering = ["position"]
+        constraints = [
+            models.UniqueConstraint(fields=["tournament", "event", "stage"], name="one_place_per_stage")
+        ]
+
+    def __str__(self):
+        return f"{self.position}: {self.event_id} {self.stage}"
+
+
+class NotBefore(models.Model):
+    """A player who can't play before a time on a tournament day (REQ-053): their matches are planned
+    and sent no earlier, unless staff set it aside with a reason."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="not_before")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    at = models.DateTimeField()
+    note = models.CharField(max_length=200, blank=True)
+    set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    set_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["at", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["tournament", "user"], name="one_not_before_per_player")
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} not before {self.at}"
 
 
 class Ceremony(models.Model):
@@ -868,6 +919,9 @@ class MatchDayLog(models.Model):
         UMPIRE_LISTED = "umpire_listed", "Added to the umpires"
         UMPIRE_UNLISTED = "umpire_unlisted", "Taken off the umpires"
         TABLE_UMPIRE = "table_umpire", "Table umpire changed"
+        ORDER_CHANGED = "order_changed", "Order of play changed"
+        NOT_BEFORE = "not_before", "Player's start time set"
+        MATCH_MOVED = "match_moved", "Match moved later"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")

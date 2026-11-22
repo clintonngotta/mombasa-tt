@@ -6261,6 +6261,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/order-of-play/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Every planned match by time and table, and the order of the stages. Staff see it as soon as
+         *     it is published; everybody else once it is out.
+         */
+        get: operations["tournaments_order_of_play_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/order-of-play/matches/{match_pk}/move/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Move a published match to a later start: published at once with what then clashes, and its
+         *     people told once the order of play is out.
+         */
+        post: operations["tournaments_order_of_play_matches_move_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/order-of-play/players/{user_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description A player can't play before a time: the plan and dispatch respect it, and with `move` their
+         *     matches planned earlier are published at that time at once.
+         */
+        put: operations["tournaments_order_of_play_players_update"];
+        post?: never;
+        /** @description The player may play at any time again. Their matches stay where they are. */
+        delete: operations["tournaments_order_of_play_players_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/order-of-play/release/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Choose when the published order of play goes public: from three days before play starts up
+         *     to the start. Every player entered is told then.
+         */
+        put: operations["tournaments_order_of_play_release_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/order-of-play/stages/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Save the order of the stages, every stage once. Dispatch and the recommended schedule follow
+         *     it from now on; the change is logged.
+         */
+        put: operations["tournaments_order_of_play_stages_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/reservations/": {
         parameters: {
             query?: never;
@@ -7278,6 +7379,13 @@ export interface components {
             suggested_match_id: string | null;
             /** @description Why a free table has no match. */
             idle_reason: string;
+            /**
+             * Format: date-time
+             * @description A free table in use: since when nothing has been played on it.
+             */
+            idle_since: string | null;
+            /** @description Percent of today's play the table has had a match on it. */
+            use_today: number | null;
             /** @description Who takes every match sent to this table, until staff change it. */
             table_umpire: components["schemas"]["TableUmpireRef"] | null;
             /** @description Once the match here reaches its winning point and before it is confirmed: the match recommended to take the table next. */
@@ -8087,10 +8195,11 @@ export interface components {
         /**
          * @description * `late_start` - Late start
          *     * `out_of_service` - Table out of service
+         *     * `player_request` - A player's request
          *     * `other` - Other
          * @enum {string}
          */
-        DelayReasonEnum: "late_start" | "out_of_service" | "other";
+        DelayReasonEnum: "late_start" | "out_of_service" | "player_request" | "other";
         Delayed: {
             version: components["schemas"]["ScheduleVersion"];
             /** @description What the published schedule still has wrong. */
@@ -8288,6 +8397,11 @@ export interface components {
          * @enum {string}
          */
         EnginePhaseEnum: "not_started" | "in_progress" | "completed";
+        Entrant: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
         /**
          * @description An entry as its players, staff and (once accepted) everybody else see it. Deliberately nothing
          *     about payment: accepted means a place in the event, not a paid fee (REQ-008).
@@ -9624,6 +9738,20 @@ export interface components {
             /** @default KES */
             currency: string;
         };
+        /**
+         * @description * `player_request` - player_request
+         *     * `other` - other
+         * @enum {string}
+         */
+        MoveMatchReasonEnum: "player_request" | "other";
+        MoveMatchRequest: {
+            /** Format: date-time */
+            scheduled_at: string;
+            /** @default player_request */
+            reason: components["schemas"]["MoveMatchReasonEnum"];
+            /** @default  */
+            note: string;
+        };
         MoveRequest: {
             /** Format: uuid */
             table_id: string;
@@ -9831,6 +9959,14 @@ export interface components {
             /** Format: uuid */
             membership_id: string;
         };
+        NotBefore: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            /** Format: date-time */
+            at: string;
+            note: string;
+        };
         Notification: {
             /** Format: uuid */
             readonly id: string;
@@ -9960,6 +10096,52 @@ export interface components {
         OptionalReasonRequest: {
             reason?: string;
         };
+        OrderOfPlay: {
+            /** @description A schedule has been published. */
+            published: boolean;
+            /** @description Everybody who sees the tournament sees it. */
+            released: boolean;
+            /** Format: date-time */
+            release_at: string | null;
+            /**
+             * Format: date-time
+             * @description Three days before play starts.
+             */
+            earliest_release: string;
+            /**
+             * Format: date-time
+             * @description When play is due to begin.
+             */
+            starts_at: string;
+            version: number | null;
+            can_manage: boolean;
+            stages: components["schemas"]["Stage"][];
+            /** @description Empty for everybody but staff until it is out. */
+            slots: components["schemas"]["OrderSlot"][];
+            /** @description Staff only. */
+            not_before: components["schemas"]["NotBefore"][];
+            /** @description Staff only: players entered, for a not-before. */
+            players: components["schemas"]["Entrant"][];
+        };
+        OrderSlot: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            label: string;
+            /** @description The two sides, or 'To come'. */
+            title: string;
+            table: string;
+            /** Format: date-time */
+            scheduled_at: string;
+            status: components["schemas"]["MatchStatusEnum"];
+            /** @description Sent to its table. */
+            on_table: boolean;
+            /** @description The caller plays in it. */
+            mine: boolean;
+        };
         OrgRef: {
             /** Format: uuid */
             id: string;
@@ -10043,9 +10225,10 @@ export interface components {
         /**
          * @description * `check_in` - check_in
          *     * `rest` - rest
+         *     * `not_before` - not_before
          * @enum {string}
          */
-        OverridesEnum: "check_in" | "rest";
+        OverridesEnum: "check_in" | "rest" | "not_before";
         /**
          * @description * `paid` - paid
          *     * `partial` - partial
@@ -11853,6 +12036,13 @@ export interface components {
             /** @default KES */
             currency: string;
         };
+        ReleaseRequest: {
+            /**
+             * Format: date-time
+             * @description Null: now.
+             */
+            release_at: string | null;
+        };
         Reminded: {
             sent: number;
         };
@@ -12170,9 +12360,10 @@ export interface components {
         /**
          * @description * `published` - Published
          *     * `delay` - Delay
+         *     * `moved` - Moved
          * @enum {string}
          */
-        ScheduleVersionKindEnum: "published" | "delay";
+        ScheduleVersionKindEnum: "published" | "delay" | "moved";
         ScheduleVersionSummary: {
             readonly number: number;
             readonly kind: components["schemas"]["ScheduleVersionKindEnum"];
@@ -12419,6 +12610,17 @@ export interface components {
         SessionTableRequest: {
             label: string;
         };
+        SetNotBeforeRequest: {
+            /** Format: date-time */
+            at: string;
+            /** @default  */
+            note: string;
+            /**
+             * @description Publish their matches planned earlier at this time, and tell people.
+             * @default true
+             */
+            move: boolean;
+        };
         /** @description An amount each, or a total split evenly among those going (rounded up to whole units). */
         ShareCostRequest: {
             amount_minor?: number;
@@ -12616,6 +12818,23 @@ export interface components {
          * @enum {string}
          */
         SponsorshipStatusEnum: "offered" | "accepted" | "declined" | "withdrawn";
+        Stage: {
+            /** Format: uuid */
+            event_id: string;
+            readonly event_name: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            readonly label: string;
+            /** @description Placed by staff, not by default. */
+            readonly placed: boolean;
+        };
+        StageRequest: {
+            /** Format: uuid */
+            event_id: string;
+            stage: components["schemas"]["MatchStageEnum"];
+        };
+        StagesRequest: {
+            stages: components["schemas"]["StageRequest"][];
+        };
         StandingRow: {
             rank: number;
             entry: components["schemas"]["DrawEntry"];
@@ -12750,12 +12969,19 @@ export interface components {
          * @enum {string}
          */
         TableBookingStatusEnum: "requested" | "approved" | "rejected" | "cancelled";
+        /**
+         * @description * `late_start` - Late start
+         *     * `out_of_service` - Table out of service
+         *     * `other` - Other
+         * @enum {string}
+         */
+        TableDelayReasonEnum: "late_start" | "out_of_service" | "other";
         TableDelayRequest: {
             note?: string;
             /** Format: uuid */
             table_id: string;
             minutes: number;
-            reason: components["schemas"]["DelayReasonEnum"];
+            reason: components["schemas"]["TableDelayReasonEnum"];
         };
         /**
          * @description * `match` - Match
@@ -27216,6 +27442,205 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchDayLog"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_order_of_play_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOfPlay"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_order_of_play_matches_move_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                match_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveMatchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOfPlay"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_order_of_play_players_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+                user_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetNotBeforeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOfPlay"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_order_of_play_players_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+                user_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOfPlay"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_order_of_play_release_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOfPlay"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_order_of_play_stages_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StagesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderOfPlay"];
                 };
             };
             /** @description Error envelope */

@@ -15,6 +15,7 @@ Staff may set aside the check-in and rest checks with a reason. Nothing sets asi
 import hashlib
 import logging
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
@@ -29,10 +30,10 @@ from .models import Hold, MatchCall, Reservation, TableBlock
 
 logger = logging.getLogger(__name__)
 
-CHECK_IN, REST = "check_in", "rest"
-OVERRIDABLE = (CHECK_IN, REST)
+CHECK_IN, REST, NOT_BEFORE = "check_in", "rest", "not_before"
+OVERRIDABLE = (CHECK_IN, REST, NOT_BEFORE)
 # Which check a refusal belongs to, when it is one staff may set aside.
-SETS_ASIDE = {"not_checked_in": CHECK_IN, "resting": REST}
+SETS_ASIDE = {"not_checked_in": CHECK_IN, "resting": REST, "not_before": NOT_BEFORE}
 
 
 class Blocked(ApiException):
@@ -287,6 +288,18 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
             )
             blocked.until = until
             found.append(blocked)
+    # A player who can't play before a time (REQ-053).
+    from competitions.models import NotBefore
+
+    zone = ZoneInfo(event.tournament.timezone)
+    for later in NotBefore.objects.filter(
+        tournament_id=event.tournament_id, user__in=people, at__gt=now
+    ).select_related("user"):
+        blocked = Blocked(
+            "not_before", f"{_name(later.user)} can't play before {later.at.astimezone(zone):%H:%M}."
+        )
+        blocked.until = later.at
+        found.append(blocked)
     return found
 
 

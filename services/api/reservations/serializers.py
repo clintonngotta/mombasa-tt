@@ -136,6 +136,12 @@ class BoardTableSerializer(TableStateSerializer):
     playing = ReservationSerializer(allow_null=True, help_text="This tournament's match on the table.")
     suggested_match_id = serializers.UUIDField(allow_null=True)
     idle_reason = serializers.CharField(allow_blank=True, help_text="Why a free table has no match.")
+    idle_since = serializers.DateTimeField(
+        allow_null=True, help_text="A free table in use: since when nothing has been played on it."
+    )
+    use_today = serializers.IntegerField(
+        allow_null=True, help_text="Percent of today's play the table has had a match on it."
+    )
     table_umpire = TableUmpireRefSerializer(
         allow_null=True, help_text="Who takes every match sent to this table, until staff change it."
     )

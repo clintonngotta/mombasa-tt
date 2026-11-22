@@ -14827,6 +14827,226 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/order-of-play/:
+    get:
+      operationId: tournaments_order_of_play_retrieve
+      description: |-
+        Every planned match by time and table, and the order of the stages. Staff see it as soon as
+        it is published; everybody else once it is out.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOfPlay'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/order-of-play/matches/{match_pk}/move/:
+    post:
+      operationId: tournaments_order_of_play_matches_move_create
+      description: |-
+        Move a published match to a later start: published at once with what then clashes, and its
+        people told once the order of play is out.
+      parameters:
+      - in: path
+        name: match_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveMatchRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOfPlay'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/order-of-play/players/{user_pk}/:
+    put:
+      operationId: tournaments_order_of_play_players_update
+      description: |-
+        A player can't play before a time: the plan and dispatch respect it, and with `move` their
+        matches planned earlier are published at that time at once.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: user_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetNotBeforeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOfPlay'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_order_of_play_players_destroy
+      description: The player may play at any time again. Their matches stay where
+        they are.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: user_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOfPlay'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/order-of-play/release/:
+    put:
+      operationId: tournaments_order_of_play_release_update
+      description: |-
+        Choose when the published order of play goes public: from three days before play starts up
+        to the start. Every player entered is told then.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOfPlay'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/order-of-play/stages/:
+    put:
+      operationId: tournaments_order_of_play_stages_update
+      description: |-
+        Save the order of the stages, every stage once. Dispatch and the recommended schedule follow
+        it from now on; the change is logged.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StagesRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOfPlay'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/reservations/:
     get:
       operationId: tournaments_reservations_list
@@ -17091,6 +17311,16 @@ components:
         idle_reason:
           type: string
           description: Why a free table has no match.
+        idle_since:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'A free table in use: since when nothing has been played on
+            it.'
+        use_today:
+          type: integer
+          nullable: true
+          description: Percent of today's play the table has had a match on it.
         table_umpire:
           allOf:
           - $ref: '#/components/schemas/TableUmpireRef'
@@ -17110,6 +17340,7 @@ components:
       - held_by
       - id
       - idle_reason
+      - idle_since
       - label
       - next_up
       - playing
@@ -17119,6 +17350,7 @@ components:
       - suggested_match_id
       - table_umpire
       - umpire
+      - use_today
     BoardTableStateEnum:
       enum:
       - free
@@ -19157,11 +19389,13 @@ components:
       enum:
       - late_start
       - out_of_service
+      - player_request
       - other
       type: string
       description: |-
         * `late_start` - Late start
         * `out_of_service` - Table out of service
+        * `player_request` - A player's request
         * `other` - Other
     Delayed:
       type: object
@@ -19670,6 +19904,17 @@ components:
         * `not_started` - Not Started
         * `in_progress` - In Progress
         * `completed` - Completed
+    Entrant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
     Entry:
       type: object
       description: |-
@@ -23048,6 +23293,30 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    MoveMatchReasonEnum:
+      enum:
+      - player_request
+      - other
+      type: string
+      description: |-
+        * `player_request` - player_request
+        * `other` - other
+    MoveMatchRequest:
+      type: object
+      properties:
+        scheduled_at:
+          type: string
+          format: date-time
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/MoveMatchReasonEnum'
+          default: player_request
+        note:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - scheduled_at
     MoveRequest:
       type: object
       properties:
@@ -23658,6 +23927,24 @@ components:
           format: uuid
       required:
       - membership_id
+    NotBefore:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        at:
+          type: string
+          format: date-time
+        note:
+          type: string
+      required:
+      - at
+      - display_name
+      - note
+      - user_id
     Notification:
       type: object
       properties:
@@ -24007,6 +24294,106 @@ components:
         reason:
           type: string
           maxLength: 300
+    OrderOfPlay:
+      type: object
+      properties:
+        published:
+          type: boolean
+          description: A schedule has been published.
+        released:
+          type: boolean
+          description: Everybody who sees the tournament sees it.
+        release_at:
+          type: string
+          format: date-time
+          nullable: true
+        earliest_release:
+          type: string
+          format: date-time
+          description: Three days before play starts.
+        starts_at:
+          type: string
+          format: date-time
+          description: When play is due to begin.
+        version:
+          type: integer
+          nullable: true
+        can_manage:
+          type: boolean
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stage'
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSlot'
+          description: Empty for everybody but staff until it is out.
+        not_before:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotBefore'
+          description: Staff only.
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entrant'
+          description: 'Staff only: players entered, for a not-before.'
+      required:
+      - can_manage
+      - earliest_release
+      - not_before
+      - players
+      - published
+      - release_at
+      - released
+      - slots
+      - stages
+      - starts_at
+      - version
+    OrderSlot:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+        label:
+          type: string
+        title:
+          type: string
+          description: The two sides, or 'To come'.
+        table:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        on_table:
+          type: boolean
+          description: Sent to its table.
+        mine:
+          type: boolean
+          description: The caller plays in it.
+      required:
+      - event_id
+      - event_name
+      - label
+      - match_id
+      - mine
+      - on_table
+      - scheduled_at
+      - stage
+      - status
+      - table
+      - title
     OrgRef:
       type: object
       properties:
@@ -24229,10 +24616,12 @@ components:
       enum:
       - check_in
       - rest
+      - not_before
       type: string
       description: |-
         * `check_in` - check_in
         * `rest` - rest
+        * `not_before` - not_before
     OwedStatusEnum:
       enum:
       - paid
@@ -28144,6 +28533,16 @@ components:
           pattern: ^[A-Z]{3}$
       required:
       - amount_minor
+    ReleaseRequest:
+      type: object
+      properties:
+        release_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Null: now.'
+      required:
+      - release_at
     Reminded:
       type: object
       properties:
@@ -28892,10 +29291,12 @@ components:
       enum:
       - published
       - delay
+      - moved
       type: string
       description: |-
         * `published` - Published
         * `delay` - Delay
+        * `moved` - Moved
     ScheduleVersionSummary:
       type: object
       properties:
@@ -29517,6 +29918,23 @@ components:
           maxLength: 40
       required:
       - label
+    SetNotBeforeRequest:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          default: ''
+          maxLength: 200
+        move:
+          type: boolean
+          default: true
+          description: Publish their matches planned earlier at this time, and tell
+            people.
+      required:
+      - at
     ShareCostRequest:
       type: object
       description: An amount each, or a total split evenly among those going (rounded
@@ -30001,6 +30419,50 @@ components:
         * `accepted` - Accepted
         * `declined` - Declined
         * `withdrawn` - Withdrawn
+    Stage:
+      type: object
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+          readOnly: true
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+        label:
+          type: string
+          readOnly: true
+        placed:
+          type: boolean
+          readOnly: true
+          description: Placed by staff, not by default.
+      required:
+      - event_id
+      - event_name
+      - label
+      - placed
+      - stage
+    StageRequest:
+      type: object
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+      required:
+      - event_id
+      - stage
+    StagesRequest:
+      type: object
+      properties:
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageRequest'
+      required:
+      - stages
     StandingRow:
       type: object
       properties:
@@ -30329,6 +30791,16 @@ components:
         * `approved` - Approved
         * `rejected` - Rejected
         * `cancelled` - Cancelled
+    TableDelayReasonEnum:
+      enum:
+      - late_start
+      - out_of_service
+      - other
+      type: string
+      description: |-
+        * `late_start` - Late start
+        * `out_of_service` - Table out of service
+        * `other` - Other
     TableDelayRequest:
       type: object
       properties:
@@ -30343,7 +30815,7 @@ components:
           maximum: 480
           minimum: 1
         reason:
-          $ref: '#/components/schemas/DelayReasonEnum'
+          $ref: '#/components/schemas/TableDelayReasonEnum'
       required:
       - minutes
       - reason

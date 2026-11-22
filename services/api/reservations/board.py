@@ -42,11 +42,18 @@ class Row:
     table: Table | None = None  # the free table suggested for it
     called_back: bool = False  # staff took it off a table: only a person sends it out again
     umpire: object = None  # whoever scores it, who can't be playing at the same time
+    stage_rank: int = 0  # its stage's place in the order of play (REQ-053); 0 for all without one
 
     @property
     def order(self):
         planned = self.match.scheduled_at
-        return (planned is None, planned or self.ready_since, self.ready_since, str(self.match.id))
+        return (
+            self.stage_rank,
+            planned is None,
+            planned or self.ready_since,
+            self.ready_since,
+            str(self.match.id),
+        )
 
 
 def _reason(code: str, message: str, until=None) -> dict:
@@ -77,6 +84,9 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
             match__draw__event__tournament=tournament, ending=Reservation.Ending.RECALLED
         ).values_list("match_id", flat=True)
     )
+    from competitions import order_of_play
+
+    ranks = order_of_play.ranks(tournament)
     rows, to_come, now = [], 0, timezone.now()
     for match in matches:
         if match.entry_a_id is None or match.entry_b_id is None:
@@ -89,7 +99,9 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
             service.ensure_dispatchable(match)
         except service.Blocked as blocked:  # a tie without its lineups
             reasons = [_reason(blocked.blocker, blocked.message)]
-            rows.append(Row(match, [], since, reasons, BLOCKED))
+            rows.append(
+                Row(match, [], since, reasons, BLOCKED, stage_rank=order_of_play.rank_of(ranks, match))
+            )
             continue
         people, rubber = service.people_to_hold(match)
         reasons = [
@@ -99,6 +111,7 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
         row = Row(match, people, since, reasons, BLOCKED if reasons else READY)
         row.called_back = match.id in called_back
         row.umpire = service._umpire_of(match, rubber) if not reasons else None
+        row.stage_rank = order_of_play.rank_of(ranks, match)
         rows.append(row)
     rows.sort(key=lambda row: row.order)
     return rows, to_come
@@ -219,6 +232,39 @@ def describe_next(row: Row | None, table: Table) -> dict | None:
     }
 
 
+def table_use(tournament: Tournament, now: datetime) -> tuple[datetime | None, dict]:
+    """When today's play began, and table id -> (idle since, share of today's play it was in use, 0-100)
+    for this tournament's tables (REQ-053). Today is the venue's day; play starts with the day's first
+    match on a table."""
+    from zoneinfo import ZoneInfo
+
+    zone = ZoneInfo(tournament.timezone)
+    midnight = now.astimezone(zone).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = list(
+        Reservation.objects.filter(
+            match__draw__event__tournament=tournament, table__venue_id=tournament.venue_id
+        )
+        .filter(Q(released_at__isnull=True) | Q(released_at__gte=midnight))
+        .values("table_id", "created_at", "released_at")
+    )
+    if not today:
+        return tournament.started_at, {}
+    began = max(midnight, min(found["created_at"] for found in today))
+    span = max((now - began).total_seconds(), 1)
+    use: dict = {}
+    for found in today:
+        start = max(found["created_at"], began)
+        end = found["released_at"] or now
+        idle, busy = use.get(found["table_id"], (began, 0.0))
+        use[found["table_id"]] = (
+            max(idle, end) if found["released_at"] else now,
+            busy + max((end - start).total_seconds(), 0),
+        )
+    return began, {
+        table_id: (idle, min(100, round(100 * busy / span))) for table_id, (idle, busy) in use.items()
+    }
+
+
 def build(tournament: Tournament) -> dict:
     """The board as BoardSerializer shows it."""
     from .models import TableUmpire
@@ -243,6 +289,7 @@ def build(tournament: Tournament) -> dict:
     blocks = control.blocks_at(tournament.venue_id) if tournament.venue_id else {}
     live_now = control.Live(list(on_tables.values()))
     now = timezone.now()
+    began, used = table_use(tournament, now) if _in_play(tournament) and tournament.venue_id else (None, {})
     tables = []
     for state in service.tables_of(tournament):
         held = on_tables.get(state["id"])
@@ -268,6 +315,12 @@ def build(tournament: Tournament) -> dict:
                 "playing": service.describe(held) if held else None,
                 "suggested_match_id": row.match.id if row else None,
                 "idle_reason": idle if state["free"] and not blocked and row is None else "",
+                "idle_since": (
+                    used.get(state["id"], (began, 0))[0]
+                    if state["free"] and not blocked and _in_play(tournament)
+                    else None
+                ),
+                "use_today": used.get(state["id"], (None, 0))[1] if _in_play(tournament) else None,
                 "table_umpire": (
                     {"id": table_umpires[state["id"]].id, "name": table_umpires[state["id"]].display_name}
                     if state["id"] in table_umpires

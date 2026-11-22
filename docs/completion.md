@@ -1,14 +1,14 @@
 # Coast TT: project completion
 
-Updated 2026-11-22. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #88, TASK-082 (match-day control centre), TASK-083 (scoring incidents), TASK-084 (live score channel) and TASK-085 (results announcements), with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21, and TASK-128 (next-match recommendation) and TASK-133 (tournament and table umpires, added 2026-11-22). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
+Updated 2026-11-22. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #88, TASK-082 (match-day control centre), TASK-083 (scoring incidents), TASK-084 (live score channel) and TASK-085 (results announcements), with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21, TASK-128 (next-match recommendation), TASK-133 (tournament and table umpires, added 2026-11-22) and TASK-127 (order of play). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
 
 ## Summary
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 87 | 132 | 45 | 66% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 87 | 128 | 41 | 68% |
-| **Phase 1 launch** | **76** | **97** | **21** | **78%** |
+| All tasks | 88 | 132 | 44 | 67% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 88 | 128 | 40 | 69% |
+| **Phase 1 launch** | **77** | **97** | **20** | **79%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -22,7 +22,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: competitions and operations | 23 | 24 | TASK-034 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
-| Current feature checklist | 33 | 45 | TASK-107 to TASK-110, TASK-123 to TASK-127, TASK-129 to TASK-131 |
+| Current feature checklist | 34 | 45 | TASK-107 to TASK-110, TASK-123 to TASK-126, TASK-129 to TASK-131 |
 | Phase 2: reservations and finances | 7 | 8 | TASK-079 |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
@@ -30,15 +30,15 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **85** | **131** | **46** |
+| **All tasks** | **88** | **132** | **44** |
 
-## Left for Phase 1 launch (22)
+## Left for Phase 1 launch (20)
 
 Sequenced, with the owner decisions each task waits on, in [phase1-release-plan.md](phase1-release-plan.md).
 
 - **Competition features:** browser push (TASK-034, real-device check only).
 - **Governance:** regional and national bodies (TASK-107), representatives (TASK-108), meetings with agendas and minutes (TASK-109), non-competition events (TASK-110).
-- **Club life and match day (added 2026-11-21):** representative squads with rotation (TASK-123), internal and external finance with source categories (TASK-124), training rules and 300 m location check-in (TASK-125), apologies for training and meetings (TASK-126), order of play with no idle tables (TASK-127), next-match recommendation (TASK-128), absence penalties (TASK-129), post-tournament review (TASK-130), feedback form builder (TASK-131).
+- **Club life and match day (added 2026-11-21):** representative squads with rotation (TASK-123), internal and external finance with source categories (TASK-124), training rules and 300 m location check-in (TASK-125), apologies for training and meetings (TASK-126), absence penalties (TASK-129), post-tournament review (TASK-130), feedback form builder (TASK-131).
 - **Operations:** VPS deploy and staging (TASK-058), backups and restore drill (TASK-060), load tests and monitoring (TASK-061), PWA install and update rehearsal (TASK-062), Phase 1 acceptance and dogfood (TASK-063).
 - **Decisions and reviews:** Stitch screen review (TASK-002), owner review of the ITTF clauses (TASK-003), legal sign-off for soda stakes (TASK-078).
 
@@ -60,3 +60,4 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-21 | 80 | 131 | 61% | 72% (69/96) | TASK-123 to TASK-131 added (squads, external finance, location check-in, apologies, order of play, next match, penalties, reviews, feedback forms) |
 | 2026-11-21 | 81 | 131 | 62% | 73% (70/96) | TASK-035 done (public tournament, results, rankings and ratings pages signed out; organizer dashboard screen) |
 | 2026-11-22 | 87 | 132 | 66% | 78% (76/97) | TASK-128 done (next-match recommendation); TASK-133 added and done (tournament and table umpires) |
+| 2026-11-22 | 88 | 132 | 67% | 79% (77/97) | TASK-127 done (order of play: stage order with fall-through, release window, player start times, moving matches later, idle tables) |

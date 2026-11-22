@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import ceremony, dashboard, media, news
+from .order_views import OrderOfPlayViewSet
 from .result_views import MatchCardView, MatchRecapView, ResultViewSet
 from .schedule_views import ScheduleSessionViewSet, ScheduleViewSet
 from .streams import ReportStreamView, StreamsView, StreamView
@@ -105,6 +106,31 @@ urlpatterns = [
         "<uuid:tournament_pk>/ceremony/awards/<uuid:pk>/present/",
         ceremony.PresentAwardView.as_view(),
         name="tournament-ceremony-award-present",
+    ),
+    path(
+        "<uuid:tournament_pk>/order-of-play/",
+        OrderOfPlayViewSet.as_view({"get": "retrieve"}),
+        name="tournament-order-of-play",
+    ),
+    path(
+        "<uuid:tournament_pk>/order-of-play/stages/",
+        OrderOfPlayViewSet.as_view({"put": "stages"}),
+        name="tournament-order-of-play-stages",
+    ),
+    path(
+        "<uuid:tournament_pk>/order-of-play/release/",
+        OrderOfPlayViewSet.as_view({"put": "release"}),
+        name="tournament-order-of-play-release",
+    ),
+    path(
+        "<uuid:tournament_pk>/order-of-play/players/<uuid:user_pk>/",
+        OrderOfPlayViewSet.as_view({"put": "set_player", "delete": "clear_player"}),
+        name="tournament-order-of-play-player",
+    ),
+    path(
+        "<uuid:tournament_pk>/order-of-play/matches/<uuid:match_pk>/move/",
+        OrderOfPlayViewSet.as_view({"post": "move"}),
+        name="tournament-order-of-play-move",
     ),
     path(
         "<uuid:tournament_pk>/schedule/",

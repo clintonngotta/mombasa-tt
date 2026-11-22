@@ -92,6 +92,19 @@ def ceremony_published(tournament, players) -> None:
     )
 
 
+def order_of_play_out(tournament, players) -> None:
+    """The tournament's order of play went public (REQ-053)."""
+    notify(
+        players,
+        Category.ANNOUNCEMENT,
+        f"Order of play: {tournament.name}",
+        body="The times and tables of the matches are out.",
+        subject=f"order-of-play:{tournament.id}",
+        link=f"/tournaments/{tournament.id}/order-of-play",
+        organization=tournament.organization,
+    )
+
+
 def results_announced(announcement, players) -> None:
     """A results announcement was published and the organizers chose to tell the players."""
     tournament = announcement.tournament
