@@ -190,7 +190,7 @@ Targets: RPO ≤15 minutes for confirmed durable data; RTO ≤4 hours for core t
 
 - **Application failure, compatible schema:** return API/worker/beat/web to previous immutable images; repeat smoke checks. Preserve database and attachment volumes.
 - **Bad migration:** stop affected writes; assess a forward repair first. Reverse migration only if tested and non-destructive. A point-in-time restore loses later writes, so make the recovery point and reconciliation explicit before cutover.
-- **Redis outage:** restore broker/channel service, reconnect clients and replay durable outbox. Scores already accepted by PostgreSQL remain authoritative.
+- **Redis outage:** restore broker/channel service, reconnect clients and replay durable outbox. Scores already accepted by PostgreSQL remain authoritative. Rate limits are counted in Redis; while it is down, log in, sign-in emails and invitations are refused (they can't be counted safely) and the other limits count per API process until it returns. Production refuses to start without `REDIS_URL`.
 - **Worker failure:** inspect failed jobs by ID, repair and retry idempotently. Never replay a whole payment/broadcast side effect blindly.
 - **VPS loss:** follow restore procedure on a replacement server; keep mobile API domain stable where possible.
 - **PWA bug:** stop rollout, restore prior web assets and publish a safe service-worker update. Retain backward-compatible API and IndexedDB score data; do not clear browser storage as a routine fix. Native binary rollback is handled separately when that phase exists.

@@ -13,6 +13,8 @@ from django.conf import settings
 from django.http import JsonResponse
 from rest_framework.throttling import SimpleRateThrottle
 
+from core.throttling import SharedCount
+
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 
 
@@ -52,8 +54,9 @@ class OriginCheckMiddleware:
         return self.get_response(request)
 
 
-class _AdminLoginThrottle(SimpleRateThrottle):
-    """The API's login allowance (THROTTLE_AUTH_LOGIN), per client address, for admin's login form."""
+class _AdminLoginThrottle(SharedCount, SimpleRateThrottle):
+    """The API's login allowance (THROTTLE_AUTH_LOGIN), per client address, for admin's login form,
+    shared across processes and closed while the shared count is out of reach."""
 
     scope = "auth_login"
     cache_format = "throttle_admin_login_%(ident)s"

@@ -13,8 +13,8 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project
 COPY . .
 # Django's own static files (admin, API browser). The proxy image copies them out of this stage's result;
-# the throwaway key and database address exist only for this command.
-RUN DJANGO_SECRET_KEY=collectstatic-only DATABASE_URL=postgres://build@localhost/build \
+# the throwaway key, database and Redis addresses exist only for this command.
+RUN DJANGO_SECRET_KEY=collectstatic-only DATABASE_URL=postgres://build@localhost/build REDIS_URL=redis://build \
     /opt/venv/bin/python manage.py collectstatic --noinput
 
 FROM python:3.13-slim

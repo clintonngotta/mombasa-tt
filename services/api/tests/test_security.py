@@ -108,6 +108,17 @@ def test_production_refuses_open_hosts_and_origins(env):
 
 def test_production_takes_exact_hosts_and_https_origins():
     error = _settings_error(
-        DJANGO_ALLOWED_HOSTS="app.example.com", DJANGO_CSRF_TRUSTED_ORIGINS="https://app.example.com"
+        DJANGO_ALLOWED_HOSTS="app.example.com",
+        DJANGO_CSRF_TRUSTED_ORIGINS="https://app.example.com",
+        REDIS_URL="redis://redis:6379/0",
     )
     assert "ImproperlyConfigured" not in error
+
+
+def test_production_refuses_to_count_rate_limits_per_process():
+    error = _settings_error(
+        DJANGO_ALLOWED_HOSTS="app.example.com",
+        DJANGO_CSRF_TRUSTED_ORIGINS="https://app.example.com",
+        REDIS_URL="",
+    )
+    assert "REDIS_URL is required" in error

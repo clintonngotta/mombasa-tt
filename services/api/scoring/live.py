@@ -7,13 +7,18 @@ view has nothing it could score with (REQ-010). Pages hear that a match changed 
 socket and fetch this again; it is never pushed with the message.
 """
 
+import logging
+
 from django.core.cache import cache
 from django.db.models import Max, Prefetch, Q
+from redis.exceptions import RedisError
 
 from competitions import drawing, official
 from competitions.models import DrawVersion, Match, Rubber, Tournament
 
 from .models import MatchIncident, Scorecard
+
+logger = logging.getLogger(__name__)
 
 # A tournament has as many matches in play as it has tables; this is a ceiling, not a page size.
 MAX_LIVE = 64
@@ -202,13 +207,24 @@ def shown_live(tournament: Tournament) -> list[dict]:
     """live_matches, shared by every viewer for a second. The list is the same for everybody who may see
     the tournament (the caller checks that first), so sharing it shows nobody anything new."""
     key = cache_key(tournament.id)
-    found = cache.get(key)
+    try:
+        found = cache.get(key)
+    except RedisError:
+        logger.warning("live list cache unavailable")
+        return live_matches(tournament)
     if found is None:
         found = live_matches(tournament)
-        cache.set(key, found, CACHE_SECONDS)
+        try:
+            cache.set(key, found, CACHE_SECONDS)
+        except RedisError:
+            logger.warning("live list cache unavailable")
     return found
 
 
 def forget(tournament_id) -> None:
-    """A score changed: the next viewer gets it fresh, not the second-old list."""
-    cache.delete(cache_key(tournament_id))
+    """A score changed: the next viewer gets it fresh, not the second-old list. If Redis is down the
+    score is still saved; the old list lasts at most a second there."""
+    try:
+        cache.delete(cache_key(tournament_id))
+    except RedisError:
+        logger.warning("live list cache unavailable")
