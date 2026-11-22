@@ -92,7 +92,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 
 ## 3. Governance (code)
 
-**TASK-107: regional and national bodies (M–L)** `feat/governance-bodies`, after D4 and 0.2
+**TASK-107: regional and national bodies (M–L)** `feat/governance-bodies`, after D4 and 0.2. Done 2026-11-22 (see tasks.md): bodies are created by platform super admins through `POST /regional-bodies/` (not the Django admin), and the approval permission is held through the bodies' Official role.
 - Add `Organization.Kind.NATIONAL_BODY`, one per country. Serializer guards.
 - Super admins create a body and name its first admin. Same positions, fields and roles as clubs (`organizations/committee.py`).
 - Approval permission (D4). Rewrite `access.official_for` and `managed_organizations` to read body membership plus that permission, not `OfficialAppointment`. Keep the rule that officials hold no club permission.

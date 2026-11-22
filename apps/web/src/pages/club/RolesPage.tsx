@@ -55,7 +55,7 @@ export function RolesPage() {
                   {role.key === "member"
                     ? "Everyone in the club"
                     : `${role.member_count} ${role.member_count === 1 ? "member" : "members"}`}{" "}
-                  · {role.key === "admin" ? "every permission" : `${role.permissions.length} permissions`}
+                  · {role.key === "admin" ? "every permission" : `${role.permissions.length} ${role.permissions.length === 1 ? "permission" : "permissions"}`}
                 </span>
               </span>
               <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
