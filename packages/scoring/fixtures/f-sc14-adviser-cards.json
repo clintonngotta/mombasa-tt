@@ -1,0 +1,98 @@
+{
+  "name": "F-SC14: an adviser is warned, then sent away; no penalty points",
+  "rules": "3.5.2.1-3.5.2.2",
+  "config": {
+    "best_of": 3,
+    "doubles": true
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "receiver": "b1",
+        "a_end": "left"
+      }
+    },
+    {
+      "event": {
+        "type": "adviser_card",
+        "side": "a",
+        "reason": "illegal_advice"
+      },
+      "expect": {
+        "advisers": [
+          1,
+          0
+        ],
+        "points": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "adviser_card",
+        "side": "b",
+        "reason": "loud"
+      },
+      "error": "invalid_card"
+    },
+    {
+      "event": {
+        "type": "adviser_card",
+        "side": "a",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "advisers": [
+          2,
+          0
+        ],
+        "points": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "adviser_card",
+        "side": "a",
+        "reason": "bad_behaviour"
+      },
+      "error": "adviser_sent_off"
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a2",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "offences": {
+          "a1": 0,
+          "a2": 1,
+          "b1": 0,
+          "b2": 0
+        }
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a2",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "points": [
+          0,
+          1
+        ],
+        "server": "a1",
+        "receiver": "b1"
+      }
+    }
+  ]
+}

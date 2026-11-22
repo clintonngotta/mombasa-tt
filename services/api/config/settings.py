@@ -231,6 +231,7 @@ SPECTACULAR_SETTINGS = {
         "MeetingPenaltyStatusEnum": "regions.models.MeetingPenalty.Status",
         "SkillEnum": "training.models.Skill",
         "TableBlockReasonEnum": "reservations.models.TableBlock.Reason",
+        "IncidentKindEnum": "scoring.models.MatchIncident.Kind",
         "SideEnum": "reservations.control.SIDES",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",

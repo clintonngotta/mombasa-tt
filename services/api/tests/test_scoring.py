@@ -35,7 +35,7 @@ def digest(state: dict) -> str:
 
 
 def test_the_shared_fixtures_are_there():
-    assert len(HAND_WORKED) == 16, f"expected the scoring fixtures in {FIXTURES}"
+    assert len(HAND_WORKED) == 24, f"expected the scoring fixtures in {FIXTURES}"
 
 
 @pytest.mark.parametrize("path", HAND_WORKED, ids=lambda path: path.stem)
@@ -89,7 +89,11 @@ def test_no_stream_ends_in_an_impossible_score():
             a, b = state["points"]
             assert not (max(a, b) >= 11 and abs(a - b) >= 2)
             assert sum(state["games_won"]) == len(state["games"])
-            assert (state["status"] == "completed") == (max(state["games_won"]) == needed)
+            # Played to its end exactly when a side has the games needed; a retirement or a
+            # disqualification ends it earlier, with the points played and nothing made up.
+            played = state["status"] == "completed" and state["outcome"] == "played"
+            assert played == (max(state["games_won"]) == needed)
+            assert (state["status"] == "completed") == (state["outcome"] is not None)
             if state["status"] == "in_progress":
                 assert state["server"][0] != state["receiver"][0]
 

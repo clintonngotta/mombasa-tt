@@ -1,0 +1,132 @@
+{
+  "name": "F-SC15: a suspension stops play until it ends; a player who can't resume retires with the points played",
+  "rules": "3.4.2.3, REQ-043",
+  "config": {
+    "best_of": 5,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "aaaaaaaaaaa",
+      "expect": {
+        "games": [
+          [
+            11,
+            0
+          ]
+        ],
+        "games_won": [
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "points": "ab",
+      "expect": {
+        "points": [
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "suspension",
+        "side": "a"
+      },
+      "expect": {
+        "suspended": "a"
+      }
+    },
+    {
+      "error": "suspended",
+      "event": {
+        "type": "point",
+        "side": "a"
+      }
+    },
+    {
+      "event": {
+        "type": "suspension",
+        "side": "b"
+      },
+      "error": "suspended"
+    },
+    {
+      "event": {
+        "type": "suspension_end"
+      },
+      "expect": {
+        "suspended": null
+      }
+    },
+    {
+      "event": {
+        "type": "suspension_end"
+      },
+      "error": "not_suspended"
+    },
+    {
+      "event": {
+        "type": "suspension",
+        "side": "a"
+      },
+      "expect": {
+        "suspended": "a"
+      }
+    },
+    {
+      "event": {
+        "type": "retire",
+        "side": "a"
+      },
+      "expect": {
+        "status": "completed",
+        "winner": "b",
+        "outcome": "retired",
+        "suspended": null,
+        "games": [
+          [
+            11,
+            0
+          ]
+        ],
+        "games_won": [
+          1,
+          0
+        ],
+        "points": [
+          1,
+          1
+        ],
+        "server": null
+      }
+    },
+    {
+      "event": {
+        "type": "retire",
+        "side": "b"
+      },
+      "error": "not_in_progress"
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "status": "in_progress",
+        "suspended": "a",
+        "winner": null,
+        "outcome": null
+      }
+    }
+  ]
+}

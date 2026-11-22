@@ -7180,6 +7180,11 @@ export interface components {
             id: string;
             display_name: string;
         };
+        /** @description What a tie's later rubber starts with: offences by position in this match and adviser cards. */
+        Carry: {
+            offences: components["schemas"]["Offences"];
+            advisers: number[];
+        };
         /**
          * @description * `singles` - Singles
          *     * `doubles` - Doubles
@@ -8531,6 +8536,34 @@ export interface components {
             item: string;
             quantity: number;
         };
+        /** @description An incident of the match as it stands (REQ-043): what happened, to whom, and at what score. */
+        Incident: {
+            sequence: number;
+            kind: components["schemas"]["IncidentKindEnum"];
+            side: string;
+            player_name: string;
+            /** @description yellow, yellow_red or red; empty otherwise. */
+            card: string;
+            penalty_points: number;
+            reason: string;
+            game_number: number;
+            score: number[];
+            /** Format: date-time */
+            at: string;
+        };
+        /**
+         * @description * `timeout` - Timeout
+         *     * `timeout_end` - Timeout End
+         *     * `card` - Card
+         *     * `adviser_card` - Adviser Card
+         *     * `suspension` - Suspension
+         *     * `suspension_end` - Suspension End
+         *     * `expedite` - Expedite
+         *     * `retired` - Retired
+         *     * `disqualified` - Disqualified
+         * @enum {string}
+         */
+        IncidentKindEnum: "timeout" | "timeout_end" | "card" | "adviser_card" | "suspension" | "suspension_end" | "expedite" | "retired" | "disqualified";
         /** @description Staff view of an invitation they sent. */
         Invitation: {
             /** Format: uuid */
@@ -9456,6 +9489,12 @@ export interface components {
         NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events";
         /** @enum {unknown} */
         NullEnum: null;
+        Offences: {
+            a1: number;
+            a2: number;
+            b1: number;
+            b2: number;
+        };
         /** @description One version of the official result of a match, or of one rubber of a tie. */
         OfficialResult: {
             /** Format: uuid */
@@ -11798,10 +11837,15 @@ export interface components {
             readonly confirmed_at: string | null;
             readonly device: components["schemas"]["Device"];
             readonly events: components["schemas"]["AcceptedEvent"][];
+            readonly incidents: components["schemas"]["SheetIncident"][];
+            /** @description The umpire is also the referee (decision D5): only then does the deck offer a disqualification. */
+            readonly can_disqualify: boolean;
         };
         ScoringConfig: {
             best_of: number;
             doubles: boolean;
+            /** @description A team tie's later rubber only (3.5.2.7). */
+            carry: components["schemas"]["Carry"];
         };
         /**
          * @description What the organizers need to see about scoring in one tournament: sheets still open, and what
@@ -11828,6 +11872,34 @@ export interface components {
             decider_changed: boolean;
             timeouts: boolean[];
             winner: string | null;
+            /** @description played, retired or disqualified. */
+            outcome: string | null;
+            /**
+             * @default [
+             *       false,
+             *       false
+             *     ]
+             */
+            timeout_running: boolean[];
+            /**
+             * @default {
+             *       "a1": 0,
+             *       "a2": 0,
+             *       "b1": 0,
+             *       "b2": 0
+             *     }
+             */
+            offences: components["schemas"]["Offences"];
+            /**
+             * @default [
+             *       0,
+             *       0
+             *     ]
+             */
+            advisers: number[];
+            suspended: string | null;
+            /** @default false */
+            expedite: boolean;
         };
         /**
          * @description * `unassigned` - Unassigned
@@ -11853,6 +11925,8 @@ export interface components {
             can_score: boolean;
             /** @description The caller may assign or change the umpire now. */
             can_assign: boolean;
+            /** @description Time-outs, cards and other incidents so far. */
+            incidents: components["schemas"]["Incident"][];
         };
         Secretary: {
             /** Format: uuid */
@@ -11987,6 +12061,23 @@ export interface components {
             label: string;
             a: string;
             b: string;
+        };
+        /** @description An incident of the match as it stands (REQ-043): what happened, to whom, and at what score. */
+        SheetIncident: {
+            sequence: number;
+            kind: components["schemas"]["IncidentKindEnum"];
+            side: string;
+            player_name: string;
+            /** @description yellow, yellow_red or red; empty otherwise. */
+            card: string;
+            penalty_points: number;
+            reason: string;
+            game_number: number;
+            score: number[];
+            /** Format: date-time */
+            at: string;
+            /** @description The umpire's note; on the sheet only. */
+            note: string;
         };
         /**
          * @description * `a` - a

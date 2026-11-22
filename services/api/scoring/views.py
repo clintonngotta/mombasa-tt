@@ -189,7 +189,11 @@ class ScorecardViewSet(viewsets.GenericViewSet):
         return self.get_paginated_response(MyScorecardSerializer(page, many=True).data)
 
     def _shown(self, scorecard: Scorecard) -> Response:
-        return Response(ScorecardSerializer(scorecard, context={"device_id": device_of(self.request)}).data)
+        return Response(
+            ScorecardSerializer(
+                scorecard, context={"device_id": device_of(self.request), "request": self.request}
+            ).data
+        )
 
     def _reply(self, scorecard: Scorecard) -> Response:
         return self._shown(scorecards().prefetch_related("events").get(pk=scorecard.pk))
@@ -211,7 +215,9 @@ class ScorecardViewSet(viewsets.GenericViewSet):
                 scorecard, request.user, asked["device_id"], asked["label"], asked["take_over"]
             )
         fresh = scorecards().prefetch_related("events").get(pk=scorecard.pk)
-        return Response(ScorecardSerializer(fresh, context={"device_id": asked["device_id"]}).data)
+        return Response(
+            ScorecardSerializer(fresh, context={"device_id": asked["device_id"], "request": request}).data
+        )
 
     @extend_schema(request=ConflictReportSerializer, responses={201: ConflictReceiptSerializer})
     def conflicts(self, request, pk):

@@ -1,0 +1,94 @@
+{
+  "name": "F-SC16: under the expedite system service changes after every point, for the rest of the match",
+  "rules": "2.15",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "expedite"
+      },
+      "error": "not_in_progress"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          1,
+          0
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "expedite"
+      },
+      "expect": {
+        "expedite": true,
+        "server": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "expedite"
+      },
+      "error": "expedite_on"
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          2,
+          0
+        ],
+        "server": "b1",
+        "receiver": "a1"
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          2,
+          1
+        ],
+        "server": "a1",
+        "receiver": "b1"
+      }
+    },
+    {
+      "points": "aaaaaaaaa",
+      "expect": {
+        "games": [
+          [
+            11,
+            1
+          ]
+        ],
+        "game_number": 2,
+        "expedite": true,
+        "server": "b1"
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          1,
+          0
+        ],
+        "server": "a1"
+      }
+    }
+  ]
+}

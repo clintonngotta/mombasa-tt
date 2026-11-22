@@ -16864,6 +16864,22 @@ components:
       required:
       - display_name
       - id
+    Carry:
+      type: object
+      description: 'What a tie''s later rubber starts with: offences by position in
+        this match and adviser cards.'
+      properties:
+        offences:
+          $ref: '#/components/schemas/Offences'
+        advisers:
+          type: array
+          items:
+            type: integer
+          maxItems: 2
+          minItems: 2
+      required:
+      - advisers
+      - offences
     CategoriesEnum:
       enum:
       - singles
@@ -20412,6 +20428,68 @@ components:
       required:
       - item
       - quantity
+    Incident:
+      type: object
+      description: 'An incident of the match as it stands (REQ-043): what happened,
+        to whom, and at what score.'
+      properties:
+        sequence:
+          type: integer
+        kind:
+          $ref: '#/components/schemas/IncidentKindEnum'
+        side:
+          type: string
+        player_name:
+          type: string
+        card:
+          type: string
+          description: yellow, yellow_red or red; empty otherwise.
+        penalty_points:
+          type: integer
+        reason:
+          type: string
+        game_number:
+          type: integer
+        score:
+          type: array
+          items:
+            type: integer
+        at:
+          type: string
+          format: date-time
+      required:
+      - at
+      - card
+      - game_number
+      - kind
+      - penalty_points
+      - player_name
+      - reason
+      - score
+      - sequence
+      - side
+    IncidentKindEnum:
+      enum:
+      - timeout
+      - timeout_end
+      - card
+      - adviser_card
+      - suspension
+      - suspension_end
+      - expedite
+      - retired
+      - disqualified
+      type: string
+      description: |-
+        * `timeout` - Timeout
+        * `timeout_end` - Timeout End
+        * `card` - Card
+        * `adviser_card` - Adviser Card
+        * `suspension` - Suspension
+        * `suspension_end` - Suspension End
+        * `expedite` - Expedite
+        * `retired` - Retired
+        * `disqualified` - Disqualified
     Invitation:
       type: object
       description: Staff view of an invitation they sent.
@@ -22749,6 +22827,22 @@ components:
     NullEnum:
       enum:
       - null
+    Offences:
+      type: object
+      properties:
+        a1:
+          type: integer
+        a2:
+          type: integer
+        b1:
+          type: integer
+        b2:
+          type: integer
+      required:
+      - a1
+      - a2
+      - b1
+      - b2
     OfficialResult:
       type: object
       description: One version of the official result of a match, or of one rubber
@@ -28037,10 +28131,21 @@ components:
           items:
             $ref: '#/components/schemas/AcceptedEvent'
           readOnly: true
+        incidents:
+          type: array
+          items:
+            $ref: '#/components/schemas/SheetIncident'
+          readOnly: true
+        can_disqualify:
+          type: boolean
+          description: 'The umpire is also the referee (decision D5): only then does
+            the deck offer a disqualification.'
+          readOnly: true
       required:
       - a
       - assignment_id
       - b
+      - can_disqualify
       - config
       - confirmed_at
       - device
@@ -28048,6 +28153,7 @@ components:
       - event_name
       - events
       - id
+      - incidents
       - label
       - match_id
       - revision
@@ -28063,8 +28169,13 @@ components:
           type: integer
         doubles:
           type: boolean
+        carry:
+          allOf:
+          - $ref: '#/components/schemas/Carry'
+          description: A team tie's later rubber only (3.5.2.7).
       required:
       - best_of
+      - carry
       - doubles
     ScoringOverview:
       type: object
@@ -28144,18 +28255,56 @@ components:
         winner:
           type: string
           nullable: true
+        outcome:
+          type: string
+          nullable: true
+          description: played, retired or disqualified.
+        timeout_running:
+          type: array
+          items:
+            type: boolean
+          default:
+          - false
+          - false
+        offences:
+          allOf:
+          - $ref: '#/components/schemas/Offences'
+          default:
+            a1: 0
+            a2: 0
+            b1: 0
+            b2: 0
+        advisers:
+          type: array
+          items:
+            type: integer
+          default:
+          - 0
+          - 0
+        suspended:
+          type: string
+          nullable: true
+        expedite:
+          type: boolean
+          default: false
       required:
       - a_end
+      - advisers
       - decider_changed
+      - expedite
       - first_receiver
       - first_server
       - game_number
       - games
       - games_won
+      - offences
+      - outcome
       - points
       - receiver
       - server
       - status
+      - suspended
+      - timeout_running
       - timeouts
       - winner
     ScoringStatusEnum:
@@ -28192,9 +28341,15 @@ components:
         can_assign:
           type: boolean
           description: The caller may assign or change the umpire now.
+        incidents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Incident'
+          description: Time-outs, cards and other incidents so far.
       required:
       - can_assign
       - can_score
+      - incidents
       - scorecard_id
       - status
       - umpire_name
@@ -28530,6 +28685,50 @@ components:
       - label
       - match_id
       - scorecard_id
+    SheetIncident:
+      type: object
+      description: 'An incident of the match as it stands (REQ-043): what happened,
+        to whom, and at what score.'
+      properties:
+        sequence:
+          type: integer
+        kind:
+          $ref: '#/components/schemas/IncidentKindEnum'
+        side:
+          type: string
+        player_name:
+          type: string
+        card:
+          type: string
+          description: yellow, yellow_red or red; empty otherwise.
+        penalty_points:
+          type: integer
+        reason:
+          type: string
+        game_number:
+          type: integer
+        score:
+          type: array
+          items:
+            type: integer
+        at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          description: The umpire's note; on the sheet only.
+      required:
+      - at
+      - card
+      - game_number
+      - kind
+      - note
+      - penalty_points
+      - player_name
+      - reason
+      - score
+      - sequence
+      - side
     SideEnum:
       enum:
       - a

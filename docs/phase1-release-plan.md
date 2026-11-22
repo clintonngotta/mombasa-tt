@@ -57,7 +57,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - One match-day audit log covering calls, recalls, moves, assignments, outcomes and corrections.
 - Tests: referee permission matrix. Screenshots at desktop and tablet sizes.
 
-**TASK-083: scoring incidents (L)** `feat/scoring-incidents`, after D1 and 2.0
+**TASK-083: scoring incidents (L)** `feat/scoring-incidents`, after D1 and 2.0. Done 2026-11-22 (see tasks.md); one house reading (a second penalty point carrying into the next game) awaits the owner.
 - Add incident events to both engines (`packages/scoring/src`, `services/api/scoring/engine.py`):
   - timeout start and end with a countdown
   - player cards: the ladder, penalty points scored as normal points (including game-ending ones), and carry-over across a team tie's rubbers

@@ -46,7 +46,13 @@ def config_of(scorecard: Scorecard) -> dict:
         if scorecard.rubber_id
         else event.kind == Event.Kind.DOUBLES
     )
-    return {"best_of": event.best_of, "doubles": doubles}
+    config = {"best_of": event.best_of, "doubles": doubles}
+    from . import incidents  # incidents builds on the models and the engine, as this does
+
+    carry = incidents.carry_for(scorecard, players_of)
+    if carry is not None:  # a tie's later rubber starts with the warnings and penalties of the earlier
+        config["carry"] = carry
+    return config
 
 
 def players_of(scorecard: Scorecard) -> dict[str, list]:
@@ -94,7 +100,36 @@ def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
         "umpire_name": umpire.display_name if umpire else "",
         "can_score": mine and scorable and not scorecard.confirmed_at,
         "can_assign": staff and scorable,
+        "incidents": incidents_of(scorecard) if scorecard else [],
     }
+
+
+def incidents_of(scorecard: Scorecard, with_notes: bool = False) -> list[dict]:
+    """The sheet's incidents as IncidentSerializer shows them; the umpire's notes on the sheet only."""
+    rows = []
+    for incident in scorecard.incidents.select_related("player"):
+        row = {
+            "sequence": incident.sequence,
+            "kind": incident.kind,
+            "side": incident.side,
+            "player_name": incident.player.display_name if incident.player else "",
+            "card": incident.card,
+            "penalty_points": incident.penalty_points,
+            "reason": incident.reason,
+            "game_number": incident.game_number,
+            "score": incident.score,
+            "at": incident.at,
+        }
+        if with_notes:
+            row["note"] = incident.note
+        rows.append(row)
+    return rows
+
+
+def may_disqualify(scorecard: Scorecard, user) -> bool:
+    return Permission.RESULTS_REFEREE in effective_permissions(
+        user, event_of(scorecard).tournament.organization
+    )
 
 
 def ensure_scorable(match: Match, rubber: Rubber | None) -> None:
@@ -274,6 +309,10 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
         if sent["sequence"] != scorecard.revision + 1:
             refused = {"sequence": sent["sequence"], "code": "sequence_gap"}
             break
+        refusal = _refused_for(scorecard, actor, sent["event"])
+        if refusal:
+            refused = {"sequence": sent["sequence"], "code": refusal}
+            break
         try:
             scoring.push(sent["event"])
         except ScoringError as error:
@@ -298,9 +337,27 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
     if accepted:
         scorecard.state = scoring.state if refused is None else replayed(scorecard).state
         scorecard.save(update_fields=["revision", "state"])
+        from . import incidents
+
+        incidents.rebuild(scorecard, config_of(scorecard), players_of(scorecard))
         event = event_of(scorecard)
         broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id)
     return {"accepted": accepted, "refused": refused}
+
+
+def _refused_for(scorecard: Scorecard, actor, event) -> str | None:
+    """What the server refuses beyond the rules: a note too long to keep, and a disqualification from
+    anybody but the referee (decision D5)."""
+    from . import incidents
+
+    if not isinstance(event, dict):
+        return None
+    note = event.get("note")
+    if note is not None and (not isinstance(note, str) or len(note) > incidents.MAX_NOTE):
+        return "invalid_note"
+    if event.get("type") == "disqualify" and not may_disqualify(scorecard, actor):
+        return "referee_only"
+    return None
 
 
 def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id=None) -> None:
@@ -319,10 +376,16 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
         raise _conflict("match_not_finished", "The match isn't finished, so there is no result to confirm.")
     match = scorecard.tie_or_match
     winner = match.entry_a if state["winner"] == "a" else match.entry_b
+    # A retirement or disqualification keeps the points played, the unfinished game included; nothing
+    # is made up (REQ-043).
+    outcome = state.get("outcome") or Match.Outcome.PLAYED
+    games = [list(game) for game in state["games"]]
+    if outcome != Match.Outcome.PLAYED and sum(state["points"]):
+        games.append(list(state["points"]))
     if scorecard.rubber_id:
-        ties.record_rubber(scorecard.rubber, winner, games=state["games"], actor=actor)
+        ties.record_rubber(scorecard.rubber, winner, outcome=outcome, games=games, actor=actor)
     else:
-        drawing.record_result(match, winner, games=state["games"], actor=actor)
+        drawing.record_result(match, winner, outcome=outcome, games=games, actor=actor)
     scorecard.state = state
     scorecard.confirmed_at = timezone.now()
     scorecard.confirmed_by = actor
@@ -367,7 +430,8 @@ def strike_out(match: Match, actor=None) -> list[dict]:
         _log(scorecard, ScoreAssignment.Kind.RESET, actor)  # who held it and how far it had got
         scorecard.events.all().delete()
         scorecard.revision = 0
-        scorecard.state = initial_state()
+        scorecard.state = initial_state(config_of(scorecard))
+        scorecard.incidents.all().delete()
         scorecard.confirmed_at = scorecard.confirmed_by = None
         scorecard.assignment_id = uuid.uuid4()
         scorecard.device_id, scorecard.device_label, scorecard.device_since = None, "", None

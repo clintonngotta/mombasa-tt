@@ -28,6 +28,14 @@ export function describeLog(card: Scorecard, stream: Stream, names: Names): LogL
   return lines.reverse()
 }
 
+const REASON: Record<string, string> = {
+  bad_behaviour: "bad behaviour",
+  racket_abuse: "racket abuse",
+  illegal_advice: "illegal advice",
+  delay: "delay",
+  other: "other",
+}
+
 function describe(event: ScoreEvent, before: State, after: State, names: Names): string {
   switch (event.type) {
     case "start":
@@ -46,6 +54,28 @@ function describe(event: ScoreEvent, before: State, after: State, names: Names):
       return after === before ? `${names[event.player]} already serves first.` : `${names[event.player]} serves first in game ${after.game_number}.`
     case "timeout":
       return `Time-out: ${names[event.side]}.`
+    case "timeout_end":
+      return "Time-out over: play resumes."
+    case "card": {
+      const given = before.offences[event.player] + 1
+      const points = given - 1
+      const shown = given === 1 ? "Yellow card" : `Yellow and red card, ${points} penalty point${points === 1 ? "" : "s"}`
+      return `${shown}: ${names[event.player]} (${REASON[event.reason] ?? event.reason}).${event.note ? ` ${event.note}` : ""}`
+    }
+    case "adviser_card": {
+      const index = event.side === "a" ? 0 : 1
+      return `${after.advisers[index] === 1 ? "Yellow card" : "Red card, sent away"}: ${names[event.side]}'s adviser (${REASON[event.reason] ?? event.reason}).`
+    }
+    case "suspension":
+      return `Play suspended: ${names[event.side]} injured.`
+    case "suspension_end":
+      return "Suspension over: play resumes."
+    case "expedite":
+      return "Expedite system started: service changes every point."
+    case "retire":
+      return `${names[event.side]} retired. Match to ${names[event.side === "a" ? "b" : "a"]}.`
+    case "disqualify":
+      return `${names[event.side]} disqualified by the referee. Match to ${names[event.side === "a" ? "b" : "a"]}.`
     case "undo":
       return "Undo: the last action was taken back."
   }
