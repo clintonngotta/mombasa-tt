@@ -15,6 +15,7 @@ from notifications.models import Notification
 
 from .helpers import logged_in, make_user
 from .test_draws import draw_url, fill
+from .test_ties import cup, tie  # noqa: F401
 from .test_tournaments import add_event, do, make_tournament
 from .test_venues import make_venue
 
@@ -159,7 +160,9 @@ def test_publishing_freezes_it_notifies_and_a_correction_brings_an_amendment(sta
     assert published.json()["status"] == "published" and published.json()["published_at"]
     players = {place.user_id for entry in (first.entry_a, first.entry_b) for place in entry.players.all()}
     told = set(
-        Notification.objects.filter(subject=f"announcement:{made['id']}").values_list("recipient_id", flat=True)
+        Notification.objects.filter(subject=f"announcement:{made['id']}").values_list(
+            "recipient_id", flat=True
+        )
     )
     assert players <= told
     # Frozen.
@@ -206,3 +209,91 @@ def test_only_the_hosts_staff_write_and_a_drafts_news_is_theirs(staff, club, kno
     assert APIClient().get(news_url(hidden)).status_code == 404
     assert fan.post(news_url(hidden), {"scope": "tournament"}, format="json").status_code == 404
     assert staff.get(news_url(hidden)).status_code == 200
+
+
+def test_a_team_tie_counts_its_rubbers_and_lists_them(staff, tie):  # noqa: F811
+    from competitions import ties
+
+    from .test_ties import WIN, begin
+
+    rubbers = begin(staff, tie)
+    match = tie["match"]
+    winner = match.entry_a
+    for rubber in rubbers[:3]:
+        ties.record_rubber(rubber, winner, games=WIN)
+    game = {"cup": tie["cup"]}
+    body = generate(staff, game, scope="tournament")["body"]
+    a, b = names(match)
+    assert f"{a} 3-0 {b}" in body.splitlines()
+    assert sum(1 for line in body.splitlines() if line.startswith("  Rubber ")) == 3
+
+
+def test_sides_still_to_be_decided_are_pending_too(staff, knockout):
+    body = generate(staff, knockout, scope="event", event_id=knockout["event"]["id"])["body"]
+    assert body.splitlines()[-1] == "To be decided v To be decided: pending"  # the final
+
+
+def test_a_first_result_outdates_nothing_and_a_post_is_amended_once_at_a_time(staff, knockout):
+    first, second = knockout["semis"]
+    drawing.record_result(first, first.entry_a, games=[(11, 1)] * 3)
+    made = generate(staff, knockout, scope="tournament")
+    staff.post(news_url(knockout, made["id"], "publish"), {}, format="json")
+    drawing.record_result(second, second.entry_a, games=[(11, 1)] * 3)  # a first result for the other semi
+    assert staff.get(news_url(knockout, made["id"])).json()["outdated_at"] is None
+    assert staff.post(news_url(knockout, made["id"], "amend")).status_code == 201
+    again = staff.post(news_url(knockout, made["id"], "amend"))
+    assert (again.status_code, again.json()["code"]) == (409, "amendment_pending")
+
+
+def test_a_drafts_card_is_the_staffs_and_its_text_is_escaped(staff, knockout):
+    made = generate(staff, knockout, scope="tournament")
+    staff.patch(
+        news_url(knockout, made["id"]),
+        {"title": "<script>x</script>", "body": "Head\n<b>&</b>"},
+        format="json",
+    )
+    assert APIClient().get(news_url(knockout, made["id"], "card")).status_code == 404
+    card = staff.get(news_url(knockout, made["id"], "card")).content.decode()
+    assert "<script>" not in card and "&lt;script&gt;" in card and "&lt;b&gt;&amp;&lt;/b&gt;" in card
+
+
+def test_only_players_holding_a_place_are_told(staff, knockout):
+    from competitions.models import Entry
+
+    first, _ = knockout["semis"]
+    gone = first.entry_b
+    Entry.objects.filter(pk=gone.pk).update(status=Entry.Status.WITHDRAWN)
+    made = generate(staff, knockout, scope="tournament")
+    staff.post(news_url(knockout, made["id"], "publish"), {"notify": True}, format="json")
+    told = set(Notification.objects.values_list("recipient_id", flat=True))
+    assert gone.players.get().user_id not in told and first.entry_a.players.get().user_id in told
+
+
+def test_drafting_costs_the_same_queries_for_a_small_draw_or_a_big_one(staff, club):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    def bracket(size: int, name: str) -> dict:
+        made = add_event(
+            staff,
+            make_tournament(staff, club, make_venue(staff, club, name=f"{name} hall"), name=name),
+            name=f"{name} singles",
+            format="knockout",
+        )
+        made = do(staff, made, "publish")
+        event = made["events"][0]
+        fill(staff, made, event, size)
+        staff.post(draw_url(made, event, "preview"), {"rng_seed": 1}, format="json")
+        staff.post(draw_url(made, event, "publish"), {}, format="json")
+        do(staff, made, "start")
+        do(staff, made, "start", event=event)
+        for match in Match.objects.filter(draw__event_id=event["id"], round=1):
+            drawing.record_result(match, match.entry_a, games=[(11, 1)] * 3)
+        return {"cup": made}
+
+    def queries(game) -> int:
+        with CaptureQueriesContext(connection) as ran:
+            generate(staff, game, scope="tournament")
+        return len(ran)
+
+    assert queries(bracket(4, "Small")) == queries(bracket(16, "Big"))

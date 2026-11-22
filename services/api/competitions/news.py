@@ -29,7 +29,7 @@ from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
 from . import announcements
-from .models import Announcement, EntryPlayer, Match, Tournament
+from .models import Announcement, Entry, EntryPlayer, Match, Tournament
 from .recap import GOLD, MUTED, NAVY, WHITE
 
 Scope = Announcement.Scope
@@ -163,7 +163,7 @@ class AnnouncementsView(GenericAPIView):
         with transaction.atomic():
             tournament = _staff_tournament(request, tournament_pk)
             made = announcements.draft(
-                tournament, announcements.scoped_from(tournament, asked.validated_data), request.user
+                tournament, announcements.selection_from(tournament, asked.validated_data), request.user
             )
         return _reply(made, status=201)
 
@@ -233,9 +233,10 @@ class PublishAnnouncementView(APIView):
             if asked.validated_data["notify"]:
                 from notifications import triggers
 
-                players = EntryPlayer.objects.filter(entry__event__tournament=tournament).values_list(
-                    "user_id", flat=True
-                )
+                # The players who hold a place: not those who withdrew, were turned down or wait.
+                players = EntryPlayer.objects.filter(
+                    entry__event__tournament=tournament, entry__status=Entry.Status.ACCEPTED
+                ).values_list("user_id", flat=True)
                 triggers.results_announced(announcement, set(players))
         return _reply(announcement)
 
@@ -251,12 +252,9 @@ class AmendAnnouncementView(APIView):
         with transaction.atomic():
             tournament = _staff_tournament(request, tournament_pk)
             original = _locked(tournament, pk)
-            if original.status != Announcement.Status.PUBLISHED:
-                raise ApiException(
-                    "not_published", "Edit the draft itself; only a published one is amended.", 409
-                )
+            announcements.ensure_amendable(original)
             made = announcements.draft(
-                tournament, announcements.scoped_of(original), request.user, amends=original
+                tournament, announcements.Selection.of(original), request.user, amends=original
             )
         return _reply(made, status=201)
 
