@@ -233,6 +233,8 @@ SPECTACULAR_SETTINGS = {
         "SkillEnum": "training.models.Skill",
         "TableBlockReasonEnum": "reservations.models.TableBlock.Reason",
         "IncidentKindEnum": "scoring.models.MatchIncident.Kind",
+        "AnnouncementScopeEnum": "competitions.models.Announcement.Scope",
+        "AnnouncementStatusEnum": "competitions.models.Announcement.Status",
         "SideEnum": "reservations.control.SIDES",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",

@@ -41,6 +41,7 @@ def accept(
         standing.current = False
         standing.save(update_fields=["current"])
         _project(standing)  # what followed from it has to be taken back
+        _outdate(match)
     result = OfficialResult.objects.create(
         match=match,
         rubber=rubber,
@@ -65,6 +66,14 @@ def strike_out(result: OfficialResult) -> None:
     result.projected_at = None
     result.save(update_fields=["current", "voided_at", "projected_at"])
     _project(result)
+    _outdate(result.match)
+
+
+def _outdate(match: Match) -> None:
+    """A result that announcements were drawn from changed: those published are now out of date."""
+    from . import announcements  # announcements builds on this module
+
+    announcements.outdate(match)
 
 
 def _project(result: OfficialResult) -> None:

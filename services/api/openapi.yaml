@@ -12302,6 +12302,302 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/announcements/:
+    get:
+      operationId: tournaments_announcements_list
+      description: |-
+        GET /tournaments/{id}/announcements/: the news feed, newest first (drafts too for the staff).
+        POST: generate a draft from the official results of a session, round, day, event or the tournament.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAnnouncementList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: tournaments_announcements_create
+      description: |-
+        GET /tournaments/{id}/announcements/: the news feed, newest first (drafts too for the staff).
+        POST: generate a draft from the official results of a session, round, day, event or the tournament.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Announcement'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/announcements/{id}/:
+    get:
+      operationId: tournaments_announcements_retrieve
+      description: |-
+        GET/PATCH/DELETE /tournaments/{id}/announcements/{pk}/: one announcement. Only a draft is edited
+        or deleted; a published one is frozen.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Announcement'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: tournaments_announcements_partial_update
+      description: |-
+        GET/PATCH/DELETE /tournaments/{id}/announcements/{pk}/: one announcement. Only a draft is edited
+        or deleted; a published one is frozen.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEditRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Announcement'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: tournaments_announcements_destroy
+      description: |-
+        GET/PATCH/DELETE /tournaments/{id}/announcements/{pk}/: one announcement. Only a draft is edited
+        or deleted; a published one is frozen.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/announcements/{id}/amend/:
+    post:
+      operationId: tournaments_announcements_amend_create
+      description: |-
+        POST /tournaments/{id}/announcements/{pk}/amend/: a new draft of a published announcement, drawn
+        again from the official results as they stand now. The original stays on the feed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Announcement'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/announcements/{id}/card/:
+    get:
+      operationId: tournaments_announcements_card_retrieve
+      description: 'GET /tournaments/{id}/announcements/{pk}/card/: the image card,
+        for whoever may read the post.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/announcements/{id}/publish/:
+    post:
+      operationId: tournaments_announcements_publish_create
+      description: |-
+        POST /tournaments/{id}/announcements/{pk}/publish/: put it on the feed, frozen from now on, and
+        optionally tell the tournament's players.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Announcement'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/ceremony/:
     get:
       operationId: tournaments_ceremony_retrieve
@@ -15821,6 +16117,94 @@ components:
       required:
       - amount_minor
       - charge_id
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/AnnouncementScopeEnum'
+          readOnly: true
+        event_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        event_name:
+          type: string
+          readOnly: true
+        stage:
+          allOf:
+          - $ref: '#/components/schemas/MatchStageEnum'
+          readOnly: true
+        round:
+          type: integer
+          readOnly: true
+          nullable: true
+        day:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        session_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        title:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AnnouncementStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        outdated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        amends_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        amended_by_id:
+          type: string
+          nullable: true
+          readOnly: true
+          description: The published amendment, once there is one.
+      required:
+      - amended_by_id
+      - amends_id
+      - body
+      - created_at
+      - day
+      - event_id
+      - event_name
+      - id
+      - outdated_at
+      - published_at
+      - round
+      - scope
+      - session_id
+      - stage
+      - status
+      - title
     AnnouncementAudienceEnum:
       enum:
       - members
@@ -15856,6 +16240,28 @@ components:
       required:
       - audience
       - title
+    AnnouncementScopeEnum:
+      enum:
+      - session
+      - round
+      - day
+      - event
+      - tournament
+      type: string
+      description: |-
+        * `session` - Session
+        * `round` - Round
+        * `day` - Day
+        * `event` - Event
+        * `tournament` - Tournament
+    AnnouncementStatusEnum:
+      enum:
+      - draft
+      - published
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
     AnswerAnswerEnum:
       enum:
       - attending
@@ -15943,7 +16349,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/ArticleStatusEnum'
+          - $ref: '#/components/schemas/AnnouncementStatusEnum'
           readOnly: true
         published_at:
           type: string
@@ -15999,14 +16405,6 @@ components:
       required:
       - body
       - title
-    ArticleStatusEnum:
-      enum:
-      - draft
-      - published
-      type: string
-      description: |-
-        * `draft` - Draft
-        * `published` - Published
     AssignHolderRequest:
       type: object
       properties:
@@ -20069,6 +20467,31 @@ components:
       required:
       - my_points
       - opponent_points
+    GenerateRequest:
+      type: object
+      description: |-
+        What to announce: `event_id` for an event or a round, with `stage` and `round` for a round, `day`
+        for a day (venue local) and `session_id` for a session.
+      properties:
+        scope:
+          $ref: '#/components/schemas/AnnouncementScopeEnum'
+        event_id:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+        round:
+          type: integer
+          maximum: 64
+          minimum: 1
+        day:
+          type: string
+          format: date
+        session_id:
+          type: string
+          format: uuid
+      required:
+      - scope
     GeographyRanking:
       type: object
       properties:
@@ -23575,6 +23998,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AdminHandover'
+    PaginatedAnnouncementList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Announcement'
     PaginatedAttendeeList:
       type: object
       required:
@@ -24924,6 +25372,17 @@ components:
           items:
             $ref: '#/components/schemas/PatternStepRequest'
           maxItems: 12
+    PatchedEditRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        body:
+          type: string
+          minLength: 1
+          maxLength: 5000
     PatchedEventRequest:
       type: object
       properties:
@@ -26589,6 +27048,13 @@ components:
         note:
           type: string
           maxLength: 300
+    PublishRequest:
+      type: object
+      properties:
+        notify:
+          type: boolean
+          default: false
+          description: Tell the tournament's players it is out.
     PublishedDetailsEnum:
       enum:
       - hand

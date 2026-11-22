@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import ceremony, dashboard, media
+from . import ceremony, dashboard, media, news
 from .result_views import MatchCardView, MatchRecapView, ResultViewSet
 from .schedule_views import ScheduleSessionViewSet, ScheduleViewSet
 from .streams import ReportStreamView, StreamsView, StreamView
@@ -46,6 +46,31 @@ urlpatterns = [
         name="tournament-awaiting-approval",
     ),
     path("<uuid:tournament_pk>/ceremony/", ceremony.CeremonyView.as_view(), name="tournament-ceremony"),
+    path(
+        "<uuid:tournament_pk>/announcements/",
+        news.AnnouncementsView.as_view(),
+        name="tournament-announcements",
+    ),
+    path(
+        "<uuid:tournament_pk>/announcements/<uuid:pk>/",
+        news.AnnouncementView.as_view(),
+        name="tournament-announcement",
+    ),
+    path(
+        "<uuid:tournament_pk>/announcements/<uuid:pk>/publish/",
+        news.PublishAnnouncementView.as_view(),
+        name="tournament-announcement-publish",
+    ),
+    path(
+        "<uuid:tournament_pk>/announcements/<uuid:pk>/amend/",
+        news.AmendAnnouncementView.as_view(),
+        name="tournament-announcement-amend",
+    ),
+    path(
+        "<uuid:tournament_pk>/announcements/<uuid:pk>/card/",
+        news.AnnouncementCardView.as_view(),
+        name="tournament-announcement-card",
+    ),
     path(
         "<uuid:tournament_pk>/dashboard/",
         dashboard.TournamentDashboardView.as_view(),

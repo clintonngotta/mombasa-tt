@@ -5126,6 +5126,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/announcements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/announcements/: the news feed, newest first (drafts too for the staff).
+         *     POST: generate a draft from the official results of a session, round, day, event or the tournament.
+         */
+        get: operations["tournaments_announcements_list"];
+        put?: never;
+        /**
+         * @description GET /tournaments/{id}/announcements/: the news feed, newest first (drafts too for the staff).
+         *     POST: generate a draft from the official results of a session, round, day, event or the tournament.
+         */
+        post: operations["tournaments_announcements_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/announcements/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PATCH/DELETE /tournaments/{id}/announcements/{pk}/: one announcement. Only a draft is edited
+         *     or deleted; a published one is frozen.
+         */
+        get: operations["tournaments_announcements_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description GET/PATCH/DELETE /tournaments/{id}/announcements/{pk}/: one announcement. Only a draft is edited
+         *     or deleted; a published one is frozen.
+         */
+        delete: operations["tournaments_announcements_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description GET/PATCH/DELETE /tournaments/{id}/announcements/{pk}/: one announcement. Only a draft is edited
+         *     or deleted; a published one is frozen.
+         */
+        patch: operations["tournaments_announcements_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/announcements/{id}/amend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/announcements/{pk}/amend/: a new draft of a published announcement, drawn
+         *     again from the official results as they stand now. The original stays on the feed.
+         */
+        post: operations["tournaments_announcements_amend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/announcements/{id}/card/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /tournaments/{id}/announcements/{pk}/card/: the image card, for whoever may read the post. */
+        get: operations["tournaments_announcements_card_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/announcements/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /tournaments/{id}/announcements/{pk}/publish/: put it on the feed, frozen from now on, and
+         *     optionally tell the tournament's players.
+         */
+        post: operations["tournaments_announcements_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/ceremony/": {
         parameters: {
             query?: never;
@@ -6732,6 +6841,33 @@ export interface components {
             charge_id: string;
             amount_minor: number;
         };
+        Announcement: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly scope: components["schemas"]["AnnouncementScopeEnum"];
+            /** Format: uuid */
+            readonly event_id: string | null;
+            readonly event_name: string;
+            readonly stage: components["schemas"]["MatchStageEnum"];
+            readonly round: number | null;
+            /** Format: date */
+            readonly day: string | null;
+            /** Format: uuid */
+            readonly session_id: string | null;
+            readonly title: string;
+            readonly body: string;
+            readonly status: components["schemas"]["AnnouncementStatusEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly published_at: string | null;
+            /** Format: date-time */
+            readonly outdated_at: string | null;
+            /** Format: uuid */
+            readonly amends_id: string | null;
+            /** @description The published amendment, once there is one. */
+            readonly amended_by_id: string | null;
+        };
         /**
          * @description * `members` - members
          *     * `event` - event
@@ -6748,6 +6884,21 @@ export interface components {
             event_id?: string;
             user_ids?: string[];
         };
+        /**
+         * @description * `session` - Session
+         *     * `round` - Round
+         *     * `day` - Day
+         *     * `event` - Event
+         *     * `tournament` - Tournament
+         * @enum {string}
+         */
+        AnnouncementScopeEnum: "session" | "round" | "day" | "event" | "tournament";
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         * @enum {string}
+         */
+        AnnouncementStatusEnum: "draft" | "published";
         /**
          * @description * `attending` - attending
          *     * `apologies` - apologies
@@ -6787,7 +6938,7 @@ export interface components {
             body: string;
             audience: components["schemas"]["ArticleAudienceEnum"];
             readonly clubs: components["schemas"]["OrgRef"][];
-            readonly status: components["schemas"]["ArticleStatusEnum"];
+            readonly status: components["schemas"]["AnnouncementStatusEnum"];
             /** Format: date-time */
             readonly published_at: string | null;
             /** Format: date-time */
@@ -6806,12 +6957,6 @@ export interface components {
             audience?: components["schemas"]["ArticleAudienceEnum"];
             club_ids?: string[];
         };
-        /**
-         * @description * `draft` - Draft
-         *     * `published` - Published
-         * @enum {string}
-         */
-        ArticleStatusEnum: "draft" | "published";
         AssignHolderRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -8397,6 +8542,21 @@ export interface components {
             my_points: number;
             opponent_points: number;
         };
+        /**
+         * @description What to announce: `event_id` for an event or a round, with `stage` and `round` for a round, `day`
+         *     for a day (venue local) and `session_id` for a session.
+         */
+        GenerateRequest: {
+            scope: components["schemas"]["AnnouncementScopeEnum"];
+            /** Format: uuid */
+            event_id?: string;
+            stage?: components["schemas"]["MatchStageEnum"];
+            round?: number;
+            /** Format: date */
+            day?: string;
+            /** Format: uuid */
+            session_id?: string;
+        };
         GeographyRanking: {
             discipline: components["schemas"]["SinglesOrDoublesEnum"];
             level: components["schemas"]["GeographyRankingLevelEnum"];
@@ -9785,6 +9945,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["AdminHandover"][];
         };
+        PaginatedAnnouncementList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Announcement"][];
+        };
         PaginatedAttendeeList: {
             /** @example 123 */
             count: number;
@@ -10488,6 +10663,10 @@ export interface components {
             skills?: components["schemas"]["SkillEnum"][];
             pattern?: components["schemas"]["PatternStepRequest"][];
         };
+        PatchedEditRequest: {
+            title?: string;
+            body?: string;
+        };
         PatchedEventRequest: {
             name?: string;
             kind?: components["schemas"]["EventKindEnum"];
@@ -11180,6 +11359,13 @@ export interface components {
         ProgressEnum: "decided" | "on_table" | "being_scored" | "not_started";
         PublishNoteRequest: {
             note?: string;
+        };
+        PublishRequest: {
+            /**
+             * @description Tell the tournament's players it is out.
+             * @default false
+             */
+            notify: boolean;
         };
         /**
          * @description * `hand` - Hand
@@ -24736,6 +24922,268 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAnnouncementList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedEditRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_amend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_card_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/svg+xml": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_announcements_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
                 };
             };
             /** @description Error envelope */

@@ -92,6 +92,20 @@ def ceremony_published(tournament, players) -> None:
     )
 
 
+def results_announced(announcement, players) -> None:
+    """A results announcement was published and the organizers chose to tell the players."""
+    tournament = announcement.tournament
+    notify(
+        players,
+        Category.ANNOUNCEMENT,
+        announcement.title,
+        body="New results are on the tournament's news feed.",
+        subject=f"announcement:{announcement.id}",
+        link=f"/tournaments/{tournament.id}#news-{announcement.id}",
+        organization=tournament.organization,
+    )
+
+
 def session_invited(session, users) -> None:
     notify(
         users,

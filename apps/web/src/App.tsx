@@ -60,6 +60,7 @@ import { ClubProfilePage } from "@/pages/club/ClubProfilePage"
 import { ClubProfileEditPage } from "@/pages/club/ClubProfileEditPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
 import { CeremonyPage } from "@/pages/tournaments/CeremonyPage"
+import { AnnouncementsPage } from "@/pages/tournaments/AnnouncementsPage"
 import { LivePage } from "@/pages/tournaments/LivePage"
 import { ArticlePage, RegionPage } from "@/pages/region/RegionPage"
 import { MeetingPage, MeetingsPage } from "@/pages/region/MeetingPages"
@@ -176,6 +177,7 @@ function App() {
               <Route path="/more" element={<MorePage />} />
               <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
               <Route path="/tournaments/:id/dashboard" element={<TournamentDashboardPage />} />
+              <Route path="/tournaments/:id/announcements" element={<AnnouncementsPage />} />
               <Route path="/tournaments/:id/scoring" element={<ScoringOverviewPage />} />
               <Route path="/tournaments/:id/dispatch" element={<DispatchBoardPage />} />
               <Route path="/tournaments/:id/schedule-plan" element={<SchedulePage />} />

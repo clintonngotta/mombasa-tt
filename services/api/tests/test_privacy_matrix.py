@@ -28,6 +28,7 @@ from attachments.models import Attachment
 from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
 from competitions import drawing, ties
 from competitions.models import (
+    Announcement,
     Award,
     Ceremony,
     DrawVersion,
@@ -233,6 +234,13 @@ ACCESS: dict[str, dict[str, str]] = {
     # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
     # Published tournaments are public (TASK-035): a draft ceremony is still the staff's (test_public_views).
     "tournament-ceremony": {"get": PUBLIC, "put": STAFF},
+    # Results announcements (TASK-085): the feed of a published tournament is public; drafts and every
+    # change are the host's competition staff's. The detail route is exercised on a draft (see kwargs).
+    "tournament-announcements": {"get": PUBLIC, "post": STAFF},
+    "tournament-announcement": {"get": STAFF, "patch": STAFF, "delete": STAFF},
+    "tournament-announcement-publish": {"post": STAFF},
+    "tournament-announcement-amend": {"post": STAFF},
+    "tournament-announcement-card": {"get": PUBLIC},
     "tournament-live": {"get": PUBLIC},
     "tournament-ceremony-generate": {"post": STAFF},
     "tournament-ceremony-publish": {"post": STAFF},
@@ -531,6 +539,8 @@ def pdf_upload():
 
 BODIES = {
     ("tournament-ceremony", "put"): {"location": "Main hall"},
+    ("tournament-announcements", "post"): {"scope": "tournament"},
+    ("tournament-announcement", "patch"): {"body": "Edited"},
     ("tournament-ceremony-awards", "post"): {"title": "Fair play"},
     ("tournament-ceremony-award", "patch"): {"prize": "Trophy"},
     ("tournament-ceremony-reorder", "post"): lambda: {
@@ -1334,6 +1344,13 @@ class World:
             ceremony=ceremony, title="MARK-AWARD-DRAFT", recipient=self.baraka, order=1
         )
         self.award_to_present = Award.objects.create(ceremony=ceremony, title="Best umpire", order=2)
+        # Results announcements of the published cup: a draft (private to its staff), one to publish, one out.
+        news = {"tournament": self.published, "scope": "tournament", "title": "Results"}
+        self.news_draft = Announcement.objects.create(**news, body="MARK-ANNOUNCEMENT-DRAFT")
+        self.news_to_publish = Announcement.objects.create(**news, body="Ready")
+        self.news_out = Announcement.objects.create(
+            **news, body="Out", status=Announcement.Status.PUBLISHED, published_at=timezone.now()
+        )
         # Regional body (REQ-048): Coast Spinners sits in its region; Amina runs it too.
         self.coast.country, self.coast.region = "KE", "Mombasa"
         self.coast.save(update_fields=["country", "region"])
@@ -1485,6 +1502,10 @@ class World:
             "training-plan-detail": self.baraka_plan.id,
             "training-plan-item": self.baraka_item.id,
             "tournament-ceremony-award": self.award.id,
+            "tournament-announcement": self.news_draft.id,
+            "tournament-announcement-publish": self.news_to_publish.id,
+            "tournament-announcement-amend": self.news_out.id,
+            "tournament-announcement-card": self.news_out.id,
             "tournament-ceremony-award-present": self.award_to_present.id,
             "organization-agenda-item": self.agenda_item.id,
             "organization-article": self.article.id,
@@ -1671,7 +1692,7 @@ class World:
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
-        if name.startswith("tournament-ceremony"):
+        if name.startswith(("tournament-ceremony", "tournament-announcement")):
             found["tournament_pk"] = self.published.id
             return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
@@ -2165,6 +2186,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-PLAN": {"baraka"},
         "MARK-BARAKA-ITEM": {"baraka"},
         "MARK-AWARD-DRAFT": {"amina"},  # a draft ceremony isn't anyone's honour yet
+        "MARK-ANNOUNCEMENT-DRAFT": {"amina"},  # a draft announcement is the host's staff's
         "MARK-CEREMONY-PLACE": {"amina"},
         "MARK-AGENDA": {"amina", "baraka", "faith", "grace"},
         "MARK-ARTICLE-PUB": {"amina", "baraka", "faith", "grace"},

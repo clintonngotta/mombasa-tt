@@ -885,3 +885,59 @@ class MatchDayLog(models.Model):
 
     def __str__(self):
         return f"{self.action} at {self.at}"
+
+
+class Announcement(models.Model):
+    """A results announcement (REQ-043, TASK-085): text the generator drafts from official results for a
+    session, round, day, event or the whole tournament, edited by the organizers and published to the
+    tournament's news feed. A published one is frozen. A later correction to a result it covers marks it
+    outdated; an amendment is a new announcement that names the one it amends, which stays visible."""
+
+    class Scope(models.TextChoices):
+        SESSION = "session"
+        ROUND = "round"
+        DAY = "day"
+        EVENT = "event"
+        TOURNAMENT = "tournament"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft"
+        PUBLISHED = "published"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="announcements")
+    scope = models.CharField(max_length=10, choices=Scope.choices)
+    # What the scope is: the event (event and round), the round's stage and number, the day, the session.
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    stage = models.CharField(max_length=10, choices=Match.Stage.choices, blank=True)
+    round = models.PositiveSmallIntegerField(null=True, blank=True)
+    day = models.DateField(null=True, blank=True)
+    session = models.ForeignKey(
+        ScheduleSession, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    title = models.CharField(max_length=120)
+    body = models.TextField()
+    # The matches the text was drawn from: a correction to any of them outdates a published post.
+    covers = models.ManyToManyField(Match, related_name="announcements", blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    amends = models.ForeignKey(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="amendments"
+    )
+    outdated_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-published_at", "-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["tournament", "status", "-published_at"], name="announcement_feed"),
+        ]
+
+    def __str__(self):
+        return self.title

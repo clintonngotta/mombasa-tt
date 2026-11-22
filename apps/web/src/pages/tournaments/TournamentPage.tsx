@@ -13,6 +13,7 @@ import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/
 import { TournamentCover, TournamentDocuments, TournamentMediaManager } from "@/components/tournaments/TournamentMedia"
 import { useLiveTournament } from "@/lib/live"
 import { ScoreStrip } from "@/components/tournaments/LiveScore"
+import { NewsFeed } from "@/components/news/NewsFeed"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
 import { formatDayRange, formatInstant } from "@/lib/dates"
@@ -70,6 +71,7 @@ export function TournamentPage() {
           <CeremonyLink tournamentId={t.id} staff={staff} open={t.status !== "draft" && t.status !== "cancelled"} />
           <WatchLinks tournament={t} staff={staff} live={t.status === "in_progress"} />
           <SponsorsPanel tournamentId={t.id} staff={staff} />
+          <NewsFeed tournamentId={t.id} staff={staff} timeZone={t.timezone} />
           <Events tournament={t} staff={staff} />
           {staff && <Manage tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
           {!staff && <Approve tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
