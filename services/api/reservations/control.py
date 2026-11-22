@@ -261,6 +261,13 @@ def describe_table(reservation: Reservation, live: Live, now=None) -> dict:
         },
         "umpire": sheet.umpire.display_name if sheet is not None and sheet.umpire else "",
         "score": score,
+        # The last game's winning point is in but nobody has confirmed the result yet (REQ-053).
+        "finishing": (
+            not event.is_team
+            and sheet is not None
+            and sheet.confirmed_at is None
+            and sheet.state.get("status") == "completed"
+        ),
     }
 
 

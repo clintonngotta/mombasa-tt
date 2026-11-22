@@ -86,7 +86,7 @@ from outbox.models import Job
 from profiles.models import PlayerProfile
 from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
 from reservations import service as reservations
-from reservations.models import Hold, Reservation
+from reservations.models import Hold, Reservation, TournamentUmpire
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
 from soda.models import Challenge, Policy
 from training.models import ClubSession, Drill, Equipment, PlanItem, SessionInvitation, TrainingPlan
@@ -484,6 +484,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "scorecard-detail": {"get": OWNER},
     "scorecard-events": {"post": OWNER},
     "scorecard-confirm": {"post": OWNER},
+    "scorecard-next": {"get": OWNER},
     "scorecard-device": {"post": OWNER},
     # A conflict report is taken from whoever holds the sheet or held it before (test_scoring_conflicts.py).
     "scorecard-conflicts": {"post": OWNER},
@@ -501,6 +502,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-match-move": {"post": STAFF},
     "tournament-table-block": {"post": STAFF},
     "tournament-table-unblock": {"post": STAFF},
+    "tournament-table-umpire": {"put": STAFF},
+    "tournament-umpires": {"get": STAFF, "post": STAFF},
+    "tournament-umpire-candidates": {"get": STAFF},
+    "tournament-umpire": {"delete": STAFF},
     "tournament-check-in-desk": {"get": STAFF},
     "tournament-match-day-log": {"get": STAFF},
     "tournament-scoring": {"get": STAFF},
@@ -518,6 +523,7 @@ ACCESS: dict[str, dict[str, str]] = {
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
 MOVE_TABLE = "00000000-0000-4000-8000-0000000000ab"  # a free table to move a match to
 FAITH_MEMBERSHIP = "00000000-0000-4000-8000-0000000000fa"  # Faith, for the admin nomination bodies
+UMPIRE_USER = "00000000-0000-4000-8000-0000000000c1"  # a member on the Scored Cup's umpires
 # Entries with known ids, so a result can name its winner.
 ENTERED_WINNER = "00000000-0000-4000-8000-0000000000b1"
 CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
@@ -770,6 +776,8 @@ BODIES = {
         ],
     },
     ("tournament-event-match-dispatch", "post"): {"table_id": SPARE_TABLE},
+    ("tournament-umpires", "post"): {"user_id": UMPIRE_USER},
+    ("tournament-table-umpire", "put"): {"user_id": None},
     ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
     ("tournament-event-match-report", "post"): {"side": "a"},
@@ -1258,6 +1266,11 @@ class World:
 
         # A singles match under way with Baraka as its umpire, for the scoring routes.
         self.scored_cup = tournament("Scored Cup", status.IN_PROGRESS, Event.Status.IN_PROGRESS)
+        umpire = User.objects.create(
+            id=UMPIRE_USER, email="umpire.listed@coast.example", display_name="Upendo"
+        )
+        Membership.objects.create(organization=self.coast, user=umpire)
+        TournamentUmpire.objects.create(tournament=self.scored_cup, user=umpire)
         for name in ("one", "two"):
             made = Entry.objects.create(event=self.scored_cup.event, status=Entry.Status.ACCEPTED)
             EntryPlayer.objects.create(
@@ -1616,6 +1629,7 @@ class World:
             "scorecard-detail": self.scorecard.id,
             "scorecard-events": self.scorecard.id,
             "scorecard-confirm": self.scorecard.id,
+            "scorecard-next": self.scorecard.id,
             "scorecard-device": self.scorecard.id,
             "scorecard-conflicts": self.scorecard.id,
             "tournament-scoring-conflict-resolve": self.conflict.id,
@@ -1705,10 +1719,18 @@ class World:
             found["coaching_pk"] = self.coaching.id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
-        if name in ("tournament-table-block", "tournament-table-unblock"):
+        if name == "tournament-umpire":
+            found["tournament_pk"], found["user_pk"] = self.scored_cup.id, UMPIRE_USER
+            return found
+        if name in ("tournament-table-block", "tournament-table-unblock", "tournament-table-umpire"):
             found["tournament_pk"] = self.scored_cup.id
             return found
-        if name in ("tournament-check-in-desk", "tournament-match-day-log"):
+        if name in (
+            "tournament-check-in-desk",
+            "tournament-match-day-log",
+            "tournament-umpires",
+            "tournament-umpire-candidates",
+        ):
             found["tournament_pk"] = self.scored_cup.id
             return found
         control = (

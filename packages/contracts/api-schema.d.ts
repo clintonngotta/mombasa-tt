@@ -4947,6 +4947,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scorecards/{id}/next/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description After confirming: the match that takes this table next (REQ-053). The match already sent
+         *     there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned.
+         */
+        get: operations["scorecards_next_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/": {
         parameters: {
             query?: never;
@@ -6644,6 +6664,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/tables/{table_pk}/umpire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Give a table its umpire for the tournament, or none (`user_id` null). Every match sent there
+         *     takes them; the match waiting on it now does too if nobody has started scoring it.
+         */
+        put: operations["tournaments_tables_umpire_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/tables/{table_pk}/unblock/": {
         parameters: {
             query?: never;
@@ -6655,6 +6695,67 @@ export interface paths {
         put?: never;
         /** @description Put a blocked table back in use. */
         post: operations["tournaments_tables_unblock_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/umpires/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The tournament's umpires (user request, 2026-11-22), for the host's competition staff: members
+         *     of the host and players entered in it, each optionally given a table.
+         */
+        get: operations["tournaments_umpires_list"];
+        put?: never;
+        /** @description Add a member of the host, or a player entered in the tournament, to its umpires. */
+        post: operations["tournaments_umpires_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/umpires/{user_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Take someone off the umpires and off their table. Matches given to them that nobody has
+         *     started scoring go back to having no umpire, unless their role still lets them score.
+         */
+        delete: operations["tournaments_umpires_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/umpires/candidates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Who can be added: members of the host and players entered, not yet on the umpires. The first
+         *     20 by name.
+         */
+        get: operations["tournaments_umpires_candidates_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6753,6 +6854,10 @@ export interface components {
          * @enum {string}
          */
         ActivityStatusEnum: "draft" | "published" | "cancelled";
+        AddUmpireRequest: {
+            /** Format: uuid */
+            user_id: string;
+        };
         AdminHandover: {
             /** Format: uuid */
             readonly id: string;
@@ -7173,6 +7278,10 @@ export interface components {
             suggested_match_id: string | null;
             /** @description Why a free table has no match. */
             idle_reason: string;
+            /** @description Who takes every match sent to this table, until staff change it. */
+            table_umpire: components["schemas"]["TableUmpireRef"] | null;
+            /** @description Once the match here reaches its winning point and before it is confirmed: the match recommended to take the table next. */
+            next_up: components["schemas"]["NextMatch"] | null;
         };
         /**
          * @description * `free` - free
@@ -9702,6 +9811,21 @@ export interface components {
             /** Format: date */
             due_on: string;
             status: components["schemas"]["OwedStatusEnum"];
+        };
+        /** @description The match recommended to take a table next (REQ-053). A recommendation only: nothing is sent. */
+        NextMatch: {
+            /** Format: uuid */
+            table_id: string;
+            table: string;
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            a: string;
+            b: string;
+            /** Format: date-time */
+            planned_at: string | null;
         };
         NominateRequest: {
             /** Format: uuid */
@@ -12655,6 +12779,15 @@ export interface components {
             /** Format: date-time */
             since: string | null;
         };
+        TableUmpireRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        TableUmpireRequest: {
+            /** Format: uuid */
+            user_id: string | null;
+        };
         /** @description This device takes the sheet. `take_over` is needed when another device holds it. */
         TakeDeviceRequest: {
             /** Format: uuid */
@@ -12976,6 +13109,35 @@ export interface components {
             /** Format: uuid */
             id: string;
             display_name: string;
+        };
+        UmpireCandidate: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        /** @description What follows on the umpire's table once their match is confirmed. */
+        UmpireNext: {
+            next: components["schemas"]["NextMatch"] | null;
+            /** @description Already sent to the table, not only recommended. */
+            on_table: boolean;
+            /**
+             * Format: uuid
+             * @description Set when the next match is already this umpire's to score.
+             */
+            scorecard_id: string | null;
+        };
+        /** @description One of the tournament's umpires. */
+        UmpireRoster: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            /** Format: uuid */
+            table_id: string | null;
+            table: string;
+            /** @description The table they are playing on now. */
+            playing_on: string;
+            /** @description They play in this tournament too. */
+            entered: boolean;
         };
         Unread: {
             unread: number;
@@ -24580,6 +24742,36 @@ export interface operations {
             };
         };
     };
+    scorecards_next_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpireNext"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_list: {
         parameters: {
             query?: {
@@ -27880,6 +28072,41 @@ export interface operations {
             };
         };
     };
+    tournaments_tables_umpire_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                table_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableUmpireRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_tables_unblock_create: {
         parameters: {
             query?: never;
@@ -27898,6 +28125,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_umpires_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpireRoster"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_umpires_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddUmpireRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpireRoster"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_umpires_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+                user_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpireRoster"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_umpires_candidates_list: {
+        parameters: {
+            query?: {
+                /** @description Part of a name. */
+                search?: string;
+            };
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpireCandidate"][];
                 };
             };
             /** @description Error envelope */

@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from competitions.models import Match, Rubber
+from competitions.models import Match, Rubber, Tournament
 from facilities.models import Table
 
 
@@ -150,3 +150,49 @@ class Hold(models.Model):
 
     def __str__(self):
         return f"Hold of {self.table_id or self.user_id} for {self.reservation_id}"
+
+
+class TournamentUmpire(models.Model):
+    """Someone competition staff picked to umpire at this tournament (user request, 2026-11-22): a
+    member of the host or a player entered in it, so players umpire when they have no match. Being
+    listed lets them score the tournament's matches, whatever their role in the host."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="umpires")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["added_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["tournament", "user"], name="tournament_umpire_once"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} umpires at {self.tournament_id}"
+
+
+class TableUmpire(models.Model):
+    """The umpire who takes every match sent to a table during the tournament, until staff change it.
+    One umpire per table, and one table per umpire."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="table_umpires")
+    table = models.ForeignKey(Table, on_delete=models.CASCADE, related_name="+")
+    umpire = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    assigned_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["tournament", "table"], name="one_umpire_per_table"),
+            models.UniqueConstraint(fields=["tournament", "umpire"], name="one_table_per_umpire"),
+        ]
+
+    def __str__(self):
+        return f"{self.umpire_id} on {self.table_id}"

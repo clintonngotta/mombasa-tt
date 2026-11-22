@@ -352,6 +352,8 @@ The privacy matrix covers every new route, keeps walk-in names and references wi
 
 **Order of play — integration.** Setup: two events with groups and two tables. Steps: publish an order; dispatch with the current stage blocked by busy players; reorder mid-event; score a match to its last point without confirming. Pass: free tables take the next ready match in order and fall through to the next stage instead of standing idle, reorders are logged, and the next-match recommendation appears before confirmation without assigning anything. Evidence: tests and control centre screenshots.
 
+**Table umpires — integration/browser.** Setup: a running knockout, two tables, a member and an entered player on the umpires. Steps: give each a table; send matches; change a table's umpire before and after scoring starts; send the player-umpire's own match; take an umpire off the list. Pass: each match sent takes its table's umpire, the waiting match follows a change but one in play does not, the player-umpire is skipped and their own match waits while they umpire, unstarted matches lose a removed umpire, and only the host's competition staff manage any of it. Evidence: tests and screenshots.
+
 ### EVAL-054
 
 **Absence penalties — integration.** Setup: a no-show penalty rule, a missed-training rule that excuses apologies, a member. Steps: don't attend an accepted entry; miss training with and without an apology; staff issue, waive and the member appeals. Pass: proposals match the rules, the apology excuses, fines post to the ledger once, and only the member and staff see the penalty. Evidence: tests.

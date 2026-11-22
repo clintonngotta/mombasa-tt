@@ -11920,6 +11920,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/scorecards/{id}/next/:
+    get:
+      operationId: scorecards_next_retrieve
+      description: |-
+        After confirming: the match that takes this table next (REQ-053). The match already sent
+        there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - scorecards
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UmpireNext'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/:
     get:
       operationId: tournaments_list
@@ -15696,6 +15726,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/tables/{table_pk}/umpire/:
+    put:
+      operationId: tournaments_tables_umpire_update
+      description: |-
+        Give a table its umpire for the tournament, or none (`user_id` null). Every match sent there
+        takes them; the match waiting on it now does too if nobody has started scoring it.
+      parameters:
+      - in: path
+        name: table_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TableUmpireRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/tables/{table_pk}/unblock/:
     post:
       operationId: tournaments_tables_unblock_create
@@ -15723,6 +15795,149 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/umpires/:
+    get:
+      operationId: tournaments_umpires_list
+      description: |-
+        The tournament's umpires (user request, 2026-11-22), for the host's competition staff: members
+        of the host and players entered in it, each optionally given a table.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UmpireRoster'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: tournaments_umpires_create
+      description: Add a member of the host, or a player entered in the tournament,
+        to its umpires.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddUmpireRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UmpireRoster'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/umpires/{user_pk}/:
+    delete:
+      operationId: tournaments_umpires_destroy
+      description: |-
+        Take someone off the umpires and off their table. Matches given to them that nobody has
+        started scoring go back to having no umpire, unless their role still lets them score.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: user_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UmpireRoster'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/umpires/candidates/:
+    get:
+      operationId: tournaments_umpires_candidates_list
+      description: |-
+        Who can be added: members of the host and players entered, not yet on the umpires. The first
+        20 by name.
+      parameters:
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Part of a name.
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UmpireCandidate'
           description: ''
         4XX:
           description: Error envelope
@@ -15912,6 +16127,14 @@ components:
         * `draft` - Draft
         * `published` - Published
         * `cancelled` - Cancelled
+    AddUmpireRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+      required:
+      - user_id
     AdminHandover:
       type: object
       properties:
@@ -16868,6 +17091,18 @@ components:
         idle_reason:
           type: string
           description: Why a free table has no match.
+        table_umpire:
+          allOf:
+          - $ref: '#/components/schemas/TableUmpireRef'
+          nullable: true
+          description: Who takes every match sent to this table, until staff change
+            it.
+        next_up:
+          allOf:
+          - $ref: '#/components/schemas/NextMatch'
+          nullable: true
+          description: 'Once the match here reaches its winning point and before it
+            is confirmed: the match recommended to take the table next.'
       required:
       - block
       - call
@@ -16876,11 +17111,13 @@ components:
       - id
       - idle_reason
       - label
+      - next_up
       - playing
       - score
       - since
       - state
       - suggested_match_id
+      - table_umpire
       - umpire
     BoardTableStateEnum:
       enum:
@@ -23378,6 +23615,41 @@ components:
       - due_on
       - outstanding_minor
       - status
+    NextMatch:
+      type: object
+      description: 'The match recommended to take a table next (REQ-053). A recommendation
+        only: nothing is sent.'
+      properties:
+        table_id:
+          type: string
+          format: uuid
+        table:
+          type: string
+        match_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        a:
+          type: string
+        b:
+          type: string
+        planned_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - a
+      - b
+      - event_id
+      - event_name
+      - match_id
+      - planned_at
+      - table
+      - table_id
     NominateRequest:
       type: object
       properties:
@@ -30122,6 +30394,26 @@ components:
       - id
       - label
       - since
+    TableUmpireRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
+    TableUmpireRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - user_id
     TakeDeviceRequest:
       type: object
       description: This device takes the sheet. `take_over` is needed when another
@@ -30928,6 +31220,65 @@ components:
       required:
       - display_name
       - id
+    UmpireCandidate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
+    UmpireNext:
+      type: object
+      description: What follows on the umpire's table once their match is confirmed.
+      properties:
+        next:
+          allOf:
+          - $ref: '#/components/schemas/NextMatch'
+          nullable: true
+        on_table:
+          type: boolean
+          description: Already sent to the table, not only recommended.
+        scorecard_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when the next match is already this umpire's to score.
+      required:
+      - next
+      - on_table
+      - scorecard_id
+    UmpireRoster:
+      type: object
+      description: One of the tournament's umpires.
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        table:
+          type: string
+        playing_on:
+          type: string
+          description: The table they are playing on now.
+        entered:
+          type: boolean
+          description: They play in this tournament too.
+      required:
+      - display_name
+      - entered
+      - playing_on
+      - table
+      - table_id
+      - user_id
     Unread:
       type: object
       properties:

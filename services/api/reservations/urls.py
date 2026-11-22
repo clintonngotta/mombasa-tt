@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import ControlViewSet, DispatchViewSet
+from .views import ControlViewSet, DispatchViewSet, UmpireListViewSet
 
 # Mounted under /tournaments/.
 urlpatterns = [
@@ -56,6 +56,26 @@ urlpatterns = [
         "<uuid:tournament_pk>/tables/<uuid:table_pk>/unblock/",
         ControlViewSet.as_view({"post": "unblock"}),
         name="tournament-table-unblock",
+    ),
+    path(
+        "<uuid:tournament_pk>/tables/<uuid:table_pk>/umpire/",
+        ControlViewSet.as_view({"put": "table_umpire"}),
+        name="tournament-table-umpire",
+    ),
+    path(
+        "<uuid:tournament_pk>/umpires/",
+        UmpireListViewSet.as_view({"get": "list", "post": "add"}),
+        name="tournament-umpires",
+    ),
+    path(
+        "<uuid:tournament_pk>/umpires/candidates/",
+        UmpireListViewSet.as_view({"get": "candidates"}),
+        name="tournament-umpire-candidates",
+    ),
+    path(
+        "<uuid:tournament_pk>/umpires/<uuid:user_pk>/",
+        UmpireListViewSet.as_view({"delete": "remove"}),
+        name="tournament-umpire",
     ),
     path(
         "<uuid:tournament_pk>/check-in-desk/",

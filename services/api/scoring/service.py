@@ -162,7 +162,13 @@ def ensure_scorable(match: Match, rubber: Rubber | None) -> None:
 
 
 def can_umpire(user, event: Event) -> bool:
-    return bool(effective_permissions(user, event.tournament.organization) & UMPIRE_PERMISSIONS)
+    """A member whose role lets them score, someone who runs competitions, or anyone staff put on the
+    tournament's umpires (a player umpiring between their own matches)."""
+    if effective_permissions(user, event.tournament.organization) & UMPIRE_PERMISSIONS:
+        return True
+    from reservations.models import TournamentUmpire  # reservations builds on scoring in turn
+
+    return TournamentUmpire.objects.filter(tournament_id=event.tournament_id, user=user).exists()
 
 
 def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
@@ -176,7 +182,8 @@ def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
         if not can_umpire(umpire, match.draw.event):
             raise _conflict(
                 "not_an_umpire",
-                "Only members whose role lets them score matches, or who run competitions, can umpire.",
+                "Only the tournament's umpires, members whose role lets them score, or those who run "
+                "competitions can umpire.",
             )
         playing = [user.id for users in players_of(scorecard).values() for user in users]
         if umpire.id in playing:

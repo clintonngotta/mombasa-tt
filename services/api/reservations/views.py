@@ -11,10 +11,13 @@ from competitions import matchday
 from competitions.models import DrawVersion, Match, Tournament
 from competitions.serializers import MatchDetailSerializer
 from competitions.views import match_reply, require_staff, staff_tournament
+from core.exceptions import ApiException
 from facilities.models import Table
 
-from . import board, control, service
+from . import board, control, service, umpires
+from .models import TournamentUmpire
 from .serializers import (
+    AddUmpireSerializer,
     ArrivalSerializer,
     AutoDispatchSerializer,
     BlockSerializer,
@@ -26,6 +29,9 @@ from .serializers import (
     RecallSerializer,
     ReservationSerializer,
     TableStateSerializer,
+    TableUmpireSerializer,
+    UmpireCandidateSerializer,
+    UmpireRosterSerializer,
 )
 
 
@@ -200,6 +206,26 @@ class ControlViewSet(TournamentTables, viewsets.GenericViewSet):
             control.unblock(tournament, table, request.user)
         return self._board(tournament)
 
+    @extend_schema(request=TableUmpireSerializer, responses={200: BoardSerializer})
+    def table_umpire(self, request, tournament_pk, table_pk):
+        """Give a table its umpire for the tournament, or none (`user_id` null). Every match sent there
+        takes them; the match waiting on it now does too if nobody has started scoring it."""
+        serializer = TableUmpireSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            table = get_object_or_404(control.tables_in_use(tournament), pk=table_pk)
+            user = None
+            if asked["user_id"]:
+                listed = TournamentUmpire.objects.filter(tournament=tournament, user_id=asked["user_id"])
+                found = listed.select_related("user").first()
+                if found is None:
+                    raise ApiException("not_listed", "Add them to the tournament's umpires first.", 409)
+                user = found.user
+            umpires.set_table(tournament, table, user, request.user)
+        return self._board(tournament)
+
     @extend_schema(responses={200: DeskEntrySerializer(many=True)})
     def desk(self, request, tournament_pk):
         """The check-in desk: accepted entries of events still to play, those not checked in first.
@@ -220,3 +246,65 @@ class ControlViewSet(TournamentTables, viewsets.GenericViewSet):
         except ValueError:  # not a match id: no entries are about it
             return Response([])
         return Response(MatchDayLogSerializer(control.log_of(tournament, match_id), many=True).data)
+
+
+class UmpireListViewSet(TournamentTables, viewsets.GenericViewSet):
+    """The tournament's umpires (user request, 2026-11-22), for the host's competition staff: members
+    of the host and players entered in it, each optionally given a table."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = UmpireRosterSerializer
+    pagination_class = None
+
+    def _roster(self, tournament: Tournament) -> Response:
+        return Response(UmpireRosterSerializer(umpires.roster(tournament), many=True).data)
+
+    @extend_schema(responses={200: UmpireRosterSerializer(many=True)})
+    def list(self, request, tournament_pk):
+        return self._roster(self._tournament(request, tournament_pk))
+
+    @extend_schema(request=AddUmpireSerializer, responses={200: UmpireRosterSerializer(many=True)})
+    def add(self, request, tournament_pk):
+        """Add a member of the host, or a player entered in the tournament, to its umpires."""
+        serializer = AddUmpireSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            user = umpires.eligible(tournament).filter(pk=serializer.validated_data["user_id"]).first()
+            if user is None:
+                raise ApiException(
+                    "not_eligible",
+                    "Only members of the host and players entered in this tournament can umpire here.",
+                    409,
+                )
+            umpires.add(tournament, user, request.user)
+        return self._roster(tournament)
+
+    @extend_schema(request=None, responses={200: UmpireRosterSerializer(many=True)})
+    def remove(self, request, tournament_pk, user_pk):
+        """Take someone off the umpires and off their table. Matches given to them that nobody has
+        started scoring go back to having no umpire, unless their role still lets them score."""
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            listed = get_object_or_404(
+                TournamentUmpire.objects.select_related("user"), tournament=tournament, user_id=user_pk
+            )
+            umpires.remove(tournament, listed.user, request.user)
+        return self._roster(tournament)
+
+    @extend_schema(
+        parameters=[OpenApiParameter("search", str, required=False, description="Part of a name.")],
+        responses={200: UmpireCandidateSerializer(many=True)},
+    )
+    def candidates(self, request, tournament_pk):
+        """Who can be added: members of the host and players entered, not yet on the umpires. The first
+        20 by name."""
+        tournament = self._tournament(request, tournament_pk)
+        term = (request.query_params.get("search") or "").strip()[:80]
+        found = umpires.eligible(tournament).exclude(
+            id__in=TournamentUmpire.objects.filter(tournament=tournament).values("user_id")
+        )
+        if term:
+            found = found.filter(display_name__icontains=term)
+        people = found.order_by("display_name", "id")[:20]
+        return Response(UmpireCandidateSerializer(people, many=True).data)

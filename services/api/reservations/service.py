@@ -211,6 +211,9 @@ def dispatch(
     match.table = table
     match.dispatched_at = reservation.created_at
     match.save(update_fields=["table", "dispatched_at"])
+    from . import umpires
+
+    umpires.take_table_umpire(match, rubber, table, actor)
     from notifications import triggers
 
     triggers.called_to_table(match, reservation, [user.pk for user in people])
@@ -427,6 +430,11 @@ def on_rubber_decided(sender, rubber: Rubber, tie_decided: bool = False, **kwarg
     done.update(active=False, released_at=timezone.now())
     if not tie_decided:  # what is left of a decided tie isn't played: nobody is held for it
         hold_next_rubber(reservation)
+        following = current_rubber(reservation.match)
+        if following is not None:
+            from . import umpires
+
+            umpires.take_table_umpire(reservation.match, following, reservation.table, None)
     _hold_those_waiting_for(freed)
 
 

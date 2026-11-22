@@ -105,6 +105,24 @@ class LiveScoreSerializer(serializers.Serializer):
     rubbers_won = serializers.ListField(child=serializers.IntegerField(), required=False)
 
 
+class TableUmpireRefSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+
+
+class NextMatchSerializer(serializers.Serializer):
+    """The match recommended to take a table next (REQ-053). A recommendation only: nothing is sent."""
+
+    table_id = serializers.UUIDField()
+    table = serializers.CharField()
+    match_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    a = serializers.CharField()
+    b = serializers.CharField()
+    planned_at = serializers.DateTimeField(allow_null=True)
+
+
 class BoardTableSerializer(TableStateSerializer):
     state = serializers.ChoiceField(
         choices=[control.FREE, control.CALLED, control.WARMING_UP, control.IN_PLAY, control.BLOCKED],
@@ -118,6 +136,48 @@ class BoardTableSerializer(TableStateSerializer):
     playing = ReservationSerializer(allow_null=True, help_text="This tournament's match on the table.")
     suggested_match_id = serializers.UUIDField(allow_null=True)
     idle_reason = serializers.CharField(allow_blank=True, help_text="Why a free table has no match.")
+    table_umpire = TableUmpireRefSerializer(
+        allow_null=True, help_text="Who takes every match sent to this table, until staff change it."
+    )
+    next_up = NextMatchSerializer(
+        allow_null=True,
+        help_text="Once the match here reaches its winning point and before it is confirmed: the match "
+        "recommended to take the table next.",
+    )
+
+
+class UmpireNextSerializer(serializers.Serializer):
+    """What follows on the umpire's table once their match is confirmed."""
+
+    next = NextMatchSerializer(allow_null=True)
+    on_table = serializers.BooleanField(help_text="Already sent to the table, not only recommended.")
+    scorecard_id = serializers.UUIDField(
+        allow_null=True, help_text="Set when the next match is already this umpire's to score."
+    )
+
+
+class UmpireRosterSerializer(serializers.Serializer):
+    """One of the tournament's umpires."""
+
+    user_id = serializers.UUIDField()
+    display_name = serializers.CharField()
+    table_id = serializers.UUIDField(allow_null=True)
+    table = serializers.CharField(allow_blank=True)
+    playing_on = serializers.CharField(allow_blank=True, help_text="The table they are playing on now.")
+    entered = serializers.BooleanField(help_text="They play in this tournament too.")
+
+
+class UmpireCandidateSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    display_name = serializers.CharField()
+
+
+class AddUmpireSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+
+
+class TableUmpireSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField(allow_null=True)
 
 
 class BoardSerializer(serializers.Serializer):

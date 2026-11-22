@@ -68,3 +68,31 @@ export const unblockTable = (tournamentId: string, tableId: string) => api<Board
 export const getDesk = (tournamentId: string) => api<DeskEntry[]>(`/tournaments/${tournamentId}/check-in-desk/`)
 /** The latest 200 match-day log entries, newest first. */
 export const getMatchDayLog = (tournamentId: string) => api<MatchDayLogEntry[]>(`/tournaments/${tournamentId}/match-day-log/`)
+
+// --- Umpires: the tournament's list and each table's umpire (user request, 2026-11-22) -------------
+
+export type UmpireRosterEntry = Schemas["UmpireRoster"]
+export type UmpireCandidate = Schemas["UmpireCandidate"]
+export type NextMatch = Schemas["NextMatch"]
+export type UmpireNext = Schemas["UmpireNext"]
+
+export const umpireKeys = {
+  roster: (tournamentId: string) => ["reservations", "umpires", tournamentId] as const,
+  candidates: (tournamentId: string, search: string) => ["reservations", "umpire-candidates", tournamentId, search] as const,
+  next: (scorecardId: string) => ["reservations", "next", scorecardId] as const,
+}
+
+/** The tournament's umpires with their table and whether they are playing now; staff only. */
+export const listTournamentUmpires = (tournamentId: string) => api<UmpireRosterEntry[]>(`/tournaments/${tournamentId}/umpires/`)
+/** Members of the host and players entered who aren't umpires yet: the first 20 by name. */
+export const listUmpireCandidates = (tournamentId: string, search: string) =>
+  api<UmpireCandidate[]>(`/tournaments/${tournamentId}/umpires/candidates/?search=${encodeURIComponent(search)}`)
+export const addTournamentUmpire = (tournamentId: string, userId: string) =>
+  api<UmpireRosterEntry[]>(`/tournaments/${tournamentId}/umpires/`, { body: { user_id: userId } })
+export const removeTournamentUmpire = (tournamentId: string, userId: string) =>
+  api<UmpireRosterEntry[]>(`/tournaments/${tournamentId}/umpires/${userId}/`, { method: "DELETE" })
+/** Give a table its umpire for the tournament, or none: every match sent there takes them. */
+export const setTableUmpire = (tournamentId: string, tableId: string, userId: string | null) =>
+  api<Board>(`/tournaments/${tournamentId}/tables/${tableId}/umpire/`, { method: "PUT", body: { user_id: userId } })
+/** After confirming: the match that takes the umpire's table next (only a recommendation). */
+export const getNextOnTable = (scorecardId: string) => api<UmpireNext>(`/scorecards/${scorecardId}/next/`)

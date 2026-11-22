@@ -191,11 +191,45 @@ def _idle(tournament: Tournament, rows: list[Row], to_come: int) -> str:
     return f"Next would be {_title(first.match)}, but: {first.reasons[0]['message']}{rest}"
 
 
+def next_on(tournament: Tournament, table: Table) -> Row | None:
+    """The match that takes this table once its match ends (REQ-053 "Next match"): the queue paired with
+    the free tables as dispatch would pair them, this table counted free too. Only a recommendation:
+    nothing is held, sent or confirmed."""
+    rows, _to_come = _rows(tournament)
+    free = _free_tables(tournament) if tournament.venue_id else []
+    if all(found.id != table.id for found in free):
+        free.append(table)
+    _suggest(rows, free)
+    return next((row for row in rows if row.table is not None and row.table.id == table.id), None)
+
+
+def describe_next(row: Row | None, table: Table) -> dict | None:
+    if row is None:
+        return None
+    match = row.match
+    return {
+        "table_id": table.id,
+        "table": table.label,
+        "match_id": match.id,
+        "event_id": match.draw.event_id,
+        "event_name": match.draw.event.name,
+        "a": service.entry_title(match.entry_a),
+        "b": service.entry_title(match.entry_b),
+        "planned_at": match.scheduled_at,
+    }
+
+
 def build(tournament: Tournament) -> dict:
     """The board as BoardSerializer shows it."""
+    from .models import TableUmpire
+
     rows, to_come = _rows(tournament)
     free = _free_tables(tournament) if tournament.venue_id else []
     _suggest(rows, free)
+    table_umpires = {
+        assigned.table_id: assigned.umpire
+        for assigned in TableUmpire.objects.filter(tournament=tournament).select_related("umpire")
+    }
     knockout = Q(stage=Match.Stage.KNOCKOUT)
     shape = {
         found["draw_id"]: (found["rounds"], found["groups"])
@@ -234,6 +268,16 @@ def build(tournament: Tournament) -> dict:
                 "playing": service.describe(held) if held else None,
                 "suggested_match_id": row.match.id if row else None,
                 "idle_reason": idle if state["free"] and not blocked and row is None else "",
+                "table_umpire": (
+                    {"id": table_umpires[state["id"]].id, "name": table_umpires[state["id"]].display_name}
+                    if state["id"] in table_umpires
+                    else None
+                ),
+                "next_up": (
+                    describe_next(next_on(tournament, held.table), held.table)
+                    if held is not None and live and live["finishing"]
+                    else None
+                ),
             }
         )
     return {

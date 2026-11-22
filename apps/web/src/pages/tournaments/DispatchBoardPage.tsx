@@ -12,6 +12,7 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { drawKeys, getMatch } from "@/lib/draws"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
+import { UmpiresPanel } from "@/components/tournaments/UmpiresPanel"
 import {
   blockTable,
   callAgain,
@@ -59,6 +60,7 @@ const TABLE_STATE: Record<BoardTable["state"], { label: string; icon: typeof Cir
 
 const VIEWS = [
   { value: "tables", label: "Tables" },
+  { value: "umpires", label: "Umpires" },
   { value: "desk", label: "Check-in desk" },
   { value: "log", label: "Log" },
 ] as const
@@ -141,6 +143,7 @@ export function DispatchBoardPage() {
           </button>
         ))}
       </div>
+      {view === "umpires" && data && <UmpiresPanel tournamentId={id} tables={data.tables} />}
       {view === "desk" && t && <CheckInDesk tournamentId={id} timeZone={t.timezone} />}
       {view === "log" && t && <MatchDayLog tournamentId={id} timeZone={t.timezone} />}
       {(board.isPending || (tournament.isPending && !board.isError)) && <p className="text-muted-foreground">Loading…</p>}
@@ -151,7 +154,15 @@ export function DispatchBoardPage() {
         <>
           <Summary tables={data.tables} />
           <NoShows tournamentId={id} tables={data.tables} />
-          {!data.in_play && <FormAlert>This tournament isn't under way, so no match can go to a table.</FormAlert>}
+          {!data.in_play && (
+            <FormAlert>
+              This tournament isn't under way, so no match can go to a table. Start the tournament and each event on{" "}
+              <Link to={`/tournaments/${id}`} className="font-semibold underline underline-offset-4">
+                the tournament's page
+              </Link>
+              .
+            </FormAlert>
+          )}
           <Toggle
             checked={automatic}
             onChange={(enabled) => {
@@ -234,6 +245,7 @@ function TableCard({ tournamentId, table, freeTables, next, timeZone }: { tourna
           <Icon aria-hidden className="size-5" /> {state.label}
         </span>
       </div>
+      <p className="text-sm text-muted-foreground">{table.table_umpire ? `Table umpire: ${table.table_umpire.name}` : "No table umpire"}</p>
       {table.block && (
         <>
           <p className="text-sm">
@@ -245,6 +257,15 @@ function TableCard({ tournamentId, table, freeTables, next, timeZone }: { tourna
         </>
       )}
       {playing && <OnTable tournamentId={tournamentId} table={table} freeTables={freeTables} timeZone={timeZone} />}
+      {table.next_up && (
+        <div className="flex flex-col gap-1 rounded-lg border border-brand-blue/40 bg-brand-blue/5 p-3">
+          <p className="text-sm font-semibold text-brand-blue">
+            Next here, once the result is confirmed: {table.next_up.event_name}
+          </p>
+          <Sides a={table.next_up.a} b={table.next_up.b} />
+          <p className="text-xs text-muted-foreground">A recommendation: nothing is sent until the table is free.</p>
+        </div>
+      )}
       {!table.free && !playing && !table.block && <p className="text-sm">Taken by {table.held_by}.</p>}
       {table.state === "free" && next && (
         <>

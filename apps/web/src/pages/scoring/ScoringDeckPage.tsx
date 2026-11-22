@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, ArrowLeftRight, CircleCheck, CloudOff, LoaderCircle, Undo2, WifiOff } from "lucide-react"
 import { gamesNeeded, partnerOf, sideOf, type End, type Player, type Side, type State } from "@scoring"
 import { errorMessage } from "@/lib/api"
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { UpdateBanner } from "@/components/layout/UpdateBanner"
 import { CardBadges, ExpediteBar, IncidentMenu, SuspensionBanner, TimeoutBanner } from "@/components/scoring/Incidents"
 import { useAppUpdate } from "@/lib/pwa"
+import { getNextOnTable, umpireKeys } from "@/lib/reservations"
 
 const deckButton =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-4 text-base font-semibold text-white outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-brand-cyan disabled:opacity-40"
@@ -418,10 +419,36 @@ function Confirmed({ card, state, back }: { card: Scorecard; state: State; back:
         {state.winner ? names[state.winner] : ""} won {endedHow(state, names)}
         {state.games.length > 0 && ` (${winnersGames(state)})`}.
       </p>
-      <Link to={back} className={cn(primaryButton, "self-start")}>
+      <NextOnTable scorecardId={card.id} />
+      <Link to={back} className={cn(deckButton, "self-start")}>
         Back to the match
       </Link>
     </section>
+  )
+}
+
+/** What takes this table next (REQ-053): the match already sent here, or the one recommended. */
+function NextOnTable({ scorecardId }: { scorecardId: string }) {
+  // Asked again now and then: automatic dispatch may send the next match a moment after the result.
+  const next = useQuery({ queryKey: umpireKeys.next(scorecardId), queryFn: () => getNextOnTable(scorecardId), refetchInterval: 15_000, staleTime: 0 })
+  const shown = next.data?.next
+  if (!shown) return null
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-brand-cyan/40 bg-white/5 p-3">
+      <p className="text-sm font-semibold text-brand-cyan">
+        {next.data?.on_table ? `Next on ${shown.table}` : `Recommended next on ${shown.table}`} · {shown.event_name}
+      </p>
+      <p className="text-lg font-bold">
+        {shown.a} v {shown.b}
+      </p>
+      {next.data?.scorecard_id ? (
+        <Link to={`/score/${next.data.scorecard_id}`} className={cn(primaryButton, "self-start")}>
+          Score the next match
+        </Link>
+      ) : (
+        <p className="text-sm text-white/70">{next.data?.on_table ? "The organizers will give it an umpire." : "The organizers send it to the table: nothing is sent yet."}</p>
+      )}
+    </div>
   )
 }
 

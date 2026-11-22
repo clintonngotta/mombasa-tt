@@ -865,6 +865,9 @@ class MatchDayLog(models.Model):
         CORRECTION_SETTLED = "correction_settled", "Later match settled after a correction"
         AUTO_ON = "auto_on", "Automatic dispatch switched on"
         AUTO_OFF = "auto_off", "Automatic dispatch switched off"
+        UMPIRE_LISTED = "umpire_listed", "Added to the umpires"
+        UMPIRE_UNLISTED = "umpire_unlisted", "Taken off the umpires"
+        TABLE_UMPIRE = "table_umpire", "Table umpire changed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")
