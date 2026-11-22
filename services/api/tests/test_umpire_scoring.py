@@ -119,6 +119,7 @@ def test_staff_assign_an_umpire_and_only_that_umpire_gets_the_sheet(staff, club,
         "can_score": False,
         "can_assign": True,
         "incidents": [],
+        "live": None,
     }
     mine = as_umpire.get(match_url(final)).json()["scoring"]
     assert mine["can_score"] is True and mine["can_assign"] is False
@@ -214,6 +215,7 @@ def test_the_umpire_scores_a_match_and_confirming_makes_it_official(staff, final
         "can_score": False,
         "can_assign": False,
         "incidents": [],
+        "live": None,
     }
     # A confirmed result is closed to the deck: corrections are the organizers' (REQ-015).
     # Confirming again (the first answer was lost on the way) changes nothing and succeeds.

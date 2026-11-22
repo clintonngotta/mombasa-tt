@@ -99,6 +99,7 @@ def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
     if scorecard and (umpire or scorecard.revision or scorecard.confirmed_at):
         status = scorecard.shown_status
     mine = scorecard is not None and viewer.is_authenticated and is_umpire_of(scorecard, viewer)
+    in_play = scorecard is not None and scorecard.revision > 0 and scorecard.confirmed_at is None
     return {
         "scorecard_id": scorecard.id if mine else None,
         "status": status,
@@ -106,7 +107,8 @@ def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
         "can_score": mine and scorable and not scorecard.confirmed_at,
         "can_assign": staff and scorable,
         "incidents": incidents_of(scorecard) if scorecard else [],
-        "live": live.score_of(scorecard, players_of(scorecard)) if scorecard and scorecard.revision else None,
+        # Being played: the score so far. Once confirmed it is a result, shown as one.
+        "live": live.score_of(scorecard, players_of(scorecard)) if in_play else None,
     }
 
 

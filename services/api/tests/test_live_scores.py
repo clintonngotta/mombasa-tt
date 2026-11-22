@@ -101,9 +101,10 @@ def test_a_score_message_names_its_match(staff, club, final):  # noqa: F811
     deck = umpire_deck(staff, club, final)
     with mock.patch.object(broadcast, "tournament_changed") as told:
         deck.send(START, point("a"))
-    told.assert_called_once_with(
-        final["cup"]["id"], "scores", event_id=final["match"].draw.event_id, match_id=final["match"].id
-    )
+    (tournament, topic), named = told.call_args
+    assert (str(tournament), topic) == (final["cup"]["id"], "scores")
+    assert named == {"event_id": final["match"].draw.event_id, "match_id": final["match"].id}
+    told.assert_called_once()
 
 
 def test_the_live_list_costs_the_same_queries_for_one_match_or_several(staff, club):
