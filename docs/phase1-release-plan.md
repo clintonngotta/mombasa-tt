@@ -75,7 +75,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - A test that live views never render umpire controls.
 - A latency trace script: p95 under 2 s from umpire event to viewer render. Reused by TASK-061.
 
-**TASK-085: results announcements (M–L)** `feat/results-announcements`, after 2.0 (DQ) and 035
+**TASK-085: results announcements (M–L)** `feat/results-announcements`, after 2.0 (DQ) and 035. Done 2026-11-22 (see tasks.md).
 - Generator scoped to a session, round, day, event or tournament, built only from official results. It marks W/O, ret., DQ and pending matches and includes no private fields.
 - Draft editor with plain-text and image-card previews (reuse the `recap.py` card).
 - A tournament news feed: a new model shown on the public tournament page. Publishing notifies and offers a share link.
