@@ -219,6 +219,9 @@ def _timeout(config: dict, state: dict, event: dict) -> dict:
     # 3.4.4.2: one time-out for each player or pair in an individual match.
     if state["timeouts"][SIDES.index(side)]:
         raise ScoringError("timeout_used")
+    # 3.4.4.2.3: claimed only between rallies in a game, not before a game's first rally.
+    if sum(state["points"]) == 0:
+        raise ScoringError("not_between_rallies")
     # 3.4.4.2.3: both sides may claim one at the same time; play resumes when both are ready.
     state["timeouts"][SIDES.index(side)] = True
     state["timeout_running"][SIDES.index(side)] = True
@@ -236,6 +239,13 @@ def _other(side: str) -> str:
     return "b" if side == "a" else "a"
 
 
+def offences_of(config: dict, state: dict, player: str) -> int:
+    """How far up the card ladder a player's next offence starts (3.5.2.6): their own count, or in
+    doubles the pair's, the higher of its two players' counts."""
+    own = state["offences"][player]
+    return max(own, state["offences"][partner_of(player)]) if config["doubles"] else own
+
+
 def _card(config: dict, state: dict, event: dict) -> dict:
     """3.5.2.2-3.5.2.4: a player's first offence is a yellow card; the second and third are yellow and
     red together, giving the opponent 1 and then 2 penalty points; a fourth is for the referee."""
@@ -246,10 +256,13 @@ def _card(config: dict, state: dict, event: dict) -> dict:
         raise ScoringError("unknown_event")
     if event.get("reason") not in CARD_REASONS:
         raise ScoringError("invalid_card")
-    if state["offences"][player] >= LADDER_MAX:
+    # 3.5.2.6: in doubles a card for either player counts against the pair, so the pair stands at the
+    # higher of its players' counts (carried in from earlier rubbers too); the offender takes the new step.
+    reached = offences_of(config, state, player)
+    if reached >= LADDER_MAX:
         raise ScoringError("refer_to_referee")
-    state["offences"][player] += 1
-    owed = state["offences"][player] - 1
+    state["offences"][player] = reached + 1
+    owed = reached
     if owed == 0:
         return state
     # 3.5.2.3: penalty points are points to the opponent, which can end a game or the match. They are
@@ -303,7 +316,17 @@ def _expedite(config: dict, state: dict, event: dict) -> dict:
         raise ScoringError("not_in_progress")
     if state["expedite"]:
         raise ScoringError("expedite_on")
+    played = sum(state["points"])
+    # 2.15.1: not introduced in a game once at least 18 points have been scored.
+    if played >= 18:
+        raise ScoringError("expedite_too_late")
     state["expedite"] = True
+    # 2.15.3: introduced between rallies, the player who received in the rally before serves. After an
+    # odd number of points the server of that rally is still due, so service moves on one step.
+    if played % 2 == 1:
+        server = state["server"]
+        state["server"] = state["receiver"]
+        state["receiver"] = partner_of(server) if config["doubles"] else server
     return state
 
 

@@ -102,7 +102,9 @@ def test_a_player_who_cannot_resume_after_a_suspension_retires(staff, club, fina
 
 def test_time_outs_and_expedite_are_incidents_too(staff, club, final):  # noqa: F811
     deck = deck_for(staff, club, final, umpire_with(club, "zuri@example.com", scorers(club)))
-    deck.send(START, {"type": "timeout", "side": "b"}, {"type": "timeout_end"}, {"type": "expedite"})
+    deck.send(
+        START, point("a"), {"type": "timeout", "side": "b"}, {"type": "timeout_end"}, {"type": "expedite"}
+    )
     deck.send({"type": "adviser_card", "side": "a", "reason": "illegal_advice"})
     sheet = deck.client.get(deck.path).json()
     assert sheet["state"]["expedite"] is True and sheet["state"]["advisers"] == [1, 0]
@@ -133,3 +135,41 @@ def test_a_team_tie_carries_warnings_into_its_later_rubbers(staff, tie):  # noqa
 
 def begin_rest(game) -> list[Rubber]:
     return list(Rubber.objects.filter(match=game["match"], position__gt=1).order_by("position"))
+
+
+def test_a_retirement_part_way_through_a_game_is_confirmed_with_that_game_as_played(staff, club, final):  # noqa: F811
+    deck = deck_for(staff, club, final, umpire_with(club, "zuri@example.com", scorers(club)))
+    best_of = final["match"].draw.event.best_of
+    won = best_of // 2  # one game short of the match, then a lead in the next
+    deck.send(START, *[point("a")] * (11 * won), *[point("a")] * 6, point("b"), point("b"))
+    deck.send({"type": "retire", "side": "b"})
+    deck.confirm()
+    match = Match.objects.get(pk=final["match"].pk)
+    assert (match.outcome, match.winner_id) == ("retired", match.entry_a_id)
+    assert match.games == [[11, 0]] * won + [[6, 2]]
+
+
+def test_a_reason_on_an_event_that_takes_none_is_not_kept(staff, club, final):  # noqa: F811
+    deck = deck_for(staff, club, final, umpire_with(club, "zuri@example.com", scorers(club)))
+    shown = deck.send(START, point("a"), {"type": "timeout", "side": "a", "reason": "x" * 300})
+    assert shown["accepted"] == 3
+    assert MatchIncident.objects.get(kind="timeout").reason == ""
+    assert Scorecard.objects.get(pk=deck.path.rstrip("/").split("/")[-1]).carry is None
+
+
+def test_what_a_rubber_carries_in_is_fixed_once_it_is_scored(staff, tie):  # noqa: F811
+    from scoring import service
+
+    first, *_ = begin(staff, tie)
+    one = Scorecard.objects.create(rubber=first)
+    one.state = {**one.state, "advisers": [1, 0]}
+    one.save()
+    later = Scorecard.objects.create(rubber=begin_rest(tie)[0])
+    assert service.config_of(later)["carry"]["advisers"] == [1, 0]
+    # Scoring began with that carry; the earlier sheet struck out and re-scored doesn't change it.
+    Scorecard.objects.filter(pk=later.pk).update(revision=1, carry=service.config_of(later)["carry"])
+    one.state = {**one.state, "advisers": [0, 0]}
+    one.save()
+    later.refresh_from_db()
+    assert service.config_of(later)["carry"]["advisers"] == [1, 0]
+    assert "carry" not in service.config_of(later, with_carry=False)

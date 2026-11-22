@@ -251,8 +251,14 @@ def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
     played match has exactly the games its winner needed, a walkover none, a retirement too few, a
     disqualification whatever was played before it (none at all if it came before play)."""
     needed = best_of // 2 + 1
-    won = sum(1 for a, b in games if (a > b) == a_won and a != b)
-    lost = len(games) - won
+    counted = list(games)
+    # A retirement or disqualification may stop a game part-way; that game is neither won nor lost.
+    if outcome in (Match.Outcome.RETIRED, Match.Outcome.DISQUALIFIED) and counted:
+        a, b = counted[-1]
+        if not (max(a, b) >= 11 and abs(a - b) >= 2):
+            counted.pop()
+    won = sum(1 for a, b in counted if (a > b) == a_won and a != b)
+    lost = len(counted) - won
     plausible = {
         Match.Outcome.PLAYED: won == needed and lost < needed,
         Match.Outcome.WALKOVER: not games,

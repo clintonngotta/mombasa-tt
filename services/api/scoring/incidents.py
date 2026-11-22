@@ -6,17 +6,10 @@ live view and the referee. Penalty points are points like any other in the state
 card here, not counted twice.
 """
 
-from .engine import PLAYERS, SIDES, Scoring
+from .engine import LADDER_MAX, PLAYERS, SIDES, Scoring, offences_of
 from .models import MatchIncident, Scorecard
 
 Kind = MatchIncident.Kind
-CARD_REASON_LABEL = {
-    "bad_behaviour": "Bad behaviour",
-    "racket_abuse": "Racket abuse",
-    "illegal_advice": "Illegal advice",
-    "delay": "Delay",
-    "other": "Other",
-}
 KINDS = {
     "timeout": Kind.TIMEOUT,
     "timeout_end": Kind.TIMEOUT_END,
@@ -29,6 +22,14 @@ KINDS = {
     "disqualify": Kind.DISQUALIFIED,
 }
 MAX_NOTE = 200
+WITH_REASON = (Kind.CARD, Kind.ADVISER_CARD)  # the engine checks a reason on these alone
+
+
+def user_at(players: dict[str, list], slot: str):
+    """The user in a slot ("a2": the second player of side a), or None if the side has fewer."""
+    people = players.get(slot[0], [])
+    position = int(slot[1]) - 1
+    return people[position] if position < len(people) else None
 
 
 def standing(scorecard: Scorecard, config: dict) -> list[tuple]:
@@ -50,11 +51,6 @@ def rebuild(scorecard: Scorecard, config: dict, players: dict[str, list]) -> Non
     """Write the sheet's incidents as they now stand. `players` are the users of each side in slot
     order, so a card for a2 is the second player of side a."""
 
-    def user_at(slot: str):
-        people = players.get(slot[0], [])
-        position = int(slot[1]) - 1
-        return people[position] if position < len(people) else None
-
     rows = []
     for event, sequence, at, before in standing(scorecard, config):
         kind = KINDS.get(event.get("type"))
@@ -67,13 +63,13 @@ def rebuild(scorecard: Scorecard, config: dict, players: dict[str, list]) -> Non
             game_number=before["game_number"],
             score=list(before["points"]),
             at=at,
-            reason=event.get("reason", "") if isinstance(event.get("reason"), str) else "",
+            reason=event["reason"] if kind in WITH_REASON else "",
             note=(event.get("note") or "")[:MAX_NOTE] if isinstance(event.get("note"), str) else "",
         )
         if kind == Kind.CARD:
             player = event["player"]
-            offence = before["offences"][player] + 1
-            row.side, row.player = player[0], user_at(player)
+            offence = offences_of(config, before, player) + 1
+            row.side, row.player = player[0], user_at(players, player)
             row.card = MatchIncident.Card.YELLOW if offence == 1 else MatchIncident.Card.YELLOW_RED
             row.penalty_points = offence - 1
         elif kind == Kind.ADVISER_CARD:
@@ -101,19 +97,16 @@ def carry_for(scorecard: Scorecard, players_of) -> dict | None:
         state = sheet.state or {}
         seats = players_of(sheet)
         for slot, count in (state.get("offences") or {}).items():
-            people = seats.get(slot[0], [])
-            position = int(slot[1]) - 1
-            if count and position < len(people):
-                key = people[position].pk
-                offences[key] = max(offences.get(key, 0), count)
+            user = user_at(seats, slot)
+            if count and user is not None:
+                offences[user.pk] = max(offences.get(user.pk, 0), count)
         for index, cards in enumerate(state.get("advisers") or [0, 0]):
             advisers[index] = max(advisers[index], cards)
     seats = players_of(scorecard)
-    mine = {}
+    starting = {}
     for slot in PLAYERS:
-        people = seats.get(slot[0], [])
-        position = int(slot[1]) - 1
-        mine[slot] = min(3, offences.get(people[position].pk, 0)) if position < len(people) else 0
-    if not any(mine.values()) and not any(advisers):
+        user = user_at(seats, slot)
+        starting[slot] = min(LADDER_MAX, offences.get(user.pk, 0)) if user is not None else 0
+    if not any(starting.values()) and not any(advisers):
         return None
-    return {"offences": mine, "advisers": advisers}
+    return {"offences": starting, "advisers": advisers}

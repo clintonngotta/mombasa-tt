@@ -50,6 +50,9 @@ class Scorecard(models.Model):
     assigned_at = models.DateTimeField(null=True, blank=True)
     # The one device scoring it (REQ-013). Empty until a device takes the sheet; another device has to
     # take it over, which issues a new assignment id and cuts the first one off.
+    # What a tie's later rubber started with (3.5.2.7), fixed when its first event is accepted, so
+    # striking out and re-scoring an earlier rubber never changes how this sheet replays.
+    carry = models.JSONField(null=True, blank=True)
     device_id = models.UUIDField(null=True, blank=True)
     device_label = models.CharField(max_length=80, blank=True)
     device_since = models.DateTimeField(null=True, blank=True)

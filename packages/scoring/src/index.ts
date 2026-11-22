@@ -105,6 +105,8 @@ export type ErrorCode =
   | "suspended"
   | "not_suspended"
   | "expedite_on"
+  | "expedite_too_late"
+  | "not_between_rallies"
   | "nothing_to_undo"
   | "unknown_event"
   | "invalid_config"
@@ -308,6 +310,8 @@ function timeout(state: State, side: Side): State {
   if (side !== "a" && side !== "b") throw new ScoringError("unknown_event")
   // 3.4.4.2: one time-out for each player or pair in an individual match.
   if (state.timeouts[index(side)]) throw new ScoringError("timeout_used")
+  // 3.4.4.2.3: claimed only between rallies in a game, not before a game's first rally.
+  if (state.points[0] + state.points[1] === 0) throw new ScoringError("not_between_rallies")
   const next = copy(state)
   next.timeouts[index(side)] = true
   next.timeout_running[index(side)] = true
@@ -329,15 +333,26 @@ function penalties(config: Config, state: State, to: Side, points: number): Stat
   return next
 }
 
+/**
+ * How far up the card ladder a player's next offence starts (3.5.2.6): their own count, or in doubles
+ * the pair's, the higher of its two players' counts.
+ */
+export function offencesOf(config: Pick<Config, "doubles">, state: Pick<State, "offences">, player: Player): number {
+  return config.doubles ? Math.max(state.offences[player], state.offences[partnerOf(player)]) : state.offences[player]
+}
+
 function card(config: Config, state: State, player: Player, reason: CardReason): State {
   if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
   if (!PLAYERS.includes(player) || (!config.doubles && player[1] !== "1")) throw new ScoringError("unknown_event")
   if (!CARD_REASONS.includes(reason)) throw new ScoringError("invalid_card")
+  // 3.5.2.6: in doubles a card for either player counts against the pair, so the pair stands at the
+  // higher of its players' counts (carried in from earlier rubbers too); the offender takes the new step.
+  const reached = offencesOf(config, state, player)
   // 3.5.2.4: after yellow, yellow-red (1 point) and yellow-red (2 points), the referee decides.
-  if (state.offences[player] >= LADDER_MAX) throw new ScoringError("refer_to_referee")
+  if (reached >= LADDER_MAX) throw new ScoringError("refer_to_referee")
   const next = copy(state)
-  next.offences[player] += 1
-  const owed = next.offences[player] - 1 // 0 for the warning, then 1, then 2
+  next.offences[player] = reached + 1
+  const owed = reached // 0 for the warning, then 1, then 2
   if (owed === 0) return next
   // Penalty points are played as points, so a running time-out or suspension doesn't stop them.
   const resumed = { ...next, suspended: null }
@@ -371,11 +386,21 @@ function suspensionEnd(state: State): State {
   return next
 }
 
-function expedite(state: State): State {
+function expedite(config: Config, state: State): State {
   if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
   if (state.expedite) throw new ScoringError("expedite_on")
+  const [a, b] = state.points
+  // 2.15.1: not introduced in a game once at least 18 points have been scored.
+  if (a + b >= 18) throw new ScoringError("expedite_too_late")
   const next = copy(state)
   next.expedite = true
+  // 2.15.3: introduced between rallies, the player who received in the rally before serves. After an
+  // odd number of points the server of that rally is still due, so service moves on one step.
+  if ((a + b) % 2 === 1) {
+    const server = state.server as Player
+    next.server = state.receiver
+    next.receiver = config.doubles ? partnerOf(server) : server
+  }
   return next
 }
 
@@ -405,7 +430,7 @@ export function apply(config: Config, state: State, event: ScoreEvent): State {
     case "suspension_end":
       return suspensionEnd(state)
     case "expedite":
-      return expedite(state)
+      return expedite(config, state)
     case "retire":
       return endEarly(state, event.side, "retired")
     case "disqualify":

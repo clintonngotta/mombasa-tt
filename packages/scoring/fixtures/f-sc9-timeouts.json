@@ -25,6 +25,22 @@
         "type": "timeout",
         "side": "a"
       },
+      "error": "not_between_rallies"
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
       "expect": {
         "timeouts": [
           true,
@@ -32,7 +48,7 @@
         ],
         "points": [
           0,
-          0
+          1
         ],
         "server": "a1"
       }

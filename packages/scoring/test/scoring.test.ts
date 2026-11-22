@@ -7,7 +7,7 @@ import { Scoring, ScoringError, gamesNeeded, replay, type Config, type ScoreEven
 import { FIXTURES, canonical, digest, eventsOf, fixtures, type ParityMatch } from "./fixtures.ts"
 
 test("the hand-worked fixtures are there", () => {
-  assert.equal(fixtures().length, 24)
+  assert.equal(fixtures().length, 25)
 })
 
 for (const fixture of fixtures()) {

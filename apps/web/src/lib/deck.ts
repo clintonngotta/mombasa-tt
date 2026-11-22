@@ -57,7 +57,7 @@ function describe(event: ScoreEvent, before: State, after: State, names: Names):
     case "timeout_end":
       return "Time-out over: play resumes."
     case "card": {
-      const given = before.offences[event.player] + 1
+      const given = after.offences[event.player] // one up the ladder from the player's or the pair's count
       const points = given - 1
       const shown = given === 1 ? "Yellow card" : `Yellow and red card, ${points} penalty point${points === 1 ? "" : "s"}`
       return `${shown}: ${names[event.player]} (${REASON[event.reason] ?? event.reason}).${event.note ? ` ${event.note}` : ""}`

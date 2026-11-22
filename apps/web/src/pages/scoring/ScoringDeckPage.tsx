@@ -338,14 +338,14 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
         <Finish card={card} state={state} deck={deck} />
       ) : (
         <div className="grid grid-cols-3 gap-2">
-          <button type="button" className={deckButton} disabled={state.timeouts[column(order[0])]} onClick={() => deck.act({ type: "timeout", side: order[0] })}>
+          <button type="button" className={deckButton} disabled={state.timeouts[column(order[0])] || state.points[0] + state.points[1] === 0} onClick={() => deck.act({ type: "timeout", side: order[0] })}>
             Time-out
             <span className="sr-only"> for {names[order[0]]}</span>
           </button>
           <button type="button" className={deckButton} disabled={deck.undoable === 0} onClick={() => deck.act({ type: "undo" })}>
             <Undo2 aria-hidden className="size-5" /> Undo
           </button>
-          <button type="button" className={deckButton} disabled={state.timeouts[column(order[1])]} onClick={() => deck.act({ type: "timeout", side: order[1] })}>
+          <button type="button" className={deckButton} disabled={state.timeouts[column(order[1])] || state.points[0] + state.points[1] === 0} onClick={() => deck.act({ type: "timeout", side: order[1] })}>
             Time-out
             <span className="sr-only"> for {names[order[1]]}</span>
           </button>

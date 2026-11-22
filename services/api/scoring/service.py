@@ -19,6 +19,7 @@ from organizations.access import effective_permissions
 from organizations.permissions import Permission
 from realtime import broadcast
 
+from . import incidents
 from .engine import Scoring, ScoringError, initial_state
 from .models import ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
 
@@ -29,6 +30,8 @@ MAX_CONFLICT_EVENTS = 500
 # One person can't fill the organizers' page: this many reported events per sheet, then no more.
 MAX_REPORTED_PER_SHEET = 2000
 EVENT_TYPES = {"start", "point", "choose_server", "timeout", "undo"}
+# Events that change the incidents: every incident kind, and an undo that may take one back.
+INCIDENT_TYPES = set(incidents.KINDS) | {"undo"}
 
 
 def _conflict(code: str, message: str) -> ApiException:
@@ -39,7 +42,9 @@ def event_of(scorecard: Scorecard) -> Event:
     return scorecard.tie_or_match.draw.event
 
 
-def config_of(scorecard: Scorecard) -> dict:
+def config_of(scorecard: Scorecard, with_carry: bool = True) -> dict:
+    """The rules the sheet is scored under. A tie's later rubber also starts with what the earlier
+    rubbers carry into it: fixed once scoring has begun, worked out afresh until then."""
     event = event_of(scorecard)
     doubles = (
         scorecard.rubber.kind == Rubber.Kind.DOUBLES
@@ -47,10 +52,10 @@ def config_of(scorecard: Scorecard) -> dict:
         else event.kind == Event.Kind.DOUBLES
     )
     config = {"best_of": event.best_of, "doubles": doubles}
-    from . import incidents  # incidents builds on the models and the engine, as this does
-
-    carry = incidents.carry_for(scorecard, players_of)
-    if carry is not None:  # a tie's later rubber starts with the warnings and penalties of the earlier
+    if not with_carry:
+        return config
+    carry = scorecard.carry if scorecard.revision else incidents.carry_for(scorecard, players_of)
+    if carry is not None:
         config["carry"] = carry
     return config
 
@@ -276,9 +281,9 @@ def _ensure_in_play(scorecard: Scorecard, assignment_id, device_id=None) -> None
             raise _conflict("rubber_out_of_turn", "An earlier rubber of this tie is played first.")
 
 
-def replayed(scorecard: Scorecard) -> Scoring:
+def replayed(scorecard: Scorecard, config: dict | None = None) -> Scoring:
     """The engine brought to where the accepted events leave it."""
-    scoring = Scoring(config_of(scorecard))
+    scoring = Scoring(config or config_of(scorecard))
     for payload in scorecard.events.values_list("payload", flat=True):
         scoring.push(payload)
     return scoring
@@ -292,9 +297,12 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
     if scorecard.device_id is None and device_id is not None and not scorecard.confirmed_at:
         take_device(scorecard, actor, device_id, "", take_over=False)
     _ensure_in_play(scorecard, assignment_id, device_id)
-    scoring = replayed(scorecard)
+    config = config_of(scorecard)
+    started = scorecard.revision == 0
+    scoring = replayed(scorecard, config)
     known = dict(scorecard.events.values_list("id", "sequence"))
     accepted, refused = 0, None
+    sent_types: set = set()
     seen = scorecard.revision  # what the server held when the batch arrived
     for sent in events:
         if known.get(sent["id"]) == sent["sequence"]:
@@ -333,13 +341,15 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
             break
         known[sent["id"]] = sent["sequence"]
         scorecard.revision = sent["sequence"]
+        sent_types.add(sent["event"].get("type"))
         accepted += 1
     if accepted:
-        scorecard.state = scoring.state if refused is None else replayed(scorecard).state
-        scorecard.save(update_fields=["revision", "state"])
-        from . import incidents
-
-        incidents.rebuild(scorecard, config_of(scorecard), players_of(scorecard))
+        scorecard.state = scoring.state if refused is None else replayed(scorecard, config).state
+        if started:
+            scorecard.carry = config.get("carry")
+        scorecard.save(update_fields=["revision", "state", "carry"])
+        if sent_types & INCIDENT_TYPES:  # points alone leave the incidents as they were
+            incidents.rebuild(scorecard, config, players_of(scorecard))
         event = event_of(scorecard)
         broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id)
     return {"accepted": accepted, "refused": refused}
@@ -348,8 +358,6 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
 def _refused_for(scorecard: Scorecard, actor, event) -> str | None:
     """What the server refuses beyond the rules: a note too long to keep, and a disqualification from
     anybody but the referee (decision D5)."""
-    from . import incidents
-
     if not isinstance(event, dict):
         return None
     note = event.get("note")
@@ -432,6 +440,7 @@ def strike_out(match: Match, actor=None) -> list[dict]:
         scorecard.revision = 0
         scorecard.state = initial_state(config_of(scorecard))
         scorecard.incidents.all().delete()
+        scorecard.carry = None
         scorecard.confirmed_at = scorecard.confirmed_by = None
         scorecard.assignment_id = uuid.uuid4()
         scorecard.device_id, scorecard.device_label, scorecard.device_since = None, "", None

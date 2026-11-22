@@ -255,6 +255,10 @@ class MyScorecardSerializer(ScorecardSerializer):
         ]
         read_only_fields = fields
 
+    def get_config(self, scorecard) -> ScoringConfigSerializer:
+        # The list needs the format alone; what a rubber carries in is read on its sheet.
+        return service.config_of(scorecard, with_carry=False)
+
 
 class SentEventSerializer(serializers.Serializer):
     """One score event from the deck: its own id (so a retry is recognised), its place in the stream,

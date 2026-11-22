@@ -18,6 +18,22 @@
         "type": "timeout",
         "side": "a"
       },
+      "error": "not_between_rallies"
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
       "expect": {
         "timeouts": [
           true,
@@ -74,7 +90,7 @@
       "expect": {
         "points": [
           1,
-          0
+          1
         ],
         "timeout_running": [
           false,
@@ -89,7 +105,7 @@
       "expect": {
         "points": [
           0,
-          0
+          1
         ],
         "timeout_running": [
           false,

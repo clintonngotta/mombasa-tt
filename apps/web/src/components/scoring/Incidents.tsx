@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { CARD_REASONS, sideOf, type CardReason, type Player, type ScoreEvent, type Side, type State } from "@scoring"
+import { CARD_REASONS, offencesOf, sideOf, type CardReason, type Player, type ScoreEvent, type Side, type State } from "@scoring"
 import type { Names } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 
@@ -158,7 +158,7 @@ export function IncidentMenu({ state, names, players, canDisqualify, act }: { st
           <button type="button" className={deckButton} disabled={state.suspended !== null} onClick={() => setKind("suspension")}>
             Injury suspension
           </button>
-          <button type="button" className={deckButton} disabled={state.expedite} onClick={() => setKind("expedite")}>
+          <button type="button" className={deckButton} disabled={state.expedite || state.points[0] + state.points[1] >= 18} onClick={() => setKind("expedite")}>
             Start expedite
           </button>
           <button type="button" className={deckButton} onClick={() => setKind("retire")}>
@@ -205,12 +205,13 @@ export function IncidentMenu({ state, names, players, canDisqualify, act }: { st
   let confirmText = ""
   let event: ScoreEvent | null = null
   if (kind === "card") {
-    const ladder = player ? nextCard(state.offences[player]) : null
+    const doubles = { doubles: players.length > 2 }
+    const ladder = player ? nextCard(offencesOf(doubles, state, player)) : null
     body = (
       <>
         {choose(
           "Which player",
-          players.map((value) => ({ value, label: `${names[value]}${state.offences[value] ? ` (${state.offences[value]} so far)` : ""}`, disabled: state.offences[value] >= 3 })),
+          players.map((value) => ({ value, label: `${names[value]}${state.offences[value] ? ` (${state.offences[value]} so far)` : ""}`, disabled: offencesOf(doubles, state, value) >= 3 })),
           player,
           setPlayer
         )}
@@ -277,11 +278,21 @@ export function CardBadges({ state, side, players }: { state: State; side: Side;
     <span className="flex flex-wrap justify-center gap-1 text-xs font-bold">
       {shown.map((player) => (
         <span key={player} className={cn("rounded px-1.5", state.offences[player] === 1 ? "bg-yellow-400 text-brand-navy" : "bg-red-600 text-white")}>
-          {mine.length > 1 ? `${player.toUpperCase()} ` : ""}
-          {state.offences[player] === 1 ? "Y" : `YR${state.offences[player] - 1}`}
+          <span aria-hidden="true">
+            {mine.length > 1 ? `${player.toUpperCase()} ` : ""}
+            {state.offences[player] === 1 ? "Y" : `YR${state.offences[player] - 1}`}
+          </span>
+          <span className="sr-only">
+            {player.toUpperCase()}: {state.offences[player] === 1 ? "yellow card" : `yellow and red card, ${state.offences[player] - 1} penalty point${state.offences[player] === 2 ? "" : "s"}`}
+          </span>
         </span>
       ))}
-      {adviser > 0 && <span className={cn("rounded px-1.5", adviser === 1 ? "bg-yellow-400 text-brand-navy" : "bg-red-600 text-white")}>Adviser {adviser === 1 ? "Y" : "R"}</span>}
+      {adviser > 0 && (
+        <span className={cn("rounded px-1.5", adviser === 1 ? "bg-yellow-400 text-brand-navy" : "bg-red-600 text-white")}>
+          <span aria-hidden="true">Adviser {adviser === 1 ? "Y" : "R"}</span>
+          <span className="sr-only">Adviser: {adviser === 1 ? "yellow card" : "red card, sent away"}</span>
+        </span>
+      )}
     </span>
   )
 }

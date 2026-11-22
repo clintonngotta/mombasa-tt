@@ -107,6 +107,8 @@ export const REFUSAL: Record<string, string> = {
   suspended: "Play is suspended: resume it, or record the retirement.",
   not_suspended: "Play isn't suspended.",
   expedite_on: "The expedite system is already on.",
+  expedite_too_late: "The expedite system isn't brought in once 18 points have been played in the game.",
+  not_between_rallies: "A time-out is called between rallies in a game, once the game's first rally is played.",
   invalid_note: "Keep the note to 200 characters.",
   referee_only: "Only the referee disqualifies.",
   nothing_to_undo: "There is nothing to undo.",

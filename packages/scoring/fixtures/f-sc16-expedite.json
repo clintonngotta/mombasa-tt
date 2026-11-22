@@ -1,5 +1,5 @@
 {
-  "name": "F-SC16: under the expedite system service changes after every point, for the rest of the match",
+  "name": "F-SC16: under the expedite system the previous receiver serves, then service changes after every point, for the rest of the match",
   "rules": "2.15",
   "config": {
     "best_of": 3,
@@ -35,7 +35,8 @@
       },
       "expect": {
         "expedite": true,
-        "server": "a1"
+        "server": "b1",
+        "receiver": "a1"
       }
     },
     {
@@ -51,8 +52,8 @@
           2,
           0
         ],
-        "server": "b1",
-        "receiver": "a1"
+        "server": "a1",
+        "receiver": "b1"
       }
     },
     {
@@ -62,8 +63,8 @@
           2,
           1
         ],
-        "server": "a1",
-        "receiver": "b1"
+        "server": "b1",
+        "receiver": "a1"
       }
     },
     {
