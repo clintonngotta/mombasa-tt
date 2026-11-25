@@ -70,6 +70,12 @@ class ReportCurrencySerializer(serializers.Serializer):
     currency = serializers.CharField()
     opening_minor = serializers.IntegerField()
     receipts_minor = serializers.IntegerField()
+    internal_receipts_minor = serializers.IntegerField(
+        required=False, default=0, help_text="From members: dues, fees and contributions."
+    )
+    external_receipts_minor = serializers.IntegerField(
+        required=False, default=0, help_text="From outside the membership, by source in `receipts`."
+    )
     receipts = ReportLineSerializer(many=True)
     expenses_minor = serializers.IntegerField()
     expenses = ReportLineSerializer(many=True)

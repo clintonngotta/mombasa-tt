@@ -10,6 +10,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
+from django.db.models.functions import Lower
 
 USER = settings.AUTH_USER_MODEL
 
@@ -371,3 +372,62 @@ class AnnualReport(models.Model):
 
     def __str__(self):
         return f"Report to {self.period_end} v{self.version}"
+
+
+class ExternalSource(models.Model):
+    """A kind of money from outside the membership (REQ-051): sponsor, county grant, gate takings. The
+    club keeps its own list; one that has been used is switched off, never deleted, so old records keep
+    their source."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="external_sources"
+    )
+    name = models.CharField(max_length=80)
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(Lower("name"), "organization", name="external_source_name_unique"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class ExternalIncome(models.Model):
+    """Money the organization received from outside its membership, under one of its sources. Kept for
+    good: a mistake is reversed with a reason."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="external_income"
+    )
+    source = models.ForeignKey(ExternalSource, on_delete=models.PROTECT, related_name="income")
+    description = models.CharField(max_length=200, blank=True)
+    amount_minor = models.PositiveIntegerField()
+    currency = models.CharField(max_length=3, default="KES")
+    received_on = models.DateField()
+    reference = models.CharField(max_length=60, blank=True)
+    request_key = models.UUIDField()
+    recorded_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reversed_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    reversal_reason = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ["-received_on", "-created_at"]
+        indexes = [models.Index(fields=["organization", "received_on"], name="external_income_org_date")]
+        constraints = [
+            models.CheckConstraint(condition=Q(amount_minor__gt=0), name="external_income_positive"),
+            models.UniqueConstraint(
+                fields=["organization", "request_key"], name="one_external_income_per_request"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.amount_minor} {self.currency} from {self.source_id}"

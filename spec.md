@@ -337,6 +337,8 @@ As built (TASK-123): a squad is a draft until published; publishing tells the pl
 
 *External sources.* `finances.manage` keeps a list of the club's external source categories (for example sponsor, government grant, county, regional body, gate takings, donation). Recording external income means choosing a source from a dropdown, never typing free text, so filters and reports stay consistent. A category used by any record is switched off rather than deleted. Finance summaries and the annual report (REQ-041) filter and total by internal or external, and external by source.
 
+As built (TASK-124): internal is every standing payment recorded in the ledger (members and walk-ins); external is income recorded under one of the club's sources. A source name is unique whatever its case, and a source that has income can only be switched off; a switched-off source takes no new income and keeps its records. External income is kept for good and reversed with a reason, like expenses. The totals for any dates give internal, external and their sum per currency, with external broken down by source. The annual report lists each source as its own receipts line, gives the internal and external totals, and counts outside money in the opening and closing balances.
+
 ### REQ-052
 
 **Training rules and location check-in — Phase 1 (user request, 2026-11-21).** A club sets its training schedule (weekly slots with a usual training location: a venue or a map point) and a check-in window: how long before and after a session's start a player may check in. A late check-in is marked late.

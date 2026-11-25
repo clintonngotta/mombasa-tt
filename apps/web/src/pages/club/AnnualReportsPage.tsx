@@ -189,6 +189,8 @@ function Figures({ block }: { block: ReportCurrency }) {
         {block.receipts.map((row) => (
           <Row key={`in-${row.label}`} label={`Received: ${row.label}`} amount={row.amount_minor} indent />
         ))}
+        {(block.external_receipts_minor ?? 0) > 0 && <Row label="Of which from members (internal)" amount={block.internal_receipts_minor ?? 0} indent />}
+        {(block.external_receipts_minor ?? 0) > 0 && <Row label="Of which from outside (external)" amount={block.external_receipts_minor ?? 0} indent />}
         <Row label="Total receipts" amount={block.receipts_minor} strong />
         {block.expenses.map((row) => (
           <Row key={`out-${row.label}`} label={`Spent: ${row.label}`} amount={row.amount_minor} indent />

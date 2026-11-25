@@ -9161,6 +9161,313 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/external-income/:
+    get:
+      operationId: organizations_finance_external_income_list
+      description: |-
+        GET/POST /organizations/{org}/finance/external-income/: income from outside the membership,
+        latest first; `?source=`, `?from=` and `?to=` narrow it. Finance managers record it by choosing one
+        of the club's active sources.
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: YYYY-MM-DD
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: source
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: YYYY-MM-DD
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalIncome'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_finance_external_income_create
+      description: |-
+        GET/POST /organizations/{org}/finance/external-income/: income from outside the membership,
+        latest first; `?source=`, `?from=` and `?to=` narrow it. Finance managers record it by choosing one
+        of the club's active sources.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalIncomeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalIncome'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/external-income/{id}/reverse/:
+    post:
+      operationId: organizations_finance_external_income_reverse_create
+      description: |-
+        POST .../finance/external-income/{id}/reverse/: income recorded in error stays, marked reversed
+        with who did it and why, and counts for nothing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseIncomeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalIncome'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/external-sources/:
+    get:
+      operationId: organizations_finance_external_sources_list
+      description: |-
+        GET/POST /organizations/{org}/finance/external-sources/: the club's list of where outside money
+        comes from. Finance staff read it; finance managers add to it.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalSource'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_finance_external_sources_create
+      description: |-
+        GET/POST /organizations/{org}/finance/external-sources/: the club's list of where outside money
+        comes from. Finance staff read it; finance managers add to it.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalSourceRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSource'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/external-sources/{id}/:
+    patch:
+      operationId: organizations_finance_external_sources_partial_update
+      description: |-
+        PATCH/DELETE /organizations/{org}/finance/external-sources/{id}/: rename a source or switch it
+        off or on. Only a source with no income is deleted; one that was used is switched off instead.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExternalSourceRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSource'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_finance_external_sources_destroy
+      description: |-
+        PATCH/DELETE /organizations/{org}/finance/external-sources/{id}/: rename a source or switch it
+        off or on. Only a source with no income is deleted; one that was used is switched off instead.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/income-totals/:
+    get:
+      operationId: organizations_finance_income_totals_list
+      description: |-
+        GET /organizations/{org}/finance/income-totals/: what was received between `from` and `to`,
+        per currency: from members (internal), from outside (external), and external by source. Reversed
+        payments and income are left out.
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: YYYY-MM-DD
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: YYYY-MM-DD
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IncomeTotals'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/finance/payments/:
     get:
       operationId: organizations_finance_payments_list
@@ -23945,6 +24252,128 @@ components:
         * `scheduled` - Scheduled
         * `postponed` - Postponed
         * `cancelled` - Cancelled
+    ExternalIncome:
+      type: object
+      description: Income from outside, as finance staff see it. The source is chosen
+        by id from the club's list.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        source_id:
+          type: string
+          format: uuid
+        source_name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          maxLength: 200
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 1
+        currency:
+          type: string
+          default: KES
+          pattern: ^[A-Z]{3}$
+        received_on:
+          type: string
+          format: date
+        reference:
+          type: string
+          maxLength: 60
+        reversed:
+          type: boolean
+          readOnly: true
+        reversal_reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_minor
+      - created_at
+      - currency
+      - description
+      - id
+      - received_on
+      - reference
+      - reversal_reason
+      - reversed
+      - source_id
+      - source_name
+    ExternalIncomeRequest:
+      type: object
+      description: Income from outside, as finance staff see it. The source is chosen
+        by id from the club's list.
+      properties:
+        source_id:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 200
+        amount_minor:
+          type: integer
+          maximum: 1000000000
+          minimum: 1
+        currency:
+          type: string
+          minLength: 1
+          default: KES
+          pattern: ^[A-Z]{3}$
+        received_on:
+          type: string
+          format: date
+        reference:
+          type: string
+          maxLength: 60
+        request_key:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: Sent again, it records nothing new.
+      required:
+      - amount_minor
+      - received_on
+      - request_key
+      - source_id
+    ExternalSource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        active:
+          type: boolean
+        used:
+          type: boolean
+          readOnly: true
+          description: It has income recorded, so it can't be deleted.
+      required:
+      - active
+      - id
+      - name
+      - used
+    ExternalSourceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        active:
+          type: boolean
+      required:
+      - name
     Facility:
       type: object
       description: A facility branch as players find it (REQ-044).
@@ -25116,6 +25545,29 @@ components:
         * `expedite` - Expedite
         * `retired` - Retired
         * `disqualified` - Disqualified
+    IncomeTotals:
+      type: object
+      description: 'Money received in the period, per currency: from members, from
+        outside, and outside by source.'
+      properties:
+        currency:
+          type: string
+        internal_minor:
+          type: integer
+        external_minor:
+          type: integer
+        total_minor:
+          type: integer
+        by_source:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceTotal'
+      required:
+      - by_source
+      - currency
+      - external_minor
+      - internal_minor
+      - total_minor
     Invitation:
       type: object
       description: Staff view of an invitation they sent.
@@ -30605,6 +31057,15 @@ components:
           maxLength: 500
         status:
           $ref: '#/components/schemas/ExternalEventStatusEnum'
+    PatchedExternalSourceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        active:
+          type: boolean
     PatchedFeedbackFormRequest:
       type: object
       description: A form as its host's competition staff see it.
@@ -33257,6 +33718,14 @@ components:
           type: integer
         receipts_minor:
           type: integer
+        internal_receipts_minor:
+          type: integer
+          default: 0
+          description: 'From members: dues, fees and contributions.'
+        external_receipts_minor:
+          type: integer
+          default: 0
+          description: From outside the membership, by source in `receipts`.
         receipts:
           type: array
           items:
@@ -33282,6 +33751,8 @@ components:
       - currency
       - expenses
       - expenses_minor
+      - external_receipts_minor
+      - internal_receipts_minor
       - opening_minor
       - outstanding_dues_minor
       - purposes
@@ -33743,6 +34214,16 @@ components:
           maxLength: 300
       required:
       - winner_entry_id
+    ReverseIncomeRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     ReverseVisitRequest:
       type: object
       properties:
@@ -35352,6 +35833,20 @@ components:
       required:
       - display_name
       - id
+    SourceTotal:
+      type: object
+      properties:
+        source_id:
+          type: string
+          format: uuid
+        source_name:
+          type: string
+        amount_minor:
+          type: integer
+      required:
+      - amount_minor
+      - source_id
+      - source_name
     Spending:
       type: object
       description: 'What a purpose''s money paid for, as members see it: no receipts,

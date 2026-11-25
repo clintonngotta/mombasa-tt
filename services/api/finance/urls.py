@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import report_views, views
+from . import external, report_views, views
 
 # Mounted under /organizations/<organization_pk>/.
 urlpatterns = [
@@ -56,6 +56,25 @@ urlpatterns = [
     path(
         "finance/settings/", report_views.FinanceSettingsView.as_view(), name="organization-finance-settings"
     ),
+    path(
+        "finance/external-sources/",
+        external.ExternalSourcesView.as_view(),
+        name="organization-external-sources",
+    ),
+    path(
+        "finance/external-sources/<uuid:pk>/",
+        external.ExternalSourceView.as_view(),
+        name="organization-external-source",
+    ),
+    path(
+        "finance/external-income/", external.ExternalIncomeView.as_view(), name="organization-external-income"
+    ),
+    path(
+        "finance/external-income/<uuid:pk>/reverse/",
+        external.ReverseExternalIncomeView.as_view(),
+        name="organization-external-income-reverse",
+    ),
+    path("finance/income-totals/", external.IncomeTotalsView.as_view(), name="organization-income-totals"),
     path("annual-reports/", report_views.AnnualReportsView.as_view(), name="organization-annual-reports"),
     path(
         "annual-reports/<uuid:pk>/",

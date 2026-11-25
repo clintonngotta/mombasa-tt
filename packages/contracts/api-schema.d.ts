@@ -4019,6 +4019,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/finance/external-income/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/finance/external-income/: income from outside the membership,
+         *     latest first; `?source=`, `?from=` and `?to=` narrow it. Finance managers record it by choosing one
+         *     of the club's active sources.
+         */
+        get: operations["organizations_finance_external_income_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/finance/external-income/: income from outside the membership,
+         *     latest first; `?source=`, `?from=` and `?to=` narrow it. Finance managers record it by choosing one
+         *     of the club's active sources.
+         */
+        post: operations["organizations_finance_external_income_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/external-income/{id}/reverse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../finance/external-income/{id}/reverse/: income recorded in error stays, marked reversed
+         *     with who did it and why, and counts for nothing.
+         */
+        post: operations["organizations_finance_external_income_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/external-sources/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/finance/external-sources/: the club's list of where outside money
+         *     comes from. Finance staff read it; finance managers add to it.
+         */
+        get: operations["organizations_finance_external_sources_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/finance/external-sources/: the club's list of where outside money
+         *     comes from. Finance staff read it; finance managers add to it.
+         */
+        post: operations["organizations_finance_external_sources_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/external-sources/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description PATCH/DELETE /organizations/{org}/finance/external-sources/{id}/: rename a source or switch it
+         *     off or on. Only a source with no income is deleted; one that was used is switched off instead.
+         */
+        delete: operations["organizations_finance_external_sources_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH/DELETE /organizations/{org}/finance/external-sources/{id}/: rename a source or switch it
+         *     off or on. Only a source with no income is deleted; one that was used is switched off instead.
+         */
+        patch: operations["organizations_finance_external_sources_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/income-totals/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{org}/finance/income-totals/: what was received between `from` and `to`,
+         *     per currency: from members (internal), from outside (external), and external by source. Reversed
+         *     payments and income are left out.
+         */
+        get: operations["organizations_finance_income_totals_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/finance/payments/": {
         parameters: {
             query?: never;
@@ -10154,6 +10269,54 @@ export interface components {
          * @enum {string}
          */
         ExternalEventStatusEnum: "scheduled" | "postponed" | "cancelled";
+        /** @description Income from outside, as finance staff see it. The source is chosen by id from the club's list. */
+        ExternalIncome: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            source_id: string;
+            readonly source_name: string;
+            description: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            received_on: string;
+            reference: string;
+            readonly reversed: boolean;
+            readonly reversal_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Income from outside, as finance staff see it. The source is chosen by id from the club's list. */
+        ExternalIncomeRequest: {
+            /** Format: uuid */
+            source_id: string;
+            description?: string;
+            amount_minor: number;
+            /** @default KES */
+            currency: string;
+            /** Format: date */
+            received_on: string;
+            reference?: string;
+            /**
+             * Format: uuid
+             * @description Sent again, it records nothing new.
+             */
+            request_key: string;
+        };
+        ExternalSource: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            active: boolean;
+            /** @description It has income recorded, so it can't be deleted. */
+            readonly used: boolean;
+        };
+        ExternalSourceRequest: {
+            name: string;
+            active?: boolean;
+        };
         /** @description A facility branch as players find it (REQ-044). */
         Facility: {
             /** Format: uuid */
@@ -10610,6 +10773,14 @@ export interface components {
          * @enum {string}
          */
         IncidentKindEnum: "timeout" | "timeout_end" | "card" | "adviser_card" | "suspension" | "suspension_end" | "expedite" | "retired" | "disqualified";
+        /** @description Money received in the period, per currency: from members, from outside, and outside by source. */
+        IncomeTotals: {
+            currency: string;
+            internal_minor: number;
+            external_minor: number;
+            total_minor: number;
+            by_source: components["schemas"]["SourceTotal"][];
+        };
         /** @description Staff view of an invitation they sent. */
         Invitation: {
             /** Format: uuid */
@@ -12921,6 +13092,10 @@ export interface components {
             live_url?: string;
             status?: components["schemas"]["ExternalEventStatusEnum"];
         };
+        PatchedExternalSourceRequest: {
+            name?: string;
+            active?: boolean;
+        };
         /** @description A form as its host's competition staff see it. */
         PatchedFeedbackFormRequest: {
             title?: string;
@@ -14079,6 +14254,16 @@ export interface components {
             currency: string;
             opening_minor: number;
             receipts_minor: number;
+            /**
+             * @description From members: dues, fees and contributions.
+             * @default 0
+             */
+            internal_receipts_minor: number;
+            /**
+             * @description From outside the membership, by source in `receipts`.
+             * @default 0
+             */
+            external_receipts_minor: number;
             receipts: components["schemas"]["ReportLine"][];
             expenses_minor: number;
             expenses: components["schemas"]["ReportLine"][];
@@ -14285,6 +14470,10 @@ export interface components {
              * @description Why, kept in the match-day log: for a walkover, a no-show after the grace period, a withdrawal or an injury before the start (REQ-043).
              * @default
              */
+            reason: string;
+        };
+        /** @description Refuses fields it doesn't know. */
+        ReverseIncomeRequest: {
             reason: string;
         };
         ReverseVisitRequest: {
@@ -14965,6 +15154,12 @@ export interface components {
             /** Format: uuid */
             id: string;
             display_name: string;
+        };
+        SourceTotal: {
+            /** Format: uuid */
+            source_id: string;
+            source_name: string;
+            amount_minor: number;
         };
         /** @description What a purpose's money paid for, as members see it: no receipts, no names. */
         Spending: {
@@ -24943,6 +25138,275 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_external_income_list: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM-DD */
+                from?: string;
+                source?: string;
+                /** @description YYYY-MM-DD */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalIncome"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_external_income_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalIncomeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalIncome"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_external_income_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReverseIncomeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalIncome"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_external_sources_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSource"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_external_sources_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalSourceRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSource"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_external_sources_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_external_sources_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedExternalSourceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSource"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_income_totals_list: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM-DD */
+                from?: string;
+                /** @description YYYY-MM-DD */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeTotals"][];
                 };
             };
             /** @description Error envelope */

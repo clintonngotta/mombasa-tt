@@ -103,3 +103,31 @@ export const getFinanceSettings = (orgId: string) => api<Schemas["FinanceSetting
 export const saveFinanceSettings = (orgId: string, body: Schemas["FinanceSettingsRequest"]) => api<Schemas["FinanceSettings"]>(`${base(orgId)}settings/`, { method: "PUT", body })
 /** "1,070.00" or "-50.00": minor units as money, a deficit with its minus. */
 export const moneyText = (minor: number) => `${minor < 0 ? "-" : ""}${(Math.abs(minor) / 100).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+// Money from outside the membership (REQ-051): the club's own list of sources, income recorded by choosing
+// one, and what was received split into internal (members) and external (by source).
+export type ExternalSource = Schemas["ExternalSource"]
+export type ExternalIncome = Schemas["ExternalIncome"]
+export type IncomeTotals = Schemas["IncomeTotals"]
+export const externalKeys = {
+  all: (orgId: string) => ["finance", orgId, "external"] as const,
+  sources: (orgId: string) => ["finance", orgId, "external", "sources"] as const,
+  income: (orgId: string, source: string, from: string, to: string) => ["finance", orgId, "external", "income", source, from, to] as const,
+  totals: (orgId: string, from: string, to: string) => ["finance", orgId, "external", "totals", from, to] as const,
+}
+const range = (from: string, to: string, source = "") => {
+  const params = new URLSearchParams()
+  if (from) params.set("from", from)
+  if (to) params.set("to", to)
+  if (source) params.set("source", source)
+  const query = params.toString()
+  return query ? `?${query}` : ""
+}
+export const listExternalSources = (orgId: string) => api<ExternalSource[]>(`${base(orgId)}external-sources/`)
+export const addExternalSource = (orgId: string, name: string) => api<ExternalSource>(`${base(orgId)}external-sources/`, { body: { name } })
+export const setExternalSourceActive = (orgId: string, id: string, active: boolean) => api<ExternalSource>(`${base(orgId)}external-sources/${id}/`, { method: "PATCH", body: { active } })
+export const deleteExternalSource = (orgId: string, id: string) => api<void>(`${base(orgId)}external-sources/${id}/`, { method: "DELETE" })
+export const listExternalIncome = (orgId: string, source: string, from: string, to: string) => api<ExternalIncome[]>(`${base(orgId)}external-income/${range(from, to, source)}`)
+export const recordExternalIncome = (orgId: string, body: Schemas["ExternalIncomeRequest"]) => api<ExternalIncome>(`${base(orgId)}external-income/`, { body })
+export const reverseExternalIncome = (orgId: string, id: string, reason: string) => api<ExternalIncome>(`${base(orgId)}external-income/${id}/reverse/`, { body: { reason } })
+export const getIncomeTotals = (orgId: string, from: string, to: string) => api<IncomeTotals[]>(`${base(orgId)}income-totals/${range(from, to)}`)

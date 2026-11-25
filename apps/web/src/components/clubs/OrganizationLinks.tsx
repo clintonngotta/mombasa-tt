@@ -85,6 +85,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     title: "Money",
     links: pick(
       finances && { to: "/club/finance", label: "Finances: charges, payments and balances", icon: Banknote },
+      finances && { to: "/club/finance/external", label: "Outside income: sponsors, grants and gate takings", icon: Banknote },
       member && { to: "/club/finance/reports", label: "Annual reports: the club's accounts", icon: FileText },
     ),
   }

@@ -15,7 +15,7 @@ from django.db.models import Q, Sum
 
 from core.pdf import text_pdf
 
-from .models import Allocation, Charge, Expense, FinanceSettings, Payment
+from .models import Allocation, Charge, Expense, ExternalIncome, FinanceSettings, Payment
 
 STANDING = Q(reversed_at__isnull=True)
 RECEIPT_GROUPS = [
@@ -81,6 +81,13 @@ def figures(organization, start: date, end: date) -> dict:
         _sum(expenses.filter(spent_on__lt=start)),
     )
     received = _sum(payments.filter(in_year))
+    # Money from outside the membership (REQ-051), by source.
+    outside = ExternalIncome.objects.filter(STANDING, organization=organization)
+    opening_outside = _sum(outside.filter(received_on__lt=start))
+    external: dict = defaultdict(lambda: defaultdict(int))
+    by_source = outside.filter(in_year).values("currency", "source__name").annotate(total=Sum("amount_minor"))
+    for row in by_source:
+        external[row["currency"]][row["source__name"]] += row["total"]
     spent = _sum(expenses.filter(spent_in_year))
 
     receipts: dict = defaultdict(lambda: defaultdict(int))
@@ -147,14 +154,24 @@ def figures(organization, start: date, end: date) -> dict:
         outstanding[charge.currency] += left
 
     currencies = sorted(
-        set(opening_in) | set(opening_out) | set(received) | set(spent) | set(outstanding) | set(waived)
+        set(opening_in)
+        | set(opening_out)
+        | set(opening_outside)
+        | set(received)
+        | set(external)
+        | set(spent)
+        | set(outstanding)
+        | set(waived)
     ) or ["KES"]
     out = []
     for currency in currencies:
-        opening = opening_in.get(currency, 0) - opening_out.get(currency, 0)
-        got, gone = received.get(currency, 0), spent.get(currency, 0)
+        opening = (
+            opening_in.get(currency, 0) + opening_outside.get(currency, 0) - opening_out.get(currency, 0)
+        )
+        internal, from_outside = received.get(currency, 0), sum(external[currency].values())
+        got, gone = internal + from_outside, spent.get(currency, 0)
         groups = dict(receipts[currency])
-        unmatched = got - matched[currency]
+        unmatched = internal - matched[currency]
         if unmatched:
             groups["Not yet matched to a charge"] = unmatched
         rows = [
@@ -166,10 +183,16 @@ def figures(organization, start: date, end: date) -> dict:
                 "currency": currency,
                 "opening_minor": opening,
                 "receipts_minor": got,
+                "internal_receipts_minor": internal,
+                "external_receipts_minor": from_outside,
                 "receipts": [
                     {"label": label, "amount_minor": groups[label]}
                     for label in RECEIPT_GROUPS
                     if groups.get(label)
+                ]
+                + [
+                    {"label": f"External: {name}", "amount_minor": amount}
+                    for name, amount in sorted(external[currency].items())
                 ],
                 "expenses_minor": gone,
                 "expenses": [
@@ -200,12 +223,13 @@ def differences(before: dict, after: dict) -> list[str]:
             for key, label in (
                 ("opening_minor", "Opening balance"),
                 ("receipts_minor", "Receipts"),
+                ("external_receipts_minor", "External receipts"),
                 ("expenses_minor", "Expenses"),
                 ("closing_minor", "Closing balance"),
                 ("outstanding_dues_minor", "Outstanding dues"),
                 ("waived_minor", "Waived"),
             ):
-                lines[f"{label} ({c})"] = block[key]
+                lines[f"{label} ({c})"] = block.get(key, 0)
             for row in block["receipts"]:
                 lines[f"Receipts: {row['label']} ({c})"] = row["amount_minor"]
             for row in block["expenses"]:
@@ -245,6 +269,9 @@ def lines(organization_name: str, report, snapshot: dict) -> list[tuple[str, str
         c = block["currency"]
         out += [("", ""), (f"Opening balance ({c})", money(block["opening_minor"])), ("Receipts", "")]
         out += [(f"  {row['label']}", money(row["amount_minor"])) for row in block["receipts"]]
+        if block.get("external_receipts_minor"):
+            out += [("  of which from members (internal)", money(block["internal_receipts_minor"]))]
+            out += [("  of which from outside (external)", money(block["external_receipts_minor"]))]
         out += [("Total receipts", money(block["receipts_minor"])), ("Expenses", "")]
         out += [(f"  {row['label']}", money(row["amount_minor"])) for row in block["expenses"]]
         out += [("Total expenses", money(block["expenses_minor"]))]

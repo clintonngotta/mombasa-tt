@@ -62,6 +62,8 @@ from finance.models import (
     CampaignMember,
     Charge,
     Expense,
+    ExternalIncome,
+    ExternalSource,
     FinanceSettings,
     Payment,
     WelfareContribution,
@@ -411,6 +413,12 @@ ACCESS: dict[str, dict[str, str]] = {
     # The financial year and the annual report (TASK-079). Reading a report is open to whoever may: a
     # draft to finance staff, a published one to members, a public one to anybody.
     "organization-finance-settings": {"get": STAFF, "put": STAFF},
+    # Money from outside the membership (TASK-124): finance staff only.
+    "organization-external-sources": {"get": STAFF, "post": STAFF},
+    "organization-external-source": {"patch": STAFF, "delete": STAFF},
+    "organization-external-income": {"get": STAFF, "post": STAFF},
+    "organization-external-income-reverse": {"post": STAFF},
+    "organization-income-totals": {"get": STAFF},
     "organization-annual-reports": {"get": PUBLIC, "post": STAFF},
     "organization-annual-report": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
     "organization-annual-report-publish": {"post": STAFF},
@@ -791,6 +799,15 @@ BODIES = {
     },
     ("organization-feedback-form", "patch"): {"title": "Renamed form"},
     ("organization-finance-settings", "put"): {"year_end_month": 12, "year_end_day": 31},
+    ("organization-external-sources", "post"): {"name": "Gate takings"},
+    ("organization-external-source", "patch"): {"active": False},
+    ("organization-external-income", "post"): lambda: {
+        "source_id": str(ExternalSource.objects.get(name="MARK-SOURCE-USED").id),
+        "amount_minor": 5000,
+        "received_on": str(timezone.localdate()),
+        "request_key": str(uuid.uuid4()),
+    },
+    ("organization-external-income-reverse", "post"): {"reason": "Entered twice"},
     ("organization-annual-reports", "post"): lambda: {"period_end": f"{timezone.localdate().year - 5}-12-31"},
     ("organization-annual-report", "patch"): {"narrative": "A steady year."},
     ("organization-squads", "post"): lambda: {
@@ -1750,6 +1767,16 @@ class World:
         self.penalty_appealed = penalty(
             self.baraka, "Appealed", appeal="pending", appeal_text="MARK-APPEAL", **decided
         )
+        self.source_unused = ExternalSource.objects.create(organization=self.coast, name="MARK-SOURCE")
+        used = ExternalSource.objects.create(organization=self.coast, name="MARK-SOURCE-USED")
+        self.external_income = ExternalIncome.objects.create(
+            organization=self.coast,
+            source=used,
+            description="MARK-EXTERNAL-INCOME",
+            amount_minor=250000,
+            received_on=timezone.localdate(),
+            request_key=uuid.uuid4(),
+        )
         this_year = timezone.localdate().year
 
         def report(back, **extra):
@@ -2053,6 +2080,8 @@ class World:
             "organization-activity-attendance": self.activity_running.id,
             "organization-feedback-form": self.form_draft.id,
             "organization-annual-report": self.report_draft.id,
+            "organization-external-source": self.source_unused.id,
+            "organization-external-income-reverse": self.external_income.id,
             "organization-annual-report-publish": self.report_to_publish.id,
             "organization-annual-report-amend": self.report_out.id,
             "organization-annual-report-csv": self.report_out.id,
@@ -2318,6 +2347,10 @@ class World:
                 key=str,
             ),
             "finance_settings": FinanceSettings.objects.count(),
+            "external_sources": sorted(ExternalSource.objects.values_list("name", "active")),
+            "external_income": sorted(
+                ExternalIncome.objects.values_list("description", "amount_minor", "reversed_at"), key=str
+            ),
             "squads": sorted(Squad.objects.values_list("title", "status", "notes")),
             "squad_places": sorted(
                 SquadPlace.objects.values_list("user__email", "status", "attended"), key=str
@@ -2426,6 +2459,11 @@ ALSO_STAFF = {
             "organization-expense-receipt",
             "organization-finance-summary",
             "organization-finance-settings",
+            "organization-external-sources",
+            "organization-external-source",
+            "organization-external-income",
+            "organization-external-income-reverse",
+            "organization-income-totals",
             "organization-annual-reports",
             "organization-annual-report",
             "organization-annual-report-publish",
@@ -2658,6 +2696,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-EVENT-NAMED": {"amina", "grace", "chiku"},  # the person named and those who run activities
         "MARK-FORM-DRAFT": {"amina"},  # the host's competition staff
+        "MARK-SOURCE": {"amina", "grace"},  # the club's outside sources and income: finance staff
+        "MARK-EXTERNAL-INCOME": {"amina", "grace"},
         "MARK-REPORT-DRAFT": {
             "amina",
             "grace",

@@ -61,6 +61,7 @@ import { ClubProfileEditPage } from "@/pages/club/ClubProfileEditPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
 import { CeremonyPage } from "@/pages/tournaments/CeremonyPage"
 import { AnnualReportsPage } from "@/pages/club/AnnualReportsPage"
+import { ExternalIncomePage } from "@/pages/club/ExternalIncomePage"
 import { MyPenaltiesPage, PenaltiesPage } from "@/pages/club/PenaltyPages"
 import { MySquadsPage, SquadPage, SquadsPage } from "@/pages/club/SquadPages"
 import { TrainingRulesPage } from "@/pages/club/TrainingRulesPage"
@@ -219,6 +220,7 @@ function App() {
               <Route path="/club/finance/campaigns" element={<CampaignsPage />} />
               <Route path="/club/finance/spending" element={<SpendingPage />} />
               <Route path="/club/finance/reports" element={<AnnualReportsPage />} />
+              <Route path="/club/finance/external" element={<ExternalIncomePage />} />
               <Route path="/club/welfare" element={<WelfarePage />} />
               <Route path="/club/my-payments" element={<MyFinancesPage />} />
               <Route path="/club" element={<ClubPage />} />
