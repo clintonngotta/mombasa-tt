@@ -173,17 +173,35 @@ def decline(invitation: SessionInvitation) -> SessionInvitation:
     return invitation
 
 
-def record_attendance(invitation: SessionInvitation, attended: bool | None, actor) -> SessionInvitation:
+def record_attendance(
+    invitation: SessionInvitation, attended: bool | None, actor, *, late: bool = False
+) -> SessionInvitation:
+    """Staff mark a member by hand (also over a check-in the member made). The record says it was staff."""
     session = invitation.session
     if session.status != ClubSession.Status.SCHEDULED:
         raise ApiException("session_cancelled", "This session was cancelled.", 409)
     if attended is not None and session.starts_at > timezone.now():
         raise ApiException("session_not_started", "Attendance is recorded once the session starts.", 409)
-    if invitation.attended != attended:
+    late = bool(late and attended)
+    by_staff = invitation.attendance_source == SessionInvitation.Source.STAFF
+    if invitation.attended != attended or invitation.late != late or (attended is not None and not by_staff):
         invitation.attended = attended
+        invitation.late = late
         invitation.attendance_by = actor if attended is not None else None
         invitation.attendance_at = timezone.now() if attended is not None else None
-        invitation.save(update_fields=["attended", "attendance_by", "attendance_at"])
+        invitation.attendance_source = SessionInvitation.Source.STAFF if attended is not None else ""
+        invitation.check_in_distance_m = invitation.check_in_accuracy_m = None
+        invitation.save(
+            update_fields=[
+                "attended",
+                "late",
+                "attendance_by",
+                "attendance_at",
+                "attendance_source",
+                "check_in_distance_m",
+                "check_in_accuracy_m",
+            ]
+        )
     return invitation
 
 

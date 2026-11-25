@@ -3565,6 +3565,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/session-invitations/{id}/check-in/:
+    post:
+      operationId: me_session_invitations_check_in_create
+      description: |-
+        Check in at the session from your phone: inside the check-in window, within the club's
+        radius (at most 300 m) of where it is held, with a position at least that accurate. Only the
+        distance, the accuracy and the time are kept, never where you were.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this session invitation.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PositionRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MySessionInvitation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/session-invitations/{id}/decline/:
     post:
       operationId: me_session_invitations_decline_create
@@ -6335,6 +6373,47 @@ paths:
         required: true
       tags:
       - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubSession'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/club-sessions/{id}/location/:
+    post:
+      operationId: organizations_club_sessions_location_create
+      description: |-
+        Hold this session somewhere other than usual (a venue of the organization or a map point),
+        or put it back. Check-in is measured from there, and everyone invited is told it has moved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionLocationRequest'
       security:
       - sessionAuth: []
       responses:
@@ -11408,6 +11487,70 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrainingPlan'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/training-rules/:
+    get:
+      operationId: organizations_training_rules_retrieve
+      description: |-
+        GET /organizations/{org}/training-rules/: the weekly slots, the usual place and the check-in
+        rules, for the organization's members. PUT sets them: training staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingRules'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: organizations_training_rules_update
+      description: |-
+        GET /organizations/{org}/training-rules/: the weekly slots, the usual place and the check-in
+        rules, for the organization's members. PUT sets them: training staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingRulesRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingRules'
           description: ''
         4XX:
           description: Error envelope
@@ -18308,6 +18451,15 @@ components:
       required:
       - attendance
       - invitee
+    AttendanceSourceEnum:
+      enum:
+      - self
+      - staff
+      type: string
+      description: |-
+        * `` - None
+        * `self` - Self
+        * `staff` - Staff
     Attendee:
       type: object
       description: 'Who answered, as the audience sees it: display names only. Attendance
@@ -19531,6 +19683,31 @@ components:
       - amount_minor
       - member_id
       - purpose
+    CheckInWindow:
+      type: object
+      properties:
+        opens_at:
+          type: string
+          format: date-time
+        closes_at:
+          type: string
+          format: date-time
+        late_after:
+          type: string
+          format: date-time
+        radius_m:
+          type: integer
+        place:
+          allOf:
+          - $ref: '#/components/schemas/SessionPlace'
+          nullable: true
+          description: 'Null: no location is set, so staff mark by hand.'
+      required:
+      - closes_at
+      - late_after
+      - opens_at
+      - place
+      - radius_m
     Checked:
       type: object
       properties:
@@ -20047,6 +20224,12 @@ components:
         accepted:
           type: integer
           readOnly: true
+        check_in:
+          allOf:
+          - $ref: '#/components/schemas/CheckInWindow'
+          readOnly: true
+          description: When members may check in, from how far, and where the session
+            is held.
         created_at:
           type: string
           format: date-time
@@ -20054,6 +20237,7 @@ components:
       required:
       - accepted
       - capacity
+      - check_in
       - coach_id
       - coach_name
       - created_at
@@ -25818,13 +26002,36 @@ components:
           type: boolean
           readOnly: true
           nullable: true
+        late:
+          type: boolean
+          readOnly: true
+        attendance_source:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/AttendanceSourceEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        attendance_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        check_in:
+          allOf:
+          - $ref: '#/components/schemas/CheckInWindow'
+          readOnly: true
+          description: When you may check in, from how far, and where the session
+            is held.
         session:
           allOf:
           - $ref: '#/components/schemas/MySession'
           readOnly: true
       required:
+      - attendance_at
+      - attendance_source
       - attended
+      - check_in
       - id
+      - late
       - responded_at
       - session
       - status
@@ -28121,6 +28328,10 @@ components:
           type: boolean
           nullable: true
           description: Null clears the mark.
+        late:
+          type: boolean
+          default: false
+          description: They came, but late.
     PatchedAwardRequest:
       type: object
       properties:
@@ -29924,6 +30135,32 @@ components:
           nullable: true
       required:
       - name
+    PositionRequest:
+      type: object
+      description: |-
+        Where the phone says it is, for one check-in. It is compared with the session's location and not
+        kept.
+      properties:
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        accuracy_m:
+          type: number
+          format: double
+          maximum: 100000
+          minimum: 0
+          description: How sure the phone is, in metres (its accuracy radius).
+      required:
+      - accuracy_m
+      - latitude
+      - longitude
     Preference:
       type: object
       properties:
@@ -31734,6 +31971,29 @@ components:
       required:
       - applies_to
       - penalty
+    RulesVenue:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
+    RulesVenueRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - name
     Schedule:
       type: object
       properties:
@@ -32522,11 +32782,31 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        attendance_source:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/AttendanceSourceEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        late:
+          type: boolean
+          readOnly: true
+        check_in_distance_m:
+          type: integer
+          readOnly: true
+          nullable: true
+        check_in_accuracy_m:
+          type: integer
+          readOnly: true
+          nullable: true
       required:
       - attendance_at
+      - attendance_source
       - attended
+      - check_in_accuracy_m
+      - check_in_distance_m
       - display_name
       - id
+      - late
       - responded_at
       - status
       - user_id
@@ -32540,6 +32820,47 @@ components:
         * `invited` - Invited
         * `accepted` - Accepted
         * `declined` - Declined
+    SessionLocationRequest:
+      type: object
+      description: |-
+        Where one session is held instead of the usual place: a venue of the organization, or a map
+        point. `usual` puts it back.
+      properties:
+        venue_id:
+          type: string
+          format: uuid
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+        label:
+          type: string
+          default: ''
+          maxLength: 120
+        usual:
+          type: boolean
+          default: false
+    SessionPlace:
+      type: object
+      description: 'Where a session is held, as members see it: a name and whether
+        it moved. Never coordinates.'
+      properties:
+        label:
+          type: string
+        moved:
+          type: boolean
+      required:
+      - label
+      - moved
     SessionRequest:
       type: object
       description: A block of one day's play. No events means every event.
@@ -34415,6 +34736,159 @@ components:
           nullable: true
       required:
       - title
+    TrainingRules:
+      type: object
+      description: A club's training rules. Members read them; coordinates are for
+        training staff only.
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingSlot'
+        venue:
+          allOf:
+          - $ref: '#/components/schemas/RulesVenue'
+          readOnly: true
+          nullable: true
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        location_label:
+          type: string
+          maxLength: 120
+        has_location:
+          type: boolean
+          readOnly: true
+          description: A position is known, so members can check themselves in.
+        opens_before_minutes:
+          type: integer
+          maximum: 180
+          minimum: 0
+        closes_after_minutes:
+          type: integer
+          maximum: 240
+          minimum: 5
+        late_after_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+        radius_m:
+          type: integer
+          maximum: 300
+          minimum: 25
+        can_edit:
+          type: boolean
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - can_edit
+      - closes_after_minutes
+      - has_location
+      - late_after_minutes
+      - latitude
+      - location_label
+      - longitude
+      - opens_before_minutes
+      - radius_m
+      - slots
+      - updated_at
+      - venue
+    TrainingRulesRequest:
+      type: object
+      description: A club's training rules. Members read them; coordinates are for
+        training staff only.
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingSlotRequest'
+        venue_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        location_label:
+          type: string
+          maxLength: 120
+        opens_before_minutes:
+          type: integer
+          maximum: 180
+          minimum: 0
+        closes_after_minutes:
+          type: integer
+          maximum: 240
+          minimum: 5
+        late_after_minutes:
+          type: integer
+          maximum: 240
+          minimum: 0
+        radius_m:
+          type: integer
+          maximum: 300
+          minimum: 25
+    TrainingSlot:
+      type: object
+      properties:
+        weekday:
+          $ref: '#/components/schemas/WeekdayEnum'
+        starts:
+          type: string
+          description: HH:MM on the organization's clock.
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        ends:
+          type: string
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        title:
+          type: string
+          default: ''
+          maxLength: 80
+      required:
+      - ends
+      - starts
+      - title
+      - weekday
+    TrainingSlotRequest:
+      type: object
+      properties:
+        weekday:
+          $ref: '#/components/schemas/WeekdayEnum'
+        starts:
+          type: string
+          minLength: 1
+          description: HH:MM on the organization's clock.
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        ends:
+          type: string
+          minLength: 1
+          pattern: ^([01]\d|2[0-3]):[0-5]\d$
+        title:
+          type: string
+          default: ''
+          maxLength: 80
+      required:
+      - ends
+      - starts
+      - weekday
     Umpire:
       type: object
       properties:
@@ -34967,6 +35441,24 @@ components:
         * `mpesa` - M-Pesa
         * `other` - Other
         * `pass` - Covered by a pass
+    WeekdayEnum:
+      enum:
+      - monday
+      - tuesday
+      - wednesday
+      - thursday
+      - friday
+      - saturday
+      - sunday
+      type: string
+      description: |-
+        * `monday` - monday
+        * `tuesday` - tuesday
+        * `wednesday` - wednesday
+        * `thursday` - thursday
+        * `friday` - friday
+        * `saturday` - saturday
+        * `sunday` - sunday
     WelfareContribution:
       type: object
       description: A gift as finance and welfare staff see it.

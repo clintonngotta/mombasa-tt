@@ -52,6 +52,12 @@ club_drills = [
         name="organization-club-session-cancel",
     ),
     path(
+        "club-sessions/<uuid:pk>/location/",
+        club_sessions.as_view({"post": "location"}),
+        name="organization-club-session-location",
+    ),
+    path("training-rules/", session_views.TrainingRulesView.as_view(), name="organization-training-rules"),
+    path(
         "club-sessions/<uuid:session_pk>/invitations/",
         session_invitations.as_view({"get": "list", "post": "create"}),
         name="organization-club-session-invitations",

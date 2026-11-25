@@ -343,6 +343,8 @@ As built (TASK-109): a body also invites its representatives (those accepted and
 
 *Apologies.* A player sends an apology (with an optional reason) for a training session or a meeting before it starts. Staff see the apologies, and attendance shows the player as apologised rather than absent, for the penalty rules (REQ-054, REQ-046).
 
+As built (TASK-125): the rules hold up to 21 weekly slots (weekday, from, to, a name) that members read; sessions are still scheduled one by one or as a weekly series. Defaults until a club sets its own: check-in opens 30 minutes before the start, closes 30 minutes after, late after 10 minutes, 300 m. The radius is 25 to 300 m. A session's place is its own when staff moved it, else the usual place, else the venue of its tables; when none has a position, nobody checks in by phone and staff mark by hand. A member who is invited or coming may check in; one who declined may not. The position travels in the request body for that one check, is never stored or logged, and check-in is rate-limited like a search by position; the web app asks the device for a fresh fix. Members see a place by name; its coordinates are for training staff. A mark made by staff replaces a check-in, and the record says which it was and whether the member was late.
+
 ### REQ-053
 
 **Order of play and table flow — Phase 1 (user request, 2026-11-21).** Competition staff publish a tournament's order of play: the sequence of event stages, for example men's singles group stage groups A to E, then women's singles groups, then men's singles knockout. Everyone who sees the tournament sees it. Officials reorder it during the event, and each change is logged with who made it and when.

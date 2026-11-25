@@ -1,7 +1,7 @@
 # End-to-end tests (Playwright)
 
 Real-browser tests of the web app against a running local stack. They cover the menu and the Tournaments
-tab, Home, the help centre, club representatives, drafting a meeting, events for you, feedback forms, and finding clubs and places to play by city and by distance (with a faked
+tab, Home, the help centre, club representatives, drafting a meeting, events for you, feedback forms, training rules, and finding clubs and places to play by city and by distance (with a faked
 device location).
 
 ## Run them

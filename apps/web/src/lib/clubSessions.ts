@@ -41,6 +41,24 @@ export const markAttendanceOrKeep = (orgId: string, session: Pick<ClubSession, "
     refresh: [clubSessionKeys.invitations(orgId, session.id)],
   })
 
+// Training rules and location check-in (REQ-052). The position goes in the request body for one check-in
+// and is not kept: the API stores only how far it was from the session and how accurate.
+export type TrainingRules = Schemas["TrainingRules"]
+export type TrainingRulesInput = Partial<Schemas["TrainingRulesRequest"]>
+export type TrainingSlot = Schemas["TrainingSlot"]
+export type Weekday = TrainingSlot["weekday"]
+export const WEEKDAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+export const WEEKDAY_LABEL: Record<Weekday, string> = { monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday", thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday" }
+export const MAX_CHECK_IN_RADIUS = 300
+export const rulesKey = (orgId: string) => ["club-sessions", orgId, "rules"] as const
+export const getTrainingRules = (orgId: string) => api<TrainingRules>(`/organizations/${orgId}/training-rules/`)
+export const saveTrainingRules = (orgId: string, body: TrainingRulesInput) => api<TrainingRules>(`/organizations/${orgId}/training-rules/`, { method: "PUT", body })
+export const setSessionLocation = (orgId: string, id: string, body: Partial<Schemas["SessionLocationRequest"]>) => api<ClubSession>(`${base(orgId)}${id}/location/`, { body })
+export const checkInAtSession = (invitationId: string, position: { latitude: number; longitude: number; accuracy: number }) =>
+  api<MySessionInvitation>(`${MINE}${invitationId}/check-in/`, { body: { latitude: position.latitude, longitude: position.longitude, accuracy_m: Math.round(position.accuracy) } })
+export const markAttendanceLate = (orgId: string, id: string, invitationId: string) =>
+  api<SessionInvitation>(`${base(orgId)}${id}/invitations/${invitationId}/`, { method: "PATCH", body: { attended: true, late: true } })
+
 export const listMyInvitations = (when: When) => api<Schemas["PaginatedMySessionInvitationList"]>(`${MINE}?when=${when}`)
 export const acceptInvitation = (id: string) => api<MySessionInvitation>(`${MINE}${id}/accept/`, { body: {} })
 export const declineInvitation = (id: string) => api<MySessionInvitation>(`${MINE}${id}/decline/`, { body: {} })

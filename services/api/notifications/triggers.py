@@ -131,6 +131,24 @@ def session_invited(session, users) -> None:
     )
 
 
+def session_moved(session, place: str, actor) -> None:
+    """A session is held somewhere else: everyone invited who hasn't declined is told."""
+    invited = set(
+        session.invitations.exclude(status="declined").exclude(user=actor).values_list("user_id", flat=True)
+    )
+    where = f"Now at {place}." if place else "It is back at the usual place."
+    notify(
+        invited,
+        Category.TRAINING,
+        f"Moved: {session.title}",
+        body=where,
+        subject=f"club-session-place:{session.id}",
+        version=f"{session.location_venue_id}:{session.location_latitude}:{session.location_longitude}"[:80],
+        link="/training",
+        organization=session.organization,
+    )
+
+
 def challenged(challenge) -> None:
     notify(
         [challenge.challenged_id],

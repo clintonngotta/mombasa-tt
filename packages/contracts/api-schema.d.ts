@@ -1771,6 +1771,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/session-invitations/{id}/check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Check in at the session from your phone: inside the check-in window, within the club's
+         *     radius (at most 300 m) of where it is held, with a position at least that accurate. Only the
+         *     distance, the accuracy and the time are kept, never where you were.
+         */
+        post: operations["me_session_invitations_check_in_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/session-invitations/{id}/decline/": {
         parameters: {
             query?: never;
@@ -2851,6 +2872,26 @@ export interface paths {
         put?: never;
         /** @description Cancel the session: its tables and every accepted member's time are free again. */
         post: operations["organizations_club_sessions_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/club-sessions/{id}/location/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hold this session somewhere other than usual (a venue of the organization or a map point),
+         *     or put it back. Check-in is measured from there, and everyone invited is told it has moved.
+         */
+        post: operations["organizations_club_sessions_location_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4798,6 +4839,30 @@ export interface paths {
         head?: never;
         /** @description Items of a club plan, for its training staff. Drills come from the standard library and the club's. */
         patch: operations["organizations_training_plans_items_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/training-rules/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{org}/training-rules/: the weekly slots, the usual place and the check-in
+         *     rules, for the organization's members. PUT sets them: training staff.
+         */
+        get: operations["organizations_training_rules_retrieve"];
+        /**
+         * @description GET /organizations/{org}/training-rules/: the weekly slots, the usual place and the check-in
+         *     rules, for the organization's members. PUT sets them: training staff.
+         */
+        put: operations["organizations_training_rules_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{organization_pk}/venues/": {
@@ -7842,6 +7907,13 @@ export interface components {
             invitee: string;
             attendance: components["schemas"]["AttendanceMarkEnum"];
         };
+        /**
+         * @description * `` - None
+         *     * `self` - Self
+         *     * `staff` - Staff
+         * @enum {string}
+         */
+        AttendanceSourceEnum: "self" | "staff";
         /** @description Who answered, as the audience sees it: display names only. Attendance is for the staff. */
         Attendee: {
             /** Format: uuid */
@@ -8346,6 +8418,17 @@ export interface components {
             /** Format: date */
             due_on?: string | null;
         };
+        CheckInWindow: {
+            /** Format: date-time */
+            opens_at: string;
+            /** Format: date-time */
+            closes_at: string;
+            /** Format: date-time */
+            late_after: string;
+            radius_m: number;
+            /** @description Null: no location is set, so staff mark by hand. */
+            place: components["schemas"]["SessionPlace"] | null;
+        };
         Checked: {
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
@@ -8541,6 +8624,8 @@ export interface components {
             readonly status: components["schemas"]["ClubSessionStatusEnum"];
             readonly invited: number;
             readonly accepted: number;
+            /** @description When members may check in, from how far, and where the session is held. */
+            readonly check_in: components["schemas"]["CheckInWindow"];
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -10776,6 +10861,12 @@ export interface components {
             /** Format: date-time */
             readonly responded_at: string | null;
             readonly attended: boolean | null;
+            readonly late: boolean;
+            readonly attendance_source: components["schemas"]["AttendanceSourceEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date-time */
+            readonly attendance_at: string | null;
+            /** @description When you may check in, from how far, and where the session is held. */
+            readonly check_in: components["schemas"]["CheckInWindow"];
             readonly session: components["schemas"]["MySession"];
         };
         MyShare: {
@@ -11854,6 +11945,11 @@ export interface components {
         PatchedAttendanceRequest: {
             /** @description Null clears the mark. */
             attended?: boolean | null;
+            /**
+             * @description They came, but late.
+             * @default false
+             */
+            late: boolean;
         };
         PatchedAwardRequest: {
             title?: string;
@@ -12601,6 +12697,21 @@ export interface components {
             term_end?: string | null;
             /** Format: uuid */
             grants_role?: string | null;
+        };
+        /**
+         * @description Where the phone says it is, for one check-in. It is compared with the session's location and not
+         *     kept.
+         */
+        PositionRequest: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+            /**
+             * Format: double
+             * @description How sure the phone is, in metres (its accuracy radius).
+             */
+            accuracy_m: number;
         };
         Preference: {
             category: components["schemas"]["NotificationCategoryEnum"];
@@ -13395,6 +13506,16 @@ export interface components {
             /** @description A fine in the smallest unit of KES, when the penalty is one. */
             amount_minor?: number | null;
         };
+        RulesVenue: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        RulesVenueRequest: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         Schedule: {
             tables: components["schemas"]["ScheduleTable"][];
             sessions: components["schemas"]["Session"][];
@@ -13719,6 +13840,10 @@ export interface components {
             readonly attended: boolean | null;
             /** Format: date-time */
             readonly attendance_at: string | null;
+            readonly attendance_source: components["schemas"]["AttendanceSourceEnum"] | components["schemas"]["BlankEnum"];
+            readonly late: boolean;
+            readonly check_in_distance_m: number | null;
+            readonly check_in_accuracy_m: number | null;
         };
         /**
          * @description * `invited` - Invited
@@ -13727,6 +13852,27 @@ export interface components {
          * @enum {string}
          */
         SessionInvitationStatusEnum: "invited" | "accepted" | "declined";
+        /**
+         * @description Where one session is held instead of the usual place: a venue of the organization, or a map
+         *     point. `usual` puts it back.
+         */
+        SessionLocationRequest: {
+            /** Format: uuid */
+            venue_id?: string | null;
+            /** Format: double */
+            latitude?: number | null;
+            /** Format: double */
+            longitude?: number | null;
+            /** @default  */
+            label: string;
+            /** @default false */
+            usual: boolean;
+        };
+        /** @description Where a session is held, as members see it: a name and whether it moved. Never coordinates. */
+        SessionPlace: {
+            label: string;
+            moved: boolean;
+        };
         /** @description A block of one day's play. No events means every event. */
         SessionRequest: {
             name?: string;
@@ -14491,6 +14637,56 @@ export interface components {
             /** Format: date */
             ends_on?: string | null;
         };
+        /** @description A club's training rules. Members read them; coordinates are for training staff only. */
+        TrainingRules: {
+            slots: components["schemas"]["TrainingSlot"][];
+            readonly venue: components["schemas"]["RulesVenue"] | null;
+            /** Format: decimal */
+            latitude: string | null;
+            /** Format: decimal */
+            longitude: string | null;
+            location_label: string;
+            /** @description A position is known, so members can check themselves in. */
+            readonly has_location: boolean;
+            opens_before_minutes: number;
+            closes_after_minutes: number;
+            late_after_minutes: number;
+            radius_m: number;
+            readonly can_edit: boolean;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description A club's training rules. Members read them; coordinates are for training staff only. */
+        TrainingRulesRequest: {
+            slots?: components["schemas"]["TrainingSlotRequest"][];
+            /** Format: uuid */
+            venue_id?: string | null;
+            /** Format: decimal */
+            latitude?: string | null;
+            /** Format: decimal */
+            longitude?: string | null;
+            location_label?: string;
+            opens_before_minutes?: number;
+            closes_after_minutes?: number;
+            late_after_minutes?: number;
+            radius_m?: number;
+        };
+        TrainingSlot: {
+            weekday: components["schemas"]["WeekdayEnum"];
+            /** @description HH:MM on the organization's clock. */
+            starts: string;
+            ends: string;
+            /** @default  */
+            title: string;
+        };
+        TrainingSlotRequest: {
+            weekday: components["schemas"]["WeekdayEnum"];
+            /** @description HH:MM on the organization's clock. */
+            starts: string;
+            ends: string;
+            /** @default  */
+            title: string;
+        };
         Umpire: {
             /** Format: uuid */
             id: string;
@@ -14691,6 +14887,17 @@ export interface components {
          * @enum {string}
          */
         VisitMethodEnum: "cash" | "mpesa" | "other" | "pass";
+        /**
+         * @description * `monday` - monday
+         *     * `tuesday` - tuesday
+         *     * `wednesday` - wednesday
+         *     * `thursday` - thursday
+         *     * `friday` - friday
+         *     * `saturday` - saturday
+         *     * `sunday` - sunday
+         * @enum {string}
+         */
+        WeekdayEnum: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
         /** @description A gift as finance and welfare staff see it. */
         WelfareContribution: {
             /** Format: uuid */
@@ -18567,6 +18774,41 @@ export interface operations {
             };
         };
     };
+    me_session_invitations_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this session invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_session_invitations_decline_create: {
         parameters: {
             query?: never;
@@ -21158,6 +21400,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubSession"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_club_sessions_location_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SessionLocationRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -25665,6 +25942,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrainingPlan"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_rules_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingRules"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_training_rules_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TrainingRulesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingRules"];
                 };
             };
             /** @description Error envelope */

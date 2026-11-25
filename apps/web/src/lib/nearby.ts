@@ -40,8 +40,9 @@ const WHY: Record<number, string> = {
   3: "Finding your location took too long. Try again, or search by city.",
 }
 
-/** The device's position, asked for once. Rejects with a sentence the page can show. */
-export function locate(): Promise<Position> {
+/** The device's position, asked for once. Rejects with a sentence the page can show. `fresh` refuses a
+ * remembered fix: for checking in, where the player may have just walked in from the car park. */
+export function locate({ fresh = false }: { fresh?: boolean } = {}): Promise<Position> {
   return new Promise((resolve, reject) => {
     if (!("geolocation" in navigator)) {
       reject(new Error("This browser can't share a location. Search by city instead."))
@@ -51,7 +52,7 @@ export function locate(): Promise<Position> {
       ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy }),
       (error) => reject(new Error(WHY[error.code] ?? WHY[2])),
       // A 300 m search needs the precise fix; a minute-old one is fine while the player stands still.
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: fresh ? 0 : 60_000 },
     )
   })
 }

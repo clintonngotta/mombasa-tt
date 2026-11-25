@@ -15,24 +15,30 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
+from facilities.models import Venue
 from notifications import triggers
-from organizations.access import require_permission
+from organizations.access import effective_permissions, require_membership, require_permission
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
-from . import club_sessions
+from . import check_in, club_sessions
 from .club_session_serializers import (
     AttendanceSerializer,
     ClubSessionSerializer,
     InviteSerializer,
     MySessionInvitationSerializer,
     OpenSessionSerializer,
+    PositionSerializer,
     SessionInvitationSerializer,
+    SessionLocationSerializer,
+    TrainingRulesSerializer,
 )
-from .models import ClubSession, SessionInvitation
+from .models import ClubSession, SessionInvitation, TrainingRules
 
 TRAINING = Permission.TRAINING_MANAGE
 ACCEPTED = Q(invitations__status=SessionInvitation.Status.ACCEPTED)
@@ -45,7 +51,7 @@ def with_counts(queryset):
             accepted=Count("invitations", filter=ACCEPTED, distinct=True),
         )
         .prefetch_related("tables__venue")
-        .select_related("coach")
+        .select_related("coach", "organization", "location_venue")
     )
 
 
@@ -68,6 +74,7 @@ class ClubSessionViewSet(
         context = super().get_serializer_context()
         if not getattr(self, "swagger_fake_view", False):
             context["organization"] = self.organization()
+            context["rules"] = check_in.rules_for(self.organization())
         return context
 
     def get_queryset(self):
@@ -162,6 +169,77 @@ class ClubSessionViewSet(
             session.save(update_fields=["status", "cancelled_at"])
         return Response(self._fresh(session))
 
+    @extend_schema(request=SessionLocationSerializer, responses={200: ClubSessionSerializer})
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
+    def location(self, request, *args, **kwargs):
+        """Hold this session somewhere other than usual (a venue of the organization or a map point),
+        or put it back. Check-in is measured from there, and everyone invited is told it has moved."""
+        session = ClubSession.objects.select_for_update().get(pk=self.get_object().pk)
+        if session.status != ClubSession.Status.SCHEDULED or session.ends_at <= timezone.now():
+            raise ApiException("session_closed", "This session is cancelled or over.", 409)
+        body = SessionLocationSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+        venue = None
+        if data.get("venue_id"):
+            venue = Venue.objects.filter(pk=data["venue_id"], organization=self.organization()).first()
+            if venue is None:
+                raise ValidationError({"venue_id": "Choose one of your venues."})
+            if venue.latitude is None:
+                raise ValidationError({"venue_id": "That venue has no position on the map yet."})
+        before = (session.location_venue_id, session.location_latitude, session.location_longitude)
+        session.location_venue = venue
+        point = not data["usual"] and venue is None
+        session.location_latitude = data["latitude"] if point else None
+        session.location_longitude = data["longitude"] if point else None
+        session.location_label = "" if data["usual"] else data["label"]
+        session.save(
+            update_fields=["location_venue", "location_latitude", "location_longitude", "location_label"]
+        )
+        session.refresh_from_db()
+        after = (session.location_venue_id, session.location_latitude, session.location_longitude)
+        if after != before:
+            place = check_in.location_of(session, check_in.rules_for(session.organization))
+            triggers.session_moved(session, place["label"] if place else "", request.user)
+        return Response(self._fresh(session))
+
+
+class TrainingRulesView(APIView):
+    """GET /organizations/{org}/training-rules/: the weekly slots, the usual place and the check-in
+    rules, for the organization's members. PUT sets them: training staff."""
+
+    permission_classes = [IsAuthenticated]
+
+    def shown(self, request, organization) -> Response:
+        staff = TRAINING in effective_permissions(request.user, organization)
+        context = {"staff": staff, "organization": organization}
+        return Response(TrainingRulesSerializer(check_in.rules_for(organization), context=context).data)
+
+    @extend_schema(responses={200: TrainingRulesSerializer})
+    def get(self, request, organization_pk):
+        organization = get_object_or_404(Organization, pk=organization_pk)
+        require_membership(request.user, organization)
+        return self.shown(request, organization)
+
+    @extend_schema(request=TrainingRulesSerializer, responses={200: TrainingRulesSerializer})
+    def put(self, request, organization_pk):
+        organization = get_object_or_404(Organization, pk=organization_pk)
+        require_permission(request.user, organization, TRAINING)
+        with transaction.atomic():
+            Organization.objects.select_for_update().get(pk=organization.pk)
+            rules = TrainingRules.objects.filter(organization=organization).first()
+            body = TrainingRulesSerializer(
+                rules, data=request.data, partial=True, context={"organization": organization, "staff": True}
+            )
+            body.is_valid(raise_exception=True)
+            rules = rules or TrainingRules(organization=organization)
+            for name, value in body.validated_data.items():
+                setattr(rules, name, value)
+            rules.updated_by = request.user
+            rules.save()
+        return self.shown(request, organization)
+
 
 class SessionInvitationViewSet(viewsets.GenericViewSet):
     """Who is invited to a club session, their answers, and attendance; for the club's training staff."""
@@ -215,7 +293,7 @@ class SessionInvitationViewSet(viewsets.GenericViewSet):
         body = AttendanceSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         invitation = club_sessions.record_attendance(
-            invitation, body.validated_data["attended"], request.user
+            invitation, body.validated_data["attended"], request.user, late=body.validated_data["late"]
         )
         return Response(self.get_serializer(invitation).data)
 
@@ -226,12 +304,13 @@ class MySessionInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet)
     serializer_class = MySessionInvitationSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardPagination
+    throttle_scope = None  # only check-in is limited, as a search by position is
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return SessionInvitation.objects.none()
         mine = SessionInvitation.objects.filter(user=self.request.user).select_related(
-            "session__organization"
+            "session__organization", "session__location_venue"
         )
         if self.action == "list":
             if self.request.query_params.get("when") == "past":
@@ -261,6 +340,23 @@ class MySessionInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet)
     def decline(self, request, *args, **kwargs):
         """Decline, or withdraw an acceptance: your time is free again."""
         return self._answer(club_sessions.decline(self.get_object()))
+
+    @extend_schema(request=PositionSerializer, responses={200: MySessionInvitationSerializer})
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="check-in",
+        throttle_classes=[ScopedRateThrottle],
+        throttle_scope="nearby",
+    )
+    def check_in(self, request, *args, **kwargs):
+        """Check in at the session from your phone: inside the check-in window, within the club's
+        radius (at most 300 m) of where it is held, with a position at least that accurate. Only the
+        distance, the accuracy and the time are kept, never where you were."""
+        invitation = self.get_object()
+        body = PositionSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        return self._answer(check_in.check_in(invitation, **body.validated_data))
 
 
 class OpenSessionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):

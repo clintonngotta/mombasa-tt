@@ -27,10 +27,14 @@ export async function logIn(page: Page, account: Account) {
     await expect(password).toHaveValue(PASSWORD)
   }).toPass({ timeout: 10_000 })
   await page.getByRole("button", { name: "Log in", exact: true }).click()
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"))
-  // Never save another account's session under this one's name.
-  const me = await page.request.get("/api/v1/auth/me/")
-  expect(((await me.json()) as { email?: string }).email).toBe(ACCOUNTS[account])
+  // Wait for the session rather than for the page to move on: right after the API restarts the app reloads
+  // itself once, which lands back on this page although the login worked. This also makes sure another
+  // account's session is never saved under this one's name.
+  await expect(async () => {
+    const me = await page.request.get("/api/v1/auth/me/")
+    expect(me.ok()).toBe(true)
+    expect(((await me.json()) as { email?: string }).email).toBe(ACCOUNTS[account])
+  }).toPass({ timeout: 15_000 })
 }
 
 /** GET an API path with the signed-in session of `request` (a page's or a context's). */

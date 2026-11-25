@@ -103,7 +103,15 @@ from reservations import service as reservations
 from reservations.models import Hold, Reservation, TournamentUmpire
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
 from soda.models import Challenge, Policy
-from training.models import ClubSession, Drill, Equipment, PlanItem, SessionInvitation, TrainingPlan
+from training.models import (
+    ClubSession,
+    Drill,
+    Equipment,
+    PlanItem,
+    SessionInvitation,
+    TrainingPlan,
+    TrainingRules,
+)
 
 from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
@@ -236,6 +244,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # Club sessions (REQ-027): a member answers their own invitations; training staff run the rest.
     "my-session-invitation-list": {"get": OWNER},
     "my-session-invitation-accept": {"post": OWNER},
+    "my-session-invitation-check-in": {"post": OWNER},  # Baraka's invitation, from Baraka's phone
     "my-session-invitation-decline": {"post": OWNER},
     "my-drill-list": {"get": OWNER, "post": OWNER},
     "my-drill-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
@@ -396,6 +405,10 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-club-sessions": {"get": STAFF, "post": STAFF},
     "organization-club-session": {"get": STAFF, "patch": STAFF},
     "organization-club-session-cancel": {"post": STAFF},
+    # Training rules (TASK-125): members read the slots, the place by name and the check-in rules;
+    # training staff set them, and where one session is held.
+    "organization-club-session-location": {"post": STAFF},
+    "organization-training-rules": {"get": MEMBER, "put": STAFF},
     "organization-club-session-invitations": {"get": STAFF, "post": STAFF},
     "organization-club-session-invitation": {"patch": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
@@ -833,6 +846,9 @@ BODIES = {
         ]
     },
     ("organization-club-session-invitation", "patch"): {"attended": None},
+    ("organization-club-session-location", "post"): {"latitude": -4.05, "longitude": 39.66, "label": "Beach"},
+    ("organization-training-rules", "put"): {"radius_m": 200},
+    ("my-session-invitation-check-in", "post"): {"latitude": -4.0439, "longitude": 39.6682, "accuracy_m": 20},
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
@@ -1071,6 +1087,13 @@ class World:
         self.club_session.tables.set([room_table])
         self.session_invitation = SessionInvitation.objects.create(
             session=self.club_session, user=self.baraka
+        )
+        # Where Coast trains: members see the name of the place, training staff its coordinates too.
+        TrainingRules.objects.create(
+            organization=self.coast,
+            latitude="-4.043911",
+            longitude="39.668207",
+            location_label="MARK-TRAINING-PLACE",
         )
         # An external event Coast submitted, still waiting for a curator.
         self.external = ExternalEvent.objects.create(
@@ -1901,6 +1924,8 @@ class World:
             "organization-activity-attendees": self.activity.id,
             "organization-activity-invitees": self.activity.id,
             "organization-club-session-cancel": self.session_to_cancel.id,
+            "organization-club-session-location": self.club_session.id,
+            "my-session-invitation-check-in": self.session_invitation.id,
             "organization-club-session-invitation": self.session_invitation.id,
             "my-session-invitation-accept": self.session_invitation.id,
             "my-session-invitation-decline": self.session_invitation.id,
@@ -2110,6 +2135,10 @@ class World:
             "session_invitations": sorted(
                 SessionInvitation.objects.values_list("session__title", "user_id", "status", "attended")
             ),
+            "session_places": sorted(
+                ClubSession.objects.values_list("title", "location_label", "location_latitude"), key=str
+            ),
+            "training_rules": sorted(TrainingRules.objects.values_list("radius_m", "location_label")),
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
             "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
             "reviews": sorted(TournamentReview.objects.values_list("went_well", "went_wrong")),
@@ -2455,6 +2484,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
         "MARK-TABLE-BOOKING": {"amina", "baraka"},  # the requester and the venue's staff
         "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member
+        "MARK-TRAINING-PLACE": {"amina", "baraka", "faith", "grace"},  # where the club trains, by name
+        "4.043911": {"amina"},  # its coordinates: training staff only
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},
         "MARK-FAITH-BIO": {"faith"},  # unpublished

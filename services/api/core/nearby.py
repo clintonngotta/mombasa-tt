@@ -3,7 +3,7 @@
 The point is the player's own position, so it arrives in a request body, never in a URL (URLs are
 logged), and it is neither stored nor logged here."""
 
-from math import cos, radians
+from math import asin, cos, radians, sin, sqrt
 
 from django.db.models import F, FloatField, QuerySet, Value
 from django.db.models.functions import ACos, Cast, Cos, Greatest, Least, Radians, Sin
@@ -62,3 +62,10 @@ def within(queryset: QuerySet, latitude: float, longitude: float, radius_m: int)
         .filter(distance_m__lte=radius_m)
         .order_by("distance_m", "name", "id")
     )
+
+
+def metres_between(lat_a: float, lng_a: float, lat_b: float, lng_b: float) -> float:
+    """The distance over the ground between two positions (haversine)."""
+    lat_a, lng_a, lat_b, lng_b = (radians(float(value)) for value in (lat_a, lng_a, lat_b, lng_b))
+    half = sin((lat_b - lat_a) / 2) ** 2 + cos(lat_a) * cos(lat_b) * sin((lng_b - lng_a) / 2) ** 2
+    return 2 * EARTH_RADIUS_M * asin(sqrt(min(half, 1.0)))

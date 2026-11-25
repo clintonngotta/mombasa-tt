@@ -100,6 +100,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     title: `Your ${word}`,
     links: pick(
       member && { to: "/club/schedule", label: "Schedule: activities, tournaments and training", icon: CalendarDays },
+      member && { to: "/club/training-rules", label: "Training rules: weekly slots, place and check-in", icon: MapPin },
       member && { to: "/club/my-payments", label: "My payments", icon: Banknote },
       member && { to: "/club/welfare", label: "Welfare projects", icon: HeartHandshake },
     ),
