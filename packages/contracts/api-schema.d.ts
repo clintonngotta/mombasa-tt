@@ -550,6 +550,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/action-items/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/action-items/: the open action items you own from approved minutes, in every organization,
+         *     soonest due first.
+         */
+        get: operations["me_action_items_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/admin-nominations/": {
         parameters: {
             query?: never;
@@ -3684,6 +3704,26 @@ export interface paths {
         patch: operations["organizations_meetings_partial_update"];
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/action-items/{action_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../meetings/{id}/action-items/{item}/: its owner, governance staff or the secretary mark an
+         *     action item done or open again.
+         */
+        post: operations["organizations_meetings_action_items_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/meetings/{id}/answer/": {
         parameters: {
             query?: never;
@@ -3755,6 +3795,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../meetings/{id}/documents/: governance staff add a PDF, for an agenda item or the meeting. */
+        post: operations["organizations_meetings_documents_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/documents/{document_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description DELETE .../meetings/{id}/documents/{document}/ removes a document and its file. */
+        delete: operations["organizations_meetings_documents_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/meetings/{id}/minutes/": {
         parameters: {
             query?: never;
@@ -3764,8 +3838,52 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description POST .../meetings/{id}/minutes/: record the minutes once the meeting has started. */
+        /**
+         * @description POST .../meetings/{id}/minutes/: save the minutes as a draft once the meeting has started: the
+         *     text, decisions per agenda item, action items and the next meeting's date. Sending the action items
+         *     replaces the list. Approved minutes can't be changed.
+         */
         post: operations["organizations_meetings_minutes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/minutes/amendments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../meetings/{id}/minutes/amendments/: governance staff correct approved minutes. The
+         *     amendment is kept beside the minutes, which stay as approved.
+         */
+        post: operations["organizations_meetings_minutes_amendments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/meetings/{id}/minutes/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../meetings/{id}/minutes/approve/: governance staff approve the draft. The invitees can then
+         *     read the minutes, which never change again, and each action item's owner is told.
+         */
+        post: operations["organizations_meetings_minutes_approve_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7067,6 +7185,51 @@ export interface components {
             /** Format: date-time */
             readonly received_at: string;
         };
+        ActionItem: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly item: string;
+            readonly description: string;
+            readonly owner_name: string | null;
+            /**
+             * Format: uuid
+             * @description For whoever writes the minutes, to change who it is given to; null for everyone else.
+             */
+            readonly owner_id: string | null;
+            /** @description You own it, so you may mark it done. */
+            readonly mine: boolean;
+            /** Format: date */
+            readonly due_on: string | null;
+            readonly status: components["schemas"]["ActionItemStatusEnum"];
+            /** Format: date-time */
+            readonly done_at: string | null;
+        };
+        ActionItemInputRequest: {
+            /**
+             * Format: uuid
+             * @description An item already recorded; leave out for a new one.
+             */
+            id?: string;
+            item?: string;
+            description: string;
+            /**
+             * Format: uuid
+             * @description The invitee or member of the host who will do it.
+             */
+            owner_id?: string | null;
+            /** Format: date */
+            due_on?: string | null;
+        };
+        /**
+         * @description * `open` - Open
+         *     * `done` - Done
+         * @enum {string}
+         */
+        ActionItemStatusEnum: "open" | "done";
+        /** @description Refuses fields it doesn't know, so a misspelt or smuggled field is an error, not silence. */
+        ActionItemStatusRequest: {
+            status: components["schemas"]["ActionItemStatusEnum"];
+        };
         /**
          * @description One part of a session's running order: a warm-up, a drill on the table, work off it, match play or
          *     the cool-down. A drill fills in the title when none is given.
@@ -7173,23 +7336,46 @@ export interface components {
             tournament_id?: string | null;
         };
         AgendaRow: {
+            /** @description Given by the API. Send it back when changing the agenda so the item keeps its documents, decisions and action items; leave it out for a new item. */
+            id: string;
             title: string;
             /** @default  */
             presenter: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description A tournament the item is about: one of the host's, or any published one.
+             */
             tournament: string | null;
+            readonly tournament_name: string | null;
         };
         AgendaRowRequest: {
+            /** @description Given by the API. Send it back when changing the agenda so the item keeps its documents, decisions and action items; leave it out for a new item. */
+            id?: string;
             title: string;
             /** @default  */
             presenter: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description A tournament the item is about: one of the host's, or any published one.
+             */
             tournament?: string | null;
         };
         AllocateRequest: {
             /** Format: uuid */
             charge_id: string;
             amount_minor: number;
+        };
+        Amendment: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly text: string;
+            readonly by_name: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Refuses fields it doesn't know, so a misspelt or smuggled field is an error, not silence. */
+        AmendmentInputRequest: {
+            text: string;
         };
         Announcement: {
             /** Format: uuid */
@@ -7271,6 +7457,14 @@ export interface components {
          * @enum {string}
          */
         ApprovalStatusEnum: "not_requested" | "pending" | "approved" | "rejected";
+        /** @description Refuses fields it doesn't know, so a misspelt or smuggled field is an error, not silence. */
+        ApproveMinutesRequest: {
+            /**
+             * @description Also create the next meeting as a draft on the date the minutes give.
+             * @default false
+             */
+            create_next: boolean;
+        };
         ApproveTableBookingRequest: {
             fee_minor?: number | null;
         };
@@ -8325,6 +8519,14 @@ export interface components {
         DecisionRequest: {
             /** @default  */
             reason: string;
+        };
+        DecisionRow: {
+            item: string;
+            text: string;
+        };
+        DecisionRowRequest: {
+            item?: string;
+            text: string;
         };
         DeckPlayer: {
             slot: components["schemas"]["SlotEnum"];
@@ -9712,9 +9914,27 @@ export interface components {
             rules: components["schemas"]["Rule"][];
             readonly secretary: components["schemas"]["Secretary"] | null;
             readonly status: components["schemas"]["ActivityStatusEnum"];
+            readonly revision: number;
+            readonly documents: components["schemas"]["MeetingDocument"][];
+            /** @description A draft is for governance staff and the secretary; invitees read approved minutes. */
             readonly minutes: string;
+            readonly minutes_status: components["schemas"]["MinutesStatusEnum"] | components["schemas"]["BlankEnum"];
             /** Format: date-time */
             readonly minutes_recorded_at: string | null;
+            /** Format: date-time */
+            readonly minutes_approved_at: string | null;
+            readonly decisions: components["schemas"]["DecisionRow"][];
+            readonly action_items: components["schemas"]["ActionItem"][];
+            readonly amendments: components["schemas"]["Amendment"][];
+            /** Format: date-time */
+            readonly next_meeting_at: string | null;
+            /**
+             * Format: uuid
+             * @description The draft created from these minutes, for governance staff.
+             */
+            readonly next_meeting: string | null;
+            /** @description Who an action item can be given to, for whoever writes the minutes: names only. */
+            readonly owner_choices: components["schemas"]["OwnerChoice"][];
             readonly cancel_reason: string;
             /** Format: date-time */
             readonly published_at: string | null;
@@ -9737,11 +9957,29 @@ export interface components {
         /**
          * @description * `committee` - Committee
          *     * `club_admins` - Club Admins
+         *     * `representatives` - Representatives
          *     * `members` - Members
          *     * `named` - Named
          * @enum {string}
          */
-        MeetingAudienceEnum: "committee" | "club_admins" | "members" | "named";
+        MeetingAudienceEnum: "committee" | "club_admins" | "representatives" | "members" | "named";
+        /** @description A document of a meeting with a fresh signed link to the PDF. */
+        MeetingDocument: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly item: string;
+            readonly title: string;
+            readonly file: components["schemas"]["AttachmentLink"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Refuses fields it doesn't know, so a misspelt or smuggled field is an error, not silence. */
+        MeetingDocumentUploadRequest: {
+            title: string;
+            item?: string;
+            /** Format: binary */
+            file: string;
+        };
         /**
          * @description * `committee` - Committee
          *     * `general` - General
@@ -9860,9 +10098,22 @@ export interface components {
          * @enum {string}
          */
         MembershipStatusEnum: "active" | "left";
+        /** @description The minutes as a draft: the text, what was decided, who does what, and the next meeting's date. */
         MinutesRequest: {
+            /** @default  */
             minutes: string;
+            decisions?: components["schemas"]["DecisionRowRequest"][];
+            action_items?: components["schemas"]["ActionItemInputRequest"][];
+            /** Format: date-time */
+            next_meeting_at?: string | null;
         };
+        /**
+         * @description * `` - None
+         *     * `draft` - Draft
+         *     * `approved` - Approved
+         * @enum {string}
+         */
+        MinutesStatusEnum: "draft" | "approved";
         /** @description The event's declared entry fee in the REQ-032 money shape. */
         Money: {
             amount_minor: number;
@@ -9893,6 +10144,30 @@ export interface components {
             /** Format: uuid */
             table_id: string;
             reason: string;
+        };
+        /** @description One of your action items with the meeting it came from. */
+        MyActionItem: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly item: string;
+            readonly description: string;
+            readonly owner_name: string | null;
+            /**
+             * Format: uuid
+             * @description For whoever writes the minutes, to change who it is given to; null for everyone else.
+             */
+            readonly owner_id: string | null;
+            /** @description You own it, so you may mark it done. */
+            readonly mine: boolean;
+            /** Format: date */
+            readonly due_on: string | null;
+            readonly status: components["schemas"]["ActionItemStatusEnum"];
+            /** Format: date-time */
+            readonly done_at: string | null;
+            /** Format: uuid */
+            readonly meeting: string;
+            readonly meeting_title: string;
+            readonly organization: components["schemas"]["OrgRef"];
         };
         /** @description What came of accepting: merged, or waiting for the club to sort out a clash. */
         MyClaim: {
@@ -10209,9 +10484,10 @@ export interface components {
          *     * `dues` - Dues and payments
          *     * `events` - Events listing
          *     * `governance` - Committee and representatives
+         *     * `meeting` - Meetings and minutes
          * @enum {string}
          */
-        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance";
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting";
         /** @enum {unknown} */
         NullEnum: null;
         Offences: {
@@ -10456,6 +10732,11 @@ export interface components {
          * @enum {string}
          */
         OwedStatusEnum: "paid" | "partial" | "pending" | "overdue";
+        OwnerChoice: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
         PaginatedAdminHandoverList: {
             /** @example 123 */
             count: number;
@@ -15015,6 +15296,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CountryCatalogue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_action_items_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyActionItem"][];
                 };
             };
             /** @description Error envelope */
@@ -22437,6 +22746,42 @@ export interface operations {
             };
         };
     };
+    organizations_meetings_action_items_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_pk: string;
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionItemStatusRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_meetings_answer_create: {
         parameters: {
             query?: never;
@@ -22573,7 +22918,7 @@ export interface operations {
             };
         };
     };
-    organizations_meetings_minutes_create: {
+    organizations_meetings_documents_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -22585,7 +22930,144 @@ export interface operations {
         };
         requestBody: {
             content: {
+                "multipart/form-data": components["schemas"]["MeetingDocumentUploadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_documents_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_pk: string;
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_minutes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
                 "application/json": components["schemas"]["MinutesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_minutes_amendments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AmendmentInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meeting"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_meetings_minutes_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApproveMinutesRequest"];
             };
         };
         responses: {

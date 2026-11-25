@@ -31,6 +31,7 @@ export const MEETING_KIND_LABEL: Record<MeetingKind, string> = {
 export const AUDIENCE_LABEL: Record<MeetingAudience, string> = {
   committee: "The committee",
   club_admins: "The admins of the region's clubs",
+  representatives: "The representatives of clubs and regions",
   members: "All members",
   named: "People I name",
 }
@@ -49,6 +50,7 @@ export const regionKeys = {
   myAgenda: ["region", "me", "agenda"] as const,
   myArticles: ["region", "me", "articles"] as const,
   myMeetings: ["region", "me", "meetings"] as const,
+  myActionItems: ["region", "me", "action-items"] as const,
 }
 
 const org = (orgId: string) => `/organizations/${orgId}`
@@ -74,7 +76,32 @@ export const meetingAction = (orgId: string, id: string, action: "publish" | "ch
 export const cancelMeeting = (orgId: string, id: string, reason: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/cancel/`, { body: { reason } })
 export const answerMeeting = (orgId: string, id: string, answer: "attending" | "apologies") =>
   api<Meeting>(`${org(orgId)}/meetings/${id}/answer/`, { body: { answer } })
-export const recordMinutes = (orgId: string, id: string, minutes: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/minutes/`, { body: { minutes } })
+export const updateMeeting = (orgId: string, id: string, body: Schemas["PatchedMeetingRequest"]) =>
+  api<Meeting>(`${org(orgId)}/meetings/${id}/`, { method: "PATCH", body })
+
+// Minutes (REQ-046): governance staff or the secretary write a draft; governance staff approve it, after
+// which it never changes and corrections are amendments. Action items belong to their owners.
+export type MeetingDocument = Schemas["MeetingDocument"]
+export type ActionItem = Schemas["ActionItem"]
+export type MyActionItem = Schemas["MyActionItem"]
+export type MinutesInput = Schemas["MinutesRequest"]
+export const MAX_MEETING_DOCUMENTS = 10
+export const recordMinutes = (orgId: string, id: string, body: MinutesInput) => api<Meeting>(`${org(orgId)}/meetings/${id}/minutes/`, { body })
+export const approveMinutes = (orgId: string, id: string, createNext: boolean) =>
+  api<Meeting>(`${org(orgId)}/meetings/${id}/minutes/approve/`, { body: { create_next: createNext } })
+export const amendMinutes = (orgId: string, id: string, text: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/minutes/amendments/`, { body: { text } })
+export const setActionItemStatus = (orgId: string, id: string, actionId: string, status: ActionItem["status"]) =>
+  api<Meeting | undefined>(`${org(orgId)}/meetings/${id}/action-items/${actionId}/`, { body: { status } })
+export const listMyActionItems = () => api<MyActionItem[]>("/me/action-items/")
+export function addMeetingDocument(orgId: string, id: string, title: string, item: string, file: File) {
+  const body = new FormData()
+  body.append("title", title)
+  if (item) body.append("item", item)
+  body.append("file", file)
+  return api<Meeting>(`${org(orgId)}/meetings/${id}/documents/`, { body })
+}
+export const removeMeetingDocument = (orgId: string, id: string, documentId: string) =>
+  api<Meeting>(`${org(orgId)}/meetings/${id}/documents/${documentId}/`, { method: "DELETE" })
 
 // Meeting rules and penalties (REQ-046): the secretary or governance staff take attendance and issue the
 // penalties the rules set once the meeting is over; only the host's admin changes one after that.

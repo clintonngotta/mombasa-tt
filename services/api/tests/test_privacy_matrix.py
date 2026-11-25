@@ -85,7 +85,17 @@ from organizations.models import (
 from organizations.permissions import RoleKey
 from outbox.models import Job
 from profiles.models import PlayerProfile
-from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
+from regions.models import (
+    ActionItem,
+    AgendaItem,
+    Article,
+    Meeting,
+    MeetingDocument,
+    MeetingInvitee,
+    MeetingPenalty,
+    MinutesAmendment,
+    Sponsorship,
+)
 from reservations import service as reservations
 from reservations.models import Hold, Reservation, TournamentUmpire
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
@@ -271,6 +281,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-meeting-publish": {"post": STAFF},
     "organization-meeting-cancel": {"post": STAFF},
     "organization-meeting-minutes": {"post": STAFF},
+    # Approving and amending minutes, and a meeting's documents: governance staff. An action item's
+    # status: staff or its owner (Amina's here, so Baraka, who reads the minutes, is refused).
+    "organization-meeting-minutes-approve": {"post": STAFF},
+    "organization-meeting-minutes-amendments": {"post": STAFF},
+    "organization-meeting-action-item": {"post": STAFF},
+    "organization-meeting-documents": {"post": STAFF},
+    "organization-meeting-document": {"delete": STAFF},
+    "my-action-items": {"get": OWNER},
     "organization-meeting-answer": {"post": OWNER},  # Baraka's invitation
     "organization-meeting-check-in": {"post": OWNER},
     # Attendance and issuing: governance staff (or the meeting's secretary, nobody here). Changing an
@@ -558,7 +576,12 @@ BODY_SIDE = {
     "organization-representative-decline",
     "organization-representative-remove",
 }
-MULTIPART = {"organization-expense-receipt", "tournament-cover", "tournament-documents"}
+MULTIPART = {
+    "organization-expense-receipt",
+    "tournament-cover",
+    "tournament-documents",
+    "organization-meeting-documents",
+}
 PDF = b"%PDF-1.4\n%%EOF\n"
 
 
@@ -606,6 +629,9 @@ BODIES = {
     ("organization-meeting", "patch"): {"location": "Clubhouse"},
     ("organization-meeting-cancel", "post"): {"reason": "Venue closed"},
     ("organization-meeting-minutes", "post"): {"minutes": "Agreed the budget."},
+    ("organization-meeting-minutes-amendments", "post"): {"text": "Corrected the date."},
+    ("organization-meeting-action-item", "post"): {"status": "done"},
+    ("organization-meeting-documents", "post"): lambda: {"title": "Accounts", "file": pdf_upload()},
     ("organization-meeting-answer", "post"): {"answer": "attending"},
     ("organization-meeting-attendance", "post"): lambda: {
         "invitee": str(MeetingInvitee.objects.get(meeting__title="MARK-MEETING-RUNNING").id),
@@ -1484,6 +1510,28 @@ class World:
         self.penalty = MeetingPenalty.objects.create(
             invitee=penalized.invitees.get(), applies_to="absent", penalty="MARK-PENALTY", amount_minor=5000
         )
+        self.minuted_meeting = meeting(
+            "Minuted", [self.baraka], minutes="MARK-MINUTES-DRAFT", minutes_status="draft", **over
+        )
+        self.approved_meeting = meeting(
+            "Approved", [self.baraka], minutes="MARK-MINUTES-OUT", minutes_status="approved", **over
+        )
+        self.action_item = ActionItem.objects.create(
+            meeting=self.approved_meeting, description="MARK-ACTION", owner=self.amina
+        )
+        MinutesAmendment.objects.create(
+            meeting=self.approved_meeting, text="MARK-AMENDMENT", created_by=self.amina
+        )
+        self.meeting_document = MeetingDocument.objects.create(
+            meeting=self.approved_meeting,
+            title="MARK-MEETING-PAPER",
+            file=Attachment.store(
+                owner=self.amina,
+                purpose=Attachment.Purpose.MEETING_DOCUMENT,
+                content=PDF,
+                content_type="application/pdf",
+            ),
+        )
         nyali_cup = Tournament.objects.create(
             id=NYALI_CUP,
             organization=self.nyali,
@@ -1598,6 +1646,11 @@ class World:
             "organization-meeting-publish": self.meeting_to_publish.id,
             "organization-meeting-cancel": self.meeting_to_cancel.id,
             "organization-meeting-minutes": self.running_meeting.id,
+            "organization-meeting-minutes-approve": self.minuted_meeting.id,
+            "organization-meeting-minutes-amendments": self.approved_meeting.id,
+            "organization-meeting-action-item": self.approved_meeting.id,
+            "organization-meeting-documents": self.running_meeting.id,
+            "organization-meeting-document": self.approved_meeting.id,
             "organization-meeting-answer": self.running_meeting.id,
             "organization-meeting-check-in": self.running_meeting.id,
             "organization-meeting-attendance": self.running_meeting.id,
@@ -1778,6 +1831,10 @@ class World:
             found["device_pk"] = self.push_device.id
         if "penalty_pk" in names:
             found["penalty_pk"] = self.penalty.id
+        if "action_pk" in names:
+            found["action_pk"] = self.action_item.id
+        if "document_pk" in names:
+            found["document_pk"] = self.meeting_document.id
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
@@ -1960,7 +2017,12 @@ class World:
             "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
             "agenda": sorted(AgendaItem.objects.values_list("title", "starts_on")),
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
-            "meetings": sorted(Meeting.objects.values_list("title", "status", "location", "minutes")),
+            "meetings": sorted(
+                Meeting.objects.values_list("title", "status", "location", "minutes", "minutes_status")
+            ),
+            "action_items": sorted(ActionItem.objects.values_list("description", "status")),
+            "amendments": MinutesAmendment.objects.count(),
+            "meeting_documents": sorted(MeetingDocument.objects.values_list("title", "item")),
             "meeting_invitees": sorted(
                 MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
             ),
@@ -2303,6 +2365,11 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-MEETING-RUNNING": {"amina", "baraka"},
         "MARK-PENALTY-RULE": {"amina", "baraka"},  # the meeting's invitees and staff
         "MARK-PENALTY": {"amina", "baraka"},  # the penalized invitee and staff
+        "MARK-MINUTES-DRAFT": {"amina"},  # draft minutes are for whoever writes and approves them
+        "MARK-MINUTES-OUT": {"amina", "baraka"},  # approved: the invitees too
+        "MARK-ACTION": {"amina", "baraka"},
+        "MARK-AMENDMENT": {"amina", "baraka"},
+        "MARK-MEETING-PAPER": {"amina", "baraka"},
         "MARK-SPONSOR-TERMS": {"amina"},
         "MARK-COACH-NOTE": {"baraka"},
         "MARK-COACHING-MESSAGE": {"baraka"},

@@ -224,7 +224,11 @@ def test_a_body_meeting_invites_its_clubs_admins(world):
         .post(path + "minutes/", {"minutes": "Agreed the 2027 calendar."}, format="json")
         .json()
     )
-    assert minutes["minutes"] == "Agreed the 2027 calendar."
+    assert minutes["minutes"] == "Agreed the 2027 calendar." and minutes["minutes_status"] == "draft"
+    # Invitees read the minutes once governance staff approve them, after the meeting.
+    assert world["admin"].get(path).json()["minutes"] == ""
+    Meeting.objects.filter(pk=meeting["id"]).update(ends_at=timezone.now() - timedelta(minutes=1))
+    assert world["officer"].post(path + "minutes/approve/", {}, format="json").status_code == 200
     assert world["admin"].get(path).json()["minutes"] == "Agreed the 2027 calendar."
 
 

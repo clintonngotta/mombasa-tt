@@ -107,7 +107,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - Others see only display name and club.
 - Tests for the cap, removal and privacy. Screens.
 
-**TASK-109: meetings, agendas and minutes (L)** `feat/meeting-minutes`. The parts that don't need representatives can start after 0.1.
+**TASK-109: meetings, agendas and minutes (L)** `feat/meetings`. Done 2026-11-25 (see tasks.md); the agenda stayed JSON with an id per item rather than moving to rows. The parts that don't need representatives can start after 0.1.
 - Move the JSON agenda into agenda items with attachments (a new `Attachment.Purpose` and access rule). Revise after publishing, with notices.
 - Add a `MEETING` notification category. Invitees are notified of publish, change and cancel only.
 - Secretary records present, late, apologies or absent, with times. Check-in stays limited to the meeting window.

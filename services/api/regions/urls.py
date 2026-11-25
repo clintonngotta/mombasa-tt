@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import minutes, views
 
 organization_urlpatterns = [
     path("region-clubs/", views.RegionClubsView.as_view(), name="organization-region-clubs"),
@@ -17,7 +17,32 @@ organization_urlpatterns = [
         "meetings/<uuid:pk>/publish/", views.PublishMeetingView.as_view(), name="organization-meeting-publish"
     ),
     path("meetings/<uuid:pk>/cancel/", views.CancelMeetingView.as_view(), name="organization-meeting-cancel"),
-    path("meetings/<uuid:pk>/minutes/", views.MinutesView.as_view(), name="organization-meeting-minutes"),
+    path("meetings/<uuid:pk>/minutes/", minutes.MinutesView.as_view(), name="organization-meeting-minutes"),
+    path(
+        "meetings/<uuid:pk>/minutes/approve/",
+        minutes.ApproveMinutesView.as_view(),
+        name="organization-meeting-minutes-approve",
+    ),
+    path(
+        "meetings/<uuid:pk>/minutes/amendments/",
+        minutes.AmendMinutesView.as_view(),
+        name="organization-meeting-minutes-amendments",
+    ),
+    path(
+        "meetings/<uuid:pk>/action-items/<uuid:action_pk>/",
+        minutes.ActionItemView.as_view(),
+        name="organization-meeting-action-item",
+    ),
+    path(
+        "meetings/<uuid:pk>/documents/",
+        minutes.MeetingDocumentsView.as_view(),
+        name="organization-meeting-documents",
+    ),
+    path(
+        "meetings/<uuid:pk>/documents/<uuid:document_pk>/",
+        minutes.MeetingDocumentView.as_view(),
+        name="organization-meeting-document",
+    ),
     path("meetings/<uuid:pk>/answer/", views.AnswerMeetingView.as_view(), name="organization-meeting-answer"),
     path(
         "meetings/<uuid:pk>/attendance/",
@@ -70,6 +95,7 @@ me_urlpatterns = [
     path("agenda/", views.MyAgendaView.as_view(), name="my-agenda"),
     path("articles/", views.MyArticlesView.as_view(), name="my-articles"),
     path("meetings/", views.MyMeetingsView.as_view(), name="my-meetings"),
+    path("action-items/", minutes.MyActionItemsView.as_view(), name="my-action-items"),
 ]
 
 body_urlpatterns = [

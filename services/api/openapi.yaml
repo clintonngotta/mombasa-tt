@@ -1032,6 +1032,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/action-items/:
+    get:
+      operationId: me_action_items_list
+      description: |-
+        GET /me/action-items/: the open action items you own from approved minutes, in every organization,
+        soonest due first.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MyActionItem'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/admin-nominations/:
     get:
       operationId: me_admin_nominations_list
@@ -8694,6 +8719,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/action-items/{action_pk}/:
+    post:
+      operationId: organizations_meetings_action_items_create
+      description: |-
+        POST .../meetings/{id}/action-items/{item}/: its owner, governance staff or the secretary mark an
+        action item done or open again.
+      parameters:
+      - in: path
+        name: action_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionItemStatusRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/meetings/{id}/answer/:
     post:
       operationId: organizations_meetings_answer_create
@@ -8852,11 +8925,95 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/documents/:
+    post:
+      operationId: organizations_meetings_documents_create
+      description: 'POST .../meetings/{id}/documents/: governance staff add a PDF,
+        for an agenda item or the meeting.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MeetingDocumentUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/documents/{document_pk}/:
+    delete:
+      operationId: organizations_meetings_documents_destroy
+      description: DELETE .../meetings/{id}/documents/{document}/ removes a document
+        and its file.
+      parameters:
+      - in: path
+        name: document_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/meetings/{id}/minutes/:
     post:
       operationId: organizations_meetings_minutes_create
-      description: 'POST .../meetings/{id}/minutes/: record the minutes once the meeting
-        has started.'
+      description: |-
+        POST .../meetings/{id}/minutes/: save the minutes as a draft once the meeting has started: the
+        text, decisions per agenda item, action items and the next meeting's date. Sending the action items
+        replaces the list. Approved minutes can't be changed.
       parameters:
       - in: path
         name: id
@@ -8877,7 +9034,89 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/MinutesRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/minutes/amendments/:
+    post:
+      operationId: organizations_meetings_minutes_amendments_create
+      description: |-
+        POST .../meetings/{id}/minutes/amendments/: governance staff correct approved minutes. The
+        amendment is kept beside the minutes, which stay as approved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
         required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AmendmentInputRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/meetings/{id}/minutes/approve/:
+    post:
+      operationId: organizations_meetings_minutes_approve_create
+      description: |-
+        POST .../meetings/{id}/minutes/approve/: governance staff approve the draft. The invitees can then
+        read the minutes, which never change again, and each action item's owner is told.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveMinutesRequest'
       security:
       - sessionAuth: []
       responses:
@@ -16586,6 +16825,104 @@ components:
       - id
       - received_at
       - sequence
+    ActionItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        item:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        owner_name:
+          type: string
+          readOnly: true
+          nullable: true
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+          description: For whoever writes the minutes, to change who it is given to;
+            null for everyone else.
+        mine:
+          type: boolean
+          readOnly: true
+          description: You own it, so you may mark it done.
+        due_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ActionItemStatusEnum'
+          readOnly: true
+        done_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - description
+      - done_at
+      - due_on
+      - id
+      - item
+      - mine
+      - owner_id
+      - owner_name
+      - status
+    ActionItemInputRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: An item already recorded; leave out for a new one.
+        item:
+          oneOf:
+          - type: string
+            default: ''
+            pattern: ^[0-9a-f]{12}$
+          - type: string
+            maxLength: 0
+        description:
+          type: string
+          minLength: 1
+          maxLength: 300
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The invitee or member of the host who will do it.
+        due_on:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - description
+    ActionItemStatusEnum:
+      enum:
+      - open
+      - done
+      type: string
+      description: |-
+        * `open` - Open
+        * `done` - Done
+    ActionItemStatusRequest:
+      type: object
+      description: Refuses fields it doesn't know, so a misspelt or smuggled field
+        is an error, not silence.
+      properties:
+        status:
+          $ref: '#/components/schemas/ActionItemStatusEnum'
+      required:
+      - status
     Activity:
       type: object
       description: |-
@@ -16822,6 +17159,12 @@ components:
     AgendaRow:
       type: object
       properties:
+        id:
+          type: string
+          description: Given by the API. Send it back when changing the agenda so
+            the item keeps its documents, decisions and action items; leave it out
+            for a new item.
+          pattern: ^[0-9a-f]{12}$
         title:
           type: string
           maxLength: 200
@@ -16833,13 +17176,28 @@ components:
           type: string
           format: uuid
           nullable: true
+          description: 'A tournament the item is about: one of the host''s, or any
+            published one.'
+        tournament_name:
+          type: string
+          readOnly: true
+          nullable: true
       required:
+      - id
       - presenter
       - title
       - tournament
+      - tournament_name
     AgendaRowRequest:
       type: object
       properties:
+        id:
+          type: string
+          minLength: 1
+          description: Given by the API. Send it back when changing the agenda so
+            the item keeps its documents, decisions and action items; leave it out
+            for a new item.
+          pattern: ^[0-9a-f]{12}$
         title:
           type: string
           minLength: 1
@@ -16852,6 +17210,8 @@ components:
           type: string
           format: uuid
           nullable: true
+          description: 'A tournament the item is about: one of the host''s, or any
+            published one.'
       required:
       - title
     AllocateRequest:
@@ -16866,6 +17226,40 @@ components:
       required:
       - amount_minor
       - charge_id
+    Amendment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        text:
+          type: string
+          readOnly: true
+        by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - by_name
+      - created_at
+      - id
+      - text
+    AmendmentInputRequest:
+      type: object
+      description: Refuses fields it doesn't know, so a misspelt or smuggled field
+        is an error, not silence.
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 5000
+      required:
+      - text
     Announcement:
       type: object
       properties:
@@ -17051,6 +17445,16 @@ components:
         * `pending` - Pending
         * `approved` - Approved
         * `rejected` - Rejected
+    ApproveMinutesRequest:
+      type: object
+      description: Refuses fields it doesn't know, so a misspelt or smuggled field
+        is an error, not silence.
+      properties:
+        create_next:
+          type: boolean
+          default: false
+          description: Also create the next meeting as a draft on the date the minutes
+            give.
     ApproveTableBookingRequest:
       type: object
       properties:
@@ -19665,6 +20069,38 @@ components:
           type: string
           default: ''
           maxLength: 300
+    DecisionRow:
+      type: object
+      properties:
+        item:
+          oneOf:
+          - type: string
+            default: ''
+            pattern: ^[0-9a-f]{12}$
+          - type: string
+            maxLength: 0
+        text:
+          type: string
+          maxLength: 1000
+      required:
+      - item
+      - text
+    DecisionRowRequest:
+      type: object
+      properties:
+        item:
+          oneOf:
+          - type: string
+            default: ''
+            pattern: ^[0-9a-f]{12}$
+          - type: string
+            maxLength: 0
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required:
+      - text
     DeckPlayer:
       type: object
       properties:
@@ -23196,14 +23632,67 @@ components:
           allOf:
           - $ref: '#/components/schemas/ActivityStatusEnum'
           readOnly: true
+        revision:
+          type: integer
+          readOnly: true
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingDocument'
+          readOnly: true
         minutes:
           type: string
           readOnly: true
+          description: A draft is for governance staff and the secretary; invitees
+            read approved minutes.
+        minutes_status:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/MinutesStatusEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         minutes_recorded_at:
           type: string
           format: date-time
           readOnly: true
           nullable: true
+        minutes_approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        decisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionRow'
+          readOnly: true
+        action_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionItem'
+          readOnly: true
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amendment'
+          readOnly: true
+        next_meeting_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        next_meeting:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+          description: The draft created from these minutes, for governance staff.
+        owner_choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnerChoice'
+          readOnly: true
+          description: 'Who an action item can be given to, for whoever writes the
+            minutes: names only.'
         cancel_reason:
           type: string
           readOnly: true
@@ -23233,11 +23722,15 @@ components:
           description: 'You may change issued penalties: the host''s admin or a platform
             super admin.'
       required:
+      - action_items
       - agenda
+      - amendments
       - audience
       - can_edit_penalties
       - can_take_attendance
       - cancel_reason
+      - decisions
+      - documents
       - ends_at
       - id
       - invitees
@@ -23245,10 +23738,16 @@ components:
       - location
       - me
       - minutes
+      - minutes_approved_at
       - minutes_recorded_at
+      - minutes_status
+      - next_meeting
+      - next_meeting_at
       - online_link
       - organization
+      - owner_choices
       - published_at
+      - revision
       - rules
       - secretary
       - starts_at
@@ -23271,14 +23770,66 @@ components:
       enum:
       - committee
       - club_admins
+      - representatives
       - members
       - named
       type: string
       description: |-
         * `committee` - Committee
         * `club_admins` - Club Admins
+        * `representatives` - Representatives
         * `members` - Members
         * `named` - Named
+    MeetingDocument:
+      type: object
+      description: A document of a meeting with a fresh signed link to the PDF.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        item:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        file:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - file
+      - id
+      - item
+      - title
+    MeetingDocumentUploadRequest:
+      type: object
+      description: Refuses fields it doesn't know, so a misspelt or smuggled field
+        is an error, not silence.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        item:
+          oneOf:
+          - type: string
+            default: ''
+            pattern: ^[0-9a-f]{12}$
+          - type: string
+            maxLength: 0
+        file:
+          type: string
+          format: binary
+      required:
+      - file
+      - title
     MeetingKindEnum:
       enum:
       - committee
@@ -23552,13 +24103,34 @@ components:
         * `left` - Left
     MinutesRequest:
       type: object
+      description: 'The minutes as a draft: the text, what was decided, who does what,
+        and the next meeting''s date.'
       properties:
         minutes:
           type: string
-          minLength: 1
+          default: ''
           maxLength: 20000
-      required:
-      - minutes
+        decisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionRowRequest'
+        action_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionItemInputRequest'
+        next_meeting_at:
+          type: string
+          format: date-time
+          nullable: true
+    MinutesStatusEnum:
+      enum:
+      - draft
+      - approved
+      type: string
+      description: |-
+        * `` - None
+        * `draft` - Draft
+        * `approved` - Approved
     Money:
       type: object
       description: The event's declared entry fee in the REQ-032 money shape.
@@ -23626,6 +24198,73 @@ components:
       required:
       - reason
       - table_id
+    MyActionItem:
+      type: object
+      description: One of your action items with the meeting it came from.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        item:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        owner_name:
+          type: string
+          readOnly: true
+          nullable: true
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+          description: For whoever writes the minutes, to change who it is given to;
+            null for everyone else.
+        mine:
+          type: boolean
+          readOnly: true
+          description: You own it, so you may mark it done.
+        due_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ActionItemStatusEnum'
+          readOnly: true
+        done_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        meeting:
+          type: string
+          format: uuid
+          readOnly: true
+        meeting_title:
+          type: string
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/OrgRef'
+          readOnly: true
+      required:
+      - description
+      - done_at
+      - due_on
+      - id
+      - item
+      - meeting
+      - meeting_title
+      - mine
+      - organization
+      - owner_id
+      - owner_name
+      - status
     MyClaim:
       type: object
       description: 'What came of accepting: merged, or waiting for the club to sort
@@ -24533,6 +25172,7 @@ components:
       - dues
       - events
       - governance
+      - meeting
       type: string
       description: |-
         * `up_next` - Up next
@@ -24547,6 +25187,7 @@ components:
         * `dues` - Dues and payments
         * `events` - Events listing
         * `governance` - Committee and representatives
+        * `meeting` - Meetings and minutes
     NullEnum:
       enum:
       - null
@@ -25173,6 +25814,17 @@ components:
         * `partial` - partial
         * `pending` - pending
         * `overdue` - overdue
+    OwnerChoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
     PaginatedAdminHandoverList:
       type: object
       required:

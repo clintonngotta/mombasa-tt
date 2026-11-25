@@ -6,7 +6,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
-import { SelectField, TextAreaField } from "@/components/forms/SelectField"
+import { SelectField } from "@/components/forms/SelectField"
 import { ApiError, errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
 import { can, isBodyKind, listMembers, useActiveMembership, useMemberships } from "@/lib/clubs"
@@ -29,7 +29,6 @@ import {
   MEETING_KIND_LABEL,
   PENALIZED,
   PENALTY_STATUS_LABEL,
-  recordMinutes,
   regionKeys,
   RULE_LABEL,
   updatePenalty,
@@ -42,6 +41,7 @@ import {
   type Penalized,
 } from "@/lib/regions"
 import { cn } from "@/lib/utils"
+import { EditMeeting, MeetingDocuments, Minutes, MyActionItemsLink } from "@/pages/region/MeetingMinutes"
 
 /** The active organization's meetings (REQ-046): governance staff call them; invitees see theirs. */
 export function MeetingsPage() {
@@ -51,6 +51,7 @@ export function MeetingsPage() {
     <div className="flex max-w-[860px] flex-col gap-6">
       <BackLink to={isBodyKind(active.organization.kind) ? "/region" : "/club"}>{active.organization.name}</BackLink>
       <h1 className="text-[32px] leading-9 font-bold">Meetings</h1>
+      <MyActionItemsLink />
       <MeetingsPanel orgId={active.organization.id} timeZone={active.organization.timezone ?? "Africa/Nairobi"} staff={can(active, "governance.manage")} body={isBodyKind(active.organization.kind)} />
     </div>
   )
@@ -132,7 +133,7 @@ function NewMeeting({ orgId, timeZone, body, onDone }: { orgId: string; timeZone
     },
   })
   const fields: Record<string, string | undefined> = create.error instanceof ApiError ? create.error.fieldErrors() : {}
-  const audiences = (Object.keys(AUDIENCE_LABEL) as MeetingAudience[]).filter((a) => a !== "named" && (body || a !== "club_admins"))
+  const audiences = (Object.keys(AUDIENCE_LABEL) as MeetingAudience[]).filter((a) => a !== "named" && (body || (a !== "club_admins" && a !== "representatives")))
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -223,7 +224,7 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
   const staff = !!host && can(host, "governance.manage")
   const timeZone = host?.organization.timezone ?? "Africa/Nairobi"
   const [reason, setReason] = useState("")
-  const [minutes, setMinutes] = useState(meeting.minutes ?? "")
+  const [editing, setEditing] = useState(false)
   const update = (data: Meeting) => {
     queryClient.setQueryData(regionKeys.meeting(orgId, meeting.id), data)
     return queryClient.invalidateQueries({ queryKey: regionKeys.all })
@@ -240,7 +241,6 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
   })
   const answer = useMutation({ mutationFn: (value: "attending" | "apologies") => answerMeeting(orgId, meeting.id, value), onSuccess: update })
   const cancel = useMutation({ mutationFn: () => cancelMeeting(orgId, meeting.id, reason.trim()), onSuccess: update })
-  const record = useMutation({ mutationFn: () => recordMinutes(orgId, meeting.id, minutes.trim()), onSuccess: update })
   const remove = useMutation({
     mutationFn: () => deleteMeeting(orgId, meeting.id),
     onSuccess: async () => {
@@ -251,7 +251,7 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
   const [now] = useState(() => Date.now())
   const started = new Date(meeting.starts_at).getTime() <= now
   const running = started && now < new Date(meeting.ends_at).getTime()
-  const error = act.error ?? checkIn.error ?? answer.error ?? cancel.error ?? record.error ?? remove.error
+  const error = act.error ?? checkIn.error ?? answer.error ?? cancel.error ?? remove.error
 
   return (
     <>
@@ -283,11 +283,21 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
               <li key={i} className="py-1">
                 {item.title}
                 {item.presenter && <span className="text-muted-foreground"> · {item.presenter}</span>}
+                {item.tournament && item.tournament_name && (
+                  <>
+                    {" · "}
+                    <Link to={`/tournaments/${item.tournament}`} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
+                      {item.tournament_name}
+                    </Link>
+                  </>
+                )}
               </li>
             ))}
           </ol>
         )}
       </section>
+
+      <MeetingDocuments orgId={orgId} meeting={meeting} staff={staff} onChange={update} />
 
       {(meeting.rules?.length ?? 0) > 0 && (
         <section aria-labelledby="rules-heading" className="flex flex-col gap-2">
@@ -312,7 +322,7 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
             You're invited
           </h2>
           <p className="text-muted-foreground">
-            {meeting.me.attendance ? `Recorded as ${ATTENDANCE_LABEL[meeting.me.attendance as AttendanceMark].toLowerCase()}.` : meeting.me.checked_in_at ? "You're checked in." : meeting.me.answer === "attending" ? "You said you'll attend." : meeting.me.answer === "apologies" ? "You sent apologies." : "Let the organizers know if you're coming."}
+            {meeting.me.attendance ? `Recorded as ${ATTENDANCE_LABEL[meeting.me.attendance as AttendanceMark].toLowerCase()}.` : meeting.me.checked_in_at ? "You're checked in." : meeting.me.answer === "attending" ? "You said you'll attend." : meeting.me.answer === "apologies" ? "You sent apologies." : started ? "This meeting has started." : "Let the organizers know if you're coming."}
           </p>
           {checkIn.data?.kept && <WaitingToSync />}
           {meeting.me.penalty && <PenaltyLine penalty={meeting.me.penalty} />}
@@ -338,14 +348,7 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
 
       {meeting.can_take_attendance && meeting.invitees.length > 0 && <Attendance orgId={orgId} meeting={meeting} started={started} over={started && !running} onChange={update} />}
 
-      {meeting.minutes && (
-        <section aria-labelledby="minutes-heading" className="flex flex-col gap-2">
-          <h2 id="minutes-heading" className="text-xl font-bold">
-            Minutes
-          </h2>
-          <p className="rounded-xl border bg-card p-4 whitespace-pre-wrap">{meeting.minutes}</p>
-        </section>
-      )}
+      <Minutes orgId={orgId} meeting={meeting} staff={staff} timeZone={timeZone} started={started} over={started && !running} onChange={update} />
 
       {staff && (
         <section aria-labelledby="staff-heading" className="flex flex-col gap-4 border-t pt-6">
@@ -372,14 +375,12 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
               </Button>
             </div>
           )}
-          {meeting.status === "published" && started && (
-            <div className="flex flex-col gap-2">
-              <TextAreaField label="Minutes" rows={6} maxLength={20000} value={minutes} onChange={(e) => setMinutes(e.target.value)} hint="Decisions, action items with who and by when, and the next meeting date." />
-              <Button className="self-start" disabled={!minutes.trim() || record.isPending} onClick={() => record.mutate()}>
-                Save minutes
-              </Button>
-            </div>
+          {meeting.status !== "cancelled" && !started && !editing && (
+            <Button variant="outline" className="self-start" onClick={() => setEditing(true)}>
+              Change the meeting
+            </Button>
           )}
+          {editing && !started && <EditMeeting orgId={orgId} meeting={meeting} timeZone={timeZone} onChange={update} onDone={() => setEditing(false)} />}
         </section>
       )}
     </>

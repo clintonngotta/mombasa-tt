@@ -1,11 +1,25 @@
+import uuid
+
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from attachments.serializers import AttachmentLinkSerializer
 from competitions.models import Tournament
 from organizations.access import jurisdiction
 from organizations.models import Organization
 
-from .models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
+from .models import (
+    ActionItem,
+    AgendaItem,
+    Article,
+    Meeting,
+    MeetingDocument,
+    MeetingInvitee,
+    MeetingPenalty,
+    MinutesAmendment,
+    Sponsorship,
+)
 
 
 class OrgRefSerializer(serializers.Serializer):
@@ -146,12 +160,174 @@ class ArticleSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "organization", "clubs", "status", "published_at", "updated_at"]
 
 
+ITEM_ID = r"^[0-9a-f]{12}$"
+
+
 class AgendaRowSerializer(serializers.Serializer):
+    id = serializers.RegexField(
+        ITEM_ID,
+        required=False,
+        help_text="Given by the API. Send it back when changing the agenda so the item keeps its "
+        "documents, decisions and action items; leave it out for a new item.",
+    )
     title = serializers.CharField(max_length=200, trim_whitespace=True)
     presenter = serializers.CharField(
         max_length=120, trim_whitespace=True, allow_blank=True, required=False, default=""
     )
-    tournament = serializers.UUIDField(required=False, allow_null=True, default=None)
+    tournament = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="A tournament the item is about: one of the host's, or any published one.",
+    )
+    tournament_name = serializers.CharField(read_only=True, allow_null=True, default=None)
+
+
+class StrictSerializer(serializers.Serializer):
+    """Refuses fields it doesn't know, so a misspelt or smuggled field is an error, not silence."""
+
+    def validate(self, attrs):
+        unknown = set(getattr(self, "initial_data", {}) or {}) - set(self.fields)
+        if unknown:
+            raise serializers.ValidationError(
+                {name: "This field isn't accepted." for name in sorted(unknown)}
+            )
+        return attrs
+
+
+class MeetingDocumentSerializer(serializers.ModelSerializer):
+    """A document of a meeting with a fresh signed link to the PDF."""
+
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MeetingDocument
+        fields = ["id", "item", "title", "file", "created_at"]
+        read_only_fields = fields
+
+    @extend_schema_field(AttachmentLinkSerializer)
+    def get_file(self, document) -> dict:
+        return AttachmentLinkSerializer(document.file_id).data
+
+
+class MeetingDocumentUploadSerializer(StrictSerializer):
+    title = serializers.CharField(max_length=120, trim_whitespace=True)
+    item = serializers.RegexField(ITEM_ID, required=False, allow_blank=True, default="")
+    file = serializers.FileField()
+
+
+class DecisionRowSerializer(serializers.Serializer):
+    item = serializers.RegexField(ITEM_ID, required=False, allow_blank=True, default="")
+    text = serializers.CharField(max_length=1000, trim_whitespace=True)
+
+
+class ActionItemSerializer(serializers.ModelSerializer):
+    owner_name = serializers.CharField(
+        source="owner.display_name", read_only=True, allow_null=True, default=None
+    )
+    mine = serializers.SerializerMethodField(help_text="You own it, so you may mark it done.")
+    owner_id = serializers.SerializerMethodField(
+        help_text="For whoever writes the minutes, to change who it is given to; null for everyone else."
+    )
+
+    class Meta:
+        model = ActionItem
+        fields = [
+            "id",
+            "item",
+            "description",
+            "owner_name",
+            "owner_id",
+            "mine",
+            "due_on",
+            "status",
+            "done_at",
+        ]
+        read_only_fields = fields
+
+    @extend_schema_field(serializers.UUIDField(allow_null=True))
+    def get_owner_id(self, action):
+        return str(action.owner_id) if action.owner_id and self.context.get("writer") else None
+
+    def get_mine(self, action) -> bool:
+        return action.owner_id is not None and action.owner_id == self.context["request"].user.pk
+
+
+class MyActionItemSerializer(ActionItemSerializer):
+    """One of your action items with the meeting it came from."""
+
+    meeting = serializers.UUIDField(source="meeting_id", read_only=True)
+    meeting_title = serializers.CharField(source="meeting.title", read_only=True)
+    organization = OrgRefSerializer(source="meeting.organization", read_only=True)
+
+    class Meta(ActionItemSerializer.Meta):
+        fields = [*ActionItemSerializer.Meta.fields, "meeting", "meeting_title", "organization"]
+        read_only_fields = fields
+
+
+class ActionItemInputSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False, help_text="An item already recorded; leave out for a new one.")
+    item = serializers.RegexField(ITEM_ID, required=False, allow_blank=True, default="")
+    description = serializers.CharField(max_length=300, trim_whitespace=True)
+    owner_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="The invitee or member of the host who will do it.",
+    )
+    due_on = serializers.DateField(required=False, allow_null=True, default=None)
+
+
+class ActionItemStatusSerializer(StrictSerializer):
+    status = serializers.ChoiceField(choices=ActionItem.Status.choices)
+
+
+class AmendmentSerializer(serializers.ModelSerializer):
+    by_name = serializers.CharField(
+        source="created_by.display_name", read_only=True, allow_null=True, default=None
+    )
+
+    class Meta:
+        model = MinutesAmendment
+        fields = ["id", "text", "by_name", "created_at"]
+        read_only_fields = fields
+
+
+class AmendmentInputSerializer(StrictSerializer):
+    text = serializers.CharField(max_length=5000, trim_whitespace=True)
+
+
+class ApproveMinutesSerializer(StrictSerializer):
+    create_next = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Also create the next meeting as a draft on the date the minutes give.",
+    )
+
+
+class OwnerChoiceSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    display_name = serializers.CharField()
+
+
+def agenda_with_ids(rows: list[dict]) -> list[dict]:
+    """The agenda as stored: each item with its id (a new one where none was sent)."""
+    seen, stored = set(), []
+    for row in rows:
+        key = row.get("id")
+        if not key or key in seen:
+            key = uuid.uuid4().hex[:12]
+        seen.add(key)
+        tournament = row.get("tournament")
+        stored.append(
+            {
+                "id": key,
+                "title": row["title"],
+                "presenter": row.get("presenter", ""),
+                "tournament": str(tournament) if tournament else None,
+            }
+        )
+    return stored
 
 
 PENALIZED = [
@@ -280,6 +456,21 @@ class MeetingSerializer(serializers.ModelSerializer):
     )
     invitees = serializers.SerializerMethodField()
     me = serializers.SerializerMethodField()
+    documents = MeetingDocumentSerializer(many=True, read_only=True)
+    decisions = serializers.SerializerMethodField()
+    action_items = serializers.SerializerMethodField()
+    amendments = serializers.SerializerMethodField()
+    minutes = serializers.SerializerMethodField(
+        help_text="A draft is for governance staff and the secretary; invitees read approved minutes."
+    )
+    minutes_status = serializers.SerializerMethodField()
+    next_meeting_at = serializers.SerializerMethodField()
+    next_meeting = serializers.SerializerMethodField(
+        help_text="The draft created from these minutes, for governance staff."
+    )
+    owner_choices = serializers.SerializerMethodField(
+        help_text="Who an action item can be given to, for whoever writes the minutes: names only."
+    )
     can_take_attendance = serializers.SerializerMethodField(
         help_text="You may mark attendance and issue penalties: governance staff or the secretary."
     )
@@ -305,8 +496,18 @@ class MeetingSerializer(serializers.ModelSerializer):
             "secretary",
             "secretary_id",
             "status",
+            "revision",
+            "documents",
             "minutes",
+            "minutes_status",
             "minutes_recorded_at",
+            "minutes_approved_at",
+            "decisions",
+            "action_items",
+            "amendments",
+            "next_meeting_at",
+            "next_meeting",
+            "owner_choices",
             "cancel_reason",
             "published_at",
             "invitees",
@@ -318,8 +519,18 @@ class MeetingSerializer(serializers.ModelSerializer):
             "id",
             "organization",
             "status",
+            "revision",
+            "documents",
             "minutes",
+            "minutes_status",
             "minutes_recorded_at",
+            "minutes_approved_at",
+            "decisions",
+            "action_items",
+            "amendments",
+            "next_meeting_at",
+            "next_meeting",
+            "owner_choices",
             "cancel_reason",
             "published_at",
             "invitees",
@@ -333,6 +544,64 @@ class MeetingSerializer(serializers.ModelSerializer):
         return bool(self.context.get("staff")) or (
             meeting.secretary_id is not None and meeting.secretary_id == user.pk
         )
+
+    def _reads_minutes(self, meeting) -> bool:
+        """Approved minutes are for everyone who sees the meeting; a draft for whoever writes it."""
+        return meeting.minutes_status == Meeting.MinutesStatus.APPROVED or self._takes_attendance(meeting)
+
+    def get_minutes(self, meeting) -> str:
+        return meeting.minutes if self._reads_minutes(meeting) else ""
+
+    @extend_schema_field(serializers.ChoiceField(choices=Meeting.MinutesStatus.choices))
+    def get_minutes_status(self, meeting) -> str:
+        return meeting.minutes_status if self._reads_minutes(meeting) else ""
+
+    @extend_schema_field(serializers.DateTimeField(allow_null=True))
+    def get_next_meeting_at(self, meeting):
+        if not self._reads_minutes(meeting) or meeting.next_meeting_at is None:
+            return None
+        return serializers.DateTimeField().to_representation(meeting.next_meeting_at)
+
+    @extend_schema_field(serializers.UUIDField(allow_null=True))
+    def get_next_meeting(self, meeting):
+        if not self.context.get("staff"):
+            return None
+        following = getattr(meeting, "next_meeting", None)
+        return str(following.pk) if following else None
+
+    @extend_schema_field(DecisionRowSerializer(many=True))
+    def get_decisions(self, meeting) -> list[dict]:
+        return meeting.decisions if self._reads_minutes(meeting) else []
+
+    @extend_schema_field(ActionItemSerializer(many=True))
+    def get_action_items(self, meeting) -> list[dict]:
+        if not self._reads_minutes(meeting):
+            return []
+        context = {**self.context, "writer": self._takes_attendance(meeting)}
+        return ActionItemSerializer(meeting.action_items.all(), many=True, context=context).data
+
+    @extend_schema_field(AmendmentSerializer(many=True))
+    def get_amendments(self, meeting) -> list[dict]:
+        if not self._reads_minutes(meeting):
+            return []
+        return AmendmentSerializer(meeting.amendments.all(), many=True).data
+
+    @extend_schema_field(OwnerChoiceSerializer(many=True))
+    def get_owner_choices(self, meeting) -> list[dict]:
+        if not self.context.get("detail") or not self._takes_attendance(meeting):
+            return []
+        from .minutes import owner_choices
+
+        return [{"id": pk, "display_name": name} for pk, name in owner_choices(meeting).items()]
+
+    def to_representation(self, meeting):
+        data = super().to_representation(meeting)
+        names = self.context.get("tournament_names", {})
+        data["agenda"] = [
+            {**row, "id": row.get("id", ""), "tournament_name": names.get(row.get("tournament"))}
+            for row in meeting.agenda
+        ]
+        return data
 
     @extend_schema_field(InviteeSerializer(many=True))
     def get_invitees(self, meeting) -> list[dict]:
@@ -361,12 +630,29 @@ class MeetingSerializer(serializers.ModelSerializer):
         audience = attrs.get(
             "audience", self.instance.audience if self.instance else Meeting.Audience.COMMITTEE
         )
-        if audience == Meeting.Audience.CLUB_ADMINS and not self.context["organization"].is_body:
+        host = self.context["organization"]
+        if audience == Meeting.Audience.CLUB_ADMINS and not host.is_body:
             raise serializers.ValidationError(
                 {"audience": "Only a governing body invites its clubs' admins."}
             )
+        if audience == Meeting.Audience.REPRESENTATIVES and not host.is_body:
+            raise serializers.ValidationError(
+                {"audience": "Only a governing body invites its representatives."}
+            )
         if len(attrs.get("agenda", [])) > 30:
             raise serializers.ValidationError({"agenda": "Keep the agenda to 30 items."})
+        if "agenda" in attrs:
+            linked = {row["tournament"] for row in attrs["agenda"] if row.get("tournament")}
+            known = set(
+                Tournament.objects.filter(pk__in=linked)
+                .filter(Q(organization=host) | ~Q(status=Tournament.Status.DRAFT))
+                .values_list("pk", flat=True)
+            )
+            if linked - known:
+                raise serializers.ValidationError(
+                    {"agenda": "Link an item to one of your tournaments or a published one."}
+                )
+            attrs["agenda"] = agenda_with_ids(attrs["agenda"])
         rules = attrs.get("rules", [])
         if len({rule["applies_to"] for rule in rules}) != len(rules):
             raise serializers.ValidationError(
@@ -381,8 +667,19 @@ class AnswerSerializer(serializers.Serializer):
     )
 
 
-class MinutesSerializer(serializers.Serializer):
-    minutes = serializers.CharField(max_length=20000, trim_whitespace=True)
+class MinutesSerializer(StrictSerializer):
+    """The minutes as a draft: the text, what was decided, who does what, and the next meeting's date."""
+
+    minutes = serializers.CharField(max_length=20000, trim_whitespace=True, allow_blank=True, default="")
+    decisions = DecisionRowSerializer(many=True, required=False, max_length=60)
+    action_items = ActionItemInputSerializer(many=True, required=False, max_length=60)
+    next_meeting_at = serializers.DateTimeField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not (attrs["minutes"] or attrs.get("decisions") or attrs.get("action_items")):
+            raise serializers.ValidationError({"minutes": "Write the minutes, a decision or an action item."})
+        return attrs
 
 
 class CancelSerializer(serializers.Serializer):

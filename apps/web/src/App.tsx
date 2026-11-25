@@ -64,6 +64,7 @@ import { AnnouncementsPage } from "@/pages/tournaments/AnnouncementsPage"
 import { LivePage } from "@/pages/tournaments/LivePage"
 import { OrderOfPlayPage } from "@/pages/tournaments/OrderOfPlayPage"
 import { ArticlePage, RegionPage } from "@/pages/region/RegionPage"
+import { ActionItemsPage } from "@/pages/region/MeetingMinutes"
 import { MeetingPage, MeetingsPage } from "@/pages/region/MeetingPages"
 import { ClubPlanPage, PlanPage, TraineePlanPage } from "@/pages/training/PlanPage"
 import { CoachesPage } from "@/pages/coaching/CoachesPage"
@@ -243,6 +244,7 @@ function App() {
               <Route path="/news/:orgId/:id" element={<ArticlePage />} />
               <Route path="/club/meetings" element={<MeetingsPage />} />
               <Route path="/meetings/:orgId/:id" element={<MeetingPage />} />
+              <Route path="/action-items" element={<ActionItemsPage />} />
               <Route path="/players" element={<PlayersPage />} />
             </Route>
             {import.meta.env.DEV && <Route path="/dev/gallery" element={<GalleryPage />} />}

@@ -25,11 +25,13 @@ from competitions.models import Tournament
 from core.exceptions import ApiException
 from core.models import Country, Region
 from core.permissions import PublicReads, is_platform_super_admin
+from notifications.models import Category
+from notifications.service import notify
 from organizations.access import effective_permissions, require_membership, require_permission
-from organizations.models import BODY_KINDS, Membership, Organization, seed_roles
+from organizations.models import BODY_KINDS, Membership, Organization, Representative, seed_roles
 from organizations.permissions import Permission, RoleKey
 
-from . import service
+from . import minutes, service
 from .models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
 from .serializers import (
     AgendaItemSerializer,
@@ -39,7 +41,6 @@ from .serializers import (
     CancelSerializer,
     DecisionSerializer,
     MeetingSerializer,
-    MinutesSerializer,
     PenaltySerializer,
     PenaltyUpdateSerializer,
     RegionalBodyInputSerializer,
@@ -349,7 +350,9 @@ class MyArticlesView(APIView):
 
 
 def meetings():
-    return Meeting.objects.select_related("organization").prefetch_related("invitees")
+    return Meeting.objects.select_related("organization", "secretary", "next_meeting").prefetch_related(
+        "invitees", "documents", "action_items__owner", "amendments__created_by"
+    )
 
 
 def is_top(user, organization: Organization) -> bool:
@@ -359,12 +362,11 @@ def is_top(user, organization: Organization) -> bool:
 
 
 def meeting_reply(request, meeting: Meeting, staff: bool, code=status.HTTP_200_OK) -> Response:
-    host = meeting.organization
-    data = MeetingSerializer(
-        meetings().get(pk=meeting.pk),
-        context={"request": request, "staff": staff, "organization": host, "top": is_top(request.user, host)},
-    ).data
-    return Response(data, status=code)
+    return minutes.reply(request, meeting, staff, code)
+
+
+def list_context(request, found_meetings, **extra) -> dict:
+    return {"request": request, "tournament_names": minutes.tournament_names(found_meetings), **extra}
 
 
 def secretary_of(organization: Organization, user_id):
@@ -378,6 +380,9 @@ def secretary_of(organization: Organization, user_id):
     if found is None:
         raise ValidationError({"secretary_id": "Choose an active member as secretary."})
     return found.user
+
+
+MAX_INVITEES = 2000
 
 
 def invite(meeting: Meeting) -> None:
@@ -395,6 +400,14 @@ def invite(meeting: Meeting) -> None:
         for club in service.region_clubs(host):
             for admin in Membership.objects.admins(club).select_related("user"):
                 people.setdefault(admin.user_id, (admin.user, club))
+    elif meeting.audience == Meeting.Audience.REPRESENTATIVES:
+        today = timezone.localdate()
+        seated = (
+            Representative.objects.filter(body=host, status=Representative.Status.ACCEPTED)
+            .filter(Q(term_end__isnull=True) | Q(term_end__gte=today))
+            .select_related("user", "sender")[:MAX_INVITEES]
+        )
+        people = {seat.user_id: (seat.user, seat.sender) for seat in seated}
     else:
         people = {user.pk: (user, None) for user in meeting.named.all()}
     if not people:
@@ -422,13 +435,11 @@ class MeetingsView(APIView):
             found_meetings = found_meetings.filter(invitees__user=request.user).exclude(
                 status=Meeting.Status.DRAFT
             )
-        context = {
-            "request": request,
-            "staff": staff,
-            "organization": found,
-            "top": is_top(request.user, found),
-        }
-        return Response(MeetingSerializer(found_meetings.distinct()[:100], many=True, context=context).data)
+        shown = list(found_meetings.distinct()[:100])
+        context = list_context(
+            request, shown, staff=staff, organization=found, top=is_top(request.user, found)
+        )
+        return Response(MeetingSerializer(shown, many=True, context=context).data)
 
     @extend_schema(request=MeetingSerializer, responses={201: MeetingSerializer})
     def post(self, request, organization_pk):
@@ -494,9 +505,16 @@ class MeetingView(APIView):
             named = data.pop("named_ids", None)
             if "secretary_id" in data:
                 data["secretary"] = secretary_of(found, data.pop("secretary_id"))
+            changed = any(getattr(meeting, name) != value for name, value in data.items())
+            if "agenda" in data:
+                # Documents of an item that was removed stay with the meeting.
+                kept = {row["id"] for row in data["agenda"]}
+                meeting.documents.exclude(item="").exclude(item__in=kept).update(item="")
             for name, value in data.items():
                 setattr(meeting, name, value)
             meeting.save()
+            if changed and meeting.status == Meeting.Status.PUBLISHED:
+                minutes.revise(meeting, request.user)
             if named is not None:
                 meeting.named.set(
                     Membership.objects.active()
@@ -541,6 +559,13 @@ class PublishMeetingView(MeetingStaffAction):
             meeting.status = Meeting.Status.PUBLISHED
             meeting.published_at = timezone.now()
             meeting.save(update_fields=["status", "published_at"])
+            minutes.tell_invitees(
+                meeting,
+                f"You're invited: {meeting.title}",
+                subject="meeting",
+                version="published",
+                actor=request.user,
+            )
         return meeting_reply(request, meeting, staff=True)
 
 
@@ -560,25 +585,13 @@ class CancelMeetingView(MeetingStaffAction):
             meeting.status = Meeting.Status.CANCELLED
             meeting.cancel_reason = serializer.validated_data["reason"]
             meeting.save(update_fields=["status", "cancel_reason"])
-        return meeting_reply(request, meeting, staff=True)
-
-
-class MinutesView(MeetingStaffAction):
-    """POST .../meetings/{id}/minutes/: record the minutes once the meeting has started."""
-
-    @extend_schema(request=MinutesSerializer, responses={200: MeetingSerializer})
-    def post(self, request, organization_pk, pk):
-        serializer = MinutesSerializer(data=request.data)
-        with transaction.atomic():
-            meeting = self.staff_meeting(request, organization_pk, pk)
-            serializer.is_valid(raise_exception=True)
-            if meeting.status != Meeting.Status.PUBLISHED or meeting.starts_at > timezone.now():
-                raise ApiException(
-                    "meeting_not_held", "Minutes are recorded once the meeting has started.", 409
-                )
-            meeting.minutes = serializer.validated_data["minutes"]
-            meeting.minutes_recorded_at = timezone.now()
-            meeting.save(update_fields=["minutes", "minutes_recorded_at"])
+            minutes.tell_invitees(
+                meeting,
+                f"Cancelled: {meeting.title}",
+                subject="meeting",
+                version="cancelled",
+                actor=request.user,
+            )
         return meeting_reply(request, meeting, staff=True)
 
 
@@ -713,12 +726,21 @@ class IssuePenaltiesView(SecretaryAction):
                     invitee.save(update_fields=["attendance", "marked_by", "marked_at"])
                 rule = rules.get(invitee.attendance)
                 if rule:
-                    MeetingPenalty.objects.create(
+                    penalty = MeetingPenalty.objects.create(
                         invitee=invitee,
                         applies_to=invitee.attendance,
                         penalty=rule["penalty"],
                         amount_minor=rule.get("amount_minor"),
                         issued_by=request.user,
+                    )
+                    notify(
+                        [invitee.user_id],
+                        Category.MEETING,
+                        f"Penalty from {meeting.title}",
+                        subject=f"meeting-penalty:{penalty.pk}",
+                        body=rule["penalty"],
+                        link=minutes.link(meeting),
+                        organization=meeting.organization,
                     )
         return meeting_reply(request, meeting, staff)
 
@@ -780,8 +802,9 @@ class MyMeetingsView(APIView):
             .order_by("starts_at")
             .distinct()
         )
+        shown = list(found[:100])
         return Response(
-            MeetingSerializer(found[:100], many=True, context={"request": request, "staff": False}).data
+            MeetingSerializer(shown, many=True, context=list_context(request, shown, staff=False)).data
         )
 
 

@@ -14,19 +14,23 @@ export const sessionFile = (account: Account) => `e2e/.auth/${account}.json`
 
 export async function logIn(page: Page, account: Account) {
   await page.goto("/login")
+  // In development the page fills in a test account once it has loaded, which can land after we type.
+  // Wait for the page to go quiet, then type until both fields hold what we mean to send.
+  await page.waitForLoadState("networkidle")
   const email = page.getByLabel("Email or phone number")
   const password = page.getByLabel("Password", { exact: true })
-  // In development the page fills in a test account once it has loaded, which can land after we type:
-  // type again until both fields hold what we mean to send.
   await expect(async () => {
     await email.fill(ACCOUNTS[account])
     await password.fill(PASSWORD)
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(500)
     await expect(email).toHaveValue(ACCOUNTS[account])
     await expect(password).toHaveValue(PASSWORD)
   }).toPass({ timeout: 10_000 })
   await page.getByRole("button", { name: "Log in", exact: true }).click()
   await page.waitForURL((url) => !url.pathname.startsWith("/login"))
+  // Never save another account's session under this one's name.
+  const me = await page.request.get("/api/v1/auth/me/")
+  expect(((await me.json()) as { email?: string }).email).toBe(ACCOUNTS[account])
 }
 
 /** GET an API path with the signed-in session of `request` (a page's or a context's). */
