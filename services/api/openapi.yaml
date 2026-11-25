@@ -1097,6 +1097,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/absence-penalties/:
+    get:
+      operationId: me_absence_penalties_list
+      description: |-
+        GET /me/absence-penalties/: penalties issued to you, and those waived, in every club. A penalty
+        that is only proposed isn't shown: nothing has been decided.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MyAbsencePenalty'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/absence-penalties/{id}/appeal/:
+    post:
+      operationId: me_absence_penalties_appeal_create
+      description: 'POST /me/absence-penalties/{id}/appeal/: say why an issued penalty
+        is wrong. Once per penalty.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppealRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyAbsencePenalty'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/action-items/:
     get:
       operationId: me_action_items_list
@@ -5171,6 +5231,270 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Organization'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/absence-penalties/:
+    get:
+      operationId: organizations_absence_penalties_list
+      description: |-
+        GET /organizations/{org}/absence-penalties/: proposed penalties first, then the latest decided;
+        `?status=` narrows it. For governance staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - issued
+          - proposed
+          - waived
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AbsencePenalty'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/absence-penalties/{id}/appeal/:
+    post:
+      operationId: organizations_absence_penalties_appeal_create
+      description: |-
+        POST .../absence-penalties/{id}/appeal/: decide the member's appeal. Upholding it waives the
+        penalty.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppealDecisionRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsencePenalty'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/absence-penalties/{id}/issue/:
+    post:
+      operationId: organizations_absence_penalties_issue_create
+      description: |-
+        POST .../absence-penalties/{id}/issue/: the penalty stands. The member is told, and a fine becomes
+        a charge they owe.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsencePenalty'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/absence-penalties/{id}/waive/:
+    post:
+      operationId: organizations_absence_penalties_waive_create
+      description: |-
+        POST .../absence-penalties/{id}/waive/: drop a proposed or issued penalty, with a reason. A fine
+        already charged is waived with it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WaiveRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsencePenalty'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/absence-penalties/propose/:
+    post:
+      operationId: organizations_absence_penalties_propose_create
+      description: |-
+        POST /organizations/{org}/absence-penalties/propose/: look for absences of the last 90 days that
+        a rule covers and propose a penalty for each that has none. Nothing is issued by this.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proposed'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/absence-rules/:
+    get:
+      operationId: organizations_absence_rules_list
+      description: |-
+        GET/PUT /organizations/{org}/absence-rules/: what each kind of absence costs. Governance staff;
+        a rule with a fine also takes finances.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AbsenceRule'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: organizations_absence_rules_update
+      description: |-
+        GET/PUT /organizations/{org}/absence-rules/: what each kind of absence costs. Governance staff;
+        a rule with a fine also takes finances.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbsenceRulesRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AbsenceRule'
           description: ''
         4XX:
           description: Error envelope
@@ -11320,6 +11644,54 @@ paths:
       - sessionAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/{id}/places/{place_pk}/attendance/:
+    post:
+      operationId: organizations_squads_places_attendance_create
+      description: |-
+        POST .../squads/{id}/places/{place}/attendance/: once the tournament has started, record whether
+        a player who accepted went. The absence rules use it (REQ-054).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: place_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceAttendanceRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
           content:
             application/json:
               schema:
@@ -18016,6 +18388,202 @@ paths:
                 $ref: '#/components/schemas/ApiError'
 components:
   schemas:
+    AbsenceEnum:
+      enum:
+      - tournament
+      - squad
+      - training
+      type: string
+      description: |-
+        * `tournament` - Tournament entry not attended
+        * `squad` - Squad place not attended
+        * `training` - Training session missed
+    AbsencePenalty:
+      type: object
+      description: A penalty as governance staff see it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        member_name:
+          type: string
+          readOnly: true
+        applies_to:
+          allOf:
+          - $ref: '#/components/schemas/AbsenceEnum'
+          readOnly: true
+        what:
+          type: string
+          readOnly: true
+        happened_on:
+          type: string
+          format: date
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/PenaltyKindEnum'
+          readOnly: true
+        suspension_events:
+          type: integer
+          readOnly: true
+          nullable: true
+        points:
+          type: integer
+          readOnly: true
+          nullable: true
+        fine_minor:
+          type: integer
+          readOnly: true
+          nullable: true
+        currency:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AbsencePenaltyStatusEnum'
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        decided_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        appeal:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/AppealEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        appeal_text:
+          type: string
+          readOnly: true
+        appealed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        appeal_note:
+          type: string
+          readOnly: true
+      required:
+      - appeal
+      - appeal_note
+      - appeal_text
+      - appealed_at
+      - applies_to
+      - currency
+      - decided_at
+      - decided_by_name
+      - fine_minor
+      - happened_on
+      - id
+      - kind
+      - member_name
+      - points
+      - reason
+      - status
+      - suspension_events
+      - what
+    AbsencePenaltyStatusEnum:
+      enum:
+      - proposed
+      - issued
+      - waived
+      type: string
+      description: |-
+        * `proposed` - Proposed
+        * `issued` - Issued
+        * `waived` - Waived
+    AbsenceRule:
+      type: object
+      description: 'One rule: what an absence of this kind costs.'
+      properties:
+        applies_to:
+          $ref: '#/components/schemas/AbsenceEnum'
+        kind:
+          $ref: '#/components/schemas/PenaltyKindEnum'
+        suspension_events:
+          type: integer
+          maximum: 20
+          minimum: 1
+          nullable: true
+        points:
+          type: integer
+          maximum: 100
+          minimum: 1
+          nullable: true
+        fine_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+          nullable: true
+        currency:
+          type: string
+          readOnly: true
+        apology_excuses:
+          type: boolean
+        active:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - active
+      - apology_excuses
+      - applies_to
+      - currency
+      - fine_minor
+      - kind
+      - points
+      - suspension_events
+      - updated_at
+    AbsenceRuleRequest:
+      type: object
+      description: 'One rule: what an absence of this kind costs.'
+      properties:
+        applies_to:
+          $ref: '#/components/schemas/AbsenceEnum'
+        kind:
+          $ref: '#/components/schemas/PenaltyKindEnum'
+        suspension_events:
+          type: integer
+          maximum: 20
+          minimum: 1
+          nullable: true
+        points:
+          type: integer
+          maximum: 100
+          minimum: 1
+          nullable: true
+        fine_minor:
+          type: integer
+          maximum: 100000000
+          minimum: 1
+          nullable: true
+        apology_excuses:
+          type: boolean
+        active:
+          type: boolean
+      required:
+      - applies_to
+    AbsenceRulesRequest:
+      type: object
+      description: 'The organization''s rules: at most one for each kind of absence.
+        Sending the list replaces it.'
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/AbsenceRuleRequest'
+      required:
+      - rules
     AcceptRequest:
       type: object
       properties:
@@ -18672,6 +19240,40 @@ components:
           type: string
           default: ''
           maxLength: 300
+    AppealDecisionRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        upheld:
+          type: boolean
+          description: True waives the penalty; false leaves it standing.
+        note:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - upheld
+    AppealEnum:
+      enum:
+      - pending
+      - upheld
+      - rejected
+      type: string
+      description: |-
+        * `` - None
+        * `pending` - Pending
+        * `upheld` - Upheld
+        * `rejected` - Rejected
+    AppealRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required:
+      - text
     AppointRequest:
       type: object
       properties:
@@ -24199,6 +24801,14 @@ components:
         * `none` - None
         * `attending` - Attending
         * `apologies` - Apologies
+    IssueRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        reason:
+          type: string
+          default: ''
+          maxLength: 300
     JoinRequest:
       type: object
       description: Staff view of a request. Shows the requester's display name only,
@@ -25976,6 +26586,92 @@ components:
       required:
       - reason
       - table_id
+    MyAbsencePenalty:
+      type: object
+      description: A member's own penalty, once issued or waived, with whether they
+        may still appeal.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        applies_to:
+          allOf:
+          - $ref: '#/components/schemas/AbsenceEnum'
+          readOnly: true
+        what:
+          type: string
+          readOnly: true
+        happened_on:
+          type: string
+          format: date
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/PenaltyKindEnum'
+          readOnly: true
+        suspension_events:
+          type: integer
+          readOnly: true
+          nullable: true
+        points:
+          type: integer
+          readOnly: true
+          nullable: true
+        fine_minor:
+          type: integer
+          readOnly: true
+          nullable: true
+        currency:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AbsencePenaltyStatusEnum'
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        appeal:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/AppealEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        appeal_text:
+          type: string
+          readOnly: true
+        appeal_note:
+          type: string
+          readOnly: true
+        can_appeal:
+          type: boolean
+          readOnly: true
+      required:
+      - appeal
+      - appeal_note
+      - appeal_text
+      - applies_to
+      - can_appeal
+      - currency
+      - decided_at
+      - fine_minor
+      - happened_on
+      - id
+      - kind
+      - organization_name
+      - points
+      - reason
+      - status
+      - suspension_events
+      - what
     MyActionItem:
       type: object
       description: One of your action items with the meeting it came from.
@@ -27097,6 +27793,7 @@ components:
       - meeting
       - feedback
       - squad
+      - penalty
       type: string
       description: |-
         * `up_next` - Up next
@@ -27114,6 +27811,7 @@ components:
         * `meeting` - Meetings and minutes
         * `feedback` - Feedback forms
         * `squad` - Squads and selection
+        * `penalty` - Penalties
     NullEnum:
       enum:
       - null
@@ -30174,6 +30872,16 @@ components:
       - at
       - by_name
       - changes
+    PenaltyKindEnum:
+      enum:
+      - warning
+      - suspension
+      - points
+      type: string
+      description: |-
+        * `warning` - Warning
+        * `suspension` - Suspension from selection
+        * `points` - Penalty points
     PeriodEnum:
       enum:
       - day
@@ -30448,6 +31156,16 @@ components:
       required:
       - scheduled_at
       - table
+    PlaceAttendanceRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        attended:
+          type: boolean
+          nullable: true
+          description: Whether they went; null clears it.
+      required:
+      - attended
     Placement:
       type: object
       properties:
@@ -30969,6 +31687,14 @@ components:
         * `on_table` - on_table
         * `being_scored` - being_scored
         * `not_started` - not_started
+    Proposed:
+      type: object
+      properties:
+        proposed:
+          type: integer
+          description: How many new penalties were proposed.
+      required:
+      - proposed
     PublishNoteRequest:
       type: object
       properties:
@@ -34153,12 +34879,16 @@ components:
           type: boolean
         rating:
           type: integer
+        suspended:
+          type: boolean
+          description: 'Serving a suspension from selection: last in rotation.'
       required:
       - club
       - display_name
       - in_previous_squad
       - last_represented_on
       - rating
+      - suspended
       - user_id
     SquadHost:
       type: object
@@ -34214,7 +34944,12 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        attended:
+          type: boolean
+          readOnly: true
+          nullable: true
       required:
+      - attended
       - club
       - display_name
       - id
@@ -36346,6 +37081,16 @@ components:
         * `mpesa` - M-Pesa
         * `other` - Other
         * `pass` - Covered by a pass
+    WaiveRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - reason
     WeekdayEnum:
       enum:
       - monday

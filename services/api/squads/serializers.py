@@ -53,8 +53,13 @@ class SquadPlaceSerializer(serializers.ModelSerializer):
             "override_reason",
             "picked_at",
             "responded_at",
+            "attended",
         ]
         read_only_fields = fields
+
+
+class PlaceAttendanceSerializer(StrictSquadFields):
+    attended = serializers.BooleanField(allow_null=True, help_text="Whether they went; null clears it.")
 
 
 class SquadSerializer(serializers.ModelSerializer):
@@ -135,6 +140,7 @@ class SquadCandidateSerializer(serializers.Serializer):
     last_represented_on = serializers.DateField(allow_null=True)
     in_previous_squad = serializers.BooleanField()
     rating = serializers.IntegerField()
+    suspended = serializers.BooleanField(help_text="Serving a suspension from selection: last in rotation.")
 
 
 class SquadRefSerializer(serializers.Serializer):

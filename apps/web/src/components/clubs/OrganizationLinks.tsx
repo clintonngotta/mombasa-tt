@@ -13,6 +13,7 @@ import {
   Landmark,
   UserRoundCheck,
   Map,
+  Gavel,
   MapPin,
   Shield,
   Megaphone,
@@ -95,6 +96,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
           icon: UserRoundCheck,
         },
       member && { to: "/club/meetings", label: "Meetings", icon: CalendarClock },
+      governance && { to: "/club/penalties", label: "Absence penalties: rules, proposals and appeals", icon: Gavel },
       isBodyKind(membership.organization.kind) && { to: "/region", label: "Region: agenda, clubs, articles, meetings, sponsorships and approvals", icon: Map },
     ),
   }
@@ -102,6 +104,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     title: `Your ${word}`,
     links: pick(
       member && { to: "/club/schedule", label: "Schedule: activities, tournaments and training", icon: CalendarDays },
+      member && { to: "/penalties", label: "My penalties: absences and appeals", icon: Gavel },
       member && { to: "/squads", label: "My squads: selections and where I've represented", icon: Shield },
       member && { to: "/club/training-rules", label: "Training rules: weekly slots, place and check-in", icon: MapPin },
       member && { to: "/club/my-payments", label: "My payments", icon: Banknote },

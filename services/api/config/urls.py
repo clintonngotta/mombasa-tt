@@ -19,6 +19,8 @@ from guests.urls import link_urlpatterns as guest_links
 from guests.urls import me_urlpatterns as my_guest_claims
 from notifications.urls import club_urls as notification_club_urls
 from notifications.urls import my_urls as notification_my_urls
+from penalties.urls import me_urlpatterns as my_penalties
+from penalties.urls import organization_urlpatterns as penalty_routes
 from profiles.views import PlayerDetailView, PlayerDirectoryView
 from ratings.views import ClubRankingView, GeographyRankingView, PlayerRatingsView, RankingView
 from regions.urls import body_urlpatterns as regional_bodies
@@ -50,6 +52,8 @@ api_v1 = [
     path("me/", include(my_events)),
     path("me/", include(my_feedback)),
     path("me/", include(my_squads)),
+    path("me/", include(my_penalties)),
+    path("organizations/<uuid:organization_pk>/", include(penalty_routes)),
     path("organizations/<uuid:organization_pk>/", include(squad_routes)),
     path("", include("feedback.urls")),
     path("organizations/<uuid:organization_pk>/", include(feedback_forms)),

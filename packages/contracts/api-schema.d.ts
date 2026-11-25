@@ -574,6 +574,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/absence-penalties/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/absence-penalties/: penalties issued to you, and those waived, in every club. A penalty
+         *     that is only proposed isn't shown: nothing has been decided.
+         */
+        get: operations["me_absence_penalties_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/absence-penalties/{id}/appeal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /me/absence-penalties/{id}/appeal/: say why an issued penalty is wrong. Once per penalty. */
+        post: operations["me_absence_penalties_appeal_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/action-items/": {
         parameters: {
             query?: never;
@@ -2448,6 +2485,130 @@ export interface paths {
         put?: never;
         /** @description Search, view and register organizations (REQ-004). */
         post: operations["organizations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/absence-penalties/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{org}/absence-penalties/: proposed penalties first, then the latest decided;
+         *     `?status=` narrows it. For governance staff.
+         */
+        get: operations["organizations_absence_penalties_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/absence-penalties/{id}/appeal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../absence-penalties/{id}/appeal/: decide the member's appeal. Upholding it waives the
+         *     penalty.
+         */
+        post: operations["organizations_absence_penalties_appeal_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/absence-penalties/{id}/issue/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../absence-penalties/{id}/issue/: the penalty stands. The member is told, and a fine becomes
+         *     a charge they owe.
+         */
+        post: operations["organizations_absence_penalties_issue_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/absence-penalties/{id}/waive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../absence-penalties/{id}/waive/: drop a proposed or issued penalty, with a reason. A fine
+         *     already charged is waived with it.
+         */
+        post: operations["organizations_absence_penalties_waive_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/absence-penalties/propose/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /organizations/{org}/absence-penalties/propose/: look for absences of the last 90 days that
+         *     a rule covers and propose a penalty for each that has none. Nothing is issued by this.
+         */
+        post: operations["organizations_absence_penalties_propose_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/absence-rules/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PUT /organizations/{org}/absence-rules/: what each kind of absence costs. Governance staff;
+         *     a rule with a fine also takes finances.manage.
+         */
+        get: operations["organizations_absence_rules_list"];
+        /**
+         * @description GET/PUT /organizations/{org}/absence-rules/: what each kind of absence costs. Governance staff;
+         *     a rule with a fine also takes finances.manage.
+         */
+        put: operations["organizations_absence_rules_update"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4844,6 +5005,26 @@ export interface paths {
          *     put next takes a reason, which is kept with the place.
          */
         post: operations["organizations_squads_places_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/{id}/places/{place_pk}/attendance/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../squads/{id}/places/{place}/attendance/: once the tournament has started, record whether
+         *     a player who accepted went. The absence rules use it (REQ-054).
+         */
+        post: operations["organizations_squads_places_attendance_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7724,6 +7905,72 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `tournament` - Tournament entry not attended
+         *     * `squad` - Squad place not attended
+         *     * `training` - Training session missed
+         * @enum {string}
+         */
+        AbsenceEnum: "tournament" | "squad" | "training";
+        /** @description A penalty as governance staff see it. */
+        AbsencePenalty: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly member_name: string;
+            readonly applies_to: components["schemas"]["AbsenceEnum"];
+            readonly what: string;
+            /** Format: date */
+            readonly happened_on: string;
+            readonly kind: components["schemas"]["PenaltyKindEnum"];
+            readonly suspension_events: number | null;
+            readonly points: number | null;
+            readonly fine_minor: number | null;
+            readonly currency: string;
+            readonly status: components["schemas"]["AbsencePenaltyStatusEnum"];
+            readonly reason: string;
+            readonly decided_by_name: string | null;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            readonly appeal: components["schemas"]["AppealEnum"] | components["schemas"]["BlankEnum"];
+            readonly appeal_text: string;
+            /** Format: date-time */
+            readonly appealed_at: string | null;
+            readonly appeal_note: string;
+        };
+        /**
+         * @description * `proposed` - Proposed
+         *     * `issued` - Issued
+         *     * `waived` - Waived
+         * @enum {string}
+         */
+        AbsencePenaltyStatusEnum: "proposed" | "issued" | "waived";
+        /** @description One rule: what an absence of this kind costs. */
+        AbsenceRule: {
+            applies_to: components["schemas"]["AbsenceEnum"];
+            kind: components["schemas"]["PenaltyKindEnum"];
+            suspension_events: number | null;
+            points: number | null;
+            fine_minor: number | null;
+            readonly currency: string;
+            apology_excuses: boolean;
+            active: boolean;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description One rule: what an absence of this kind costs. */
+        AbsenceRuleRequest: {
+            applies_to: components["schemas"]["AbsenceEnum"];
+            kind?: components["schemas"]["PenaltyKindEnum"];
+            suspension_events?: number | null;
+            points?: number | null;
+            fine_minor?: number | null;
+            apology_excuses?: boolean;
+            active?: boolean;
+        };
+        /** @description The organization's rules: at most one for each kind of absence. Sending the list replaces it. */
+        AbsenceRulesRequest: {
+            rules: components["schemas"]["AbsenceRuleRequest"][];
+        };
         AcceptRequest: {
             /** @default false */
             match_stake: boolean;
@@ -8013,6 +8260,25 @@ export interface components {
         ApologyRequest: {
             /** @default  */
             reason: string;
+        };
+        /** @description Refuses fields it doesn't know. */
+        AppealDecisionRequest: {
+            /** @description True waives the penalty; false leaves it standing. */
+            upheld: boolean;
+            /** @default  */
+            note: string;
+        };
+        /**
+         * @description * `` - None
+         *     * `pending` - Pending
+         *     * `upheld` - Upheld
+         *     * `rejected` - Rejected
+         * @enum {string}
+         */
+        AppealEnum: "pending" | "upheld" | "rejected";
+        /** @description Refuses fields it doesn't know. */
+        AppealRequest: {
+            text: string;
         };
         AppointRequest: {
             /** Format: uuid */
@@ -10190,6 +10456,11 @@ export interface components {
          * @enum {string}
          */
         InviteeAnswerEnum: "none" | "attending" | "apologies";
+        /** @description Refuses fields it doesn't know. */
+        IssueRequest: {
+            /** @default  */
+            reason: string;
+        };
         /** @description Staff view of a request. Shows the requester's display name only, never their email. */
         JoinRequest: {
             /** Format: uuid */
@@ -10927,6 +11198,29 @@ export interface components {
             table_id: string;
             reason: string;
         };
+        /** @description A member's own penalty, once issued or waived, with whether they may still appeal. */
+        MyAbsencePenalty: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization_name: string;
+            readonly applies_to: components["schemas"]["AbsenceEnum"];
+            readonly what: string;
+            /** Format: date */
+            readonly happened_on: string;
+            readonly kind: components["schemas"]["PenaltyKindEnum"];
+            readonly suspension_events: number | null;
+            readonly points: number | null;
+            readonly fine_minor: number | null;
+            readonly currency: string;
+            readonly status: components["schemas"]["AbsencePenaltyStatusEnum"];
+            readonly reason: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+            readonly appeal: components["schemas"]["AppealEnum"] | components["schemas"]["BlankEnum"];
+            readonly appeal_text: string;
+            readonly appeal_note: string;
+            readonly can_appeal: boolean;
+        };
         /** @description One of your action items with the meeting it came from. */
         MyActionItem: {
             /** Format: uuid */
@@ -11312,9 +11606,10 @@ export interface components {
          *     * `meeting` - Meetings and minutes
          *     * `feedback` - Feedback forms
          *     * `squad` - Squads and selection
+         *     * `penalty` - Penalties
          * @enum {string}
          */
-        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting" | "feedback" | "squad";
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting" | "feedback" | "squad" | "penalty";
         /** @enum {unknown} */
         NullEnum: null;
         Offences: {
@@ -12728,6 +13023,13 @@ export interface components {
             };
         };
         /**
+         * @description * `warning` - Warning
+         *     * `suspension` - Suspension from selection
+         *     * `points` - Penalty points
+         * @enum {string}
+         */
+        PenaltyKindEnum: "warning" | "suspension" | "points";
+        /**
          * @description * `day` - Day
          *     * `week` - Week
          *     * `month` - Month
@@ -12859,6 +13161,11 @@ export interface components {
             table: components["schemas"]["ScheduleTable"] | null;
             /** Format: date-time */
             scheduled_at: string | null;
+        };
+        /** @description Refuses fields it doesn't know. */
+        PlaceAttendanceRequest: {
+            /** @description Whether they went; null clears it. */
+            attended: boolean | null;
         };
         Placement: {
             label: string;
@@ -13068,6 +13375,10 @@ export interface components {
          * @enum {string}
          */
         ProgressEnum: "decided" | "on_table" | "being_scored" | "not_started";
+        Proposed: {
+            /** @description How many new penalties were proposed. */
+            proposed: number;
+        };
         PublishNoteRequest: {
             note?: string;
         };
@@ -14431,6 +14742,8 @@ export interface components {
             last_represented_on: string | null;
             in_previous_squad: boolean;
             rating: number;
+            /** @description Serving a suspension from selection: last in rotation. */
+            suspended: boolean;
         };
         SquadHost: {
             /** Format: uuid */
@@ -14456,6 +14769,7 @@ export interface components {
             readonly picked_at: string;
             /** Format: date-time */
             readonly responded_at: string | null;
+            readonly attended: boolean | null;
         };
         /**
          * @description * `picked` - Picked
@@ -15283,6 +15597,10 @@ export interface components {
          * @enum {string}
          */
         VisitMethodEnum: "cash" | "mpesa" | "other" | "pass";
+        /** @description Refuses fields it doesn't know. */
+        WaiveRequest: {
+            reason: string;
+        };
         /**
          * @description * `monday` - monday
          *     * `tuesday` - tuesday
@@ -16528,6 +16846,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CountryCatalogue"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_absence_penalties_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAbsencePenalty"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_absence_penalties_appeal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAbsencePenalty"];
                 };
             };
             /** @description Error envelope */
@@ -20729,6 +21109,237 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Organization"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_absence_penalties_list: {
+        parameters: {
+            query?: {
+                status?: "issued" | "proposed" | "waived";
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsencePenalty"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_absence_penalties_appeal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsencePenalty"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_absence_penalties_issue_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["IssueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsencePenalty"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_absence_penalties_waive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WaiveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsencePenalty"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_absence_penalties_propose_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proposed"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_absence_rules_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRule"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_absence_rules_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbsenceRulesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AbsenceRule"][];
                 };
             };
             /** @description Error envelope */
@@ -26214,6 +26825,42 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_places_attendance_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                place_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceAttendanceRequest"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

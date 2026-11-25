@@ -81,6 +81,9 @@ def recommendation(squad: Squad) -> list[dict]:
         Rating.objects.filter(user__in=candidates, discipline=squad.discipline).values_list("user", "rating")
     )
     names = dict(User.objects.filter(pk__in=candidates).values_list("pk", "display_name"))
+    from penalties.service import suspended
+
+    serving = suspended(squad.organization, candidates)
     rows = [
         {
             "user_id": pk,
@@ -89,11 +92,13 @@ def recommendation(squad: Squad) -> list[dict]:
             "last_represented_on": represented.get(pk),
             "in_previous_squad": pk in in_last,
             "rating": round(ratings.get(pk, START)),
+            "suspended": pk in serving,
         }
         for pk in candidates
     ]
     rows.sort(
         key=lambda row: (
+            row["suspended"],  # serving a suspension from selection (REQ-054): after everyone else
             row["in_previous_squad"],
             row["last_represented_on"] or date.min,
             -row["rating"],
@@ -122,7 +127,7 @@ def pick(squad: Squad, actor, *, user_id, slot: str, reason: str) -> SquadPlace:
         raise ApiException("slot_full", "Every place in this slot is taken.", 409)
     if squad.places.filter(user_id=user_id, status__in=SquadPlace.OPEN).exists():
         raise ApiException("already_picked", "They already have a place in this squad.", 409)
-    first = {row["user_id"] for row in recommendation(squad)[:free]}
+    first = {row["user_id"] for row in recommendation(squad)[:free] if not row["suspended"]}
     recommended = user_id in first
     if not recommended and not reason:
         raise ApiException(

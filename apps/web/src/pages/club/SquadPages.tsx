@@ -22,6 +22,7 @@ import {
   PLACE_STATUS,
   publishSquad,
   removePlace,
+  setPlaceAttendance,
   squadKeys,
   type MySquadPlace,
   type Squad,
@@ -181,6 +182,8 @@ export function SquadPage() {
   }
   const publish = useMutation({ mutationFn: () => publishSquad(orgId, id), onSuccess: settle })
   const remove = useMutation({ mutationFn: (placeId: string) => removePlace(orgId, id, placeId), onSuccess: settle })
+  const went = useMutation({ mutationFn: ({ placeId, attended }: { placeId: string; attended: boolean }) => setPlaceAttendance(orgId, id, placeId, attended), onSuccess: settle })
+  const [today] = useState(() => new Date().toISOString().slice(0, 10))
   const discard = useMutation({
     mutationFn: () => deleteSquad(orgId, id),
     onSuccess: async () => {
@@ -189,7 +192,8 @@ export function SquadPage() {
     },
   })
   const s = squad.data
-  const failed = publish.error ?? remove.error ?? discard.error
+  const failed = publish.error ?? remove.error ?? discard.error ?? went.error
+  const begun = !!s && s.status === "published" && s.starts_on <= today
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
@@ -228,9 +232,20 @@ export function SquadPage() {
                           {!place.recommended && ` · out of turn: ${place.override_reason}`}
                         </span>
                       </span>
-                      <Button size="sm" variant="outline" disabled={remove.isPending} onClick={() => remove.mutate(place.id)}>
-                        <UserMinus aria-hidden className="size-4" /> Take out
-                      </Button>
+                      {begun && place.status === "accepted" ? (
+                        <div role="group" aria-label={`Did ${place.display_name} go?`} className="flex gap-1">
+                          <Button size="sm" variant={place.attended === true ? "default" : "outline"} aria-pressed={place.attended === true} disabled={went.isPending} onClick={() => went.mutate({ placeId: place.id, attended: true })}>
+                            Went
+                          </Button>
+                          <Button size="sm" variant={place.attended === false ? "default" : "outline"} aria-pressed={place.attended === false} disabled={went.isPending} onClick={() => went.mutate({ placeId: place.id, attended: false })}>
+                            Didn't go
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" disabled={remove.isPending} onClick={() => remove.mutate(place.id)}>
+                          <UserMinus aria-hidden className="size-4" /> Take out
+                        </Button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -283,7 +298,7 @@ function Rotation({ orgId, squad, slotId, free, candidates, onPicked }: { orgId:
       {candidates.length === 0 && <p className="text-muted-foreground">Nobody left to pick.</p>}
       <ul className="flex flex-col gap-2">
         {shown.map((candidate, index) => {
-          const next = index < free
+          const next = index < free && !candidate.suspended
           return (
             <li key={candidate.user_id} className="flex flex-col gap-2 rounded-lg border px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -292,7 +307,8 @@ function Rotation({ orgId, squad, slotId, free, candidates, onPicked }: { orgId:
                   {candidate.club && <span className="text-muted-foreground"> · {candidate.club}</span>}
                   <span className="block text-sm text-muted-foreground">
                     {candidate.last_represented_on ? `Last went ${formatDay(candidate.last_represented_on)}` : "Hasn't represented yet"}
-                    {candidate.in_previous_squad && " · was in the last squad"} · rating {candidate.rating}
+                    {candidate.in_previous_squad && " · was in the last squad"}
+                    {candidate.suspended && " · suspended from selection"} · rating {candidate.rating}
                     {next && " · recommended"}
                   </span>
                 </span>

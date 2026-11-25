@@ -80,6 +80,8 @@ class SquadPlace(models.Model):
     )
     picked_at = models.DateTimeField(auto_now_add=True)
     responded_at = models.DateTimeField(null=True, blank=True)
+    # After the tournament: whether a player who accepted went. Staff record it (REQ-054).
+    attended = models.BooleanField(null=True, blank=True)
 
     class Meta:
         ordering = ["picked_at", "id"]

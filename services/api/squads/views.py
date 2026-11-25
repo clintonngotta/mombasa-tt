@@ -26,6 +26,7 @@ from .serializers import (
     HistoryRowSerializer,
     MySquadPlaceSerializer,
     PickSerializer,
+    PlaceAttendanceSerializer,
     SquadCandidateSerializer,
     SquadSerializer,
 )
@@ -210,6 +211,26 @@ class RemovePlaceView(SquadAction):
                 place.save(update_fields=["status", "responded_at"])
                 if squad.status == Squad.Status.PUBLISHED:
                     tell(place, f"You're no longer in the squad: {squad.title}")
+        return reply(squad)
+
+
+class PlaceAttendanceView(SquadAction):
+    """POST .../squads/{id}/places/{place}/attendance/: once the tournament has started, record whether
+    a player who accepted went. The absence rules use it (REQ-054)."""
+
+    @extend_schema(request=PlaceAttendanceSerializer, responses={200: SquadSerializer})
+    def post(self, request, organization_pk, pk, place_pk):
+        body = PlaceAttendanceSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        with transaction.atomic():
+            squad = self.locked(request, organization_pk, pk)
+            place = get_object_or_404(SquadPlace, squad=squad, pk=place_pk, status=SquadPlace.Status.ACCEPTED)
+            if squad.status != Squad.Status.PUBLISHED or squad.starts_on > timezone.localdate():
+                raise ApiException(
+                    "squad_not_started", "Record who went once the tournament has started.", 409
+                )
+            place.attended = body.validated_data["attended"]
+            place.save(update_fields=["attended"])
         return reply(squad)
 
 

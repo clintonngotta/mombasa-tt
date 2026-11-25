@@ -29,6 +29,7 @@ export const getRotation = (orgId: string, id: string) => api<SquadCandidate[]>(
 export const pickPlayer = (orgId: string, id: string, userId: string, slot: string, reason: string) =>
   api<Squad>(`${base(orgId)}${id}/places/`, { body: { user_id: userId, slot, ...(reason ? { reason } : {}) } })
 export const removePlace = (orgId: string, id: string, placeId: string) => api<Squad>(`${base(orgId)}${id}/places/${placeId}/remove/`, { body: {} })
+export const setPlaceAttendance = (orgId: string, id: string, placeId: string, attended: boolean | null) => api<Squad>(`${base(orgId)}${id}/places/${placeId}/attendance/`, { body: { attended } })
 export const getSquadHistory = (orgId: string) => api<HistoryRow[]>(`${base(orgId)}history/`)
 
 export const listMyPlaces = () => api<MySquadPlace[]>("/me/squad-places/")

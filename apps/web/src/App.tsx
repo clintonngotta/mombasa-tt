@@ -60,6 +60,7 @@ import { ClubProfilePage } from "@/pages/club/ClubProfilePage"
 import { ClubProfileEditPage } from "@/pages/club/ClubProfileEditPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
 import { CeremonyPage } from "@/pages/tournaments/CeremonyPage"
+import { MyPenaltiesPage, PenaltiesPage } from "@/pages/club/PenaltyPages"
 import { MySquadsPage, SquadPage, SquadsPage } from "@/pages/club/SquadPages"
 import { TrainingRulesPage } from "@/pages/club/TrainingRulesPage"
 import { FeedbackAnswerPage } from "@/pages/tournaments/FeedbackAnswerPage"
@@ -238,6 +239,8 @@ function App() {
               <Route path="/club/squads" element={<SquadsPage />} />
               <Route path="/club/squads/:id" element={<SquadPage />} />
               <Route path="/squads" element={<MySquadsPage />} />
+              <Route path="/club/penalties" element={<PenaltiesPage />} />
+              <Route path="/penalties" element={<MyPenaltiesPage />} />
               <Route path="/activities/:orgId/:id" element={<ActivityPage />} />
               <Route path="/facilities" element={<FindFacilityPage />} />
               <Route path="/facilities/:id" element={<FacilityPage />} />

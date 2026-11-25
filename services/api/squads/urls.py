@@ -16,6 +16,11 @@ organization_urlpatterns = [
     ),
     path("squads/<uuid:pk>/places/", views.PlacesView.as_view(), name="organization-squad-places"),
     path(
+        "squads/<uuid:pk>/places/<uuid:place_pk>/attendance/",
+        views.PlaceAttendanceView.as_view(),
+        name="organization-squad-place-attendance",
+    ),
+    path(
         "squads/<uuid:pk>/places/<uuid:place_pk>/remove/",
         views.RemovePlaceView.as_view(),
         name="organization-squad-place-remove",

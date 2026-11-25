@@ -87,6 +87,7 @@ from organizations.models import (
 )
 from organizations.permissions import RoleKey
 from outbox.models import Job
+from penalties.models import AbsencePenalty, AbsenceRule
 from profiles.models import PlayerProfile
 from regions.models import (
     ActionItem,
@@ -409,6 +410,17 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-squad-places": {"post": STAFF},
     "organization-squad-place-remove": {"post": STAFF},
     "organization-squad-history": {"get": STAFF},
+    "organization-squad-place-attendance": {"post": STAFF},
+    # Absence penalties (TASK-129): governance staff set rules, propose, issue, waive and decide
+    # appeals; a member reads and appeals their own.
+    "organization-absence-rules": {"get": STAFF, "put": STAFF},
+    "organization-absence-penalties": {"get": STAFF},
+    "organization-absence-penalties-propose": {"post": STAFF},
+    "organization-absence-penalty-issue": {"post": STAFF},
+    "organization-absence-penalty-waive": {"post": STAFF},
+    "organization-absence-penalty-appeal": {"post": STAFF},
+    "my-absence-penalties": {"get": OWNER},
+    "my-absence-penalty-appeal": {"post": OWNER},  # Baraka's penalty
     "my-squad-places": {"get": OWNER},
     "my-squad-place-accept": {"post": OWNER},  # Baraka's place
     "my-squad-place-decline": {"post": OWNER},
@@ -769,6 +781,11 @@ BODIES = {
         "slots": [{"label": "Team", "places": 3}],
     },
     ("organization-squad", "patch"): {"notes": "Bring whites"},
+    ("organization-squad-place-attendance", "post"): {"attended": False},
+    ("organization-absence-rules", "put"): {"rules": [{"applies_to": "training", "kind": "warning"}]},
+    ("organization-absence-penalty-waive", "post"): {"reason": "Excused"},
+    ("organization-absence-penalty-appeal", "post"): {"upheld": False, "note": "Stands"},
+    ("my-absence-penalty-appeal", "post"): {"text": "I was there"},
     ("organization-squad-places", "post"): lambda: {
         "user_id": str(Membership.objects.get(user__email="faith.listed@coast.example").user_id),
         "slot": "cccccccccccc",
@@ -1682,6 +1699,38 @@ class World:
             recommended=False,
             override_reason="MARK-SQUAD-REASON",
         )
+        past = timezone.localdate() - timedelta(days=4)
+        squad_past = Squad.objects.create(
+            organization=self.coast,
+            title="Past squad",
+            starts_on=past,
+            ends_on=past,
+            slots=slots,
+            status=Squad.Status.PUBLISHED,
+        )
+        self.squad_place_past = SquadPlace.objects.create(
+            squad=squad_past, slot="cccccccccccc", user=self.faith, status=SquadPlace.Status.ACCEPTED
+        )
+
+        def penalty(member, what, **extra):
+            return AbsencePenalty.objects.create(
+                organization=self.coast,
+                member=member,
+                applies_to="training",
+                source_id=uuid.uuid4(),
+                what=what,
+                happened_on=past,
+                kind="warning",
+                **extra,
+            )
+
+        decided = {"status": "issued", "decided_at": timezone.now()}
+        self.penalty_proposed = penalty(self.faith, "MARK-ABSENCE-PROPOSED")
+        self.penalty_to_waive = penalty(self.faith, "To waive")
+        self.penalty_issued = penalty(self.baraka, "MARK-ABSENCE", **decided)
+        self.penalty_appealed = penalty(
+            self.baraka, "Appealed", appeal="pending", appeal_text="MARK-APPEAL", **decided
+        )
         self.meeting_document = MeetingDocument.objects.create(
             meeting=self.approved_meeting,
             title="MARK-MEETING-PAPER",
@@ -1972,6 +2021,11 @@ class World:
             "organization-squad-recommendation": self.squad_out.id,
             "organization-squad-places": self.squad_out.id,
             "organization-squad-place-remove": self.squad_out.id,
+            "organization-squad-place-attendance": self.squad_place_past.squad_id,
+            "organization-absence-penalty-issue": self.penalty_proposed.id,
+            "organization-absence-penalty-waive": self.penalty_to_waive.id,
+            "organization-absence-penalty-appeal": self.penalty_appealed.id,
+            "my-absence-penalty-appeal": self.penalty_issued.id,
             "my-squad-place-accept": self.squad_place.id,
             "my-squad-place-decline": self.squad_place.id,
             "organization-feedback-form-send": self.form_to_send.id,
@@ -2012,7 +2066,8 @@ class World:
         if "action_pk" in names:
             found["action_pk"] = self.action_item.id
         if "place_pk" in names:
-            found["place_pk"] = self.squad_place.id
+            past = name == "organization-squad-place-attendance"
+            found["place_pk"] = (self.squad_place_past if past else self.squad_place).id
         if "document_pk" in names:
             found["document_pk"] = self.meeting_document.id
         if "plan_pk" in names:
@@ -2218,7 +2273,13 @@ class World:
             "feedback_forms": sorted(FeedbackForm.objects.values_list("title", "status", "closes_at")),
             "feedback_recipients": FeedbackRecipient.objects.count(),
             "squads": sorted(Squad.objects.values_list("title", "status", "notes")),
-            "squad_places": sorted(SquadPlace.objects.values_list("user__email", "status")),
+            "squad_places": sorted(
+                SquadPlace.objects.values_list("user__email", "status", "attended"), key=str
+            ),
+            "absence_rules": AbsenceRule.objects.count(),
+            "absence_penalties": sorted(
+                AbsencePenalty.objects.values_list("what", "status", "appeal", "appeal_text")
+            ),
             "feedback_responses": sorted(FeedbackResponse.objects.values_list("answers", flat=True), key=str),
             "meeting_invitees": sorted(
                 MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
@@ -2546,6 +2607,9 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-EVENT-NAMED": {"amina", "grace", "chiku"},  # the person named and those who run activities
         "MARK-FORM-DRAFT": {"amina"},  # the host's competition staff
         "MARK-SQUAD-DRAFT": {"amina"},  # a draft squad is for the selectors
+        "MARK-ABSENCE-PROPOSED": {"amina"},  # undecided: governance staff only, not yet the member
+        "MARK-ABSENCE": {"amina", "baraka"},  # issued: the member too
+        "MARK-APPEAL": {"amina", "baraka"},
         "MARK-SQUAD-NOTES": {"amina", "baraka"},  # and a published one for the players picked
         "MARK-SQUAD-REASON": {"amina"},  # why someone was picked out of turn: selectors only
         "MARK-FORM-SENT": {"amina", "baraka"},  # and whoever was asked
