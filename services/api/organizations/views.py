@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
+from core.nearby import MAX_RESULTS, NearbySearchSerializer, within
 from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
 
@@ -55,6 +56,7 @@ from .serializers import (
     MembershipSerializer,
     MyInvitationSerializer,
     MyJoinRequestSerializer,
+    NearbyOrganizationsSerializer,
     OrganizationLocationSerializer,
     OrganizationSerializer,
     PermissionInfoSerializer,
@@ -146,6 +148,29 @@ class OrganizationViewSet(
             # A coach's organizing desk isn't a club anyone joins.
             queryset = queryset.exclude(kind=Organization.Kind.COACHING)
         return queryset
+
+    @property
+    def throttle_scope(self):
+        # A distance search works harder than a list, and repeated ones could be used to place a club.
+        return "nearby" if self.action == "nearby" else None
+
+    @extend_schema(request=NearbySearchSerializer, responses={200: NearbyOrganizationsSerializer})
+    @action(detail=False, methods=["post"])
+    def nearby(self, request):
+        """Clubs with a map position inside `radius_m` of the given point, nearest first, at most 50.
+        The point is sent in the body so the player's position stays out of URLs and logs."""
+        search = NearbySearchSerializer(data=request.data)
+        search.is_valid(raise_exception=True)
+        where = search.validated_data
+        clubs = Organization.objects.filter(
+            kind__in=[Organization.Kind.CLUB, Organization.Kind.CLUB_FACILITY]
+        )
+        if term := where.get("search"):
+            clubs = clubs.filter(Q(name__icontains=term) | Q(town__icontains=term))
+        found = within(clubs, where["latitude"], where["longitude"], where["radius_m"])
+        results = list(found[:MAX_RESULTS])
+        count = len(results) if len(results) < MAX_RESULTS else found.count()
+        return Response(NearbyOrganizationsSerializer({"count": count, "results": results}).data)
 
     @extend_schema(request=OrganizationLocationSerializer, responses={200: OrganizationSerializer})
     @transaction.atomic

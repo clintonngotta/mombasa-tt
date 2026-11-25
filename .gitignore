@@ -8,3 +8,8 @@ dist/
 __pycache__/
 *.pyc
 .venv/
+
+# Playwright (apps/web/e2e): signed-in sessions, traces and reports
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/

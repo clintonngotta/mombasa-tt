@@ -954,6 +954,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/facilities/nearby/:
+    post:
+      operationId: facilities_nearby_create
+      description: |-
+        Branches the caller may find with a map position inside `radius_m` of the given point,
+        nearest first, at most 50. The point is sent in the body so the player's position stays out
+        of URLs and logs.
+      tags:
+      - facilities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NearbyFacilitySearchRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NearbyFacilities'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/geography/countries/:
     get:
       operationId: geography_countries_list
@@ -11431,6 +11461,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClubProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/nearby/:
+    post:
+      operationId: organizations_nearby_create
+      description: |-
+        Clubs with a map position inside `radius_m` of the given point, nearest first, at most 50.
+        The point is sent in the body so the player's position stays out of URLs and logs.
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NearbySearchRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NearbyOrganizations'
           description: ''
         4XX:
           description: Error envelope
@@ -23887,6 +23946,224 @@ components:
       - due_on
       - outstanding_minor
       - status
+    NearbyFacilities:
+      type: object
+      properties:
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NearbyFacility'
+      required:
+      - count
+      - results
+    NearbyFacility:
+      type: object
+      description: A branch found near a point, with how far away it is.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        organization_id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization_name:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+        directions:
+          type: string
+          readOnly: true
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+        amenities:
+          type: array
+          items:
+            type: string
+            maxLength: 60
+          readOnly: true
+        open_now:
+          type: boolean
+          readOnly: true
+        match_tables:
+          type: integer
+          readOnly: true
+        training_tables:
+          type: integer
+          readOnly: true
+        distance_m:
+          type: integer
+          readOnly: true
+      required:
+      - address
+      - amenities
+      - country
+      - directions
+      - distance_m
+      - id
+      - latitude
+      - longitude
+      - match_tables
+      - name
+      - open_now
+      - organization_id
+      - organization_name
+      - region
+      - town
+      - training_tables
+    NearbyFacilitySearchRequest:
+      type: object
+      description: Where to look, how far, and an optional name to narrow it.
+      properties:
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        radius_m:
+          type: integer
+          maximum: 50000
+          minimum: 100
+        search:
+          type: string
+          maxLength: 120
+        open_now:
+          type: boolean
+          default: false
+      required:
+      - latitude
+      - longitude
+      - radius_m
+    NearbyOrganization:
+      type: object
+      description: A club found near a point, with how far away it is.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        town:
+          type: string
+          maxLength: 80
+        country:
+          type: string
+          maxLength: 2
+        region:
+          type: string
+          readOnly: true
+        directions:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+          nullable: true
+        description:
+          type: string
+          maxLength: 2000
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          readOnly: true
+        timezone:
+          type: string
+          maxLength: 64
+        distance_m:
+          type: integer
+          readOnly: true
+      required:
+      - country
+      - description
+      - directions
+      - distance_m
+      - id
+      - kind
+      - latitude
+      - longitude
+      - name
+      - region
+      - timezone
+      - town
+    NearbyOrganizations:
+      type: object
+      properties:
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NearbyOrganization'
+      required:
+      - count
+      - results
+    NearbySearchRequest:
+      type: object
+      description: Where to look, how far, and an optional name to narrow it.
+      properties:
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        radius_m:
+          type: integer
+          maximum: 50000
+          minimum: 100
+        search:
+          type: string
+          maxLength: 120
+      required:
+      - latitude
+      - longitude
+      - radius_m
     NextMatch:
       type: object
       description: 'The match recommended to take a table next (REQ-053). A recommendation

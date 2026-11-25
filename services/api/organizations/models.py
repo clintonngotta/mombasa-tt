@@ -76,6 +76,8 @@ class Organization(models.Model):
                 name="organization_coordinates_valid",
             ),
         ]
+        # Finding clubs near a point narrows on these first (core.nearby).
+        indexes = [models.Index(fields=["latitude", "longitude"], name="organization_position")]
 
     def __str__(self):
         return self.name

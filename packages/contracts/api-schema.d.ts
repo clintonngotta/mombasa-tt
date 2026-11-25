@@ -497,6 +497,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/facilities/nearby/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Branches the caller may find with a map position inside `radius_m` of the given point,
+         *     nearest first, at most 50. The point is sent in the body so the player's position stays out
+         *     of URLs and logs.
+         */
+        post: operations["facilities_nearby_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geography/countries/": {
         parameters: {
             query?: never;
@@ -4680,6 +4701,26 @@ export interface paths {
         get: operations["organizations_profile_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/nearby/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Clubs with a map position inside `radius_m` of the given point, nearest first, at most 50.
+         *     The point is sent in the body so the player's position stays out of URLs and logs.
+         */
+        post: operations["organizations_nearby_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9941,6 +9982,75 @@ export interface components {
             due_on: string;
             status: components["schemas"]["OwedStatusEnum"];
         };
+        NearbyFacilities: {
+            count: number;
+            results: components["schemas"]["NearbyFacility"][];
+        };
+        /** @description A branch found near a point, with how far away it is. */
+        NearbyFacility: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** Format: uuid */
+            readonly organization_id: string;
+            readonly organization_name: string;
+            readonly country: string;
+            readonly region: string;
+            readonly town: string;
+            readonly address: string;
+            readonly directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            readonly amenities: string[];
+            readonly open_now: boolean;
+            readonly match_tables: number;
+            readonly training_tables: number;
+            readonly distance_m: number;
+        };
+        /** @description Where to look, how far, and an optional name to narrow it. */
+        NearbyFacilitySearchRequest: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+            radius_m: number;
+            search?: string;
+            /** @default false */
+            open_now: boolean;
+        };
+        /** @description A club found near a point, with how far away it is. */
+        NearbyOrganization: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            town: string;
+            country: string;
+            readonly region: string;
+            directions: string;
+            /** Format: double */
+            latitude: number | null;
+            /** Format: double */
+            longitude: number | null;
+            description: string;
+            readonly kind: components["schemas"]["KindEnum"];
+            timezone: string;
+            readonly distance_m: number;
+        };
+        NearbyOrganizations: {
+            count: number;
+            results: components["schemas"]["NearbyOrganization"][];
+        };
+        /** @description Where to look, how far, and an optional name to narrow it. */
+        NearbySearchRequest: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+            radius_m: number;
+            search?: string;
+        };
         /** @description The match recommended to take a table next (REQ-053). A recommendation only: nothing is sent. */
         NextMatch: {
             /** Format: uuid */
@@ -14632,6 +14742,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedBranchScheduleItemList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    facilities_nearby_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NearbyFacilitySearchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NearbyFacilities"];
                 };
             };
             /** @description Error envelope */
@@ -24527,6 +24669,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClubProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_nearby_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NearbySearchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NearbyOrganizations"];
                 };
             };
             /** @description Error envelope */

@@ -6,7 +6,7 @@ from django.core.management.base import CommandError
 
 from accounts.models import User
 from coaching.models import CoachProfile
-from facilities.models import Table
+from facilities.models import Table, Venue
 from organizations.access import effective_permissions, managed_organizations
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
@@ -33,6 +33,10 @@ def test_seed_dev_creates_every_test_login_and_runs_again_cleanly(db, settings):
     assert all(u.email_verified_at and u.check_password("mombasa-tt-dev") for u in users)
 
     club = Organization.objects.get(name="Mombasa Dev TT Club")
+    # Both dev places are on the map, and the facility's branch is in the finder, for "near me" searches.
+    branch = Venue.objects.get(organization__name="Coast Dev TT Centre")
+    assert club.latitude is not None and branch.latitude is not None
+    assert (branch.profile, branch.country, branch.region) == ("public", "KE", "Mombasa")
     coach = User.objects.get(email="coach@mombasa-tt.test")
     assert Permission.TRAINING_MANAGE in effective_permissions(coach, club)
     assert Permission.MEMBERS_MANAGE not in effective_permissions(coach, club)

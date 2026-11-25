@@ -204,6 +204,7 @@ REST_FRAMEWORK = {
         "entries": os.environ.get("THROTTLE_ENTRIES", "30/hour"),
         "public_reads": os.environ.get("THROTTLE_PUBLIC_READS", "120/min"),
         "live_reads": os.environ.get("THROTTLE_LIVE_READS", "1800/min"),
+        "nearby": os.environ.get("THROTTLE_NEARBY", "30/min"),
     },
     # The client address is the last X-Forwarded-For hop added by the one proxy in front (Caddy), so a
     # client can't dodge a throttle by sending its own X-Forwarded-For. With no header, REMOTE_ADDR.

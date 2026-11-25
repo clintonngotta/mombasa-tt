@@ -2,6 +2,7 @@ import { Link, Navigate, Outlet } from "react-router-dom"
 import { buttonVariants } from "@/components/ui/button"
 import { actsAsFacility } from "@/lib/navigation"
 import { useActiveMembership } from "@/lib/clubs"
+import { HomePage } from "@/pages/HomePage"
 
 /** Play, training, rankings and coaching are a person's own. While someone acts for a facility, which
  * isn't a person, these pages point back to the facility desk instead. */
@@ -25,5 +26,5 @@ export function PersonOnly() {
 /** Home for a person; a facility's home is its desk. */
 export function HomeRoute() {
   const { active } = useActiveMembership()
-  return actsAsFacility(active) ? <Navigate to="/facility" replace /> : null
+  return actsAsFacility(active) ? <Navigate to="/facility" replace /> : <HomePage />
 }

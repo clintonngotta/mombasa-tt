@@ -34,6 +34,7 @@ Useful commands:
 docker compose up --build -d          # in the background
 docker compose exec api python manage.py createsuperuser   # Django admin at http://localhost:8020/admin/
 docker compose exec api pytest       # API tests against the compose database
+(cd apps/web && pnpm test:e2e)        # browser tests (Playwright) against the running stack: apps/web/e2e/README.md
 docker compose up --build -V          # after web dependencies change (fresh node_modules volume)
 docker compose down                   # stop; add -v to also delete the database volume
 ```

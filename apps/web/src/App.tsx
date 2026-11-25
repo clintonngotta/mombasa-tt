@@ -101,6 +101,8 @@ import { CoachingPage } from "@/pages/coaching/CoachingPage"
 import { RegionalPage } from "@/pages/region/RegionalPage"
 import { MorePage } from "@/pages/MorePage"
 import { SyncPage } from "@/pages/profile/SyncPage"
+import { TournamentsPage } from "@/pages/tournaments/TournamentsPage"
+import { HelpPage } from "@/pages/help/HelpPage"
 
 function App() {
   return (
@@ -136,6 +138,9 @@ function App() {
             <Route path="/events" element={<EventsPage />} />
             {/* Published tournaments, their results, rankings and ratings are public (REQ-020, TASK-035). A
                 facility acting as itself is still sent back to its desk from rankings (PersonOnly). */}
+            <Route path="/tournaments" element={<TournamentsPage />} />
+            {/* Help is for everyone, including someone deciding whether to sign up. */}
+            <Route path="/help" element={<HelpPage />} />
             <Route path="/tournaments/:id" element={<TournamentPage />} />
             <Route path="/tournaments/:id/events/:eventId/entries" element={<EntriesPage />} />
             <Route path="/tournaments/:id/events/:eventId/brackets" element={<EventPage tab="brackets" />} />

@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react"
+import { Bell, CircleHelp } from "lucide-react"
 import { OrgLinkRow } from "@/components/clubs/OrganizationLinks"
 import { useNavigation } from "@/lib/navigation"
 
@@ -16,6 +16,9 @@ export function MorePage() {
         ))}
         <OrgLinkRow to="/notifications" icon={<Bell aria-hidden className="size-5 text-brand-blue" />}>
           Notifications
+        </OrgLinkRow>
+        <OrgLinkRow to="/help" icon={<CircleHelp aria-hidden className="size-5 text-brand-blue" />}>
+          Help
         </OrgLinkRow>
       </nav>
     </div>

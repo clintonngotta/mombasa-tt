@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarCheck, CloudUpload, NotebookPen, Ticket, TrendingUp, UserPen, UserRoundCheck, Users } from "lucide-react"
+import { CalendarCheck, CircleHelp, CloudUpload, NotebookPen, Ticket, TrendingUp, UserPen, UserRoundCheck, Users } from "lucide-react"
 import { NavCard } from "@/components/layout/NavCard"
 import { Honours } from "@/components/ceremony/Honours"
 import { InstallApp } from "@/components/layout/InstallApp"
@@ -66,6 +66,7 @@ export function ProfilePage() {
         <NavCard to="/profile/visits" icon={Ticket} title="Passes and visits" description="Your facility passes, to show at the door, and your visits" />
         <NavCard to="/profile/sync" icon={CloudUpload} title="Waiting to sync" description="Changes you made offline, and whether they have been sent" />
         <NavCard to="/profile/claims" icon={UserRoundCheck} title="Matches entered for you" description="Claim what a club entered under your name before you joined" />
+        <NavCard to="/help" icon={CircleHelp} title="Help" description="How to enter, follow matches, join a club and run events" />
       </nav>
 
       <Honours />

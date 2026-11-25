@@ -44,6 +44,15 @@ export function WelcomePage() {
           >
             Log in
           </Link>
+          <p className="text-center text-white/80">
+            <Link to="/tournaments" className="font-semibold text-white underline">
+              Browse tournaments
+            </Link>{" "}
+            ·{" "}
+            <Link to="/help" className="font-semibold text-white underline">
+              Help
+            </Link>
+          </p>
         </div>
       </main>
     </div>

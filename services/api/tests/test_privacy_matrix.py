@@ -302,6 +302,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "facility-list": {"get": SIGNED_IN},
     "facility-detail": {"get": SIGNED_IN},
     "facility-schedule": {"get": SIGNED_IN},
+    # Branches near a point the caller sends in the body: the finder's rows plus a distance.
+    "facility-nearby": {"post": SIGNED_IN},
     # Facility training slots any player may join (REQ-044); see test_facility_training.py.
     "open-session-list": {"get": SIGNED_IN},
     "open-session-join": {"post": SIGNED_IN},
@@ -358,6 +360,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-club-session-invitations": {"get": STAFF, "post": STAFF},
     "organization-club-session-invitation": {"patch": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
+    # Clubs near a point the caller sends in the body: directory rows plus a distance.
+    "organization-nearby": {"post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     # What a player sees before joining: location, description, training hours and coming tournaments.
     "organization-profile": {"get": SIGNED_IN},

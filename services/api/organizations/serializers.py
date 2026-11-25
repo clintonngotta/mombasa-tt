@@ -61,6 +61,24 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class NearbyOrganizationSerializer(OrganizationSerializer):
+    """A club found near a point, with how far away it is."""
+
+    distance_m = serializers.SerializerMethodField()
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = [*OrganizationSerializer.Meta.fields, "distance_m"]
+        read_only_fields = fields
+
+    def get_distance_m(self, organization) -> int:
+        return round(organization.distance_m)
+
+
+class NearbyOrganizationsSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    results = NearbyOrganizationSerializer(many=True)
+
+
 class OrganizationLocationSerializer(serializers.ModelSerializer):
     """The club's settings that roles.manage edits: where it is and what it is about."""
 

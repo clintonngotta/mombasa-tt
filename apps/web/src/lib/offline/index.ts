@@ -16,10 +16,10 @@ const SYNC_EVERY = 30_000
 
 /**
  * Query key roots that are never saved on the device: money, private notes, door takings, invitation
- * links, scoring, which has its own journal, and push devices, which only mean anything live. These need
- * a connection to open.
+ * links, scoring, which has its own journal, push devices, which only mean anything live, and what is
+ * near the player, which would give away where they were. These need a connection to open.
  */
-const NOT_SAVED = new Set(["finance", "match-notes", "door", "coaching", "invitation", "scoring", "guests", "push"])
+const NOT_SAVED = new Set(["finance", "match-notes", "door", "coaching", "invitation", "scoring", "guests", "push", "nearby"])
 
 let store: OfflineStore | null = null
 function offlineStore(): OfflineStore | null {

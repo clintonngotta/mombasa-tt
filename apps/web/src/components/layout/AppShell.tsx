@@ -1,5 +1,5 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom"
-import { Ellipsis, LogIn } from "lucide-react"
+import { Link, Outlet, useLocation } from "react-router-dom"
+import { CircleHelp, Ellipsis, LogIn } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Wordmark } from "@/components/brand/Wordmark"
@@ -10,6 +10,8 @@ import { NotificationBell } from "@/components/layout/NotificationBell"
 import { MORE_PATH, useNavigation, type NavItem } from "@/lib/navigation"
 
 const MORE: NavItem = { to: MORE_PATH, label: "More", icon: Ellipsis }
+// Help sits at the foot of the sidebar; on a phone it is under More, on Home and on the Profile page.
+const HELP: NavItem = { to: "/help", label: "Help", icon: CircleHelp }
 
 // REQ-002: mobile tabs and the web sidebar share the same domain names. Which names show depends on who
 // is signed in and the organization they act for (lib/navigation).
@@ -18,7 +20,7 @@ export function AppShell() {
   const facility = mode === "facility"
   const bar = more.length ? [...tabs, MORE] : tabs
   const location = useLocation()
-  const current = currentEntry(location.pathname, [...items, MORE])
+  const current = currentEntry(location.pathname, [...items, MORE, HELP])
   const next = encodeURIComponent(location.pathname + location.search)
 
   const logIn = (
@@ -49,6 +51,7 @@ export function AppShell() {
             <SidebarLink key={item.to} item={item} facility={facility} selected={item.to === current} />
           ))}
         </nav>
+        <SidebarLink item={HELP} facility={facility} selected={current === HELP.to} />
         {!signedIn && <div className="flex flex-col">{logIn}</div>}
       </aside>
 
@@ -89,47 +92,51 @@ export function AppShell() {
   )
 }
 
-/** The menu entry for this page: the longest `to` the path sits under, so /club/tournaments lights up
- * Tournaments and not Club as well. */
+/** The menu entry for this page: the one with the longest path the page sits under, so /club/tournaments
+ * lights up Tournaments and not Club as well. */
 function currentEntry(pathname: string, entries: readonly NavItem[]): string | undefined {
-  const under = entries.filter((e) => pathname === e.to || pathname.startsWith(`${e.to}/`))
-  return under.sort((a, b) => b.to.length - a.to.length)[0]?.to
+  let best: { to: string; length: number } | undefined
+  for (const entry of entries) {
+    for (const path of [entry.to, ...(entry.also ?? [])]) {
+      const under = pathname === path || pathname.startsWith(`${path}/`)
+      if (under && path.length > (best?.length ?? 0)) best = { to: entry.to, length: path.length }
+    }
+  }
+  return best?.to
 }
 
+// Plain links, not NavLinks: a NavLink marks itself current for every path beneath it, so /club would
+// claim /club/tournaments too. `selected` comes from currentEntry, which picks one entry.
 function TabLink({ item: { to, label, icon: Icon }, facility, selected }: { item: NavItem; facility: boolean; selected: boolean }) {
   return (
-    <NavLink
+    <Link
       to={to}
       aria-current={selected ? "page" : undefined}
-      className={() =>
-        cn(
-          "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-xs font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:text-sm",
+      className={cn(
+          "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-[11px] leading-4 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 min-[400px]:text-xs sm:text-sm",
           facility ? "text-white/70" : "text-muted-foreground",
           selected && (facility ? "text-brand-gold" : "text-brand-blue"),
-        )
-      }
+      )}
     >
       <Icon aria-hidden className="size-6 shrink-0" />
       <span className="max-w-full truncate">{label}</span>
-    </NavLink>
+    </Link>
   )
 }
 
 function SidebarLink({ item: { to, label, icon: Icon }, facility, selected }: { item: NavItem; facility: boolean; selected: boolean }) {
   return (
-    <NavLink
+    <Link
       to={to}
       aria-current={selected ? "page" : undefined}
-      className={() =>
-        cn(
+      className={cn(
           "flex h-12 shrink-0 items-center gap-3 rounded-lg px-3 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           facility ? "text-white/75 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground",
           selected && (facility ? "bg-white/15 text-white" : "bg-surface-selected text-brand-blue"),
-        )
-      }
+      )}
     >
       <Icon aria-hidden className="size-5" />
       {label}
-    </NavLink>
+    </Link>
   )
 }

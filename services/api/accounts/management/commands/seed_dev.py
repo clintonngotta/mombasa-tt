@@ -31,6 +31,12 @@ DEV_USERS = [
 REGIONAL_OFFICER = "regional@mombasa-tt.test"
 
 
+# Map positions, so "near me" searches have something to find: the club on Moi Avenue, the facility's
+# branch about four kilometres away in Nyali.
+DEV_CLUB_POSITION = ("-4.063500", "39.668200")
+DEV_BRANCH_POSITION = ("-4.047000", "39.702000")
+
+
 def _organization(name: str, kind: str) -> Organization:
     country, region = DEV_REGION
     organization = Organization.objects.filter(name=name).first()
@@ -51,6 +57,13 @@ def _facility() -> Organization:
         venue = Venue.objects.create(
             organization=facility, name="Nyali branch", town="Mombasa", address="Links Road, Nyali"
         )
+    if venue.latitude is None and venue.profile == "hidden":
+        # A branch nobody has set up yet is put on the map and in the finder; one a developer
+        # changed is left alone.
+        country, region = DEV_REGION
+        venue.latitude, venue.longitude = DEV_BRANCH_POSITION
+        venue.country, venue.region, venue.profile = country, region, "public"
+        venue.save(update_fields=["latitude", "longitude", "country", "region", "profile"])
     for n in range(1, 5):
         Table.objects.get_or_create(venue=venue, label=f"Table {n}", active=True, defaults={"position": n})
     return facility
@@ -118,8 +131,12 @@ class Command(BaseCommand):
 
         password = os.environ.get("DEV_LOGIN_PASSWORD", "mombasa-tt-dev")
         region = _region()
+        club = _organization(DEV_CLUB, Organization.Kind.CLUB_FACILITY)
+        if club.latitude is None:
+            club.latitude, club.longitude = DEV_CLUB_POSITION
+            club.save(update_fields=["latitude", "longitude"])
         organizations = {
-            DEV_CLUB: _organization(DEV_CLUB, Organization.Kind.CLUB_FACILITY),
+            DEV_CLUB: club,
             DEV_FACILITY: _facility(),
         }
         for email, display_name, place in DEV_USERS:

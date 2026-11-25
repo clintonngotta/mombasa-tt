@@ -11,7 +11,7 @@ type NextAction = { to: string; icon: LucideIcon; title: string; description: st
 
 // Real destinations only; ordering follows the goals the player picked.
 const ACTIONS: NextAction[] = [
-  { to: "/play", icon: Trophy, title: "Find a tournament", description: "Browse open events and enter", goals: ["compete", "rating"] },
+  { to: "/tournaments", icon: Trophy, title: "Find a tournament", description: "Browse open events and enter", goals: ["compete", "rating"] },
   { to: "/club", icon: Users, title: "Explore clubs", description: "Search for clubs and venues near you", goals: ["find_club", "organize"] },
   { to: "/profile", icon: UserRound, title: "Finish your profile", description: "Add details and choose what's public", goals: [] },
 ]

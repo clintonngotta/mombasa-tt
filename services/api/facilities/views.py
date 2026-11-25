@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 from activities.models import Activity
 from competitions.models import Tournament
 from core.exceptions import ApiException
+from core.nearby import MAX_RESULTS, within
 from core.pagination import StandardPagination, search_term
 from organizations.access import (
     effective_permissions,
@@ -33,6 +34,8 @@ from .serializers import (
     BranchScheduleItemSerializer,
     FacilityProfileSerializer,
     FacilitySerializer,
+    NearbyFacilitiesSerializer,
+    NearbyFacilitySearchSerializer,
     TableSerializer,
     TrainingHourListSerializer,
     TrainingHourSerializer,
@@ -41,6 +44,8 @@ from .serializers import (
 )
 
 MANAGE = Permission.FACILITIES_MANAGE
+# How many of the nearest branches an "open now" search near a point looks through.
+NEARBY_SCAN = 200
 
 
 def _save(serializer, field: str, message: str, **extra):
@@ -254,6 +259,37 @@ class FacilityViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
+    @property
+    def throttle_scope(self):
+        # A distance search works harder than a list.
+        return "nearby" if self.action == "nearby" else None
+
+    @extend_schema(request=NearbyFacilitySearchSerializer, responses={200: NearbyFacilitiesSerializer})
+    @action(detail=False, methods=["post"])
+    def nearby(self, request):
+        """Branches the caller may find with a map position inside `radius_m` of the given point,
+        nearest first, at most 50. The point is sent in the body so the player's position stays out
+        of URLs and logs."""
+        search = NearbyFacilitySearchSerializer(data=request.data)
+        search.is_valid(raise_exception=True)
+        where = search.validated_data
+        branches = self.get_queryset()
+        if term := where.get("search"):
+            branches = branches.filter(
+                Q(name__icontains=term) | Q(organization__name__icontains=term) | Q(town__icontains=term)
+            )
+        found = within(branches, where["latitude"], where["longitude"], where["radius_m"])
+        if where["open_now"]:
+            # Opening hours are read in each facility's own timezone, so this is decided row by row,
+            # over a bounded number of the nearest branches.
+            now = timezone.now()
+            open_ones = [venue for venue in found[:NEARBY_SCAN] if profile.is_open(venue, now)]
+            count, results = len(open_ones), open_ones[:MAX_RESULTS]
+        else:
+            results = list(found[:MAX_RESULTS])
+            count = len(results) if len(results) < MAX_RESULTS else found.count()
+        return Response(NearbyFacilitiesSerializer({"count": count, "results": results}).data)
 
     @extend_schema(responses={200: BranchScheduleItemSerializer(many=True)})
     @action(detail=True)
