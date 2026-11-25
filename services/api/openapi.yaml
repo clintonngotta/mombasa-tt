@@ -9459,6 +9459,252 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/representatives/:
+    get:
+      operationId: organizations_representatives_retrieve
+      description: 'GET: who represents this organization and, for a body, who is
+        sent to it. POST: nominate.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Representatives'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_representatives_create
+      description: 'GET: who represents this organization and, for a body, who is
+        sent to it. POST: nominate.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NominateRepresentativeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Representative'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/representatives/{id}/accept/:
+    post:
+      operationId: organizations_representatives_accept_create
+      description: The receiving body accepts a nomination.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Representative'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/representatives/{id}/decline/:
+    post:
+      operationId: organizations_representatives_decline_create
+      description: The receiving body declines a nomination, with an optional note
+        to the sender.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepresentativeNoteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Representative'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/representatives/{id}/remove/:
+    post:
+      operationId: organizations_representatives_remove_create
+      description: The receiving body ends an accepted representative's place.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepresentativeNoteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Representative'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/representatives/{id}/withdraw/:
+    post:
+      operationId: organizations_representatives_withdraw_create
+      description: The sending organization takes back a nomination or recalls its
+        representative.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Representative'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/representatives/cap/:
+    put:
+      operationId: organizations_representatives_cap_update
+      description: 'PUT: a governing body sets how many representatives each organization
+        may have with it.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepresentativeCapRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentativeCapSet'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/roles/:
     get:
       operationId: organizations_roles_list
@@ -19942,18 +20188,6 @@ components:
           minLength: 1
       required:
       - email
-    EndReasonEnum:
-      enum:
-      - replaced
-      - stepped_down
-      - left
-      - position_retired
-      type: string
-      description: |-
-        * `replaced` - Replaced
-        * `stepped_down` - Stepped Down
-        * `left` - Left
-        * `position_retired` - Position Retired
     EnginePhaseEnum:
       enum:
       - not_started
@@ -24199,6 +24433,27 @@ components:
       - planned_at
       - table
       - table_id
+    NominateRepresentativeRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        membership_id:
+          type: string
+          format: uuid
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        replaces:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - membership_id
     NominateRequest:
       type: object
       properties:
@@ -24277,6 +24532,7 @@ components:
       - booking
       - dues
       - events
+      - governance
       type: string
       description: |-
         * `up_next` - Up next
@@ -24290,6 +24546,7 @@ components:
         * `booking` - Bookings
         * `dues` - Dues and payments
         * `events` - Events listing
+        * `governance` - Committee and representatives
     NullEnum:
       enum:
       - null
@@ -26003,7 +26260,7 @@ components:
           type: string
           format: date
         end_reason:
-          $ref: '#/components/schemas/EndReasonEnum'
+          $ref: '#/components/schemas/PastHolderEndReasonEnum'
       required:
       - display_name
       - end_reason
@@ -26011,6 +26268,18 @@ components:
       - id
       - position
       - started_on
+    PastHolderEndReasonEnum:
+      enum:
+      - replaced
+      - stepped_down
+      - left
+      - position_retired
+      type: string
+      description: |-
+        * `replaced` - Replaced
+        * `stepped_down` - Stepped Down
+        * `left` - Left
+        * `position_retired` - Position Retired
     PatchedAccountUpdateRequest:
       type: object
       description: What players change about their own account. A new phone number
@@ -28890,6 +29159,156 @@ components:
           maxLength: 200
       required:
       - reason
+    Representative:
+      type: object
+      description: 'What either side sees of a representative: a display name and
+        the two organizations.'
+      properties:
+        id:
+          type: string
+          format: uuid
+        person:
+          $ref: '#/components/schemas/Person'
+        sender:
+          $ref: '#/components/schemas/OrganizationRef'
+        body:
+          $ref: '#/components/schemas/OrganizationRef'
+        status:
+          $ref: '#/components/schemas/RepresentativeStatusEnum'
+        end_reason:
+          oneOf:
+          - $ref: '#/components/schemas/RepresentativeEndReasonEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        term_start:
+          type: string
+          format: date
+          nullable: true
+        term_end:
+          type: string
+          format: date
+          nullable: true
+        in_term:
+          type: boolean
+          readOnly: true
+        replaces:
+          type: string
+          format: uuid
+          nullable: true
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        decided_at:
+          type: string
+          format: date-time
+          nullable: true
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - body
+      - created_at
+      - decided_at
+      - end_reason
+      - ended_at
+      - id
+      - in_term
+      - note
+      - person
+      - replaces
+      - sender
+      - status
+      - term_end
+      - term_start
+    RepresentativeCapRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        cap:
+          type: integer
+          maximum: 20
+          minimum: 1
+          nullable: true
+      required:
+      - cap
+    RepresentativeCapSet:
+      type: object
+      properties:
+        cap:
+          type: integer
+          nullable: true
+      required:
+      - cap
+    RepresentativeEndReasonEnum:
+      enum:
+      - replaced
+      - recalled
+      - removed
+      - left
+      - term_ended
+      type: string
+      description: "* `` - \n* `replaced` - Replaced\n* `recalled` - Recalled\n* `removed`
+        - Removed\n* `left` - Left\n* `term_ended` - Term Ended"
+    RepresentativeNoteRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        note:
+          type: string
+          default: ''
+          maxLength: 300
+    RepresentativeStatusEnum:
+      enum:
+      - pending
+      - accepted
+      - declined
+      - withdrawn
+      - ended
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `accepted` - Accepted
+        * `declined` - Declined
+        * `withdrawn` - Withdrawn
+        * `ended` - Ended
+    Representatives:
+      type: object
+      description: |-
+        `sent`: who this organization sends to `body`, whose limit is `cap`. `received`: for a governing
+        body, who is sent to it, limited to `own_cap` each. Staff also get nominations and history.
+      properties:
+        can_manage:
+          type: boolean
+        body:
+          allOf:
+          - $ref: '#/components/schemas/OrganizationRef'
+          nullable: true
+        cap:
+          type: integer
+          nullable: true
+        sent:
+          type: array
+          items:
+            $ref: '#/components/schemas/Representative'
+        receives:
+          type: boolean
+        own_cap:
+          type: integer
+          nullable: true
+        received:
+          type: array
+          items:
+            $ref: '#/components/schemas/Representative'
+      required:
+      - body
+      - can_manage
+      - cap
+      - own_cap
+      - received
+      - receives
+      - sent
     ResendVerificationRequest:
       type: object
       properties:

@@ -11,6 +11,7 @@ import {
   HeartHandshake,
   KeyRound,
   Landmark,
+  UserRoundCheck,
   Map,
   MapPin,
   Megaphone,
@@ -84,6 +85,13 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     title: "Governance",
     links: pick(
       { to: "/club/committee", label: governance ? "Committee and its positions" : "Committee", icon: Landmark },
+      member &&
+        variant === "club" &&
+        membership.organization.kind !== "coaching" && {
+          to: "/club/representatives",
+          label: isBodyKind(membership.organization.kind) ? "Representatives sent by clubs and regions" : "Representatives to the regional body",
+          icon: UserRoundCheck,
+        },
       member && { to: "/club/meetings", label: "Meetings", icon: CalendarClock },
       isBodyKind(membership.organization.kind) && { to: "/region", label: "Region: agenda, clubs, articles, meetings, sponsorships and approvals", icon: Map },
     ),

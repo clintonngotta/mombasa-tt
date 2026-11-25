@@ -1,4 +1,4 @@
-import type { APIRequestContext, Page } from "@playwright/test"
+import { expect, type APIRequestContext, type Page } from "@playwright/test"
 
 /** The development test logins the API seeds (`manage.py seed_dev`; mirrors src/lib/devAccounts.ts). They
  * exist only where DJANGO_DEBUG is on, so these tests can never run against production. */
@@ -7,14 +7,24 @@ export const ACCOUNTS = {
   player: "player@mombasa-tt.test",
   admin: "admin@mombasa-tt.test",
   facility: "facility@mombasa-tt.test",
+  regional: "regional@mombasa-tt.test",
 } as const
 export type Account = keyof typeof ACCOUNTS
 export const sessionFile = (account: Account) => `e2e/.auth/${account}.json`
 
 export async function logIn(page: Page, account: Account) {
   await page.goto("/login")
-  await page.getByLabel("Email or phone number").fill(ACCOUNTS[account])
-  await page.getByLabel("Password", { exact: true }).fill(PASSWORD)
+  const email = page.getByLabel("Email or phone number")
+  const password = page.getByLabel("Password", { exact: true })
+  // In development the page fills in a test account once it has loaded, which can land after we type:
+  // type again until both fields hold what we mean to send.
+  await expect(async () => {
+    await email.fill(ACCOUNTS[account])
+    await password.fill(PASSWORD)
+    await page.waitForTimeout(300)
+    await expect(email).toHaveValue(ACCOUNTS[account])
+    await expect(password).toHaveValue(PASSWORD)
+  }).toPass({ timeout: 10_000 })
   await page.getByRole("button", { name: "Log in", exact: true }).click()
   await page.waitForURL((url) => !url.pathname.startsWith("/login"))
 }

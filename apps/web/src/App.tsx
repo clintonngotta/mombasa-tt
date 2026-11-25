@@ -73,6 +73,7 @@ import { TraineePage } from "@/pages/coaching/TraineePage"
 import { DrillDetailPage } from "@/pages/training/DrillDetailPage"
 import { DrillEditPage } from "@/pages/training/DrillEditPage"
 import { CommitteePage } from "@/pages/club/CommitteePage"
+import { RepresentativesPage } from "@/pages/club/RepresentativesPage"
 import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
 import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
@@ -225,6 +226,7 @@ function App() {
               <Route path="/facilities" element={<FindFacilityPage />} />
               <Route path="/facilities/:id" element={<FacilityPage />} />
               <Route path="/club/committee" element={<CommitteePage />} />
+              <Route path="/club/representatives" element={<RepresentativesPage />} />
               <Route path="/club/roles" element={<RolesPage />} />
               <Route path="/club/roles/new" element={<RoleEditPage />} />
               <Route path="/club/roles/:id" element={<RoleEditPage />} />

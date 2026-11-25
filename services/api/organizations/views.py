@@ -16,6 +16,7 @@ from core.nearby import MAX_RESULTS, NearbySearchSerializer, within
 from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
 
+from . import representatives
 from .access import (
     OVERSIGHT,
     effective_permissions,
@@ -93,14 +94,15 @@ def join(organization: Organization, user) -> Membership:
 
 
 def leave(organization: Organization, membership: Membership) -> None:
-    """End a membership, dropping its roles and committee positions. Refuses to remove the last admin.
-    Locks the organization."""
+    """End a membership, dropping its roles, committee positions and places as a representative.
+    Refuses to remove the last admin. Locks the organization."""
     lock_organization(organization)
     ensure_admin_remains(organization, membership)
     membership.status = Membership.Status.LEFT
     membership.save(update_fields=["status"])
     membership.roles.clear()
     end_holdings_on_leaving(membership)
+    representatives.end_on_leaving(membership)
 
 
 class OrganizationViewSet(

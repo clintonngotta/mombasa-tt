@@ -4033,6 +4033,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/representatives/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET: who represents this organization and, for a body, who is sent to it. POST: nominate. */
+        get: operations["organizations_representatives_retrieve"];
+        put?: never;
+        /** @description GET: who represents this organization and, for a body, who is sent to it. POST: nominate. */
+        post: operations["organizations_representatives_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/representatives/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The receiving body accepts a nomination. */
+        post: operations["organizations_representatives_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/representatives/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The receiving body declines a nomination, with an optional note to the sender. */
+        post: operations["organizations_representatives_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/representatives/{id}/remove/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The receiving body ends an accepted representative's place. */
+        post: operations["organizations_representatives_remove_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/representatives/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The sending organization takes back a nomination or recalls its representative. */
+        post: operations["organizations_representatives_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/representatives/cap/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description PUT: a governing body sets how many representatives each organization may have with it. */
+        put: operations["organizations_representatives_cap_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/roles/": {
         parameters: {
             query?: never;
@@ -8424,14 +8527,6 @@ export interface components {
             email: string;
         };
         /**
-         * @description * `replaced` - Replaced
-         *     * `stepped_down` - Stepped Down
-         *     * `left` - Left
-         *     * `position_retired` - Position Retired
-         * @enum {string}
-         */
-        EndReasonEnum: "replaced" | "stepped_down" | "left" | "position_retired";
-        /**
          * @description * `not_started` - Not Started
          *     * `in_progress` - In Progress
          *     * `completed` - Completed
@@ -10066,6 +10161,17 @@ export interface components {
             /** Format: date-time */
             planned_at: string | null;
         };
+        /** @description Refuses fields it doesn't know. */
+        NominateRepresentativeRequest: {
+            /** Format: uuid */
+            membership_id: string;
+            /** Format: date */
+            term_start?: string | null;
+            /** Format: date */
+            term_end?: string | null;
+            /** Format: uuid */
+            replaces?: string | null;
+        };
         NominateRequest: {
             /** Format: uuid */
             membership_id: string;
@@ -10102,9 +10208,10 @@ export interface components {
          *     * `booking` - Bookings
          *     * `dues` - Dues and payments
          *     * `events` - Events listing
+         *     * `governance` - Committee and representatives
          * @enum {string}
          */
-        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events";
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance";
         /** @enum {unknown} */
         NullEnum: null;
         Offences: {
@@ -10965,8 +11072,16 @@ export interface components {
             started_on: string;
             /** Format: date */
             ended_on: string;
-            end_reason: components["schemas"]["EndReasonEnum"];
+            end_reason: components["schemas"]["PastHolderEndReasonEnum"];
         };
+        /**
+         * @description * `replaced` - Replaced
+         *     * `stepped_down` - Stepped Down
+         *     * `left` - Left
+         *     * `position_retired` - Position Retired
+         * @enum {string}
+         */
+        PastHolderEndReasonEnum: "replaced" | "stepped_down" | "left" | "position_retired";
         /** @description What players change about their own account. A new phone number starts unconfirmed. */
         PatchedAccountUpdateRequest: {
             display_name?: string;
@@ -12182,6 +12297,74 @@ export interface components {
         ReportRequest: {
             reason: components["schemas"]["StreamReportReasonEnum"];
             note?: string;
+        };
+        /** @description What either side sees of a representative: a display name and the two organizations. */
+        Representative: {
+            /** Format: uuid */
+            id: string;
+            person: components["schemas"]["Person"];
+            sender: components["schemas"]["OrganizationRef"];
+            body: components["schemas"]["OrganizationRef"];
+            status: components["schemas"]["RepresentativeStatusEnum"];
+            end_reason: components["schemas"]["RepresentativeEndReasonEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date */
+            term_start: string | null;
+            /** Format: date */
+            term_end: string | null;
+            readonly in_term: boolean;
+            /** Format: uuid */
+            replaces: string | null;
+            note: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            decided_at: string | null;
+            /** Format: date-time */
+            ended_at: string | null;
+        };
+        /** @description Refuses fields it doesn't know. */
+        RepresentativeCapRequest: {
+            cap: number | null;
+        };
+        RepresentativeCapSet: {
+            cap: number | null;
+        };
+        /**
+         * @description * `` -
+         *     * `replaced` - Replaced
+         *     * `recalled` - Recalled
+         *     * `removed` - Removed
+         *     * `left` - Left
+         *     * `term_ended` - Term Ended
+         * @enum {string}
+         */
+        RepresentativeEndReasonEnum: "replaced" | "recalled" | "removed" | "left" | "term_ended";
+        /** @description Refuses fields it doesn't know. */
+        RepresentativeNoteRequest: {
+            /** @default  */
+            note: string;
+        };
+        /**
+         * @description * `pending` - Pending
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `withdrawn` - Withdrawn
+         *     * `ended` - Ended
+         * @enum {string}
+         */
+        RepresentativeStatusEnum: "pending" | "accepted" | "declined" | "withdrawn" | "ended";
+        /**
+         * @description `sent`: who this organization sends to `body`, whose limit is `cap`. `received`: for a governing
+         *     body, who is sent to it, limited to `own_cap` each. Staff also get nominations and history.
+         */
+        Representatives: {
+            can_manage: boolean;
+            body: components["schemas"]["OrganizationRef"] | null;
+            cap: number | null;
+            sent: components["schemas"]["Representative"][];
+            receives: boolean;
+            own_cap: number | null;
+            received: components["schemas"]["Representative"][];
         };
         ResendVerificationRequest: {
             /** Format: email */
@@ -22899,6 +23082,236 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RegionClub"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_representatives_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Representatives"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_representatives_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NominateRepresentativeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Representative"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_representatives_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Representative"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_representatives_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RepresentativeNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Representative"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_representatives_remove_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RepresentativeNoteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Representative"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_representatives_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Representative"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_representatives_cap_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepresentativeCapRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepresentativeCapSet"];
                 };
             };
             /** @description Error envelope */

@@ -99,7 +99,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - Data migration: each appointment becomes a membership of the matching body, creating the body if it is missing. Cover country appointments and users with several appointments.
 - Rebuild the fixtures in `test_authority.py` and `test_regions.py` on bodies. The TASK-094 approval tests must pass.
 
-**TASK-108: representatives (M)** `feat/representatives`, after 107
+**TASK-108: representatives (M)** `feat/representatives`, after 107. Done 2026-11-25 (see tasks.md): the cap is checked under the body's lock at nomination and again at acceptance; a representative is not a member of the body.
 - Representative model: nominating organization, receiving body, member, term, and a status of pending, accepted, declined or ended.
 - Per-club cap, enforced under the organization lock. Accept and decline. Replacement.
 - End the term when the representative leaves the club (hook where leaving ends positions).

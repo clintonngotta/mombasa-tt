@@ -43,6 +43,9 @@ class Organization(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.CLUB)
+    # A governing body's limit on the representatives each club (or region) may have with it at once,
+    # pending nominations included. Empty for no limit (REQ-045).
+    representative_cap = models.PositiveSmallIntegerField(null=True, blank=True)
     # Dates of the organization's tournaments and activities are entered and shown in this timezone.
     timezone = models.CharField(max_length=64, default=DEFAULT_TIMEZONE)
     created_by = models.ForeignKey(
@@ -340,6 +343,72 @@ class AdminHandover(models.Model):
 
     def __str__(self):
         return f"{self.organization_id}: {self.from_user_id} -> {self.to_user_id} ({self.status})"
+
+
+class Representative(models.Model):
+    """Someone a club sends to its regional body, or a regional body to the national one (REQ-045).
+    The sender nominates an active member, the receiving body accepts or declines, and the sender can
+    recall or replace them. Leaving the sender ends it. Rows are never deleted. A representative holds
+    no permission in the body and is not its member: the body sees a name and who they speak for."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        ACCEPTED = "accepted"
+        DECLINED = "declined"
+        WITHDRAWN = "withdrawn"  # taken back by the sender before a decision
+        ENDED = "ended"
+
+    class EndReason(models.TextChoices):
+        REPLACED = "replaced"
+        RECALLED = "recalled"  # by the sender
+        REMOVED = "removed"  # by the body
+        LEFT = "left"  # left the sender
+        TERM_ENDED = "term_ended"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    body = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="representatives_received")
+    sender = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="representatives_sent")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    end_reason = models.CharField(max_length=10, choices=EndReason.choices, blank=True, default="")
+    term_start = models.DateField(null=True, blank=True)
+    term_end = models.DateField(null=True, blank=True)
+    # The representative this one takes over from once accepted.
+    replaces = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    # The body's words when declining or removing.
+    note = models.CharField(max_length=300, blank=True)
+    nominated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["body", "sender", "user"],
+                condition=models.Q(status__in=["pending", "accepted"]),
+                name="one_open_representation",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(term_start__isnull=True)
+                | models.Q(term_end__isnull=True)
+                | models.Q(term_end__gte=models.F("term_start")),
+                name="representative_term_in_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["body", "status"], name="representative_body_status"),
+            models.Index(fields=["sender", "status"], name="representative_sender_status"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} for {self.sender_id} at {self.body_id} ({self.status})"
 
 
 class MemberField(models.Model):

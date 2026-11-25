@@ -78,6 +78,7 @@ from organizations.models import (
     Membership,
     Organization,
     PositionHolder,
+    Representative,
     Role,
     seed_roles,
 )
@@ -390,6 +391,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-admin-nomination-accept": {"post": OWNER},
     "me-admin-nomination-decline": {"post": OWNER},
     # REQ-045 committees: members see the committee and its history; governance staff change it.
+    # Representatives (REQ-045, TASK-108): members read who speaks for them; governance staff of the
+    # sender nominate and withdraw, and of the receiving body decide and set the cap.
+    "organization-representatives": {"get": MEMBER, "post": STAFF},
+    "organization-representatives-cap": {"put": STAFF},
+    "organization-representative-withdraw": {"post": STAFF},
+    "organization-representative-accept": {"post": STAFF},
+    "organization-representative-decline": {"post": STAFF},
+    "organization-representative-remove": {"post": STAFF},
     "organization-committee": {"get": MEMBER},
     "organization-committee-history": {"get": MEMBER},
     "organization-committee-candidates": {"get": STAFF},
@@ -542,6 +551,13 @@ NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tourname
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 # Routes that take a file upload rather than JSON.
+# Routes the receiving body's staff call, so they are tried on the regional body, not the club.
+BODY_SIDE = {
+    "organization-representatives-cap",
+    "organization-representative-accept",
+    "organization-representative-decline",
+    "organization-representative-remove",
+}
 MULTIPART = {"organization-expense-receipt", "tournament-cover", "tournament-documents"}
 PDF = b"%PDF-1.4\n%%EOF\n"
 
@@ -623,6 +639,8 @@ BODIES = {
     ("organization-member-roles", "put"): {"roles": []},
     ("organization-admin-nominate", "post"): {"membership_id": FAITH_MEMBERSHIP},
     ("organization-admin-appoint", "post"): {"membership_id": FAITH_MEMBERSHIP, "reason": "Test"},
+    ("organization-representatives", "post"): {"membership_id": FAITH_MEMBERSHIP},
+    ("organization-representatives-cap", "put"): {"cap": 5},
     ("organization-committee-positions", "post"): {"name": "Youth officer"},
     # Every active position, read when the call is made (the create above adds one).
     ("organization-committee-positions-reorder", "post"): lambda: {
@@ -1415,6 +1433,17 @@ class World:
         Membership.objects.create(organization=self.body, user=self.amina).roles.add(
             seed_roles(self.body)[RoleKey.ADMIN]
         )
+
+        # Coast's representatives at the body: one for each thing either side can do to one.
+        def sent(user, status="pending"):
+            return Representative.objects.create(
+                body=self.body, sender=self.coast, user=user, status=status, nominated_by=self.amina
+            )
+
+        self.rep_to_withdraw = sent(self.grace)
+        self.rep_to_accept = sent(self.amina)
+        self.rep_to_decline = sent(self.chiku)
+        self.rep_to_remove = sent(self.daudi, "accepted")
         self.agenda_item = AgendaItem.objects.create(
             organization=self.body, title="MARK-AGENDA", starts_on="2027-01-10", ends_on="2027-01-10"
         )
@@ -1604,6 +1633,10 @@ class World:
             # Faith's, because the staff checks remove Baraka before they reach this route.
             "organization-member-fields": self.faith_membership.id,
             "organization-member-field": self.staff_field.id,
+            "organization-representative-withdraw": self.rep_to_withdraw.id,
+            "organization-representative-accept": self.rep_to_accept.id,
+            "organization-representative-decline": self.rep_to_decline.id,
+            "organization-representative-remove": self.rep_to_remove.id,
             "organization-committee-position": self.position.id,
             "organization-committee-position-values": self.position.id,
             "organization-committee-position-holder": self.vacant_position.id,
@@ -1752,6 +1785,8 @@ class World:
             found["tournament_pk"] = self.published.id
             return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
+            found["organization_pk"] = self.body.id
+        if name in BODY_SIDE:
             found["organization_pk"] = self.body.id
         if name.startswith(("tournament-sponsor", "tournament-stream")):
             found["tournament_pk"] = self.published.id
@@ -1941,6 +1976,8 @@ class World:
                 CoachProfile.objects.values_list("user__email", "headline", "accepting")
             ),
             "coachings": sorted(Coaching.objects.values_list("id", "status")),
+            "representatives": sorted(Representative.objects.values_list("id", "status")),
+            "caps": sorted(Organization.objects.values_list("id", "representative_cap")),
             "bookings": sorted(Booking.objects.values_list("id", "status", "starts_at")),
             "coach_notes": sorted(MatchComment.objects.values_list("id", "body")),
             "tables": sorted(Table.objects.values_list("label", "active")),

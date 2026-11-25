@@ -25,6 +25,7 @@ class Category(models.TextChoices):
     BOOKING = "booking", "Bookings"
     DUES = "dues", "Dues and payments"
     EVENTS = "events", "Events listing"
+    GOVERNANCE = "governance", "Committee and representatives"
 
 
 # What a player can't switch off: being called to a table is how match day works.
