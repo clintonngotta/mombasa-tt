@@ -238,6 +238,7 @@ SPECTACULAR_SETTINGS = {
         "FeedbackFormStatusEnum": "feedback.models.FeedbackForm.Status",
         "SquadPlaceStatusEnum": "squads.models.SquadPlace.Status",
         "AbsenceEnum": "penalties.models.Absence",
+        "ExpenseCategoryEnum": "finance.models.Expense.Category",
         "PenaltyKindEnum": "penalties.models.PenaltyKind",
         "AbsencePenaltyStatusEnum": "penalties.models.AbsencePenalty.Status",
         "AppealEnum": "penalties.models.AbsencePenalty.Appeal",

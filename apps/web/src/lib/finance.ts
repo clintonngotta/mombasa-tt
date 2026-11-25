@@ -1,4 +1,4 @@
-import { api } from "@/lib/api"
+import { api, apiUrl } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
 
 export type Charge = Schemas["Charge"]
@@ -83,3 +83,23 @@ export const recordContribution = (orgId: string, id: string, body: Schemas["Wel
 export const reverseContribution = (orgId: string, id: string, contributionId: string, reason: string) =>
   api<WelfareContribution>(`${welfare(orgId)}${id}/contributions/${contributionId}/reverse/`, { body: { reason } })
 export const recordWelfareExpense = (orgId: string, id: string, body: Schemas["ExpenseRequest"]) => api<Expense>(`${welfare(orgId)}${id}/expenses/`, { body })
+
+// The financial year and the annual report (REQ-041): finance staff draft, publish and amend; members
+// read published reports; a public report needs no login. Totals only, never a member or a payee.
+export type AnnualReport = Schemas["AnnualReport"]
+export type ReportCurrency = Schemas["ReportCurrency"]
+export type ExpenseCategory = NonNullable<Expense["category"]>
+export const EXPENSE_CATEGORY: Record<ExpenseCategory, string> = { hall_hire: "Hall hire", equipment: "Equipment", welfare: "Welfare", events: "Events", transport: "Transport", other: "Other" }
+const reportsBase = (orgId: string) => `/organizations/${orgId}/annual-reports/`
+export const reportKeys = { list: (orgId: string) => ["finance", orgId, "reports"] as const, settings: (orgId: string) => ["finance", orgId, "settings"] as const }
+export const listReports = (orgId: string) => api<AnnualReport[]>(reportsBase(orgId))
+export const draftReport = (orgId: string) => api<AnnualReport>(reportsBase(orgId), { body: {} })
+export const updateReport = (orgId: string, id: string, body: { narrative?: string; public?: boolean }) => api<AnnualReport>(`${reportsBase(orgId)}${id}/`, { method: "PATCH", body })
+export const deleteReport = (orgId: string, id: string) => api<void>(`${reportsBase(orgId)}${id}/`, { method: "DELETE" })
+export const publishReport = (orgId: string, id: string) => api<AnnualReport>(`${reportsBase(orgId)}${id}/publish/`, { body: {} })
+export const amendReport = (orgId: string, id: string) => api<AnnualReport>(`${reportsBase(orgId)}${id}/amend/`, { body: {} })
+export const reportFileUrl = (orgId: string, id: string, kind: "csv" | "pdf") => apiUrl(`${reportsBase(orgId)}${id}/export.${kind}`)
+export const getFinanceSettings = (orgId: string) => api<Schemas["FinanceSettings"]>(`${base(orgId)}settings/`)
+export const saveFinanceSettings = (orgId: string, body: Schemas["FinanceSettingsRequest"]) => api<Schemas["FinanceSettings"]>(`${base(orgId)}settings/`, { method: "PUT", body })
+/** "1,070.00" or "-50.00": minor units as money, a deficit with its minus. */
+export const moneyText = (minor: number) => `${minor < 0 ? "-" : ""}${(Math.abs(minor) / 100).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

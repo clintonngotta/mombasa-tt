@@ -9,7 +9,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 
 USER = settings.AUTH_USER_MODEL
 
@@ -205,6 +205,18 @@ class Expense(models.Model):
     welfare_project = models.ForeignKey(
         "finance.WelfareProject", on_delete=models.PROTECT, null=True, blank=True, related_name="expenses"
     )
+
+    class Category(models.TextChoices):
+        HALL_HIRE = "hall_hire", "Hall hire"
+        EQUIPMENT = "equipment", "Equipment"
+        WELFARE = "welfare", "Welfare"
+        EVENTS = "events", "Events"
+        TRANSPORT = "transport", "Transport"
+        OTHER = "other", "Other"
+
+    # What kind of spending it is, for the annual report (REQ-041), and who was paid.
+    category = models.CharField(max_length=10, choices=Category.choices, default=Category.OTHER)
+    payee = models.CharField(max_length=120, blank=True)
     description = models.CharField(max_length=200)
     amount_minor = models.PositiveIntegerField()
     currency = models.CharField(max_length=3, default="KES")
@@ -284,3 +296,78 @@ class WelfareContribution(models.Model):
 
     def __str__(self):
         return f"{self.contributor_id} to {self.project_id}"
+
+
+class FinanceSettings(models.Model):
+    """When the organization's financial year ends (REQ-041): 31 December unless it says otherwise."""
+
+    organization = models.OneToOneField(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="finance_settings"
+    )
+    year_end_month = models.PositiveSmallIntegerField(default=12)
+    year_end_day = models.PositiveSmallIntegerField(default=31)
+    updated_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(
+                    year_end_month__gte=1, year_end_month__lte=12, year_end_day__gte=1, year_end_day__lte=31
+                ),
+                name="finance_year_end_is_a_date",
+            )
+        ]
+
+    def __str__(self):
+        return f"Finance settings of {self.organization_id}"
+
+
+class AnnualReport(models.Model):
+    """The accounts of one financial year (REQ-041). A draft shows the ledger as it stands. Publishing
+    freezes the figures in `snapshot` for good; a later correction is published as a new version that
+    lists what changed, and the earlier versions stay."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft"
+        PUBLISHED = "published"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="annual_reports"
+    )
+    period_start = models.DateField()
+    period_end = models.DateField()
+    version = models.PositiveSmallIntegerField(default=1)
+    amends = models.OneToOneField(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="amended_by"
+    )
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    narrative = models.TextField(max_length=5000, blank=True)
+    # Shown to everyone, signed in or not. Members always see a published report.
+    public = models.BooleanField(default=False)
+    # The figures as published, and for an amendment what differs from the version before.
+    snapshot = models.JSONField(null=True, blank=True)
+    changes = models.JSONField(default=list, blank=True)
+    created_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_by = models.ForeignKey(USER, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-period_end", "-version"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "period_end", "version"], name="one_report_version_per_year"
+            ),
+            models.CheckConstraint(
+                condition=Q(status="draft") | Q(snapshot__isnull=False, published_at__isnull=False),
+                name="published_report_is_frozen",
+            ),
+            models.CheckConstraint(
+                condition=Q(period_end__gt=F("period_start")), name="report_period_in_order"
+            ),
+        ]
+
+    def __str__(self):
+        return f"Report to {self.period_end} v{self.version}"

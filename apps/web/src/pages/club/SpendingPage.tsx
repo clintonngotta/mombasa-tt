@@ -9,7 +9,7 @@ import { apiOriginUrl, errorMessage } from "@/lib/api"
 import { can, useActiveMembership } from "@/lib/clubs"
 import { useAdminAccessLost } from "@/lib/clubAdmin"
 import { formatMoney } from "@/lib/coaching"
-import { campaignKeys, financeKeys, getFinanceSummary, listCampaigns, listExpenses, recordExpense, reverseExpense, toMinor, uploadReceipt, type Expense } from "@/lib/finance"
+import { campaignKeys, EXPENSE_CATEGORY, financeKeys, getFinanceSummary, listCampaigns, listExpenses, recordExpense, reverseExpense, toMinor, uploadReceipt, type Expense, type ExpenseCategory } from "@/lib/finance"
 
 const SELECT = "h-12 rounded-md border bg-background px-3"
 const today = () => new Date().toISOString().slice(0, 10)
@@ -71,13 +71,16 @@ function NewExpense({ orgId }: { orgId: string }) {
   const campaigns = useQuery({ queryKey: campaignKeys(orgId), queryFn: () => listCampaigns(orgId) })
   const [campaign, setCampaign] = useState("")
   const [description, setDescription] = useState("")
+  const [category, setCategory] = useState<ExpenseCategory>("other")
+  const [payee, setPayee] = useState("")
   const [amount, setAmount] = useState("")
   const [spent, setSpent] = useState(today)
   const add = useSpendingMutation(
     orgId,
-    () => recordExpense(orgId, { campaign_id: campaign || null, description: description.trim(), amount_minor: toMinor(amount) ?? 0, currency: "KES", spent_on: spent }),
+    () => recordExpense(orgId, { campaign_id: campaign || null, category, payee: payee.trim(), description: description.trim(), amount_minor: toMinor(amount) ?? 0, currency: "KES", spent_on: spent }),
     () => {
       setDescription("")
+      setPayee("")
       setAmount("")
     },
   )
@@ -95,6 +98,19 @@ function NewExpense({ orgId }: { orgId: string }) {
           ))}
         </select>
       </label>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm font-semibold">
+          Category
+          <select className={SELECT} value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)}>
+            {(Object.keys(EXPENSE_CATEGORY) as ExpenseCategory[]).map((value) => (
+              <option key={value} value={value}>
+                {EXPENSE_CATEGORY[value]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Field label="Paid to" optional maxLength={120} value={payee} onChange={(e) => setPayee(e.target.value)} hint="For your records; not in the annual report." />
+      </div>
       <div className="flex flex-wrap items-end gap-2">
         <Field label="What for" className="min-w-48 flex-1" maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} />
         <Field label="Amount (KES)" type="number" min={0} className="w-36" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -120,7 +136,8 @@ function ExpenseRow({ orgId, expense: e, manage }: { orgId: string; expense: Exp
         {e.description} · {formatMoney(e.amount_minor, e.currency)}
       </p>
       <p className="text-sm text-muted-foreground">
-        {e.campaign_title ?? "General running costs"} · {e.spent_on}
+        {e.campaign_title ?? "General running costs"} · {EXPENSE_CATEGORY[e.category ?? "other"]}
+        {e.payee && ` · ${e.payee}`} · {e.spent_on}
         {e.reversed && ` · reversed: ${e.reversal_reason}`}
       </p>
       {e.receipt && (

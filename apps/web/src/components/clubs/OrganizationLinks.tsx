@@ -13,6 +13,7 @@ import {
   Landmark,
   UserRoundCheck,
   Map,
+  FileText,
   Gavel,
   MapPin,
   Shield,
@@ -82,7 +83,10 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
   }
   const money: Group = {
     title: "Money",
-    links: pick(finances && { to: "/club/finance", label: "Finances: charges, payments and balances", icon: Banknote }),
+    links: pick(
+      finances && { to: "/club/finance", label: "Finances: charges, payments and balances", icon: Banknote },
+      member && { to: "/club/finance/reports", label: "Annual reports: the club's accounts", icon: FileText },
+    ),
   }
   const governanceGroup: Group = {
     title: "Governance",

@@ -6295,6 +6295,325 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/annual-reports/:
+    get:
+      operationId: organizations_annual_reports_list
+      description: |-
+        GET /organizations/{org}/annual-reports/: the reports you may read, latest first (public ones
+        need no login). POST drafts the report of a finished year: finance managers.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnnualReport'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_annual_reports_create
+      description: |-
+        GET /organizations/{org}/annual-reports/: the reports you may read, latest first (public ones
+        need no login). POST drafts the report of a finished year: finance managers.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewReportRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualReport'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/annual-reports/{id}/:
+    get:
+      operationId: organizations_annual_reports_retrieve
+      description: |-
+        GET /organizations/{org}/annual-reports/{id}/. PATCH sets the summary of a draft, or whether a
+        report is public. DELETE discards a draft.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualReport'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_annual_reports_partial_update
+      description: |-
+        GET /organizations/{org}/annual-reports/{id}/. PATCH sets the summary of a draft, or whether a
+        report is public. DELETE discards a draft.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReportUpdateRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualReport'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_annual_reports_destroy
+      description: |-
+        GET /organizations/{org}/annual-reports/{id}/. PATCH sets the summary of a draft, or whether a
+        report is public. DELETE discards a draft.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/annual-reports/{id}/amend/:
+    post:
+      operationId: organizations_annual_reports_amend_create
+      description: |-
+        POST .../annual-reports/{id}/amend/: start a new version of the latest published report of that
+        year. The published version stays as it is.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualReport'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/annual-reports/{id}/export.csv:
+    get:
+      operationId: organizations_annual_reports_export.csv_retrieve
+      description: |-
+        GET .../annual-reports/{id}/export.csv or export.pdf: the report as a file, for whoever may read
+        it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/annual-reports/{id}/export.pdf:
+    get:
+      operationId: organizations_annual_reports_export.pdf_retrieve
+      description: |-
+        GET .../annual-reports/{id}/export.csv or export.pdf: the report as a file, for whoever may read
+        it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/annual-reports/{id}/publish/:
+    post:
+      operationId: organizations_annual_reports_publish_create
+      description: |-
+        POST .../annual-reports/{id}/publish/: freeze the figures as they stand. An amendment also
+        records what differs from the version before.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualReport'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/articles/:
     get:
       operationId: organizations_articles_list
@@ -8982,6 +9301,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Payment'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/finance/settings/:
+    get:
+      operationId: organizations_finance_settings_retrieve
+      description: 'GET/PUT /organizations/{org}/finance/settings/: the day the financial
+        year ends.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceSettings'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: organizations_finance_settings_update
+      description: 'GET/PUT /organizations/{org}/finance/settings/: the day the financial
+        year ends.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceSettingsRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceSettings'
           description: ''
         4XX:
           description: Error envelope
@@ -19304,6 +19686,65 @@ components:
       description: |-
         * `draft` - Draft
         * `published` - Published
+    AnnualReport:
+      type: object
+      description: 'A report: frozen figures once published, the ledger as it stands
+        while a draft.'
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_name:
+          type: string
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        version:
+          type: integer
+        amends:
+          type: string
+          format: uuid
+          nullable: true
+          description: The version this one corrects.
+        status:
+          $ref: '#/components/schemas/AnnouncementStatusEnum'
+        narrative:
+          type: string
+        public:
+          type: boolean
+        changes:
+          type: array
+          items:
+            type: string
+        figures:
+          $ref: '#/components/schemas/ReportFigures'
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        published_by_name:
+          type: string
+          nullable: true
+        can_edit:
+          type: boolean
+      required:
+      - amends
+      - can_edit
+      - changes
+      - figures
+      - id
+      - narrative
+      - organization_name
+      - period_end
+      - period_start
+      - public
+      - published_at
+      - published_by_name
+      - status
+      - version
     AnswerAnswerEnum:
       enum:
       - attending
@@ -23234,6 +23675,11 @@ components:
         campaign_title:
           type: string
           readOnly: true
+        category:
+          $ref: '#/components/schemas/ExpenseCategoryEnum'
+        payee:
+          type: string
+          maxLength: 120
         description:
           type: string
           maxLength: 200
@@ -23267,14 +23713,32 @@ components:
       - amount_minor
       - campaign_id
       - campaign_title
+      - category
       - created_at
       - currency
       - description
       - id
+      - payee
       - receipt
       - reversal_reason
       - reversed
       - spent_on
+    ExpenseCategoryEnum:
+      enum:
+      - hall_hire
+      - equipment
+      - welfare
+      - events
+      - transport
+      - other
+      type: string
+      description: |-
+        * `hall_hire` - Hall hire
+        * `equipment` - Equipment
+        * `welfare` - Welfare
+        * `events` - Events
+        * `transport` - Transport
+        * `other` - Other
     ExpenseRequest:
       type: object
       description: An expense as finance staff see it, with a short-lived link to
@@ -23284,6 +23748,11 @@ components:
           type: string
           format: uuid
           nullable: true
+        category:
+          $ref: '#/components/schemas/ExpenseCategoryEnum'
+        payee:
+          type: string
+          maxLength: 120
         description:
           type: string
           minLength: 1
@@ -24062,6 +24531,36 @@ components:
           maxLength: 300
       required:
       - reason
+    FinanceSettings:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        year_end_month:
+          type: integer
+          maximum: 12
+          minimum: 1
+        year_end_day:
+          type: integer
+          maximum: 31
+          minimum: 1
+      required:
+      - year_end_day
+      - year_end_month
+    FinanceSettingsRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        year_end_month:
+          type: integer
+          maximum: 12
+          minimum: 1
+        year_end_day:
+          type: integer
+          maximum: 31
+          minimum: 1
+      required:
+      - year_end_day
+      - year_end_month
     FormEnum:
       enum:
       - W
@@ -27749,6 +28248,15 @@ components:
       - latitude
       - longitude
       - radius_m
+    NewReportRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        period_end:
+          type: string
+          format: date
+          description: The year end to report on. Defaults to the latest year that
+            has ended.
     NextMatch:
       type: object
       description: 'The match recommended to take a table next (REQ-053). A recommendation
@@ -30489,6 +30997,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PublishedDetailsEnum'
+    PatchedReportUpdateRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        narrative:
+          type: string
+          maxLength: 5000
+        public:
+          type: boolean
     PatchedRoleRequest:
       type: object
       description: A role and its permissions (REQ-005). Admin always reports every
@@ -32731,6 +33248,90 @@ components:
           maxItems: 30
       required:
       - positions
+    ReportCurrency:
+      type: object
+      properties:
+        currency:
+          type: string
+        opening_minor:
+          type: integer
+        receipts_minor:
+          type: integer
+        receipts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLine'
+        expenses_minor:
+          type: integer
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportLine'
+        purposes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportPurpose'
+        closing_minor:
+          type: integer
+        outstanding_dues_minor:
+          type: integer
+        waived_minor:
+          type: integer
+      required:
+      - closing_minor
+      - currency
+      - expenses
+      - expenses_minor
+      - opening_minor
+      - outstanding_dues_minor
+      - purposes
+      - receipts
+      - receipts_minor
+      - waived_minor
+    ReportFigures:
+      type: object
+      properties:
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        currencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportCurrency'
+      required:
+      - currencies
+      - period_end
+      - period_start
+    ReportLine:
+      type: object
+      properties:
+        label:
+          type: string
+        amount_minor:
+          type: integer
+      required:
+      - amount_minor
+      - label
+    ReportPurpose:
+      type: object
+      properties:
+        title:
+          type: string
+        received_minor:
+          type: integer
+        spent_minor:
+          type: integer
+        net_minor:
+          type: integer
+          description: Received less spent; negative is a deficit.
+      required:
+      - net_minor
+      - received_minor
+      - spent_minor
+      - title
     ReportRequest:
       type: object
       properties:

@@ -2947,6 +2947,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/annual-reports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{org}/annual-reports/: the reports you may read, latest first (public ones
+         *     need no login). POST drafts the report of a finished year: finance managers.
+         */
+        get: operations["organizations_annual_reports_list"];
+        put?: never;
+        /**
+         * @description GET /organizations/{org}/annual-reports/: the reports you may read, latest first (public ones
+         *     need no login). POST drafts the report of a finished year: finance managers.
+         */
+        post: operations["organizations_annual_reports_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/annual-reports/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{org}/annual-reports/{id}/. PATCH sets the summary of a draft, or whether a
+         *     report is public. DELETE discards a draft.
+         */
+        get: operations["organizations_annual_reports_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description GET /organizations/{org}/annual-reports/{id}/. PATCH sets the summary of a draft, or whether a
+         *     report is public. DELETE discards a draft.
+         */
+        delete: operations["organizations_annual_reports_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description GET /organizations/{org}/annual-reports/{id}/. PATCH sets the summary of a draft, or whether a
+         *     report is public. DELETE discards a draft.
+         */
+        patch: operations["organizations_annual_reports_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/annual-reports/{id}/amend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../annual-reports/{id}/amend/: start a new version of the latest published report of that
+         *     year. The published version stays as it is.
+         */
+        post: operations["organizations_annual_reports_amend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/annual-reports/{id}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET .../annual-reports/{id}/export.csv or export.pdf: the report as a file, for whoever may read
+         *     it.
+         */
+        get: operations["organizations_annual_reports_export.csv_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/annual-reports/{id}/export.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET .../annual-reports/{id}/export.csv or export.pdf: the report as a file, for whoever may read
+         *     it.
+         */
+        get: operations["organizations_annual_reports_export.pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/annual-reports/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../annual-reports/{id}/publish/: freeze the figures as they stand. An amendment also
+         *     records what differs from the version before.
+         */
+        post: operations["organizations_annual_reports_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/articles/": {
         parameters: {
             query?: never;
@@ -3930,6 +4062,24 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["organizations_finance_payments_reverse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/finance/settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET/PUT /organizations/{org}/finance/settings/: the day the financial year ends. */
+        get: operations["organizations_finance_settings_retrieve"];
+        /** @description GET/PUT /organizations/{org}/finance/settings/: the day the financial year ends. */
+        put: operations["organizations_finance_settings_update"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8302,6 +8452,31 @@ export interface components {
          * @enum {string}
          */
         AnnouncementStatusEnum: "draft" | "published";
+        /** @description A report: frozen figures once published, the ledger as it stands while a draft. */
+        AnnualReport: {
+            /** Format: uuid */
+            id: string;
+            organization_name: string;
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+            version: number;
+            /**
+             * Format: uuid
+             * @description The version this one corrects.
+             */
+            amends: string | null;
+            status: components["schemas"]["AnnouncementStatusEnum"];
+            narrative: string;
+            public: boolean;
+            changes: string[];
+            figures: components["schemas"]["ReportFigures"];
+            /** Format: date-time */
+            published_at: string | null;
+            published_by_name: string | null;
+            can_edit: boolean;
+        };
         /**
          * @description * `attending` - attending
          *     * `apologies` - apologies
@@ -9881,6 +10056,8 @@ export interface components {
             /** Format: uuid */
             campaign_id: string | null;
             readonly campaign_title: string;
+            category: components["schemas"]["ExpenseCategoryEnum"];
+            payee: string;
             description: string;
             amount_minor: number;
             /** @default KES */
@@ -9893,10 +10070,22 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        /**
+         * @description * `hall_hire` - Hall hire
+         *     * `equipment` - Equipment
+         *     * `welfare` - Welfare
+         *     * `events` - Events
+         *     * `transport` - Transport
+         *     * `other` - Other
+         * @enum {string}
+         */
+        ExpenseCategoryEnum: "hall_hire" | "equipment" | "welfare" | "events" | "transport" | "other";
         /** @description An expense as finance staff see it, with a short-lived link to its receipt. */
         ExpenseRequest: {
             /** Format: uuid */
             campaign_id?: string | null;
+            category?: components["schemas"]["ExpenseCategoryEnum"];
+            payee?: string;
             description: string;
             amount_minor: number;
             /** @default KES */
@@ -10175,6 +10364,16 @@ export interface components {
         FinanceAudienceEnum: "all" | "selected";
         FinanceReasonRequest: {
             reason: string;
+        };
+        /** @description Refuses fields it doesn't know. */
+        FinanceSettings: {
+            year_end_month: number;
+            year_end_day: number;
+        };
+        /** @description Refuses fields it doesn't know. */
+        FinanceSettingsRequest: {
+            year_end_month: number;
+            year_end_day: number;
         };
         /**
          * @description * `W` - W
@@ -11601,6 +11800,14 @@ export interface components {
             radius_m: number;
             search?: string;
         };
+        /** @description Refuses fields it doesn't know. */
+        NewReportRequest: {
+            /**
+             * Format: date
+             * @description The year end to report on. Defaults to the latest year that has ended.
+             */
+            period_end?: string;
+        };
         /** @description The match recommended to take a table next (REQ-053). A recommendation only: nothing is sent. */
         NextMatch: {
             /** Format: uuid */
@@ -12878,6 +13085,11 @@ export interface components {
             directory_opt_in?: boolean;
             published_details?: components["schemas"]["PublishedDetailsEnum"][];
         };
+        /** @description Refuses fields it doesn't know. */
+        PatchedReportUpdateRequest: {
+            narrative?: string;
+            public?: boolean;
+        };
         /** @description A role and its permissions (REQ-005). Admin always reports every permission. */
         PatchedRoleRequest: {
             name?: string;
@@ -13862,6 +14074,36 @@ export interface components {
         };
         ReorderRequest: {
             positions: string[];
+        };
+        ReportCurrency: {
+            currency: string;
+            opening_minor: number;
+            receipts_minor: number;
+            receipts: components["schemas"]["ReportLine"][];
+            expenses_minor: number;
+            expenses: components["schemas"]["ReportLine"][];
+            purposes: components["schemas"]["ReportPurpose"][];
+            closing_minor: number;
+            outstanding_dues_minor: number;
+            waived_minor: number;
+        };
+        ReportFigures: {
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+            currencies: components["schemas"]["ReportCurrency"][];
+        };
+        ReportLine: {
+            label: string;
+            amount_minor: number;
+        };
+        ReportPurpose: {
+            title: string;
+            received_minor: number;
+            spent_minor: number;
+            /** @description Received less spent; negative is a deficit. */
+            net_minor: number;
         };
         ReportRequest: {
             reason: components["schemas"]["StreamReportReasonEnum"];
@@ -22143,6 +22385,290 @@ export interface operations {
             };
         };
     };
+    organizations_annual_reports_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnualReport"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_annual_reports_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["NewReportRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnualReport"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_annual_reports_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnualReport"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_annual_reports_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_annual_reports_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedReportUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnualReport"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_annual_reports_amend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnualReport"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "organizations_annual_reports_export.csv_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "organizations_annual_reports_export.pdf_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_annual_reports_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnualReport"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_articles_list: {
         parameters: {
             query?: never;
@@ -24559,6 +25085,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Payment"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceSettings"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_finance_settings_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinanceSettingsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceSettings"];
                 };
             };
             /** @description Error envelope */

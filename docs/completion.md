@@ -6,8 +6,8 @@ Updated 2026-11-25. Counted from the checkboxes in [tasks.md](../tasks.md) on `d
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 101 | 135 | 34 | 75% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 101 | 131 | 30 | 77% |
+| All tasks | 102 | 135 | 33 | 76% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 102 | 131 | 29 | 78% |
 | **Phase 1 launch** | **90** | **100** | **10** | **90%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
@@ -23,25 +23,25 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
 | Current feature checklist | 47 | 48 | TASK-124 |
-| Phase 2: reservations and finances | 7 | 8 | TASK-079 |
+| Phase 2: reservations and finances | 8 | 8 | — |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
 | Phase 5: social broadcasting | 0 | 5 | TASK-051 to TASK-053, TASK-118, TASK-119 |
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **101** | **135** | **34** |
+| **All tasks** | **102** | **135** | **33** |
 
 ## Left for Phase 1 launch (10)
 
 Sequenced, with the owner decisions each task waits on, in [phase1-release-plan.md](phase1-release-plan.md).
 
 - **Competition features:** browser push (TASK-034, real-device check only).
-- **Club life and match day (added 2026-11-21):** internal and external finance with source categories (TASK-124, which needs TASK-079 from Phase 2).
+- **Club life and match day (added 2026-11-21):** internal and external finance with source categories (TASK-124).
 - **Operations:** VPS deploy and staging (TASK-058), backups and restore drill (TASK-060), load tests and monitoring (TASK-061), PWA install and update rehearsal (TASK-062), Phase 1 acceptance and dogfood (TASK-063).
 - **Decisions and reviews:** Stitch screen review (TASK-002), owner review of the ITTF clauses (TASK-003), legal sign-off for soda stakes (TASK-078).
 
-After launch, Phases 2 and 3 need TASK-079, then their gates (TASK-064, TASK-065). Phases 4 to 6 have not started and each begins with a policy decision.
+After launch, Phases 2 and 3 need their gates (TASK-064, TASK-065). Phases 4 to 6 have not started and each begins with a policy decision.
 
 ## Waiting on decisions, not code
 
@@ -72,3 +72,4 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-25 | 98 | 133 | 74% | 89% (87/98) | TASK-123 done (representative squads: slots, rotation recommendation, override reasons, answers, history) |
 | 2026-11-25 | 99 | 133 | 74% | 90% (88/98) | TASK-129 done (absence penalties: rules, proposals, issue or waive, fines through the ledger, appeals, suspension from selection) |
 | 2026-11-25 | 101 | 135 | 75% | 90% (90/100) | TASK-135 (phone accounts add an email) and TASK-136 (results announcements as PDF) added and done |
+| 2026-11-25 | 102 | 135 | 76% | 90% (90/100) | TASK-079 done (expense categories, financial year, annual report with frozen snapshots, amendments, PDF and CSV) |

@@ -57,10 +57,12 @@ from feedback.models import FeedbackForm, FeedbackRecipient, FeedbackResponse
 from finance import welfare
 from finance.models import (
     Allocation,
+    AnnualReport,
     Campaign,
     CampaignMember,
     Charge,
     Expense,
+    FinanceSettings,
     Payment,
     WelfareContribution,
     WelfareProject,
@@ -406,6 +408,15 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-feedback-form-totals": {"get": STAFF},
     "organization-feedback-form-export": {"get": STAFF},
     "my-feedback-forms": {"get": OWNER},
+    # The financial year and the annual report (TASK-079). Reading a report is open to whoever may: a
+    # draft to finance staff, a published one to members, a public one to anybody.
+    "organization-finance-settings": {"get": STAFF, "put": STAFF},
+    "organization-annual-reports": {"get": PUBLIC, "post": STAFF},
+    "organization-annual-report": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
+    "organization-annual-report-publish": {"post": STAFF},
+    "organization-annual-report-amend": {"post": STAFF},
+    "organization-annual-report-csv": {"get": PUBLIC},
+    "organization-annual-report-pdf": {"get": PUBLIC},
     # Representative squads (TASK-123): competition staff pick; a player answers their own place.
     "organization-squads": {"get": STAFF, "post": STAFF},
     "organization-squad": {"get": STAFF, "patch": STAFF, "delete": STAFF},  # a draft
@@ -779,6 +790,9 @@ BODIES = {
         "tournament_id": str(Tournament.objects.get(name="Published Cup").id),
     },
     ("organization-feedback-form", "patch"): {"title": "Renamed form"},
+    ("organization-finance-settings", "put"): {"year_end_month": 12, "year_end_day": 31},
+    ("organization-annual-reports", "post"): lambda: {"period_end": f"{timezone.localdate().year - 5}-12-31"},
+    ("organization-annual-report", "patch"): {"narrative": "A steady year."},
     ("organization-squads", "post"): lambda: {
         "title": "Away cup",
         "starts_on": str(timezone.localdate() + timedelta(days=20)),
@@ -1736,6 +1750,22 @@ class World:
         self.penalty_appealed = penalty(
             self.baraka, "Appealed", appeal="pending", appeal_text="MARK-APPEAL", **decided
         )
+        this_year = timezone.localdate().year
+
+        def report(back, **extra):
+            return AnnualReport.objects.create(
+                organization=self.coast,
+                period_start=f"{this_year - back}-01-01",
+                period_end=f"{this_year - back}-12-31",
+                **extra,
+            )
+
+        frozen = {"period_start": "x", "period_end": "y", "currencies": []}
+        self.report_draft = report(1, narrative="MARK-REPORT-DRAFT")
+        self.report_to_publish = report(2)
+        self.report_out = report(
+            3, narrative="MARK-REPORT-OUT", status="published", snapshot=frozen, published_at=timezone.now()
+        )
         self.meeting_document = MeetingDocument.objects.create(
             meeting=self.approved_meeting,
             title="MARK-MEETING-PAPER",
@@ -2022,6 +2052,11 @@ class World:
             "organization-activity-check-in": self.activity.id,
             "organization-activity-attendance": self.activity_running.id,
             "organization-feedback-form": self.form_draft.id,
+            "organization-annual-report": self.report_draft.id,
+            "organization-annual-report-publish": self.report_to_publish.id,
+            "organization-annual-report-amend": self.report_out.id,
+            "organization-annual-report-csv": self.report_out.id,
+            "organization-annual-report-pdf": self.report_out.id,
             "organization-squad": self.squad_draft.id,
             "organization-squad-publish": self.squad_to_publish.id,
             "organization-squad-recommendation": self.squad_out.id,
@@ -2278,6 +2313,11 @@ class World:
             "meeting_documents": sorted(MeetingDocument.objects.values_list("title", "item")),
             "feedback_forms": sorted(FeedbackForm.objects.values_list("title", "status", "closes_at")),
             "feedback_recipients": FeedbackRecipient.objects.count(),
+            "annual_reports": sorted(
+                AnnualReport.objects.values_list("period_end", "version", "status", "narrative", "public"),
+                key=str,
+            ),
+            "finance_settings": FinanceSettings.objects.count(),
             "squads": sorted(Squad.objects.values_list("title", "status", "notes")),
             "squad_places": sorted(
                 SquadPlace.objects.values_list("user__email", "status", "attended"), key=str
@@ -2385,6 +2425,11 @@ ALSO_STAFF = {
             "organization-expense-reverse",
             "organization-expense-receipt",
             "organization-finance-summary",
+            "organization-finance-settings",
+            "organization-annual-reports",
+            "organization-annual-report",
+            "organization-annual-report-publish",
+            "organization-annual-report-amend",
             "organization-welfare-projects",
             "organization-welfare-project",
             "organization-welfare-project-hide",
@@ -2613,6 +2658,11 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-EVENT-NAMED": {"amina", "grace", "chiku"},  # the person named and those who run activities
         "MARK-FORM-DRAFT": {"amina"},  # the host's competition staff
+        "MARK-REPORT-DRAFT": {
+            "amina",
+            "grace",
+        },  # a draft report: finance staff (the committee reads finances)
+        "MARK-REPORT-OUT": {"amina", "baraka", "faith", "grace"},  # published, not public: the members
         "MARK-SQUAD-DRAFT": {"amina"},  # a draft squad is for the selectors
         "MARK-ABSENCE-PROPOSED": {"amina"},  # undecided: governance staff only, not yet the member
         "MARK-ABSENCE": {"amina", "baraka"},  # issued: the member too
