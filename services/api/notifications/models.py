@@ -28,6 +28,7 @@ class Category(models.TextChoices):
     GOVERNANCE = "governance", "Committee and representatives"
     MEETING = "meeting", "Meetings and minutes"
     FEEDBACK = "feedback", "Feedback forms"
+    SQUAD = "squad", "Squads and selection"
 
 
 # What a player can't switch off: being called to a table is how match day works.

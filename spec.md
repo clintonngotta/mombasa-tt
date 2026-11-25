@@ -327,6 +327,8 @@ As built (TASK-109): a body also invites its representatives (those accepted and
 
 *Rotation.* When staff pick the next squad, the app recommends players in rotation: those who have represented least recently first, then by rating in the discipline. Players who were in the previous squad go last unless staff keep them. Staff can override the recommendation and record a reason. Each player sees their own representation history; staff see the club's or region's history.
 
+As built (TASK-123): a squad is a draft until published; publishing tells the players picked, who accept or decline until the tournament starts. A place a player declines or is taken out of is free for staff to fill. "Represented" means an accepted place in a published squad of the same organization that starts earlier. The rotation leaves out players already in the squad and those who declined it. Picking a player who isn't among the next in rotation for the slot's free places needs a reason, which staff see with the place. A regional body picks from the active members of the clubs of its region and sees each by name and club. A player sees their own places and history, and the names of the others who accepted the same squad; the selectors see the organization's history (how often and when last).
+
 ### REQ-051
 
 **Internal and external club finance — Phase 2 (user request, 2026-11-21).** Club money is split into internal (members' contributions, dues, levies, activity shares: the REQ-022 ledger) and external (money from outside the membership).

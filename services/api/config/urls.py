@@ -29,6 +29,8 @@ from scoring.urls import me_urlpatterns as my_scorecards
 from scoring.urls import tournament_urlpatterns as umpires
 from soda.urls import club_urls as soda_club_urls
 from soda.urls import my_urls as soda_my_urls
+from squads.urls import me_urlpatterns as my_squads
+from squads.urls import organization_urlpatterns as squad_routes
 from training.urls import club_drills, library_urls
 
 api_v1 = [
@@ -47,6 +49,8 @@ api_v1 = [
     path("me/", include(my_region)),
     path("me/", include(my_events)),
     path("me/", include(my_feedback)),
+    path("me/", include(my_squads)),
+    path("organizations/<uuid:organization_pk>/", include(squad_routes)),
     path("", include("feedback.urls")),
     path("organizations/<uuid:organization_pk>/", include(feedback_forms)),
     path("me/", include(my_coaching)),

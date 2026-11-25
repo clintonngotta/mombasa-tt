@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "reservations",
     "scoring",
     "soda",
+    "squads",
     "training",
 ]
 
@@ -234,6 +235,7 @@ SPECTACULAR_SETTINGS = {
         "MeetingPenaltyStatusEnum": "regions.models.MeetingPenalty.Status",
         "ActionItemStatusEnum": "regions.models.ActionItem.Status",
         "FeedbackFormStatusEnum": "feedback.models.FeedbackForm.Status",
+        "SquadPlaceStatusEnum": "squads.models.SquadPlace.Status",
         "QuestionKindEnum": "feedback.serializers.KIND_CHOICES",
         "MinutesStatusEnum": "regions.models.Meeting.MinutesStatus",
         "SkillEnum": "training.models.Skill",

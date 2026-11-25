@@ -4078,6 +4078,91 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/squad-places/:
+    get:
+      operationId: me_squad_places_list
+      description: |-
+        GET /me/squad-places/: the squads you were picked for, latest first: those to answer, those you
+        are in, and your history.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MySquadPlace'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/squad-places/{id}/accept/:
+    post:
+      operationId: me_squad_places_accept_create
+      description: |-
+        POST /me/squad-places/{id}/accept/ or /decline/: answer your place until the tournament starts.
+        Declining frees the place for staff to fill.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MySquadPlace'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/squad-places/{id}/decline/:
+    post:
+      operationId: me_squad_places_decline_create
+      description: |-
+        POST /me/squad-places/{id}/accept/ or /decline/: answer your place until the tournament starts.
+        Declining frees the place for staff to fill.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MySquadPlace'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/table-bookings/:
     get:
       operationId: me_table_bookings_list
@@ -11023,6 +11108,368 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Sponsorship'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/:
+    get:
+      operationId: organizations_squads_list
+      description: |-
+        GET/POST /organizations/{org}/squads/: the organization's squads, latest first, for its
+        competition staff. A new squad is a draft: nobody is told until it is published.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_squads_create
+      description: |-
+        GET/POST /organizations/{org}/squads/: the organization's squads, latest first, for its
+        competition staff. A new squad is a draft: nobody is told until it is published.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SquadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/{id}/:
+    get:
+      operationId: organizations_squads_retrieve
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/squads/{id}/. Only a draft is deleted. A slot that holds
+        players can't be removed or made smaller than the players in it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_squads_partial_update
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/squads/{id}/. Only a draft is deleted. A slot that holds
+        players can't be removed or made smaller than the players in it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSquadRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_squads_destroy
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/squads/{id}/. Only a draft is deleted. A slot that holds
+        players can't be removed or made smaller than the players in it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/{id}/places/:
+    post:
+      operationId: organizations_squads_places_create
+      description: |-
+        POST .../squads/{id}/places/: pick a player into a slot. Picking someone the rotation doesn't
+        put next takes a reason, which is kept with the place.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PickRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/{id}/places/{place_pk}/remove/:
+    post:
+      operationId: organizations_squads_places_remove_create
+      description: 'POST .../squads/{id}/places/{place}/remove/: take a player out
+        of the squad. They are told.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: place_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/{id}/publish/:
+    post:
+      operationId: organizations_squads_publish_create
+      description: 'POST .../squads/{id}/publish/: tell everyone picked, who can then
+        accept or decline.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Squad'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/{id}/recommendation/:
+    get:
+      operationId: organizations_squads_recommendation_list
+      description: |-
+        GET .../squads/{id}/recommendation/: who can still be picked, in rotation: least recently
+        represented first, then the higher rating; whoever was in the previous squad last.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SquadCandidate'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/squads/history/:
+    get:
+      operationId: organizations_squads_history_list
+      description: |-
+        GET /organizations/{org}/squads/history/: who has represented the organization, how often and
+        when last, for its competition staff.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryRow'
           description: ''
         4XX:
           description: Error envelope
@@ -23292,6 +23739,36 @@ components:
       description: |-
         * `right` - Right
         * `left` - Left
+    HistoryRow:
+      type: object
+      description: 'One player''s representation for the organization: how often and
+        when last.'
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        club:
+          type: string
+          nullable: true
+        times:
+          type: integer
+        last_represented_on:
+          type: string
+          format: date
+          nullable: true
+        squads:
+          type: array
+          items:
+            type: string
+      required:
+      - club
+      - display_name
+      - last_represented_on
+      - squads
+      - times
+      - user_id
     HitterEnum:
       enum:
       - you
@@ -26126,6 +26603,53 @@ components:
       required:
       - games_enabled
       - stakes_available
+    MySquadPlace:
+      type: object
+      description: 'A player''s own place: the squad, the slot, their answer, and
+        who else is going by name.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        squad:
+          allOf:
+          - $ref: '#/components/schemas/SquadRef'
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/SquadHost'
+          readOnly: true
+        slot_label:
+          type: string
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SquadPlaceStatusEnum'
+          readOnly: true
+        responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        teammates:
+          type: array
+          items:
+            type: string
+          readOnly: true
+          description: The others who accepted, by display name.
+      required:
+      - id
+      - notes
+      - organization
+      - responded_at
+      - slot_label
+      - squad
+      - status
+      - teammates
     MyVisit:
       type: object
       description: 'The player''s own visit or pass at a facility: never anybody else''s,
@@ -26572,6 +27096,7 @@ components:
       - governance
       - meeting
       - feedback
+      - squad
       type: string
       description: |-
         * `up_next` - Up next
@@ -26588,6 +27113,7 @@ components:
         * `governance` - Committee and representatives
         * `meeting` - Meetings and minutes
         * `feedback` - Feedback forms
+        * `squad` - Squads and selection
     NullEnum:
       enum:
       - null
@@ -29211,6 +29737,33 @@ components:
           items:
             type: string
             format: uuid
+    PatchedSquadRequest:
+      type: object
+      description: A squad for the organization's competition staff.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        external_event_id:
+          type: string
+          format: uuid
+          nullable: true
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        notes:
+          type: string
+          maxLength: 1000
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/SquadSlotRequest'
     PatchedTableRequest:
       type: object
       properties:
@@ -29862,6 +30415,25 @@ components:
         * `off_table` - Off the table
         * `match_play` - Match play
         * `cool_down` - Cool-down
+    PickRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        slot:
+          type: string
+          minLength: 1
+          pattern: ^[0-9a-f]{12}$
+        reason:
+          type: string
+          default: ''
+          description: Needed when the rotation puts other players first.
+          maxLength: 300
+      required:
+      - slot
+      - user_id
     Place:
       type: object
       properties:
@@ -33506,6 +34078,253 @@ components:
         * `accepted` - Accepted
         * `declined` - Declined
         * `withdrawn` - Withdrawn
+    Squad:
+      type: object
+      description: A squad for the organization's competition staff.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        external_event_id:
+          type: string
+          format: uuid
+          nullable: true
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        notes:
+          type: string
+          maxLength: 1000
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/SquadSlot'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AnnouncementStatusEnum'
+          readOnly: true
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/SquadPlace'
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - discipline
+      - ends_on
+      - external_event_id
+      - id
+      - notes
+      - places
+      - published_at
+      - slots
+      - starts_on
+      - status
+      - title
+    SquadCandidate:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        club:
+          type: string
+          nullable: true
+        last_represented_on:
+          type: string
+          format: date
+          nullable: true
+        in_previous_squad:
+          type: boolean
+        rating:
+          type: integer
+      required:
+      - club
+      - display_name
+      - in_previous_squad
+      - last_represented_on
+      - rating
+      - user_id
+    SquadHost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
+    SquadPlace:
+      type: object
+      description: |-
+        A picked player as the squad's staff see them: a name, their club for a region's squad, the slot,
+        their answer and why they were picked outside the rotation.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        display_name:
+          type: string
+          readOnly: true
+        club:
+          type: string
+          readOnly: true
+          nullable: true
+        slot:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SquadPlaceStatusEnum'
+          readOnly: true
+        recommended:
+          type: boolean
+          readOnly: true
+        override_reason:
+          type: string
+          readOnly: true
+        picked_at:
+          type: string
+          format: date-time
+          readOnly: true
+        responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - club
+      - display_name
+      - id
+      - override_reason
+      - picked_at
+      - recommended
+      - responded_at
+      - slot
+      - status
+      - user_id
+    SquadPlaceStatusEnum:
+      enum:
+      - picked
+      - accepted
+      - declined
+      - removed
+      type: string
+      description: |-
+        * `picked` - Picked
+        * `accepted` - Accepted
+        * `declined` - Declined
+        * `removed` - Removed
+    SquadRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+      required:
+      - ends_on
+      - id
+      - starts_on
+      - title
+    SquadRequest:
+      type: object
+      description: A squad for the organization's competition staff.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        external_event_id:
+          type: string
+          format: uuid
+          nullable: true
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        discipline:
+          $ref: '#/components/schemas/SinglesOrDoublesEnum'
+        notes:
+          type: string
+          maxLength: 1000
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/SquadSlotRequest'
+      required:
+      - ends_on
+      - slots
+      - starts_on
+      - title
+    SquadSlot:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Given by the API; send it back to keep the slot.
+          pattern: ^[0-9a-f]{12}$
+        label:
+          type: string
+          maxLength: 60
+        places:
+          type: integer
+          maximum: 30
+          minimum: 1
+      required:
+      - id
+      - label
+      - places
+    SquadSlotRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Given by the API; send it back to keep the slot.
+          pattern: ^[0-9a-f]{12}$
+        label:
+          type: string
+          minLength: 1
+          maxLength: 60
+        places:
+          type: integer
+          maximum: 30
+          minimum: 1
+      required:
+      - label
+      - places
     Stage:
       type: object
       properties:

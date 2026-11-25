@@ -103,6 +103,7 @@ from reservations import service as reservations
 from reservations.models import Hold, Reservation, TournamentUmpire
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
 from soda.models import Challenge, Policy
+from squads.models import Squad, SquadPlace
 from training.models import (
     ClubSession,
     Drill,
@@ -400,6 +401,17 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-feedback-form-totals": {"get": STAFF},
     "organization-feedback-form-export": {"get": STAFF},
     "my-feedback-forms": {"get": OWNER},
+    # Representative squads (TASK-123): competition staff pick; a player answers their own place.
+    "organization-squads": {"get": STAFF, "post": STAFF},
+    "organization-squad": {"get": STAFF, "patch": STAFF, "delete": STAFF},  # a draft
+    "organization-squad-publish": {"post": STAFF},
+    "organization-squad-recommendation": {"get": STAFF},
+    "organization-squad-places": {"post": STAFF},
+    "organization-squad-place-remove": {"post": STAFF},
+    "organization-squad-history": {"get": STAFF},
+    "my-squad-places": {"get": OWNER},
+    "my-squad-place-accept": {"post": OWNER},  # Baraka's place
+    "my-squad-place-decline": {"post": OWNER},
     "feedback-form": {"get": OWNER, "put": OWNER},
     "organization-schedule": {"get": MEMBER},
     "organization-schedule-ics": {"get": MEMBER},
@@ -750,6 +762,18 @@ BODIES = {
         "tournament_id": str(Tournament.objects.get(name="Published Cup").id),
     },
     ("organization-feedback-form", "patch"): {"title": "Renamed form"},
+    ("organization-squads", "post"): lambda: {
+        "title": "Away cup",
+        "starts_on": str(timezone.localdate() + timedelta(days=20)),
+        "ends_on": str(timezone.localdate() + timedelta(days=21)),
+        "slots": [{"label": "Team", "places": 3}],
+    },
+    ("organization-squad", "patch"): {"notes": "Bring whites"},
+    ("organization-squad-places", "post"): lambda: {
+        "user_id": str(Membership.objects.get(user__email="faith.listed@coast.example").user_id),
+        "slot": "cccccccccccc",
+        "reason": "Asked to go",
+    },
     ("organization-feedback-form-send", "post"): lambda: {
         "closes_at": (timezone.now() + timedelta(days=5)).isoformat()
     },
@@ -1640,6 +1664,24 @@ class World:
             owner_key=feedback.owner_key(self.form_sent, self.baraka),
             answers={"aaaaaaaaaaaa": "MARK-FEEDBACK-ANSWER"},
         )
+        soon = timezone.localdate() + timedelta(days=30)
+        slots = [{"id": "cccccccccccc", "label": "Team", "places": 4}]
+
+        def squad(title, **extra):
+            return Squad.objects.create(
+                organization=self.coast, title=title, starts_on=soon, ends_on=soon, slots=slots, **extra
+            )
+
+        self.squad_draft = squad("MARK-SQUAD-DRAFT")
+        self.squad_to_publish = squad("To publish squad")
+        self.squad_out = squad("Away squad", notes="MARK-SQUAD-NOTES", status=Squad.Status.PUBLISHED)
+        self.squad_place = SquadPlace.objects.create(
+            squad=self.squad_out,
+            slot="cccccccccccc",
+            user=self.baraka,
+            recommended=False,
+            override_reason="MARK-SQUAD-REASON",
+        )
         self.meeting_document = MeetingDocument.objects.create(
             meeting=self.approved_meeting,
             title="MARK-MEETING-PAPER",
@@ -1925,6 +1967,13 @@ class World:
             "organization-activity-check-in": self.activity.id,
             "organization-activity-attendance": self.activity_running.id,
             "organization-feedback-form": self.form_draft.id,
+            "organization-squad": self.squad_draft.id,
+            "organization-squad-publish": self.squad_to_publish.id,
+            "organization-squad-recommendation": self.squad_out.id,
+            "organization-squad-places": self.squad_out.id,
+            "organization-squad-place-remove": self.squad_out.id,
+            "my-squad-place-accept": self.squad_place.id,
+            "my-squad-place-decline": self.squad_place.id,
             "organization-feedback-form-send": self.form_to_send.id,
             "organization-feedback-form-closing": self.form_sent.id,
             "organization-feedback-form-totals": self.form_sent.id,
@@ -1962,6 +2011,8 @@ class World:
             found["penalty_pk"] = self.penalty.id
         if "action_pk" in names:
             found["action_pk"] = self.action_item.id
+        if "place_pk" in names:
+            found["place_pk"] = self.squad_place.id
         if "document_pk" in names:
             found["document_pk"] = self.meeting_document.id
         if "plan_pk" in names:
@@ -2166,6 +2217,8 @@ class World:
             "meeting_documents": sorted(MeetingDocument.objects.values_list("title", "item")),
             "feedback_forms": sorted(FeedbackForm.objects.values_list("title", "status", "closes_at")),
             "feedback_recipients": FeedbackRecipient.objects.count(),
+            "squads": sorted(Squad.objects.values_list("title", "status", "notes")),
+            "squad_places": sorted(SquadPlace.objects.values_list("user__email", "status")),
             "feedback_responses": sorted(FeedbackResponse.objects.values_list("answers", flat=True), key=str),
             "meeting_invitees": sorted(
                 MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
@@ -2492,6 +2545,9 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-EVENT-NAMED": {"amina", "grace", "chiku"},  # the person named and those who run activities
         "MARK-FORM-DRAFT": {"amina"},  # the host's competition staff
+        "MARK-SQUAD-DRAFT": {"amina"},  # a draft squad is for the selectors
+        "MARK-SQUAD-NOTES": {"amina", "baraka"},  # and a published one for the players picked
+        "MARK-SQUAD-REASON": {"amina"},  # why someone was picked out of turn: selectors only
         "MARK-FORM-SENT": {"amina", "baraka"},  # and whoever was asked
         "MARK-FEEDBACK-ANSWER": {"amina", "baraka"},  # the answer as text, never with a name
         "MARK-WALK-IN": {"amina"},  # the facility's staff only

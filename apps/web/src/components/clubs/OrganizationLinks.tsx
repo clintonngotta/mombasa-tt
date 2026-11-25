@@ -14,6 +14,7 @@ import {
   UserRoundCheck,
   Map,
   MapPin,
+  Shield,
   Megaphone,
   PartyPopper,
   Store,
@@ -63,6 +64,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
       (manageRoles || training) && { to: "/club/profile", label: `${variant === "facility" ? "Facility" : "Club"} profile and training hours`, icon: Store },
       training && { to: "/club/sessions", label: "Training sessions: invitations and attendance", icon: CalendarClock },
       competitions && { to: "/club/tournaments", label: "Tournaments and their dashboards", icon: Trophy },
+      competitions && { to: "/club/squads", label: "Squads: who represents us away", icon: Shield },
       activities && { to: "/club/activities", label: "Activities: nights out, fun days and visits", icon: PartyPopper },
       announce && { to: "/club/announce", label: `Announce to ${variant === "facility" ? "players" : "members"}`, icon: Bell },
       announce && { to: "/club/external-events", label: "Events elsewhere: list a tournament run outside Coast TT", icon: Megaphone },
@@ -100,6 +102,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     title: `Your ${word}`,
     links: pick(
       member && { to: "/club/schedule", label: "Schedule: activities, tournaments and training", icon: CalendarDays },
+      member && { to: "/squads", label: "My squads: selections and where I've represented", icon: Shield },
       member && { to: "/club/training-rules", label: "Training rules: weekly slots, place and check-in", icon: MapPin },
       member && { to: "/club/my-payments", label: "My payments", icon: Banknote },
       member && { to: "/club/welfare", label: "Welfare projects", icon: HeartHandshake },

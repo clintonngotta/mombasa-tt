@@ -2037,6 +2037,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/squad-places/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/squad-places/: the squads you were picked for, latest first: those to answer, those you
+         *     are in, and your history.
+         */
+        get: operations["me_squad_places_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/squad-places/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/squad-places/{id}/accept/ or /decline/: answer your place until the tournament starts.
+         *     Declining frees the place for staff to fill.
+         */
+        post: operations["me_squad_places_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/squad-places/{id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/squad-places/{id}/accept/ or /decline/: answer your place until the tournament starts.
+         *     Declining frees the place for staff to fill.
+         */
+        post: operations["me_squad_places_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/table-bookings/": {
         parameters: {
             query?: never;
@@ -4712,6 +4772,152 @@ export interface paths {
          *     accepted (the sponsor pulls out).
          */
         post: operations["organizations_sponsorships_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/squads/: the organization's squads, latest first, for its
+         *     competition staff. A new squad is a draft: nobody is told until it is published.
+         */
+        get: operations["organizations_squads_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/squads/: the organization's squads, latest first, for its
+         *     competition staff. A new squad is a draft: nobody is told until it is published.
+         */
+        post: operations["organizations_squads_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/squads/{id}/. Only a draft is deleted. A slot that holds
+         *     players can't be removed or made smaller than the players in it.
+         */
+        get: operations["organizations_squads_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/squads/{id}/. Only a draft is deleted. A slot that holds
+         *     players can't be removed or made smaller than the players in it.
+         */
+        delete: operations["organizations_squads_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/squads/{id}/. Only a draft is deleted. A slot that holds
+         *     players can't be removed or made smaller than the players in it.
+         */
+        patch: operations["organizations_squads_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/{id}/places/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../squads/{id}/places/: pick a player into a slot. Picking someone the rotation doesn't
+         *     put next takes a reason, which is kept with the place.
+         */
+        post: operations["organizations_squads_places_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/{id}/places/{place_pk}/remove/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../squads/{id}/places/{place}/remove/: take a player out of the squad. They are told. */
+        post: operations["organizations_squads_places_remove_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/{id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST .../squads/{id}/publish/: tell everyone picked, who can then accept or decline. */
+        post: operations["organizations_squads_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/{id}/recommendation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET .../squads/{id}/recommendation/: who can still be picked, in rotation: least recently
+         *     represented first, then the higher rating; whoever was in the previous squad last.
+         */
+        get: operations["organizations_squads_recommendation_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/squads/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{org}/squads/history/: who has represented the organization, how often and
+         *     when last, for its competition staff.
+         */
+        get: operations["organizations_squads_history_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9801,6 +10007,17 @@ export interface components {
          * @enum {string}
          */
         HandEnum: "right" | "left";
+        /** @description One player's representation for the organization: how often and when last. */
+        HistoryRow: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            club: string | null;
+            times: number;
+            /** Format: date */
+            last_represented_on: string | null;
+            squads: string[];
+        };
         /**
          * @description * `you` - you
          *     * `partner` - partner
@@ -10917,6 +11134,20 @@ export interface components {
             stakes_available: boolean;
             games_enabled: boolean;
         };
+        /** @description A player's own place: the squad, the slot, their answer, and who else is going by name. */
+        MySquadPlace: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly squad: components["schemas"]["SquadRef"];
+            readonly organization: components["schemas"]["SquadHost"];
+            readonly slot_label: string;
+            readonly notes: string;
+            readonly status: components["schemas"]["SquadPlaceStatusEnum"];
+            /** Format: date-time */
+            readonly responded_at: string | null;
+            /** @description The others who accepted, by display name. */
+            readonly teammates: string[];
+        };
         /** @description The player's own visit or pass at a facility: never anybody else's, never a walk-in name. */
         MyVisit: {
             /** Format: uuid */
@@ -11080,9 +11311,10 @@ export interface components {
          *     * `governance` - Committee and representatives
          *     * `meeting` - Meetings and minutes
          *     * `feedback` - Feedback forms
+         *     * `squad` - Squads and selection
          * @enum {string}
          */
-        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting" | "feedback";
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting" | "feedback" | "squad";
         /** @enum {unknown} */
         NullEnum: null;
         Offences: {
@@ -12308,6 +12540,19 @@ export interface components {
             table_ids?: string[];
             event_ids?: string[];
         };
+        /** @description A squad for the organization's competition staff. */
+        PatchedSquadRequest: {
+            title?: string;
+            /** Format: uuid */
+            external_event_id?: string | null;
+            /** Format: date */
+            starts_on?: string;
+            /** Format: date */
+            ends_on?: string;
+            discipline?: components["schemas"]["SinglesOrDoublesEnum"];
+            notes?: string;
+            slots?: components["schemas"]["SquadSlotRequest"][];
+        };
         PatchedTableRequest: {
             label?: string;
             kind?: components["schemas"]["TableKindEnum"];
@@ -12599,6 +12844,17 @@ export interface components {
          * @enum {string}
          */
         PhaseEnum: "warm_up" | "on_table" | "off_table" | "match_play" | "cool_down";
+        /** @description Refuses fields it doesn't know. */
+        PickRequest: {
+            /** Format: uuid */
+            user_id: string;
+            slot: string;
+            /**
+             * @description Needed when the rotation puts other players first.
+             * @default
+             */
+            reason: string;
+        };
         Place: {
             table: components["schemas"]["ScheduleTable"] | null;
             /** Format: date-time */
@@ -14147,6 +14403,102 @@ export interface components {
          * @enum {string}
          */
         SponsorshipStatusEnum: "offered" | "accepted" | "declined" | "withdrawn";
+        /** @description A squad for the organization's competition staff. */
+        Squad: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            /** Format: uuid */
+            external_event_id: string | null;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            discipline: components["schemas"]["SinglesOrDoublesEnum"];
+            notes: string;
+            slots: components["schemas"]["SquadSlot"][];
+            readonly status: components["schemas"]["AnnouncementStatusEnum"];
+            readonly places: components["schemas"]["SquadPlace"][];
+            /** Format: date-time */
+            readonly published_at: string | null;
+        };
+        SquadCandidate: {
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            club: string | null;
+            /** Format: date */
+            last_represented_on: string | null;
+            in_previous_squad: boolean;
+            rating: number;
+        };
+        SquadHost: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        /**
+         * @description A picked player as the squad's staff see them: a name, their club for a region's squad, the slot,
+         *     their answer and why they were picked outside the rotation.
+         */
+        SquadPlace: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly user_id: string;
+            readonly display_name: string;
+            readonly club: string | null;
+            readonly slot: string;
+            readonly status: components["schemas"]["SquadPlaceStatusEnum"];
+            readonly recommended: boolean;
+            readonly override_reason: string;
+            /** Format: date-time */
+            readonly picked_at: string;
+            /** Format: date-time */
+            readonly responded_at: string | null;
+        };
+        /**
+         * @description * `picked` - Picked
+         *     * `accepted` - Accepted
+         *     * `declined` - Declined
+         *     * `removed` - Removed
+         * @enum {string}
+         */
+        SquadPlaceStatusEnum: "picked" | "accepted" | "declined" | "removed";
+        SquadRef: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+        };
+        /** @description A squad for the organization's competition staff. */
+        SquadRequest: {
+            title: string;
+            /** Format: uuid */
+            external_event_id?: string | null;
+            /** Format: date */
+            starts_on: string;
+            /** Format: date */
+            ends_on: string;
+            discipline?: components["schemas"]["SinglesOrDoublesEnum"];
+            notes?: string;
+            slots: components["schemas"]["SquadSlotRequest"][];
+        };
+        SquadSlot: {
+            /** @description Given by the API; send it back to keep the slot. */
+            id: string;
+            label: string;
+            places: number;
+        };
+        SquadSlotRequest: {
+            /** @description Given by the API; send it back to keep the slot. */
+            id?: string;
+            label: string;
+            places: number;
+        };
         Stage: {
             /** Format: uuid */
             event_id: string;
@@ -19329,6 +19681,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MySodaSettings"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_squad_places_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySquadPlace"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_squad_places_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySquadPlace"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_squad_places_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySquadPlace"];
                 };
             };
             /** @description Error envelope */
@@ -25584,6 +26024,325 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Sponsorship"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SquadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSquadRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_places_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PickRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_places_remove_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+                place_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Squad"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_recommendation_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SquadCandidate"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_squads_history_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryRow"][];
                 };
             };
             /** @description Error envelope */

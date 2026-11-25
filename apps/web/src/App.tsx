@@ -60,6 +60,7 @@ import { ClubProfilePage } from "@/pages/club/ClubProfilePage"
 import { ClubProfileEditPage } from "@/pages/club/ClubProfileEditPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
 import { CeremonyPage } from "@/pages/tournaments/CeremonyPage"
+import { MySquadsPage, SquadPage, SquadsPage } from "@/pages/club/SquadPages"
 import { TrainingRulesPage } from "@/pages/club/TrainingRulesPage"
 import { FeedbackAnswerPage } from "@/pages/tournaments/FeedbackAnswerPage"
 import { FeedbackBuilderPage, FeedbackResultsPage, TournamentFeedbackPage } from "@/pages/tournaments/FeedbackPages"
@@ -234,6 +235,9 @@ function App() {
               <Route path="/events/review" element={<ReviewEventsPage />} />
               <Route path="/club/schedule" element={<ClubSchedulePage />} />
               <Route path="/club/training-rules" element={<TrainingRulesPage />} />
+              <Route path="/club/squads" element={<SquadsPage />} />
+              <Route path="/club/squads/:id" element={<SquadPage />} />
+              <Route path="/squads" element={<MySquadsPage />} />
               <Route path="/activities/:orgId/:id" element={<ActivityPage />} />
               <Route path="/facilities" element={<FindFacilityPage />} />
               <Route path="/facilities/:id" element={<FacilityPage />} />
