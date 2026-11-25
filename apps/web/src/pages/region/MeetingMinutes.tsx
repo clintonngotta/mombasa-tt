@@ -476,7 +476,7 @@ export function ActionItemsPage() {
   })
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <BackLink to="/">Home</BackLink>
+      <BackLink to="/home">Home</BackLink>
       <h1 className="text-[32px] leading-9 font-bold">My action items</h1>
       {mine.isPending && <p className="text-muted-foreground">Loading…</p>}
       {mine.isError && <FormAlert>{errorMessage(mine.error, "We couldn't load your action items.")}</FormAlert>}

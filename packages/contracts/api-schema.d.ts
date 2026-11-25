@@ -1028,6 +1028,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/events/: events that invite you beyond your clubs' own activities and haven't ended: you
+         *     are named, you represent a club it is for, or it is open to all players. Soonest first.
+         */
+        get: operations["me_events_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/facility-visits/": {
         parameters: {
             query?: never;
@@ -2337,6 +2357,23 @@ export interface paths {
         patch: operations["organizations_activities_partial_update"];
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/attendance/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Staff mark someone there or not, once it has started. */
+        post: operations["organizations_activities_attendance_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/activities/{id}/attendees/": {
         parameters: {
             query?: never;
@@ -2344,7 +2381,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Who is going or might, by display name, for the activity's audience and its staff. */
+        /**
+         * @description Who is going or might, by display name, for the activity's audience and its staff; for an
+         *     event open to all players, for its staff only. Staff also see who checked in and attended.
+         */
         get: operations["organizations_activities_attendees_list"];
         put?: never;
         post?: never;
@@ -2365,6 +2405,23 @@ export interface paths {
         put?: never;
         /** @description Cancel with a reason. The record stays, with the answers it had. */
         post: operations["organizations_activities_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/activities/{id}/check-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Say you are there, while it runs. If you hadn't answered you take a place when one is free. */
+        post: operations["organizations_activities_check_in_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7241,6 +7298,12 @@ export interface components {
             /** Format: uuid */
             drill: string | null;
         };
+        ActivityHost: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            town: string;
+        };
         ActivityInvitees: {
             invitee_ids: string[];
         };
@@ -7577,11 +7640,16 @@ export interface components {
             invitee: string;
             attendance: components["schemas"]["AttendanceMarkEnum"];
         };
-        /** @description Who answered, as the audience sees it: display names only. */
+        /** @description Who answered, as the audience sees it: display names only. Attendance is for the staff. */
         Attendee: {
+            /** Format: uuid */
+            readonly id: string;
             readonly display_name: string;
             readonly answer: components["schemas"]["RsvpAnswerEnum"];
             readonly waitlisted: boolean;
+            /** Format: date-time */
+            readonly checked_in_at: string | null;
+            readonly attended: boolean | null;
         };
         /**
          * @description * `platform` - platform
@@ -8108,6 +8176,8 @@ export interface components {
         ClubActivity: {
             /** Format: uuid */
             readonly id: string;
+            /** @description The host: its id, name and town. */
+            readonly organization: components["schemas"]["ActivityHost"];
             title: string;
             kind: components["schemas"]["ClubActivityKindEnum"];
             description: string;
@@ -8133,8 +8203,12 @@ export interface components {
             readonly waitlisted: number;
             readonly my_answer: string | null;
             readonly my_waitlisted: boolean;
-            /** @description In the audience (a member, and the activity is for all members or invites them) and open. */
+            /** @description In the audience and open. */
             readonly can_answer: boolean;
+            /** Format: date-time */
+            readonly my_checked_in_at: string | null;
+            /** @description It is running and it is for you: you may check yourself in. */
+            readonly can_check_in: boolean;
             readonly cost_share: components["schemas"]["CostShare"] | null;
             /** Format: date-time */
             readonly published_at: string | null;
@@ -8142,9 +8216,12 @@ export interface components {
         /**
          * @description * `members` - All members
          *     * `selected` - Selected members
+         *     * `reps` - Invited representatives
+         *     * `named` - Named people
+         *     * `open` - Open to all players
          * @enum {string}
          */
-        ClubActivityAudienceEnum: "members" | "selected";
+        ClubActivityAudienceEnum: "members" | "selected" | "reps" | "named" | "open";
         /**
          * @description * `social` - Social night
          *     * `fun_day` - Fun day
@@ -8153,10 +8230,13 @@ export interface components {
          *     * `practice` - Practice night
          *     * `open_day` - Open day
          *     * `anniversary` - Anniversary
+         *     * `workshop` - Workshop
+         *     * `clinic` - Coaching clinic
+         *     * `awards` - Award night
          *     * `other` - Other
          * @enum {string}
          */
-        ClubActivityKindEnum: "social" | "fun_day" | "visit" | "meeting" | "practice" | "open_day" | "anniversary" | "other";
+        ClubActivityKindEnum: "social" | "fun_day" | "visit" | "meeting" | "practice" | "open_day" | "anniversary" | "workshop" | "clinic" | "awards" | "other";
         /** @description An activity. Members see `my_answer` and the counts; only staff see invitee ids and drafts. */
         ClubActivityRequest: {
             title: string;
@@ -8168,7 +8248,10 @@ export interface components {
             ends_at: string;
             place?: string;
             audience?: components["schemas"]["ClubActivityAudienceEnum"];
+            /** @description For selected members: active members. For named people: members or listed players. */
             invitee_ids?: string[];
+            /** @description For the representatives audience: whose representatives. Empty invites them all. */
+            club_ids?: string[];
             capacity?: number | null;
             /** Format: date-time */
             rsvp_deadline?: string | null;
@@ -9630,6 +9713,14 @@ export interface components {
             organization: components["schemas"]["Organization"];
             authority: components["schemas"]["AuthorityEnum"];
             permissions: components["schemas"]["PermissionEnum"][];
+        };
+        /** @description Mark someone who answered (`rsvp`), or someone in the audience who didn't (`user_id`). */
+        MarkAttendanceRequest: {
+            /** Format: uuid */
+            rsvp?: string;
+            /** Format: uuid */
+            user_id?: string;
+            attended: boolean;
         };
         MarkLiveRequest: {
             live: boolean;
@@ -11417,7 +11508,10 @@ export interface components {
             ends_at?: string;
             place?: string;
             audience?: components["schemas"]["ClubActivityAudienceEnum"];
+            /** @description For selected members: active members. For named people: members or listed players. */
             invitee_ids?: string[];
+            /** @description For the representatives audience: whose representatives. Empty invites them all. */
+            club_ids?: string[];
             capacity?: number | null;
             /** Format: date-time */
             rsvp_deadline?: string | null;
@@ -16430,6 +16524,34 @@ export interface operations {
             };
         };
     };
+    me_events_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     me_facility_visits_list: {
         parameters: {
             query?: {
@@ -19432,6 +19554,41 @@ export interface operations {
             };
         };
     };
+    organizations_activities_attendance_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkAttendanceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attendee"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_activities_attendees_list: {
         parameters: {
             query?: {
@@ -19483,6 +19640,37 @@ export interface operations {
                 "application/json": components["schemas"]["CancelActivityRequest"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubActivity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_activities_check_in_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

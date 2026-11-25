@@ -42,6 +42,19 @@ LINK = "/club/representatives"
 CLUB_KINDS = (Organization.Kind.CLUB, Organization.Kind.CLUB_FACILITY)
 
 
+def senders_of(body: Organization):
+    """The organizations that send representatives to `body`: a region's clubs, or a country's regional
+    bodies. The other side of `body_for`."""
+    if not body.country:
+        return Organization.objects.none()
+    here = Organization.objects.filter(country=body.country)
+    if body.kind == Organization.Kind.REGIONAL_BODY and body.region:
+        return here.filter(kind__in=CLUB_KINDS, region__iexact=body.region)
+    if body.kind == Organization.Kind.NATIONAL_BODY:
+        return here.filter(kind=Organization.Kind.REGIONAL_BODY)
+    return Organization.objects.none()
+
+
 def body_for(sender: Organization) -> Organization | None:
     """Where the organization sends representatives: a club to its region's body, a regional body to
     its country's. Nothing for any other kind, or where the body hasn't been created."""

@@ -115,7 +115,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - "My action items" across bodies. A representatives audience once TASK-108 lands.
 - Tests: check-in window, minutes immutability, visibility. Browser check.
 
-**TASK-110: non-competition events (M)** `feat/body-events`, after 108
+**TASK-110: non-competition events (M)** `feat/community-events`, after 108. Done 2026-11-25 (see tasks.md)
 - Activities hosted by bodies as well as clubs. New kinds: workshop, clinic, award night.
 - Audiences: members, invited representatives, named people, all signed-in players, plus optional public.
 - Check-in and attendance with times (reuse the TASK-109 approach).

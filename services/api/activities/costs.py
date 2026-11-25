@@ -30,6 +30,8 @@ def share(activity: Activity, actor, today, *, due_on, amount_minor=None, total_
     activity = Activity.objects.select_for_update().select_related("organization").get(pk=activity.pk)
     if activity.status != Activity.Status.PUBLISHED:
         raise ApiException("activity_closed", "Share the cost of a published activity.", 409)
+    if activity.audience not in (Activity.Audience.MEMBERS, Activity.Audience.SELECTED):
+        raise ApiException("members_only", "Only an activity for members can share its cost.", 409)
     if activity.campaign_id:
         raise ApiException("already_shared", "This activity's cost is already shared.", 409)
     if (amount_minor is None) == (total_minor is None):

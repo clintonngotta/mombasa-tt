@@ -173,16 +173,9 @@ def external_event_reviewed(event) -> None:
 
 def activity_news(activity, what: str) -> None:
     """Publishing, a change of time or place, and cancelling reach the activity's audience only."""
-    from organizations.models import Membership
+    from activities.service import audience_ids
 
-    if activity.audience == "selected":
-        audience = set(activity.invitees.values_list("pk", flat=True))
-    else:
-        audience = set(
-            Membership.objects.active()
-            .filter(organization=activity.organization)
-            .values_list("user_id", flat=True)
-        )
+    audience = audience_ids(activity)
     titles = {
         "published": f"New: {activity.title}",
         "changed": f"Changed: {activity.title}",

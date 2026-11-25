@@ -3,6 +3,7 @@ import { ChevronRight, CircleHelp, Medal, Plus, Users, Warehouse, type LucideIco
 import { LiveNow, MyEntries } from "@/components/tournaments/TournamentLists"
 import { can, useActiveMembership } from "@/lib/clubs"
 import { useMe } from "@/lib/session"
+import { EventsForYou } from "@/pages/club/InvitedEventsPage"
 
 type Action = { to: string; icon: LucideIcon; title: string; description: string }
 
@@ -52,6 +53,7 @@ export function HomePage() {
         ))}
       </nav>
 
+      {me.isSuccess && <EventsForYou />}
       <LiveNow />
       <MyEntries />
     </div>

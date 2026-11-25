@@ -371,6 +371,11 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-activity-cost-share": {"post": STAFF},
     "organization-activity-attendees": {"get": MEMBER},
     "organization-activity-invitees": {"get": STAFF},
+    # Events beyond the membership (TASK-110): whoever an activity is for checks in while it runs; those
+    # who run activities mark attendance; `my-events` lists what invites the caller.
+    "organization-activity-check-in": {"post": MEMBER},
+    "organization-activity-attendance": {"post": STAFF},
+    "my-events": {"get": OWNER},
     "organization-schedule": {"get": MEMBER},
     "organization-schedule-ics": {"get": MEMBER},
     "organization-club-sessions": {"get": STAFF, "post": STAFF},
@@ -710,6 +715,10 @@ BODIES = {
     ("organization-activity", "patch"): {"place": "Moved to the beach"},
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
+    ("organization-activity-attendance", "post"): lambda: {
+        "rsvp": str(Rsvp.objects.get(activity__title="Running night").id),
+        "attended": True,
+    },
     ("organization-activity-cost-share", "post"): lambda: {
         "amount_minor": 50000,
         "due_on": timezone.localdate().isoformat(),
@@ -1173,6 +1182,25 @@ class World:
             status=Activity.Status.PUBLISHED,
         )
         Rsvp.objects.create(activity=self.activity_to_share, user=self.baraka, answer=Rsvp.Answer.GOING)
+        self.activity_running = Activity.objects.create(
+            organization=self.coast,
+            title="Running night",
+            starts_at=timezone.now() - timedelta(minutes=10),
+            ends_at=timezone.now() + timedelta(hours=2),
+            status=Activity.Status.PUBLISHED,
+        )
+        Rsvp.objects.create(activity=self.activity_running, user=self.baraka, answer=Rsvp.Answer.GOING)
+        # An event for one named outsider: not for the club's other members.
+        named_event = Activity.objects.create(
+            organization=self.coast,
+            title="Named evening",
+            description="MARK-EVENT-NAMED",
+            audience=Activity.Audience.NAMED,
+            starts_at=later,
+            ends_at=later + timedelta(hours=3),
+            status=Activity.Status.PUBLISHED,
+        )
+        named_event.invitees.add(self.chiku)
         self.session_to_cancel = ClubSession.objects.create(
             organization=self.coast,
             title="To cancel",
@@ -1804,6 +1832,8 @@ class World:
             "organization-activity-publish": self.activity_draft.id,
             "organization-activity-cancel": self.activity_to_cancel.id,
             "organization-activity-rsvp": self.activity.id,
+            "organization-activity-check-in": self.activity.id,
+            "organization-activity-attendance": self.activity_running.id,
             "organization-activity-cost-share": self.activity_to_share.id,
             "organization-activity-attendees": self.activity.id,
             "organization-activity-invitees": self.activity.id,
@@ -2007,7 +2037,9 @@ class World:
             "soda_policies": sorted(
                 Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
             ),
-            "rsvps": sorted(Rsvp.objects.values_list("activity__title", "user_id", "answer")),
+            "rsvps": sorted(
+                Rsvp.objects.values_list("activity__title", "user_id", "answer", "attended", "checked_in_at")
+            ),
             "club_sessions": sorted(ClubSession.objects.values_list("title", "status", "notes")),
             "session_invitations": sorted(
                 SessionInvitation.objects.values_list("session__title", "user_id", "status", "attended")
@@ -2149,6 +2181,7 @@ ALSO_STAFF = {
             "organization-activity-publish",
             "organization-activity-cancel",
             "organization-activity-invitees",
+            "organization-activity-attendance",
             "organization-activity-cost-share",
         )
     },
@@ -2345,6 +2378,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         },  # the submitting club, pre-review  # the two players (Imani isn't a viewer here)
         "MARK-SODA-STAKE": set(),  # stakes stay hidden from everyone while the policy gate is off
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
+        "MARK-EVENT-NAMED": {"amina", "grace", "chiku"},  # the person named and those who run activities
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
         "MARK-TABLE-BOOKING": {"amina", "baraka"},  # the requester and the venue's staff
         "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member

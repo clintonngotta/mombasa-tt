@@ -2076,6 +2076,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/events/:
+    get:
+      operationId: me_events_list
+      description: |-
+        GET /me/events/: events that invite you beyond your clubs' own activities and haven't ended: you
+        are named, you represent a club it is for, or it is open to all players. Soonest first.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/facility-visits/:
     get:
       operationId: me_facility_visits_list
@@ -5064,11 +5089,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/attendance/:
+    post:
+      operationId: organizations_activities_attendance_create
+      description: Staff mark someone there or not, once it has started.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkAttendanceRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attendee'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/activities/{id}/attendees/:
     get:
       operationId: organizations_activities_attendees_list
-      description: Who is going or might, by display name, for the activity's audience
-        and its staff.
+      description: |-
+        Who is going or might, by display name, for the activity's audience and its staff; for an
+        event open to all players, for its staff only. Staff also see who checked in and attended.
       parameters:
       - in: path
         name: id
@@ -5136,6 +5202,41 @@ paths:
             schema:
               $ref: '#/components/schemas/CancelActivityRequest'
         required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubActivity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/activities/{id}/check-in/:
+    post:
+      operationId: organizations_activities_check_in_create
+      description: Say you are there, while it runs. If you hadn't answered you take
+        a place when one is free.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
       security:
       - sessionAuth: []
       responses:
@@ -16948,6 +17049,20 @@ components:
       - minutes
       - phase
       - title
+    ActivityHost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        town:
+          type: string
+      required:
+      - id
+      - name
+      - town
     ActivityInvitees:
       type: object
       properties:
@@ -17700,8 +17815,13 @@ components:
       - invitee
     Attendee:
       type: object
-      description: 'Who answered, as the audience sees it: display names only.'
+      description: 'Who answered, as the audience sees it: display names only. Attendance
+        is for the staff.'
       properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
         display_name:
           type: string
           readOnly: true
@@ -17712,9 +17832,21 @@ components:
         waitlisted:
           type: boolean
           readOnly: true
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        attended:
+          type: boolean
+          nullable: true
+          readOnly: true
       required:
       - answer
+      - attended
+      - checked_in_at
       - display_name
+      - id
       - waitlisted
     AuthorityEnum:
       enum:
@@ -18987,6 +19119,11 @@ components:
           type: string
           format: uuid
           readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/ActivityHost'
+          readOnly: true
+          description: 'The host: its id, name and town.'
         title:
           type: string
           maxLength: 120
@@ -19047,9 +19184,17 @@ components:
           readOnly: true
         can_answer:
           type: boolean
-          description: In the audience (a member, and the activity is for all members
-            or invites them) and open.
+          description: In the audience and open.
           readOnly: true
+        my_checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        can_check_in:
+          type: boolean
+          readOnly: true
+          description: 'It is running and it is for you: you may check yourself in.'
         cost_share:
           allOf:
           - $ref: '#/components/schemas/CostShare'
@@ -19063,6 +19208,7 @@ components:
       required:
       - audience
       - can_answer
+      - can_check_in
       - cancel_reason
       - capacity
       - cost_note
@@ -19073,7 +19219,9 @@ components:
       - id
       - kind
       - my_answer
+      - my_checked_in_at
       - my_waitlisted
+      - organization
       - place
       - public
       - published_at
@@ -19087,10 +19235,16 @@ components:
       enum:
       - members
       - selected
+      - reps
+      - named
+      - open
       type: string
       description: |-
         * `members` - All members
         * `selected` - Selected members
+        * `reps` - Invited representatives
+        * `named` - Named people
+        * `open` - Open to all players
     ClubActivityKindEnum:
       enum:
       - social
@@ -19100,6 +19254,9 @@ components:
       - practice
       - open_day
       - anniversary
+      - workshop
+      - clinic
+      - awards
       - other
       type: string
       description: |-
@@ -19110,6 +19267,9 @@ components:
         * `practice` - Practice night
         * `open_day` - Open day
         * `anniversary` - Anniversary
+        * `workshop` - Workshop
+        * `clinic` - Coaching clinic
+        * `awards` - Award night
         * `other` - Other
     ClubActivityRequest:
       type: object
@@ -19142,7 +19302,18 @@ components:
             type: string
             format: uuid
           writeOnly: true
+          description: 'For selected members: active members. For named people: members
+            or listed players.'
           maxItems: 500
+        club_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: 'For the representatives audience: whose representatives. Empty
+            invites them all.'
+          maxItems: 200
         capacity:
           type: integer
           maximum: 2000
@@ -22955,6 +23126,21 @@ components:
       - authority
       - organization
       - permissions
+    MarkAttendanceRequest:
+      type: object
+      description: Mark someone who answered (`rsvp`), or someone in the audience
+        who didn't (`user_id`).
+      properties:
+        rsvp:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        attended:
+          type: boolean
+      required:
+      - attended
     MarkLiveRequest:
       type: object
       properties:
@@ -27069,7 +27255,18 @@ components:
             type: string
             format: uuid
           writeOnly: true
+          description: 'For selected members: active members. For named people: members
+            or listed players.'
           maxItems: 500
+        club_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: 'For the representatives audience: whose representatives. Empty
+            invites them all.'
+          maxItems: 200
         capacity:
           type: integer
           maximum: 2000

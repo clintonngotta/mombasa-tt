@@ -25,7 +25,8 @@ export default defineConfig({
   use: { baseURL, trace: "retain-on-failure", screenshot: "only-on-failure", actionTimeout: 10_000, navigationTimeout: 20_000 },
   projects: [
     // Logs each test account in once and keeps its session for the other projects.
-    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    // Retried: right after the stack starts, the API's seeding signs the test accounts out once more.
+    { name: "setup", testMatch: /auth\.setup\.ts/, retries: 2 },
     { name: "desktop", use: { ...devices["Desktop Chrome"], storageState: player }, dependencies: ["setup"] },
     // The bottom bar and phone layouts.
     { name: "phone", use: { ...devices["Pixel 7"], storageState: player }, dependencies: ["setup"], testMatch: /(menu|help)\.spec\.ts/ },

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView
 
+from activities.urls import me_urlpatterns as my_events
 from coaching.urls import coach_urlpatterns
 from coaching.urls import me_urlpatterns as my_coaching
 from competitions.urls import me_urlpatterns as my_entries
@@ -42,6 +43,7 @@ api_v1 = [
     path("me/", include(soda_my_urls)),
     path("me/", include(notification_my_urls)),
     path("me/", include(my_region)),
+    path("me/", include(my_events)),
     path("me/", include(my_coaching)),
     path("me/", include(my_guest_claims)),
     path("coaches/", include(coach_urlpatterns)),
