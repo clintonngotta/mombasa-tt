@@ -518,6 +518,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback-forms/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /feedback-forms/{id}/: a form you were asked to answer, with your answers. PUT
+         *     /feedback-forms/{id}/ saves them: once each, changed as often as you like until it closes.
+         */
+        get: operations["feedback_forms_retrieve"];
+        /**
+         * @description GET /feedback-forms/{id}/: a form you were asked to answer, with your answers. PUT
+         *     /feedback-forms/{id}/ saves them: once each, changed as often as you like until it closes.
+         */
+        put: operations["feedback_forms_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geography/countries/": {
         parameters: {
             query?: never;
@@ -1057,6 +1081,26 @@ export interface paths {
         };
         /** @description The signed-in player's own visits and passes at facilities, newest first. */
         get: operations["me_facility_visits_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/feedback-forms/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /me/feedback-forms/: forms you were asked to answer that are open now, closing soonest first,
+         *     each with whether you answered.
+         */
+        get: operations["me_feedback_forms_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3171,6 +3215,140 @@ export interface paths {
         };
         /** @description What the facility's branches collected in a month (REQ-044), for those who see its finances. */
         get: operations["organizations_facility_takings_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/feedback-forms/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/POST /organizations/{org}/feedback-forms/: the organization's forms, newest first, for its
+         *     competition staff. `?tournament=` lists one tournament's; `?templates=1` the templates. POST makes a
+         *     draft, or a template with `is_template`; `copy_from` starts from another form's sections.
+         */
+        get: operations["organizations_feedback_forms_list"];
+        put?: never;
+        /**
+         * @description GET/POST /organizations/{org}/feedback-forms/: the organization's forms, newest first, for its
+         *     competition staff. `?tournament=` lists one tournament's; `?templates=1` the templates. POST makes a
+         *     draft, or a template with `is_template`; `copy_from` starts from another form's sections.
+         */
+        post: operations["organizations_feedback_forms_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/feedback-forms/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/feedback-forms/{id}/. A draft or a template can be changed
+         *     and removed; once a form is sent its questions and recipients are fixed.
+         */
+        get: operations["organizations_feedback_forms_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/feedback-forms/{id}/. A draft or a template can be changed
+         *     and removed; once a form is sent its questions and recipients are fixed.
+         */
+        delete: operations["organizations_feedback_forms_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description GET/PATCH/DELETE /organizations/{org}/feedback-forms/{id}/. A draft or a template can be changed
+         *     and removed; once a form is sent its questions and recipients are fixed.
+         */
+        patch: operations["organizations_feedback_forms_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/feedback-forms/{id}/closing/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../feedback-forms/{id}/closing/: move a sent form's closing time: later to keep it open, or
+         *     to now to close it.
+         */
+        post: operations["organizations_feedback_forms_closing_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/feedback-forms/{id}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET .../feedback-forms/{id}/export.csv: one row per response. A named form includes who answered
+         *     and when; an anonymous one never does.
+         */
+        get: operations["organizations_feedback_forms_export.csv_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/feedback-forms/{id}/send/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST .../feedback-forms/{id}/send/: fix who is asked (the tournament's accepted players, umpires,
+         *     the host's competition staff and named guests, as the form says) and open it until `closes_at`.
+         */
+        post: operations["organizations_feedback_forms_send_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/feedback-forms/{id}/totals/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET .../feedback-forms/{id}/totals/: how many answered, and per question the average, the count
+         *     per choice or the text answers. No names, whether the form is anonymous or not.
+         */
+        get: operations["organizations_feedback_forms_totals_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9187,6 +9365,156 @@ export interface components {
             readonly passes: components["schemas"]["Pass"][];
             readonly bookable_tables: components["schemas"]["Table"][];
         };
+        /** @description Refuses fields it doesn't know. */
+        FeedbackAnswersRequest: {
+            answers: {
+                [key: string]: unknown;
+            };
+        };
+        FeedbackChoice: {
+            id: string;
+            text: string;
+        };
+        FeedbackChoiceRequest: {
+            id?: string;
+            text: string;
+        };
+        /** @description Refuses fields it doesn't know. */
+        FeedbackClosingRequest: {
+            /**
+             * Format: date-time
+             * @description A later time to keep it open, or now to close it.
+             */
+            closes_at: string;
+        };
+        FeedbackCount: {
+            label: string;
+            count: number;
+        };
+        /** @description A form as its host's competition staff see it. */
+        FeedbackForm: {
+            /** Format: uuid */
+            readonly id: string;
+            title: string;
+            intro: string;
+            is_template: boolean;
+            readonly tournament: components["schemas"]["FeedbackTournament"] | null;
+            sections: components["schemas"]["FeedbackSection"][];
+            anonymous: boolean;
+            to_entrants: boolean;
+            to_umpires: boolean;
+            to_staff: boolean;
+            readonly guests: components["schemas"]["FeedbackGuest"][];
+            readonly status: components["schemas"]["FeedbackFormStatusEnum"];
+            /** Format: date-time */
+            readonly opens_at: string | null;
+            /** Format: date-time */
+            readonly closes_at: string | null;
+            /** Format: date-time */
+            readonly sent_at: string | null;
+            /** @description Sent, and between its opening and closing times. */
+            readonly open: boolean;
+            /** @default 0 */
+            readonly recipients: number;
+            /** @default 0 */
+            readonly responses: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description A form as its host's competition staff see it. */
+        FeedbackFormRequest: {
+            title: string;
+            intro?: string;
+            is_template?: boolean;
+            /** Format: uuid */
+            tournament_id?: string | null;
+            sections?: components["schemas"]["FeedbackSectionRequest"][];
+            anonymous?: boolean;
+            to_entrants?: boolean;
+            to_umpires?: boolean;
+            to_staff?: boolean;
+            /** @description Named guests: members of the host or players listed in the directory. */
+            guest_ids?: string[];
+            /**
+             * Format: uuid
+             * @description Start from the sections of another form or template of this organization.
+             */
+            copy_from?: string;
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `sent` - Sent
+         * @enum {string}
+         */
+        FeedbackFormStatusEnum: "draft" | "sent";
+        FeedbackGuest: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        FeedbackGuestRequest: {
+            /** Format: uuid */
+            id: string;
+            display_name: string;
+        };
+        FeedbackHost: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        FeedbackQuestion: {
+            /** @description Given by the API; send it back to keep the question. */
+            id: string;
+            kind: components["schemas"]["QuestionKindEnum"];
+            text: string;
+            /** @default  */
+            help: string;
+            /** @default false */
+            required: boolean;
+            choices: components["schemas"]["FeedbackChoice"][];
+        };
+        FeedbackQuestionRequest: {
+            /** @description Given by the API; send it back to keep the question. */
+            id?: string;
+            kind: components["schemas"]["QuestionKindEnum"];
+            text: string;
+            /** @default  */
+            help: string;
+            /** @default false */
+            required: boolean;
+            choices?: components["schemas"]["FeedbackChoiceRequest"][];
+        };
+        FeedbackSection: {
+            id: string;
+            /** @default  */
+            title: string;
+            /** @default  */
+            description: string;
+            questions: components["schemas"]["FeedbackQuestion"][];
+        };
+        FeedbackSectionRequest: {
+            id?: string;
+            /** @default  */
+            title: string;
+            /** @default  */
+            description: string;
+            questions?: components["schemas"]["FeedbackQuestionRequest"][];
+        };
+        FeedbackTotals: {
+            responses: number;
+            recipients: number;
+            questions: components["schemas"]["QuestionTotals"][];
+        };
+        FeedbackTournament: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        FeedbackTournamentRequest: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         /**
          * @description * `all` - All active members
          *     * `selected` - Selected members
@@ -10335,6 +10663,27 @@ export interface components {
             readonly event: components["schemas"]["EntryEvent"];
             readonly tournament: components["schemas"]["EntryTournament"];
         };
+        /** @description A form as someone asked to answer it sees it, with their own answers. */
+        MyFeedbackForm: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["FeedbackHost"];
+            readonly tournament: components["schemas"]["FeedbackTournament"] | null;
+            readonly title: string;
+            readonly intro: string;
+            readonly sections: components["schemas"]["FeedbackSection"][];
+            readonly anonymous: boolean;
+            /** Format: date-time */
+            readonly opens_at: string | null;
+            /** Format: date-time */
+            readonly closes_at: string | null;
+            readonly open: boolean;
+            readonly answered: boolean;
+            /** @description Your answers by question id: a number, true or false, text, a choice id or a list of them. */
+            readonly my_answers: {
+                [key: string]: unknown;
+            };
+        };
         MyFinances: {
             charges: components["schemas"]["Charge"][];
             payments: components["schemas"]["Payment"][];
@@ -10600,9 +10949,10 @@ export interface components {
          *     * `events` - Events listing
          *     * `governance` - Committee and representatives
          *     * `meeting` - Meetings and minutes
+         *     * `feedback` - Feedback forms
          * @enum {string}
          */
-        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting";
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting" | "feedback";
         /** @enum {unknown} */
         NullEnum: null;
         Offences: {
@@ -11641,6 +11991,26 @@ export interface components {
             live_url?: string;
             status?: components["schemas"]["ExternalEventStatusEnum"];
         };
+        /** @description A form as its host's competition staff see it. */
+        PatchedFeedbackFormRequest: {
+            title?: string;
+            intro?: string;
+            is_template?: boolean;
+            /** Format: uuid */
+            tournament_id?: string | null;
+            sections?: components["schemas"]["FeedbackSectionRequest"][];
+            anonymous?: boolean;
+            to_entrants?: boolean;
+            to_umpires?: boolean;
+            to_staff?: boolean;
+            /** @description Named guests: members of the host or players listed in the directory. */
+            guest_ids?: string[];
+            /**
+             * Format: uuid
+             * @description Start from the sections of another form or template of this organization.
+             */
+            copy_from?: string;
+        };
         PatchedGuestWriteRequest: {
             display_name?: string;
         };
@@ -12362,6 +12732,28 @@ export interface components {
         PushUnsubscribeRequest: {
             /** Format: uri */
             endpoint: string;
+        };
+        /**
+         * @description * `rating` - rating
+         *     * `single` - single
+         *     * `multiple` - multiple
+         *     * `short_text` - short_text
+         *     * `long_text` - long_text
+         *     * `yes_no` - yes_no
+         *     * `number` - number
+         * @enum {string}
+         */
+        QuestionKindEnum: "rating" | "single" | "multiple" | "short_text" | "long_text" | "yes_no" | "number";
+        QuestionTotals: {
+            id: string;
+            section: string;
+            kind: components["schemas"]["QuestionKindEnum"];
+            text: string;
+            answered: number;
+            /** Format: double */
+            average: number | null;
+            counts: components["schemas"]["FeedbackCount"][];
+            texts: string[];
         };
         /**
          * @description A match in the ready queue. `ready` has a free table suggested; `waiting` could be played but
@@ -13272,6 +13664,16 @@ export interface components {
          * @enum {string}
          */
         SeedingEnum: "rating" | "manual" | "none";
+        /** @description Refuses fields it doesn't know. */
+        SendFeedbackFormRequest: {
+            /**
+             * Format: date-time
+             * @description Defaults to now.
+             */
+            opens_at?: string;
+            /** Format: date-time */
+            closes_at: string;
+        };
         Sent: {
             sent: number;
         };
@@ -15414,6 +15816,70 @@ export interface operations {
             };
         };
     };
+    feedback_forms_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyFeedbackForm"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    feedback_forms_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackAnswersRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyFeedbackForm"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     geography_countries_list: {
         parameters: {
             query?: never;
@@ -16641,6 +17107,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedMyVisitList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_feedback_forms_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyFeedbackForm"][];
                 };
             };
             /** @description Error envelope */
@@ -21569,6 +22063,301 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Takings"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_list: {
+        parameters: {
+            query?: {
+                templates?: boolean;
+                tournament?: string;
+            };
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackForm"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackFormRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackForm"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackForm"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedFeedbackFormRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackForm"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_closing_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackClosingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackForm"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "organizations_feedback_forms_export.csv_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_send_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendFeedbackFormRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackForm"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_feedback_forms_totals_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackTotals"];
                 };
             };
             /** @description Error envelope */

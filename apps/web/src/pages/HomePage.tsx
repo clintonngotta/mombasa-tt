@@ -4,6 +4,7 @@ import { LiveNow, MyEntries } from "@/components/tournaments/TournamentLists"
 import { can, useActiveMembership } from "@/lib/clubs"
 import { useMe } from "@/lib/session"
 import { EventsForYou } from "@/pages/club/InvitedEventsPage"
+import { FeedbackAsked } from "@/pages/tournaments/FeedbackAnswerPage"
 
 type Action = { to: string; icon: LucideIcon; title: string; description: string }
 
@@ -53,6 +54,7 @@ export function HomePage() {
         ))}
       </nav>
 
+      {me.isSuccess && <FeedbackAsked />}
       {me.isSuccess && <EventsForYou />}
       <LiveNow />
       <MyEntries />

@@ -12,6 +12,8 @@ from core.catalogue import CountryCatalogueView, CountryOptionsView
 from events.urls import club_urls as event_club_urls
 from facilities.urls import finder_urls
 from facilities.urls import my_urls as facility_my_urls
+from feedback.urls import me_urlpatterns as my_feedback
+from feedback.urls import organization_urlpatterns as feedback_forms
 from guests.urls import club_urlpatterns as club_guests
 from guests.urls import link_urlpatterns as guest_links
 from guests.urls import me_urlpatterns as my_guest_claims
@@ -44,6 +46,9 @@ api_v1 = [
     path("me/", include(notification_my_urls)),
     path("me/", include(my_region)),
     path("me/", include(my_events)),
+    path("me/", include(my_feedback)),
+    path("", include("feedback.urls")),
+    path("organizations/<uuid:organization_pk>/", include(feedback_forms)),
     path("me/", include(my_coaching)),
     path("me/", include(my_guest_claims)),
     path("coaches/", include(coach_urlpatterns)),

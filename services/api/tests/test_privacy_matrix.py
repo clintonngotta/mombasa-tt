@@ -52,6 +52,8 @@ from competitions.models import (
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
+from feedback import service as feedback
+from feedback.models import FeedbackForm, FeedbackRecipient, FeedbackResponse
 from finance import welfare
 from finance.models import (
     Allocation,
@@ -379,6 +381,16 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-activity-check-in": {"post": MEMBER},
     "organization-activity-attendance": {"post": STAFF},
     "my-events": {"get": OWNER},
+    # Feedback forms (TASK-131): the host's competition staff build, send and read totals; whoever was
+    # asked answers their own (Baraka's here).
+    "organization-feedback-forms": {"get": STAFF, "post": STAFF},
+    "organization-feedback-form": {"get": STAFF, "patch": STAFF, "delete": STAFF},  # a draft
+    "organization-feedback-form-send": {"post": STAFF},
+    "organization-feedback-form-closing": {"post": STAFF},
+    "organization-feedback-form-totals": {"get": STAFF},
+    "organization-feedback-form-export": {"get": STAFF},
+    "my-feedback-forms": {"get": OWNER},
+    "feedback-form": {"get": OWNER, "put": OWNER},
     "organization-schedule": {"get": MEMBER},
     "organization-schedule-ics": {"get": MEMBER},
     "organization-club-sessions": {"get": STAFF, "post": STAFF},
@@ -719,6 +731,18 @@ BODIES = {
     ("organization-activity", "patch"): {"place": "Moved to the beach"},
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
+    ("organization-feedback-forms", "post"): lambda: {
+        "title": "After the cup",
+        "tournament_id": str(Tournament.objects.get(name="Published Cup").id),
+    },
+    ("organization-feedback-form", "patch"): {"title": "Renamed form"},
+    ("organization-feedback-form-send", "post"): lambda: {
+        "closes_at": (timezone.now() + timedelta(days=5)).isoformat()
+    },
+    ("organization-feedback-form-closing", "post"): lambda: {
+        "closes_at": (timezone.now() + timedelta(days=9)).isoformat()
+    },
+    ("feedback-form", "put"): {"answers": {"aaaaaaaaaaaa": "MARK-FEEDBACK-EDITED"}},
     ("organization-activity-attendance", "post"): lambda: {
         "rsvp": str(Rsvp.objects.get(activity__title="Running night").id),
         "attended": True,
@@ -1558,6 +1582,31 @@ class World:
         MinutesAmendment.objects.create(
             meeting=self.approved_meeting, text="MARK-AMENDMENT", created_by=self.amina
         )
+        question = {"id": "aaaaaaaaaaaa", "kind": "long_text", "text": "What should change?"}
+        question = {**question, "help": "", "required": False, "choices": []}
+        sections = [{"id": "bbbbbbbbbbbb", "title": "", "description": "", "questions": [question]}]
+
+        def form(title, **extra):
+            made = FeedbackForm.objects.create(
+                organization=self.coast, tournament=self.published, title=title, sections=sections, **extra
+            )
+            made.guests.add(self.baraka)
+            return made
+
+        self.form_draft = form("MARK-FORM-DRAFT")
+        self.form_to_send = form("To send", to_entrants=False)
+        open_now = {
+            "status": "sent",
+            "opens_at": now - timedelta(days=1),
+            "closes_at": now + timedelta(days=3),
+        }
+        self.form_sent = form("Sent form", intro="MARK-FORM-SENT", anonymous=True, **open_now)
+        FeedbackRecipient.objects.create(form=self.form_sent, user=self.baraka, answered=True)
+        FeedbackResponse.objects.create(
+            form=self.form_sent,
+            owner_key=feedback.owner_key(self.form_sent, self.baraka),
+            answers={"aaaaaaaaaaaa": "MARK-FEEDBACK-ANSWER"},
+        )
         self.meeting_document = MeetingDocument.objects.create(
             meeting=self.approved_meeting,
             title="MARK-MEETING-PAPER",
@@ -1842,6 +1891,12 @@ class World:
             "organization-activity-rsvp": self.activity.id,
             "organization-activity-check-in": self.activity.id,
             "organization-activity-attendance": self.activity_running.id,
+            "organization-feedback-form": self.form_draft.id,
+            "organization-feedback-form-send": self.form_to_send.id,
+            "organization-feedback-form-closing": self.form_sent.id,
+            "organization-feedback-form-totals": self.form_sent.id,
+            "organization-feedback-form-export": self.form_sent.id,
+            "feedback-form": self.form_sent.id,
             "organization-activity-cost-share": self.activity_to_share.id,
             "organization-activity-attendees": self.activity.id,
             "organization-activity-invitees": self.activity.id,
@@ -2067,6 +2122,9 @@ class World:
             "action_items": sorted(ActionItem.objects.values_list("description", "status")),
             "amendments": MinutesAmendment.objects.count(),
             "meeting_documents": sorted(MeetingDocument.objects.values_list("title", "item")),
+            "feedback_forms": sorted(FeedbackForm.objects.values_list("title", "status", "closes_at")),
+            "feedback_recipients": FeedbackRecipient.objects.count(),
+            "feedback_responses": sorted(FeedbackResponse.objects.values_list("answers", flat=True), key=str),
             "meeting_invitees": sorted(
                 MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
             ),
@@ -2391,6 +2449,9 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-SODA-STAKE": set(),  # stakes stay hidden from everyone while the policy gate is off
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
         "MARK-EVENT-NAMED": {"amina", "grace", "chiku"},  # the person named and those who run activities
+        "MARK-FORM-DRAFT": {"amina"},  # the host's competition staff
+        "MARK-FORM-SENT": {"amina", "baraka"},  # and whoever was asked
+        "MARK-FEEDBACK-ANSWER": {"amina", "baraka"},  # the answer as text, never with a name
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
         "MARK-TABLE-BOOKING": {"amina", "baraka"},  # the requester and the venue's staff
         "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member

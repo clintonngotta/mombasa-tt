@@ -984,6 +984,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/feedback-forms/{id}/:
+    get:
+      operationId: feedback_forms_retrieve
+      description: |-
+        GET /feedback-forms/{id}/: a form you were asked to answer, with your answers. PUT
+        /feedback-forms/{id}/ saves them: once each, changed as often as you like until it closes.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - feedback-forms
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyFeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: feedback_forms_update
+      description: |-
+        GET /feedback-forms/{id}/: a form you were asked to answer, with your answers. PUT
+        /feedback-forms/{id}/ saves them: once each, changed as often as you like until it closes.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - feedback-forms
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackAnswersRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyFeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/geography/countries/:
     get:
       operationId: geography_countries_list
@@ -2129,6 +2194,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMyVisitList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/feedback-forms/:
+    get:
+      operationId: me_feedback_forms_list
+      description: |-
+        GET /me/feedback-forms/: forms you were asked to answer that are open now, closing soonest first,
+        each with whether you answered.
+      tags:
+      - me
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MyFeedbackForm'
           description: ''
         4XX:
           description: Error envelope
@@ -7243,6 +7333,347 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Takings'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/feedback-forms/:
+    get:
+      operationId: organizations_feedback_forms_list
+      description: |-
+        GET/POST /organizations/{org}/feedback-forms/: the organization's forms, newest first, for its
+        competition staff. `?tournament=` lists one tournament's; `?templates=1` the templates. POST makes a
+        draft, or a template with `is_template`; `copy_from` starts from another form's sections.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: templates
+        schema:
+          type: boolean
+      - in: query
+        name: tournament
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_feedback_forms_create
+      description: |-
+        GET/POST /organizations/{org}/feedback-forms/: the organization's forms, newest first, for its
+        competition staff. `?tournament=` lists one tournament's; `?templates=1` the templates. POST makes a
+        draft, or a template with `is_template`; `copy_from` starts from another form's sections.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackFormRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/feedback-forms/{id}/:
+    get:
+      operationId: organizations_feedback_forms_retrieve
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/feedback-forms/{id}/. A draft or a template can be changed
+        and removed; once a form is sent its questions and recipients are fixed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: organizations_feedback_forms_partial_update
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/feedback-forms/{id}/. A draft or a template can be changed
+        and removed; once a form is sent its questions and recipients are fixed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFeedbackFormRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: organizations_feedback_forms_destroy
+      description: |-
+        GET/PATCH/DELETE /organizations/{org}/feedback-forms/{id}/. A draft or a template can be changed
+        and removed; once a form is sent its questions and recipients are fixed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/feedback-forms/{id}/closing/:
+    post:
+      operationId: organizations_feedback_forms_closing_create
+      description: |-
+        POST .../feedback-forms/{id}/closing/: move a sent form's closing time: later to keep it open, or
+        to now to close it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackClosingRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/feedback-forms/{id}/export.csv:
+    get:
+      operationId: organizations_feedback_forms_export.csv_retrieve
+      description: |-
+        GET .../feedback-forms/{id}/export.csv: one row per response. A named form includes who answered
+        and when; an anonymous one never does.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/feedback-forms/{id}/send/:
+    post:
+      operationId: organizations_feedback_forms_send_create
+      description: |-
+        POST .../feedback-forms/{id}/send/: fix who is asked (the tournament's accepted players, umpires,
+        the host's competition staff and named guests, as the form says) and open it until `closes_at`.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendFeedbackFormRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackForm'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/feedback-forms/{id}/totals/:
+    get:
+      operationId: organizations_feedback_forms_totals_retrieve
+      description: |-
+        GET .../feedback-forms/{id}/totals/: how many answered, and per question the average, the count
+        per choice or the text answers. No names, whether the form is anonymous or not.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackTotals'
           description: ''
         4XX:
           description: Error envelope
@@ -21861,6 +22292,380 @@ components:
       - timezone
       - town
       - training_tables
+    FeedbackAnswersRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        answers:
+          type: object
+          additionalProperties: {}
+      required:
+      - answers
+    FeedbackChoice:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^[0-9a-f]{12}$
+        text:
+          type: string
+          maxLength: 120
+      required:
+      - id
+      - text
+    FeedbackChoiceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          pattern: ^[0-9a-f]{12}$
+        text:
+          type: string
+          minLength: 1
+          maxLength: 120
+      required:
+      - text
+    FeedbackClosingRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        closes_at:
+          type: string
+          format: date-time
+          description: A later time to keep it open, or now to close it.
+      required:
+      - closes_at
+    FeedbackCount:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+      required:
+      - count
+      - label
+    FeedbackForm:
+      type: object
+      description: A form as its host's competition staff see it.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 120
+        intro:
+          type: string
+          maxLength: 1000
+        is_template:
+          type: boolean
+        tournament:
+          allOf:
+          - $ref: '#/components/schemas/FeedbackTournament'
+          readOnly: true
+          nullable: true
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackSection'
+        anonymous:
+          type: boolean
+        to_entrants:
+          type: boolean
+        to_umpires:
+          type: boolean
+        to_staff:
+          type: boolean
+        guests:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackGuest'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/FeedbackFormStatusEnum'
+          readOnly: true
+        opens_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        closes_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        open:
+          type: boolean
+          readOnly: true
+          description: Sent, and between its opening and closing times.
+        recipients:
+          type: integer
+          readOnly: true
+          default: 0
+        responses:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - anonymous
+      - closes_at
+      - created_at
+      - guests
+      - id
+      - intro
+      - is_template
+      - open
+      - opens_at
+      - recipients
+      - responses
+      - sections
+      - sent_at
+      - status
+      - title
+      - to_entrants
+      - to_staff
+      - to_umpires
+      - tournament
+    FeedbackFormRequest:
+      type: object
+      description: A form as its host's competition staff see it.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        intro:
+          type: string
+          maxLength: 1000
+        is_template:
+          type: boolean
+        tournament_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackSectionRequest'
+        anonymous:
+          type: boolean
+        to_entrants:
+          type: boolean
+        to_umpires:
+          type: boolean
+        to_staff:
+          type: boolean
+        guest_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: 'Named guests: members of the host or players listed in the
+            directory.'
+          maxItems: 200
+        copy_from:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: Start from the sections of another form or template of this
+            organization.
+      required:
+      - title
+    FeedbackFormStatusEnum:
+      enum:
+      - draft
+      - sent
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `sent` - Sent
+    FeedbackGuest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+      required:
+      - display_name
+      - id
+    FeedbackGuestRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          minLength: 1
+      required:
+      - display_name
+      - id
+    FeedbackHost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
+    FeedbackQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Given by the API; send it back to keep the question.
+          pattern: ^[0-9a-f]{12}$
+        kind:
+          $ref: '#/components/schemas/QuestionKindEnum'
+        text:
+          type: string
+          maxLength: 300
+        help:
+          type: string
+          default: ''
+          maxLength: 300
+        required:
+          type: boolean
+          default: false
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackChoice'
+      required:
+      - choices
+      - help
+      - id
+      - kind
+      - required
+      - text
+    FeedbackQuestionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Given by the API; send it back to keep the question.
+          pattern: ^[0-9a-f]{12}$
+        kind:
+          $ref: '#/components/schemas/QuestionKindEnum'
+        text:
+          type: string
+          minLength: 1
+          maxLength: 300
+        help:
+          type: string
+          default: ''
+          maxLength: 300
+        required:
+          type: boolean
+          default: false
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackChoiceRequest'
+      required:
+      - kind
+      - text
+    FeedbackSection:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^[0-9a-f]{12}$
+        title:
+          type: string
+          default: ''
+          maxLength: 120
+        description:
+          type: string
+          default: ''
+          maxLength: 500
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackQuestion'
+      required:
+      - description
+      - id
+      - questions
+      - title
+    FeedbackSectionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          pattern: ^[0-9a-f]{12}$
+        title:
+          type: string
+          default: ''
+          maxLength: 120
+        description:
+          type: string
+          default: ''
+          maxLength: 500
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackQuestionRequest'
+    FeedbackTotals:
+      type: object
+      properties:
+        responses:
+          type: integer
+        recipients:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionTotals'
+      required:
+      - questions
+      - recipients
+      - responses
+    FeedbackTournament:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
+    FeedbackTournamentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - name
     FinanceAudienceEnum:
       enum:
       - all
@@ -24667,6 +25472,72 @@ components:
       - team_name
       - tournament
       - withdrawn_at
+    MyFeedbackForm:
+      type: object
+      description: A form as someone asked to answer it sees it, with their own answers.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        organization:
+          allOf:
+          - $ref: '#/components/schemas/FeedbackHost'
+          readOnly: true
+        tournament:
+          allOf:
+          - $ref: '#/components/schemas/FeedbackTournament'
+          readOnly: true
+          nullable: true
+        title:
+          type: string
+          readOnly: true
+        intro:
+          type: string
+          readOnly: true
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackSection'
+          readOnly: true
+        anonymous:
+          type: boolean
+          readOnly: true
+        opens_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        closes_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        open:
+          type: boolean
+          readOnly: true
+        answered:
+          type: boolean
+          readOnly: true
+        my_answers:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+          description: 'Your answers by question id: a number, true or false, text,
+            a choice id or a list of them.'
+      required:
+      - anonymous
+      - answered
+      - closes_at
+      - id
+      - intro
+      - my_answers
+      - open
+      - opens_at
+      - organization
+      - sections
+      - title
+      - tournament
     MyFinances:
       type: object
       properties:
@@ -25423,6 +26294,7 @@ components:
       - events
       - governance
       - meeting
+      - feedback
       type: string
       description: |-
         * `up_next` - Up next
@@ -25438,6 +26310,7 @@ components:
         * `events` - Events listing
         * `governance` - Committee and representatives
         * `meeting` - Meetings and minutes
+        * `feedback` - Feedback forms
     NullEnum:
       enum:
       - null
@@ -27625,6 +28498,51 @@ components:
           maxLength: 500
         status:
           $ref: '#/components/schemas/ExternalEventStatusEnum'
+    PatchedFeedbackFormRequest:
+      type: object
+      description: A form as its host's competition staff see it.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        intro:
+          type: string
+          maxLength: 1000
+        is_template:
+          type: boolean
+        tournament_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackSectionRequest'
+        anonymous:
+          type: boolean
+        to_entrants:
+          type: boolean
+        to_umpires:
+          type: boolean
+        to_staff:
+          type: boolean
+        guest_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: 'Named guests: members of the host or players listed in the
+            directory.'
+          maxItems: 200
+        copy_from:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: Start from the sections of another form or template of this
+            organization.
     PatchedGuestWriteRequest:
       type: object
       properties:
@@ -29331,6 +30249,58 @@ components:
           maxLength: 1000
       required:
       - endpoint
+    QuestionKindEnum:
+      enum:
+      - rating
+      - single
+      - multiple
+      - short_text
+      - long_text
+      - yes_no
+      - number
+      type: string
+      description: |-
+        * `rating` - rating
+        * `single` - single
+        * `multiple` - multiple
+        * `short_text` - short_text
+        * `long_text` - long_text
+        * `yes_no` - yes_no
+        * `number` - number
+    QuestionTotals:
+      type: object
+      properties:
+        id:
+          type: string
+        section:
+          type: string
+        kind:
+          $ref: '#/components/schemas/QuestionKindEnum'
+        text:
+          type: string
+        answered:
+          type: integer
+        average:
+          type: number
+          format: double
+          nullable: true
+        counts:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackCount'
+        texts:
+          type: array
+          items:
+            type: string
+      required:
+      - answered
+      - average
+      - counts
+      - id
+      - kind
+      - section
+      - text
+      - texts
     QueuedMatch:
       type: object
       description: |-
@@ -31432,6 +32402,19 @@ components:
         * `rating` - Rating
         * `manual` - Manual
         * `none` - None
+    SendFeedbackFormRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        opens_at:
+          type: string
+          format: date-time
+          description: Defaults to now.
+        closes_at:
+          type: string
+          format: date-time
+      required:
+      - closes_at
     Sent:
       type: object
       properties:

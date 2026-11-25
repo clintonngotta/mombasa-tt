@@ -443,6 +443,11 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
           Review: what went well, what went wrong, actions
         </Link>
       )}
+      {t.status !== "draft" && t.status !== "cancelled" && (
+        <Link to={`/tournaments/${t.id}/feedback`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Feedback forms: ask the people who came
+        </Link>
+      )}
       {t.events.some((event) => event.paused_at) && (
         <Link to={`/tournaments/${t.id}/corrections`} className={buttonVariants({ variant: "destructive", className: "self-start" })}>
           An event is paused: decide about a corrected result
