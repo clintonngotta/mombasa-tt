@@ -43,7 +43,8 @@ def running(activity):
 
 
 def my_events(client) -> list[str]:
-    return [event["title"] for event in client.get(EVENTS).json()]
+    # Sorted: events made in the same second start together, and the list then orders them by id.
+    return sorted(event["title"] for event in client.get(EVENTS).json())
 
 
 @pytest.fixture

@@ -159,7 +159,34 @@ def accept(invitation: SessionInvitation) -> SessionInvitation:
     )
     invitation.status = SessionInvitation.Status.ACCEPTED
     invitation.responded_at = timezone.now()
-    invitation.save(update_fields=["status", "responded_at"])
+    # Coming after all: the apology no longer stands.
+    invitation.apologised_at, invitation.apology_reason = None, ""
+    invitation.save(update_fields=["status", "responded_at", "apologised_at", "apology_reason"])
+    return invitation
+
+
+@transaction.atomic
+def apologise(invitation: SessionInvitation, reason: str) -> SessionInvitation:
+    """The member says before the start that they can't come. Their time is free again, and the record
+    shows an apology rather than an absence. Sending it again changes the reason."""
+    invitation = (
+        SessionInvitation.objects.select_for_update(of=("self",))
+        .select_related("session")
+        .get(pk=invitation.pk)
+    )
+    session = invitation.session
+    if session.status != ClubSession.Status.SCHEDULED:
+        raise ApiException("session_cancelled", "This session was cancelled.", 409)
+    if session.starts_at <= timezone.now():
+        raise ApiException(
+            "apology_too_late", "The session has started. Apologies are sent before the start.", 409
+        )
+    now = timezone.now()
+    invitation.status = SessionInvitation.Status.DECLINED
+    invitation.responded_at = now
+    invitation.apologised_at = invitation.apologised_at or now
+    invitation.apology_reason = reason
+    invitation.save(update_fields=["status", "responded_at", "apologised_at", "apology_reason"])
     return invitation
 
 

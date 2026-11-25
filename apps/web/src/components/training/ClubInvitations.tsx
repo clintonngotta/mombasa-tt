@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { MapPin, UserCheck, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { FormAlert } from "@/components/forms/Field"
+import { Field, FormAlert } from "@/components/forms/Field"
 import { ConflictList } from "@/components/training/ConflictList"
 import { ApiError, errorMessage } from "@/lib/api"
-import { acceptInvitation, checkInAtSession, clashesOf, clubSessionKeys, declineInvitation, INVITATION_STATUS, listMyInvitations, type MySessionInvitation } from "@/lib/clubSessions"
+import { acceptInvitation, apologiseForSession, checkInAtSession, clashesOf, clubSessionKeys, declineInvitation, INVITATION_STATUS, listMyInvitations, type MySessionInvitation } from "@/lib/clubSessions"
 import { locate } from "@/lib/nearby"
 import { formatInstant } from "@/lib/dates"
 import { LOCAL_TIME_ZONE, trainingKeys } from "@/lib/training"
@@ -51,8 +51,18 @@ function Invitation({ invitation }: { invitation: MySessionInvitation }) {
   const canCheckIn = !cancelled && open && invitation.attended == null && invitation.status !== "declined"
   // The position is read for this one request and not held in the page afterwards.
   const checkIn = useMutation({ mutationFn: async () => checkInAtSession(invitation.id, await locate({ fresh: true })), onSuccess: refresh })
+  const [apologising, setApologising] = useState(false)
+  const [reason, setReason] = useState("")
+  const apologise = useMutation({
+    mutationFn: () => apologiseForSession(invitation.id, reason.trim()),
+    onSuccess: () => {
+      setApologising(false)
+      refresh()
+    },
+  })
+  const started = now >= new Date(session.starts_at).getTime()
   const clashes = clashesOf(accept.error)
-  const failed = accept.error ?? decline.error
+  const failed = accept.error ?? decline.error ?? apologise.error
 
   return (
     <div className={`${ROW} flex-col items-stretch`}>
@@ -76,7 +86,7 @@ function Invitation({ invitation }: { invitation: MySessionInvitation }) {
         )}
         {session.notes && <p className="text-sm whitespace-pre-wrap">{session.notes}</p>}
         <p className="text-sm font-semibold">
-          {cancelled ? "Cancelled by the club" : INVITATION_STATUS[invitation.status]}
+          {cancelled ? "Cancelled by the club" : invitation.apologised ? `You sent an apology${invitation.apology_reason ? `: ${invitation.apology_reason}` : ""}` : INVITATION_STATUS[invitation.status]}
           {!cancelled && invitation.status === "invited" && session.full && " · full"}
         </p>
       </div>
@@ -115,6 +125,24 @@ function Invitation({ invitation }: { invitation: MySessionInvitation }) {
               {invitation.status === "accepted" ? "I can't come after all" : "Can't come"}
             </Button>
           )}
+          {!started && !invitation.apologised && invitation.attended == null && !apologising && (
+            <Button variant="outline" onClick={() => setApologising(true)}>
+              Send an apology
+            </Button>
+          )}
+        </div>
+      )}
+      {!cancelled && apologising && (
+        <div className="flex flex-col gap-2 rounded-lg border p-3">
+          <Field label="Why you can't come" optional maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} hint="The coach sees this. You're recorded as apologised, not absent." />
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={apologise.isPending} onClick={() => apologise.mutate()}>
+              {apologise.isPending ? "Sending…" : "Send apology"}
+            </Button>
+            <Button variant="ghost" onClick={() => setApologising(false)}>
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
     </div>

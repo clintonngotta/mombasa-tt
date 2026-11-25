@@ -1771,6 +1771,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/session-invitations/{id}/apologise/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send an apology before the session starts, with an optional reason for the staff. Your time
+         *     is free again and attendance shows you as apologised rather than absent.
+         */
+        post: operations["me_session_invitations_apologise_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/session-invitations/{id}/check-in/": {
         parameters: {
             query?: never;
@@ -4009,7 +4029,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description POST .../meetings/{id}/answer/: attending or apologies, until it ends. */
+        /**
+         * @description POST .../meetings/{id}/answer/: attending, until it ends; or apologies with an optional reason,
+         *     before it starts.
+         */
         post: operations["organizations_meetings_answer_create"];
         delete?: never;
         options?: never;
@@ -7771,8 +7794,19 @@ export interface components {
          * @enum {string}
          */
         AnswerAnswerEnum: "attending" | "apologies";
+        /** @description Refuses fields it doesn't know, so a misspelt or smuggled field is an error, not silence. */
         AnswerRequest: {
             answer: components["schemas"]["AnswerAnswerEnum"];
+            /**
+             * @description With apologies: why, for whoever takes attendance.
+             * @default
+             */
+            reason: string;
+        };
+        /** @description Refuses fields it doesn't know. */
+        ApologyRequest: {
+            /** @default  */
+            reason: string;
         };
         AppointRequest: {
             /** Format: uuid */
@@ -9922,6 +9956,9 @@ export interface components {
             readonly display_name: string;
             readonly club: string | null;
             readonly answer: components["schemas"]["InviteeAnswerEnum"];
+            readonly apology_reason: string;
+            /** Format: date-time */
+            readonly apologised_at: string | null;
             /** Format: date-time */
             readonly checked_in_at: string | null;
             readonly attendance: components["schemas"]["MeetingAttendanceEnum"] | components["schemas"]["BlankEnum"];
@@ -10865,6 +10902,8 @@ export interface components {
             readonly attendance_source: components["schemas"]["AttendanceSourceEnum"] | components["schemas"]["BlankEnum"];
             /** Format: date-time */
             readonly attendance_at: string | null;
+            readonly apologised: boolean;
+            readonly apology_reason: string;
             /** @description When you may check in, from how far, and where the session is held. */
             readonly check_in: components["schemas"]["CheckInWindow"];
             readonly session: components["schemas"]["MySession"];
@@ -13844,6 +13883,11 @@ export interface components {
             readonly late: boolean;
             readonly check_in_distance_m: number | null;
             readonly check_in_accuracy_m: number | null;
+            /** @description They sent an apology before the start: apologised rather than absent. */
+            readonly apologised: boolean;
+            /** Format: date-time */
+            readonly apologised_at: string | null;
+            readonly apology_reason: string;
         };
         /**
          * @description * `invited` - Invited
@@ -18754,6 +18798,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySessionInvitation"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_session_invitations_apologise_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this session invitation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApologyRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {

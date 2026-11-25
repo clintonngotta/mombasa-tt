@@ -610,7 +610,8 @@ class InviteeAction(MeetingView):
 
 
 class AnswerMeetingView(InviteeAction):
-    """POST .../meetings/{id}/answer/: attending or apologies, until it ends."""
+    """POST .../meetings/{id}/answer/: attending, until it ends; or apologies with an optional reason,
+    before it starts."""
 
     @extend_schema(request=AnswerSerializer, responses={200: MeetingSerializer})
     def post(self, request, organization_pk, pk):
@@ -618,10 +619,19 @@ class AnswerMeetingView(InviteeAction):
             invitation = self.invitation(request, organization_pk, pk)
             serializer = AnswerSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            if invitation.meeting.ends_at <= timezone.now():
+            now = timezone.now()
+            if invitation.meeting.ends_at <= now:
                 raise ApiException("meeting_over", "This meeting is over.", 409)
-            invitation.answer = serializer.validated_data["answer"]
-            invitation.save(update_fields=["answer"])
+            answer = serializer.validated_data["answer"]
+            sorry = answer == MeetingInvitee.Answer.APOLOGIES
+            if sorry and invitation.meeting.starts_at <= now:
+                raise ApiException(
+                    "apology_too_late", "The meeting has started. Apologies are sent before the start.", 409
+                )
+            invitation.answer = answer
+            invitation.apology_reason = serializer.validated_data["reason"] if sorry else ""
+            invitation.apologised_at = (invitation.apologised_at or now) if sorry else None
+            invitation.save(update_fields=["answer", "apology_reason", "apologised_at"])
         return meeting_reply(request, invitation.meeting, staff=False)
 
 

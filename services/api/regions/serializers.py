@@ -420,6 +420,8 @@ class InviteeSerializer(serializers.ModelSerializer):
             "display_name",
             "club",
             "answer",
+            "apology_reason",
+            "apologised_at",
             "checked_in_at",
             "attendance",
             "marked_at",
@@ -661,9 +663,17 @@ class MeetingSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class AnswerSerializer(serializers.Serializer):
+class AnswerSerializer(StrictSerializer):
     answer = serializers.ChoiceField(
         choices=[MeetingInvitee.Answer.ATTENDING, MeetingInvitee.Answer.APOLOGIES]
+    )
+    reason = serializers.CharField(
+        max_length=300,
+        trim_whitespace=True,
+        allow_blank=True,
+        required=False,
+        default="",
+        help_text="With apologies: why, for whoever takes attendance.",
     )
 
 

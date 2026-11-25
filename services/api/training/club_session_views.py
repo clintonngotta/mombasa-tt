@@ -28,6 +28,7 @@ from organizations.permissions import Permission
 
 from . import check_in, club_sessions
 from .club_session_serializers import (
+    ApologySerializer,
     AttendanceSerializer,
     ClubSessionSerializer,
     InviteSerializer,
@@ -340,6 +341,15 @@ class MySessionInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet)
     def decline(self, request, *args, **kwargs):
         """Decline, or withdraw an acceptance: your time is free again."""
         return self._answer(club_sessions.decline(self.get_object()))
+
+    @extend_schema(request=ApologySerializer, responses={200: MySessionInvitationSerializer})
+    @action(detail=True, methods=["post"])
+    def apologise(self, request, *args, **kwargs):
+        """Send an apology before the session starts, with an optional reason for the staff. Your time
+        is free again and attendance shows you as apologised rather than absent."""
+        body = ApologySerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        return self._answer(club_sessions.apologise(self.get_object(), body.validated_data["reason"]))
 
     @extend_schema(request=PositionSerializer, responses={200: MySessionInvitationSerializer})
     @action(

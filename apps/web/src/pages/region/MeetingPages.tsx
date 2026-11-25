@@ -239,7 +239,14 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
       queryClient.setQueryData<Meeting>(regionKeys.meeting(orgId, meeting.id), (m) => (m?.me ? { ...m, me: { ...m.me, checked_in_at: now, attendance: m.me.attendance || "present" } } : m))
     },
   })
-  const answer = useMutation({ mutationFn: (value: "attending" | "apologies") => answerMeeting(orgId, meeting.id, value), onSuccess: update })
+  const [apology, setApology] = useState<string | null>(null)
+  const answer = useMutation({
+    mutationFn: (value: "attending" | "apologies") => answerMeeting(orgId, meeting.id, value, value === "apologies" ? (apology ?? "").trim() : ""),
+    onSuccess: (fresh) => {
+      setApology(null)
+      return update(fresh)
+    },
+  })
   const cancel = useMutation({ mutationFn: () => cancelMeeting(orgId, meeting.id, reason.trim()), onSuccess: update })
   const remove = useMutation({
     mutationFn: () => deleteMeeting(orgId, meeting.id),
@@ -337,13 +344,27 @@ function MeetingView({ orgId, meeting }: { orgId: string; meeting: Meeting }) {
                 <Button variant={meeting.me.answer === "attending" ? "default" : "outline"} disabled={answer.isPending} onClick={() => answer.mutate("attending")}>
                   I'll attend
                 </Button>
-                <Button variant={meeting.me.answer === "apologies" ? "default" : "outline"} disabled={answer.isPending} onClick={() => answer.mutate("apologies")}>
+                <Button variant={meeting.me.answer === "apologies" ? "default" : "outline"} disabled={answer.isPending} onClick={() => setApology(meeting.me?.apology_reason ?? "")}>
                   Send apologies
                 </Button>
               </>
             )}
           </div>
         </section>
+      )}
+
+      {apology !== null && meeting.me && !started && (
+        <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          <Field label="Why you can't come" optional maxLength={300} value={apology} onChange={(e) => setApology(e.target.value)} hint="Whoever takes attendance sees this. You're recorded as apologies, not absent." />
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={answer.isPending} onClick={() => answer.mutate("apologies")}>
+              {answer.isPending ? "Sending…" : "Send apology"}
+            </Button>
+            <Button variant="ghost" onClick={() => setApology(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       )}
 
       {meeting.can_take_attendance && meeting.invitees.length > 0 && <Attendance orgId={orgId} meeting={meeting} started={started} over={started && !running} onChange={update} />}
@@ -446,7 +467,7 @@ function Attendance({ orgId, meeting, started, over, onChange }: { orgId: string
 }
 
 function InviteeRow({ orgId, meeting, invitee, editable, pending, waiting, onMark }: { orgId: string; meeting: Meeting; invitee: MeetingInvitee; editable: boolean; pending: boolean; waiting: boolean; onMark: (value: AttendanceMark) => void }) {
-  const answer = invitee.answer === "attending" ? "Said they'll attend" : invitee.answer === "apologies" ? "Sent apologies" : "No answer"
+  const answer = invitee.answer === "attending" ? "Said they'll attend" : invitee.answer === "apologies" ? `Sent apologies${invitee.apology_reason ? `: ${invitee.apology_reason}` : ""}` : "No answer"
   return (
     <li className="flex flex-col gap-2 rounded-lg border bg-card px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">

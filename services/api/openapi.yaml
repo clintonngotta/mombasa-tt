@@ -3565,6 +3565,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/me/session-invitations/{id}/apologise/:
+    post:
+      operationId: me_session_invitations_apologise_create
+      description: |-
+        Send an apology before the session starts, with an optional reason for the staff. Your time
+        is free again and attendance shows you as apologised rather than absent.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this session invitation.
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApologyRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MySessionInvitation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/me/session-invitations/{id}/check-in/:
     post:
       operationId: me_session_invitations_check_in_create
@@ -9381,8 +9417,9 @@ paths:
   /api/v1/organizations/{organization_pk}/meetings/{id}/answer/:
     post:
       operationId: organizations_meetings_answer_create
-      description: 'POST .../meetings/{id}/answer/: attending or apologies, until
-        it ends.'
+      description: |-
+        POST .../meetings/{id}/answer/: attending, until it ends; or apologies with an optional reason,
+        before it starts.
       parameters:
       - in: path
         name: id
@@ -18168,11 +18205,26 @@ components:
         * `apologies` - apologies
     AnswerRequest:
       type: object
+      description: Refuses fields it doesn't know, so a misspelt or smuggled field
+        is an error, not silence.
       properties:
         answer:
           $ref: '#/components/schemas/AnswerAnswerEnum'
+        reason:
+          type: string
+          default: ''
+          description: 'With apologies: why, for whoever takes attendance.'
+          maxLength: 300
       required:
       - answer
+    ApologyRequest:
+      type: object
+      description: Refuses fields it doesn't know.
+      properties:
+        reason:
+          type: string
+          default: ''
+          maxLength: 300
     AppointRequest:
       type: object
       properties:
@@ -23621,6 +23673,14 @@ components:
           allOf:
           - $ref: '#/components/schemas/InviteeAnswerEnum'
           readOnly: true
+        apology_reason:
+          type: string
+          readOnly: true
+        apologised_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         checked_in_at:
           type: string
           format: date-time
@@ -23643,6 +23703,8 @@ components:
           readOnly: true
       required:
       - answer
+      - apologised_at
+      - apology_reason
       - attendance
       - checked_in_at
       - club
@@ -26015,6 +26077,12 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        apologised:
+          type: boolean
+          readOnly: true
+        apology_reason:
+          type: string
+          readOnly: true
         check_in:
           allOf:
           - $ref: '#/components/schemas/CheckInWindow'
@@ -26026,6 +26094,8 @@ components:
           - $ref: '#/components/schemas/MySession'
           readOnly: true
       required:
+      - apologised
+      - apology_reason
       - attendance_at
       - attendance_source
       - attended
@@ -32798,7 +32868,23 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        apologised:
+          type: boolean
+          readOnly: true
+          description: 'They sent an apology before the start: apologised rather than
+            absent.'
+        apologised_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        apology_reason:
+          type: string
+          readOnly: true
       required:
+      - apologised
+      - apologised_at
+      - apology_reason
       - attendance_at
       - attendance_source
       - attended

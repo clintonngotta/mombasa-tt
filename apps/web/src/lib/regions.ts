@@ -74,8 +74,8 @@ export const deleteMeeting = (orgId: string, id: string) => api<void>(`${org(org
 export const meetingAction = (orgId: string, id: string, action: "publish" | "check-in") =>
   api<Meeting>(`${org(orgId)}/meetings/${id}/${action}/`, { method: "POST" })
 export const cancelMeeting = (orgId: string, id: string, reason: string) => api<Meeting>(`${org(orgId)}/meetings/${id}/cancel/`, { body: { reason } })
-export const answerMeeting = (orgId: string, id: string, answer: "attending" | "apologies") =>
-  api<Meeting>(`${org(orgId)}/meetings/${id}/answer/`, { body: { answer } })
+export const answerMeeting = (orgId: string, id: string, answer: "attending" | "apologies", reason = "") =>
+  api<Meeting>(`${org(orgId)}/meetings/${id}/answer/`, { body: { answer, ...(reason ? { reason } : {}) } })
 export const updateMeeting = (orgId: string, id: string, body: Schemas["PatchedMeetingRequest"]) =>
   api<Meeting>(`${org(orgId)}/meetings/${id}/`, { method: "PATCH", body })
 

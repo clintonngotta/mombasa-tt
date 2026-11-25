@@ -337,6 +337,10 @@ class SessionInvitation(models.Model):
     late = models.BooleanField(default=False)
     check_in_distance_m = models.PositiveIntegerField(null=True, blank=True)
     check_in_accuracy_m = models.PositiveIntegerField(null=True, blank=True)
+    # An apology sent before the start (REQ-052): the member isn't coming and said so, with an optional
+    # reason for the staff. Attendance then shows them as apologised rather than absent.
+    apologised_at = models.DateTimeField(null=True, blank=True)
+    apology_reason = models.CharField(max_length=300, blank=True)
 
     class Meta:
         ordering = ["created_at", "id"]

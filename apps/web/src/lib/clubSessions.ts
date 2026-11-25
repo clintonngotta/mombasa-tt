@@ -56,6 +56,8 @@ export const saveTrainingRules = (orgId: string, body: TrainingRulesInput) => ap
 export const setSessionLocation = (orgId: string, id: string, body: Partial<Schemas["SessionLocationRequest"]>) => api<ClubSession>(`${base(orgId)}${id}/location/`, { body })
 export const checkInAtSession = (invitationId: string, position: { latitude: number; longitude: number; accuracy: number }) =>
   api<MySessionInvitation>(`${MINE}${invitationId}/check-in/`, { body: { latitude: position.latitude, longitude: position.longitude, accuracy_m: Math.round(position.accuracy) } })
+/** Before the start: can't come, with an optional reason for the coach. Shown as apologised, not absent. */
+export const apologiseForSession = (invitationId: string, reason: string) => api<MySessionInvitation>(`${MINE}${invitationId}/apologise/`, { body: { reason } })
 export const markAttendanceLate = (orgId: string, id: string, invitationId: string) =>
   api<SessionInvitation>(`${base(orgId)}${id}/invitations/${invitationId}/`, { method: "PATCH", body: { attended: true, late: true } })
 

@@ -199,6 +199,9 @@ class MeetingInvitee(models.Model):
         ABSENT = "absent"
 
     answer = models.CharField(max_length=10, choices=Answer.choices, default=Answer.NONE)
+    # With apologies, sent before the start (REQ-046): an optional reason, for whoever takes attendance.
+    apology_reason = models.CharField(max_length=300, blank=True)
+    apologised_at = models.DateTimeField(null=True, blank=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     # The record of the meeting: self check-in marks present; the secretary marks the rest.
     attendance = models.CharField(max_length=10, choices=Attendance.choices, default="", blank=True)

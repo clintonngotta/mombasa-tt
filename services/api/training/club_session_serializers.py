@@ -168,6 +168,9 @@ class SessionInvitationSerializer(serializers.ModelSerializer):
 
     user_id = serializers.UUIDField(read_only=True)
     display_name = serializers.CharField(source="user.display_name", read_only=True)
+    apologised = serializers.SerializerMethodField(
+        help_text="They sent an apology before the start: apologised rather than absent."
+    )
 
     class Meta:
         model = SessionInvitation
@@ -183,8 +186,20 @@ class SessionInvitationSerializer(serializers.ModelSerializer):
             "late",
             "check_in_distance_m",
             "check_in_accuracy_m",
+            "apologised",
+            "apologised_at",
+            "apology_reason",
         ]
         read_only_fields = fields
+
+    def get_apologised(self, invitation) -> bool:
+        return invitation.apologised_at is not None
+
+
+class ApologySerializer(StrictFields):
+    reason = serializers.CharField(
+        max_length=300, trim_whitespace=True, allow_blank=True, required=False, default=""
+    )
 
 
 class InviteSerializer(serializers.Serializer):
@@ -368,6 +383,7 @@ class MySessionInvitationSerializer(serializers.ModelSerializer):
     """A member's own invitation: the session, their answer and whether they were marked present."""
 
     session = MySessionSerializer(read_only=True)
+    apologised = serializers.SerializerMethodField()
     check_in = serializers.SerializerMethodField(
         help_text="When you may check in, from how far, and where the session is held."
     )
@@ -382,10 +398,15 @@ class MySessionInvitationSerializer(serializers.ModelSerializer):
             "late",
             "attendance_source",
             "attendance_at",
+            "apologised",
+            "apology_reason",
             "check_in",
             "session",
         ]
         read_only_fields = fields
+
+    def get_apologised(self, invitation) -> bool:
+        return invitation.apologised_at is not None
 
     @extend_schema_field(CheckInWindowSerializer)
     def get_check_in(self, invitation) -> dict:

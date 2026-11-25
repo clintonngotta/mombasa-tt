@@ -197,7 +197,7 @@ function Invited({ session, orgId, invitations, error }: { session: ClubSession;
                 {INVITATION_STATUS[invitation.status]}
                 {invitation.attended === true && (invitation.attendance_source === "self" ? ` · checked in${invitation.check_in_distance_m != null ? ` ${invitation.check_in_distance_m} m away` : ""}` : " · came, marked by staff")}
                 {invitation.attended === true && invitation.late && " · late"}
-                {invitation.attended === false && " · didn't come"}
+                {invitation.apologised ? ` · apologised${invitation.apology_reason ? `: ${invitation.apology_reason}` : ""}` : invitation.attended === false && " · didn't come"}
                 {kept.has(invitation.id) && " · waiting to sync"}
               </span>
             </span>
