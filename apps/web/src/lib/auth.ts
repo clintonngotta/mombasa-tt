@@ -32,4 +32,7 @@ export const resendVerification = (email: string, next?: string) =>
 export const MIN_PASSWORD_LENGTH = 10
 
 /** Change the signed-in player's name or sign-in phone (a new phone starts unconfirmed). */
+/** Ask to add an email to an account that signs in by phone. A link goes to the address; nothing changes
+ * until it is opened. The answer is the same whether or not the address can be used. */
+export const addEmail = (email: string) => api<void>("/auth/me/email/", { body: { email } })
 export const updateAccount = (input: Schemas["PatchedAccountUpdateRequest"]) => api<User>("/auth/me/", { method: "PATCH", body: input })

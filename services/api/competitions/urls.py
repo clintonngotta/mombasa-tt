@@ -69,6 +69,16 @@ urlpatterns = [
         name="tournament-announcement-amend",
     ),
     path(
+        "<uuid:tournament_pk>/announcements/export.pdf",
+        news.AnnouncementsPdfView.as_view(),
+        name="tournament-announcements-pdf",
+    ),
+    path(
+        "<uuid:tournament_pk>/announcements/<uuid:pk>/pdf/",
+        news.AnnouncementPdfView.as_view(),
+        name="tournament-announcement-pdf",
+    ),
+    path(
         "<uuid:tournament_pk>/announcements/<uuid:pk>/card/",
         news.AnnouncementCardView.as_view(),
         name="tournament-announcement-card",

@@ -154,6 +154,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "geography-country": {"get": PUBLIC},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
     "auth-me": {"get": OWNER, "patch": OWNER},
+    "auth-me-email": {"post": OWNER},  # a phone-only account asks to add an email: a link is sent
     "attachment-link": {"get": SIGNED_IN},  # per-attachment policy, see test_attachments.py
     "personal-match-list": {"get": OWNER, "post": OWNER},
     "personal-match-labels": {"get": OWNER},
@@ -270,6 +271,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-announcement-publish": {"post": STAFF},
     "tournament-announcement-amend": {"post": STAFF},
     "tournament-announcement-card": {"get": PUBLIC},
+    # The same published text as a PDF: one post, or the tournament's whole sheet (never drafts).
+    "tournament-announcement-pdf": {"get": PUBLIC},
+    "tournament-announcements-pdf": {"get": PUBLIC},
     "tournament-live": {"get": PUBLIC},
     "tournament-ceremony-generate": {"post": STAFF},
     "tournament-ceremony-publish": {"post": STAFF},
@@ -667,6 +671,7 @@ def pdf_upload():
 
 
 BODIES = {
+    ("auth-me-email", "post"): {"email": "new.address@example.com"},
     ("tournament-ceremony", "put"): {"location": "Main hall"},
     ("tournament-review", "put"): {"went_well": "Ran to time"},
     ("tournament-announcements", "post"): {"scope": "tournament"},
@@ -1847,6 +1852,7 @@ class World:
             "tournament-announcement-publish": self.news_to_publish.id,
             "tournament-announcement-amend": self.news_out.id,
             "tournament-announcement-card": self.news_out.id,
+            "tournament-announcement-pdf": self.news_out.id,
             "tournament-ceremony-award-present": self.award_to_present.id,
             "organization-agenda-item": self.agenda_item.id,
             "organization-article": self.article.id,
@@ -2560,7 +2566,8 @@ def everything_served_to(world, user) -> str:
         response = client.get(url)
         if hasattr(response, "streaming_content"):
             continue  # file bytes, covered in test_attachments.py
-        served.append(response.content.decode())
+        # A PDF is Latin-1, not UTF-8: read it leniently, the markers are plain ASCII either way.
+        served.append(response.content.decode(errors="replace"))
     return "\n".join(served)
 
 

@@ -8,6 +8,7 @@ amendment is published beside it.
 
 import textwrap
 from html import escape
+from zoneinfo import ZoneInfo
 
 from django.db import transaction
 from django.db.models import Prefetch
@@ -24,6 +25,7 @@ from rest_framework.views import APIView
 
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
+from core.pdf import text_pdf
 from core.permissions import PublicReads
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
@@ -311,3 +313,63 @@ class AnnouncementCardView(APIView):
         response = HttpResponse(card_svg(announcement), content_type="image/svg+xml")
         response["Content-Disposition"] = 'inline; filename="coast-tt-results.svg"'
         return response
+
+
+MAX_PDF_POSTS = 200
+
+
+def pdf_lines(tournament: Tournament, posts) -> list[str]:
+    """The announcements as a printable sheet: the tournament, then each post with when it was
+    published. A post that a later one corrected says so."""
+    zone = ZoneInfo(tournament.timezone)
+    lines = [tournament.name, f"Results announcements · {tournament.organization.name}", ""]
+    for post in posts:
+        when = (
+            timezone.localtime(post.published_at, zone).strftime("%a %d %b %Y, %H:%M")
+            if post.published_at
+            else "Draft"
+        )
+        lines += [
+            "=" * 60,
+            post.title,
+            when + (" · corrected by a later announcement" if post.outdated_at else ""),
+        ]
+        lines += ["", *post.body.splitlines(), ""]
+    if not posts:
+        lines.append("No announcements have been published yet.")
+    return lines
+
+
+def _pdf_response(lines: list[str], name: str) -> HttpResponse:
+    response = HttpResponse(text_pdf(lines), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{name}.pdf"'
+    return response
+
+
+class AnnouncementPdfView(APIView):
+    """GET /tournaments/{id}/announcements/{pk}/pdf/: one announcement as a PDF, for whoever may read
+    the post."""
+
+    permission_classes = [PublicReads]
+    public_actions = ("get",)
+
+    @extend_schema(responses={(200, "application/pdf"): OpenApiTypes.BINARY})
+    def get(self, request, tournament_pk, pk):
+        tournament = _tournament(tournament_pk)
+        announcement = _one(tournament, pk, _visible(request, tournament))
+        return _pdf_response(pdf_lines(tournament, [announcement]), "coast-tt-results")
+
+
+class AnnouncementsPdfView(APIView):
+    """GET /tournaments/{id}/announcements/export.pdf: every published announcement of the tournament
+    in one PDF, oldest first, for whoever may see the tournament. Drafts are never included."""
+
+    permission_classes = [PublicReads]
+    public_actions = ("get",)
+
+    @extend_schema(responses={(200, "application/pdf"): OpenApiTypes.BINARY})
+    def get(self, request, tournament_pk):
+        tournament = _tournament(tournament_pk)
+        _visible(request, tournament)
+        posts = list(_feed(tournament, staff=False).order_by("published_at", "id")[:MAX_PDF_POSTS])
+        return _pdf_response(pdf_lines(tournament, posts), "coast-tt-results")

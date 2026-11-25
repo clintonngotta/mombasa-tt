@@ -297,3 +297,41 @@ def test_drafting_costs_the_same_queries_for_a_small_draw_or_a_big_one(staff, cl
         return len(ran)
 
     assert queries(bracket(4, "Small")) == queries(bracket(16, "Big"))
+
+
+def test_announcements_export_as_pdf_for_whoever_may_read_them(staff, knockout):
+    draft = generate(staff, knockout, scope="tournament")
+    staff.patch(
+        news_url(knockout, draft["id"]),
+        {"title": "Day one (results)", "body": "Semi-final\nAmina 3-1 Brian"},
+        format="json",
+    )
+    anyone = APIClient()
+    # A draft's PDF is for the staff; the tournament's sheet never includes drafts.
+    assert anyone.get(news_url(knockout, draft["id"], "pdf")).status_code == 404
+    assert staff.get(news_url(knockout, draft["id"], "pdf")).status_code == 200
+    sheet = anyone.get(news_url(knockout) + "export.pdf")
+    assert sheet.status_code == 200 and b"No announcements have been published yet." in sheet.content
+    assert b"Semi-final" not in sheet.content
+
+    staff.post(news_url(knockout, draft["id"], "publish"), {}, format="json")
+    one = anyone.get(news_url(knockout, draft["id"], "pdf"))
+    assert one.status_code == 200 and one["Content-Type"] == "application/pdf"
+    assert "attachment" in one["Content-Disposition"]
+    assert one.content.startswith(b"%PDF-1.4") and one.content.rstrip().endswith(b"%%EOF")
+    # The text is in the file, with brackets escaped the way PDF wants them.
+    assert b"Amina 3-1 Brian" in one.content and rb"Day one \(results\)" in one.content
+    sheet = anyone.get(news_url(knockout) + "export.pdf").content
+    assert b"Semi-final" in sheet and knockout["cup"]["name"].encode() in sheet
+    # A tournament that isn't there, or another's announcement, is not found.
+    assert anyone.get(f"/api/v1/tournaments/{draft['id']}/announcements/export.pdf").status_code == 404
+
+
+def test_a_long_announcement_wraps_and_runs_over_pages():
+    from core.pdf import PER_PAGE, WIDTH, text_pdf, wrap
+
+    long_line = "  " + "word " * 60
+    assert all(len(line) <= WIDTH for line in wrap([long_line]))
+    pdf = text_pdf([f"Line {n}" for n in range(PER_PAGE * 2 + 1)])
+    assert pdf.count(b"/Type /Page ") == 3 and b"/Count 3" in pdf
+    assert b"?" in text_pdf(["Wanjikũ 中"])  # outside Latin-1: shown as a question mark

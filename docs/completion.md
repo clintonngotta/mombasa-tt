@@ -6,9 +6,9 @@ Updated 2026-11-25. Counted from the checkboxes in [tasks.md](../tasks.md) on `d
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 99 | 133 | 34 | 74% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 99 | 129 | 30 | 77% |
-| **Phase 1 launch** | **88** | **98** | **10** | **90%** |
+| All tasks | 101 | 135 | 34 | 75% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 101 | 131 | 30 | 77% |
+| **Phase 1 launch** | **90** | **100** | **10** | **90%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -22,7 +22,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: competitions and operations | 23 | 24 | TASK-034 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
-| Current feature checklist | 45 | 46 | TASK-124 |
+| Current feature checklist | 47 | 48 | TASK-124 |
 | Phase 2: reservations and finances | 7 | 8 | TASK-079 |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
@@ -30,7 +30,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **99** | **133** | **34** |
+| **All tasks** | **101** | **135** | **34** |
 
 ## Left for Phase 1 launch (10)
 
@@ -71,3 +71,4 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-25 | 97 | 133 | 73% | 88% (86/98) | TASK-126 done (apologies for training sessions and meetings, with a reason, before the start) |
 | 2026-11-25 | 98 | 133 | 74% | 89% (87/98) | TASK-123 done (representative squads: slots, rotation recommendation, override reasons, answers, history) |
 | 2026-11-25 | 99 | 133 | 74% | 90% (88/98) | TASK-129 done (absence penalties: rules, proposals, issue or waive, fines through the ledger, appeals, suspension from selection) |
+| 2026-11-25 | 101 | 135 | 75% | 90% (90/100) | TASK-135 (phone accounts add an email) and TASK-136 (results announcements as PDF) added and done |

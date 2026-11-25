@@ -22,6 +22,23 @@ def read_verification_token(token: str) -> User | None:
         return None
 
 
+_ADD_EMAIL_SALT = "accounts.add-email"
+
+
+def make_add_email_token(user: User, email: str) -> str:
+    """For an account that signs in by phone and wants an email address: the address travels in the
+    signed link, and only confirming it puts it on the account."""
+    return signing.dumps({"u": str(user.id), "e": email}, salt=_ADD_EMAIL_SALT)
+
+
+def read_add_email_token(token: str) -> tuple[User, str] | None:
+    try:
+        data = signing.loads(token, salt=_ADD_EMAIL_SALT, max_age=settings.EMAIL_VERIFICATION_MAX_AGE)
+        return User.objects.get(id=data["u"], is_active=True), data["e"]
+    except (signing.BadSignature, KeyError, ValueError, User.DoesNotExist):
+        return None
+
+
 def make_reset_params(user: User) -> tuple[str, str]:
     return urlsafe_base64_encode(force_bytes(user.pk)), default_token_generator.make_token(user)
 

@@ -153,7 +153,7 @@ function JoinForm({ token, invitation }: { token: string; invitation: Invitation
         value={form.email}
         onChange={set("email")}
         error={errors.email}
-        hint={changedEmail ? "We'll send a link to confirm this address before you can log in." : undefined}
+        hint={changedEmail ? "We'll send a link to confirm this address before you can log in." : "Add it to get match calls, schedule changes and results by email."}
       />
       <Field
         label="Phone number"

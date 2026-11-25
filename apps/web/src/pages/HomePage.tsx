@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { ChevronRight, CircleHelp, Medal, Plus, Users, Warehouse, type LucideIcon } from "lucide-react"
 import { LiveNow, MyEntries } from "@/components/tournaments/TournamentLists"
 import { can, useActiveMembership } from "@/lib/clubs"
+import { AddEmailPrompt } from "@/components/profile/AddEmailPrompt"
 import { useMe } from "@/lib/session"
 import { EventsForYou } from "@/pages/club/InvitedEventsPage"
 import { SquadPlacesToAnswer } from "@/pages/club/SquadPages"
@@ -55,6 +56,7 @@ export function HomePage() {
         ))}
       </nav>
 
+      <AddEmailPrompt />
       {me.isSuccess && <SquadPlacesToAnswer />}
       {me.isSuccess && <FeedbackAsked />}
       {me.isSuccess && <EventsForYou />}

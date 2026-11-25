@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { AddEmailPrompt } from "@/components/profile/AddEmailPrompt"
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,7 @@ export function NotificationsPage() {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <h1 className="text-[32px] leading-9 font-bold">Notifications</h1>
+      <AddEmailPrompt />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant={unreadOnly ? "default" : "outline"} aria-pressed={unreadOnly} onClick={() => setUnreadOnly(!unreadOnly)}>
           Unread only

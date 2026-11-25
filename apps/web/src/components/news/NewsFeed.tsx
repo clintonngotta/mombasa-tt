@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Copy, Image as ImageIcon, Megaphone, Share2 } from "lucide-react"
+import { Copy, FileDown, Image as ImageIcon, Megaphone, Share2 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { announcementCardUrl, announcementKeys, announcementLink, getAnnouncements, type Announcement } from "@/lib/announcements"
+import { announcementCardUrl, announcementKeys, announcementLink, announcementPdfUrl, announcementsPdfUrl, getAnnouncements, type Announcement } from "@/lib/announcements"
 import { formatInstant } from "@/lib/dates"
 import { cn } from "@/lib/utils"
 
@@ -19,11 +19,18 @@ export function NewsFeed({ tournamentId, staff, timeZone }: { tournamentId: stri
         <h2 id="news-heading" className="text-2xl font-bold">
           News
         </h2>
-        {staff && (
-          <Link to={`/tournaments/${tournamentId}/announcements`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-            <Megaphone aria-hidden /> Results announcements
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {posts.length > 0 && (
+            <a href={announcementsPdfUrl(tournamentId)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <FileDown aria-hidden /> All results as PDF
+            </a>
+          )}
+          {staff && (
+            <Link to={`/tournaments/${tournamentId}/announcements`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Megaphone aria-hidden /> Results announcements
+            </Link>
+          )}
+        </div>
       </div>
       {posts.length === 0 && <p className="text-muted-foreground">Nothing published yet. Draft a results announcement from the official results.</p>}
       {posts.map((post) => (
@@ -90,6 +97,9 @@ function Post({ post, tournamentId, timeZone }: { post: Announcement; tournament
         </Button>
         <a href={announcementCardUrl(tournamentId, post.id)} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "sm" })}>
           <ImageIcon aria-hidden /> Image card
+        </a>
+        <a href={announcementPdfUrl(tournamentId, post.id)} aria-label={`PDF of ${post.title}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <FileDown aria-hidden /> PDF
         </a>
       </div>
       <p aria-live="polite" className="text-sm text-muted-foreground">

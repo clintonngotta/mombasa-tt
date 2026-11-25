@@ -32,5 +32,8 @@ export const publishAnnouncement = (tournamentId: string, id: string, notify: bo
 /** A new draft of a published post, drawn from the results as they stand now; the original stays. */
 export const amendAnnouncement = (tournamentId: string, id: string) => api<Announcement>(`${base(tournamentId)}${id}/amend/`, { body: {} })
 export const announcementCardUrl = (tournamentId: string, id: string) => apiUrl(`${base(tournamentId)}${id}/card/`)
+export const announcementPdfUrl = (tournamentId: string, id: string) => apiUrl(`${base(tournamentId)}${id}/pdf/`)
+/** Every published announcement of the tournament in one PDF, oldest first. */
+export const announcementsPdfUrl = (tournamentId: string) => apiUrl(`${base(tournamentId)}export.pdf`)
 /** Where a post is on the tournament page, for sharing. */
 export const announcementLink = (tournamentId: string, id: string) => `${window.location.origin}/tournaments/${tournamentId}#news-${id}`
