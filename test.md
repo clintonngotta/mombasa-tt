@@ -374,6 +374,8 @@ The privacy matrix covers every new route, keeps walk-in names and references wi
 
 **Reviews and feedback forms — integration/browser.** Setup: a completed tournament with entrants, an umpire and an outsider. Steps: write a review; build a form with each question type, required and optional; send it anonymously; answer as entrants, again to edit, as the outsider, after closing; view totals and export CSV. Pass: only attendees answer, once each, required questions are enforced, edits stop at closing, totals match the answers, and anonymous answers carry no respondent in the API or the CSV. Evidence: tests and screenshots of the builder, a form and the totals.
 
+**TASK-130 review — integration/browser.** Setup: a club in a region, a tournament that ended yesterday and one that starts in three days, a member, the region's official, another region's official and an outsider. Steps: write the review of the upcoming one; read the finished one's empty review, write it, write it again; send nothing, an unknown field, too long a text and 31 actions; each other person reads and writes; a member opens a draft's review. Pass: writing waits for the last day; one review per tournament, replaced on save; invalid bodies change nothing; the region's official reads but can't write; the member, the other region's official and the outsider are refused; a draft's review is not found (tests/test_tournament_review.py).
+
 
 ## Phase 2 evaluations
 

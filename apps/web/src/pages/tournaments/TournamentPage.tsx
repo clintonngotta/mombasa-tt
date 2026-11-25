@@ -73,6 +73,11 @@ export function TournamentPage() {
           <Events tournament={t} staff={staff} />
           {staff && <Manage tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
           {!staff && <Approve tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
+          {!staff && (t.status === "in_progress" || t.status === "completed") && memberships.some((entry) => entry.organization.id === t.organization.id && entry.authority) && (
+            <Link to={`/tournaments/${t.id}/review`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+              The organizers' review
+            </Link>
+          )}
         </>
       )}
     </div>
@@ -431,6 +436,11 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
       {t.status === "in_progress" && (
         <Link to={`/tournaments/${t.id}/dispatch`} className={buttonVariants({ className: "self-start" })}>
           Control centre: tables, calls and check-in
+        </Link>
+      )}
+      {(t.status === "in_progress" || t.status === "completed") && (
+        <Link to={`/tournaments/${t.id}/review`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Review: what went well, what went wrong, actions
         </Link>
       )}
       {t.events.some((event) => event.paused_at) && (

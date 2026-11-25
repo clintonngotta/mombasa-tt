@@ -30,6 +30,7 @@ const DESK = {
   scoring: { path: "scoring", label: "Scoring" },
   corrections: { path: "corrections", label: "Corrections" },
   ceremony: { path: "ceremony", label: "Ceremony" },
+  review: { path: "review", label: "Review" },
 } as const
 type Desk = keyof typeof DESK
 const deskPath = (tournamentId: string, desk: Desk) => `/tournaments/${tournamentId}/${DESK[desk].path}`
@@ -99,6 +100,7 @@ function Desks({ dashboard: d }: { dashboard: TournamentDashboard }) {
     ["scoring", d.status === "in_progress"],
     ["corrections", d.status === "in_progress" || d.corrections > 0],
     ["ceremony", d.status !== "draft" && d.status !== "cancelled"],
+    ["review", d.status === "in_progress" || d.status === "completed"],
   ]
   const desks = shown.filter(([, on]) => on).map(([desk]) => desk)
   if (desks.length === 0) return null

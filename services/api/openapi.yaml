@@ -15723,6 +15723,70 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/review/:
+    get:
+      operationId: tournaments_review_retrieve
+      description: |-
+        GET /tournaments/{id}/review/: the review, for the host's competition staff and the officials of
+        its region and country. PUT writes it: the host's competition staff, once the tournament is over.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentReview'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      operationId: tournaments_review_update
+      description: |-
+        GET /tournaments/{id}/review/: the review, for the host's competition staff and the officials of
+        its region and country. PUT writes it: the host's competition staff, once the tournament is over.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TournamentReviewRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentReview'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/schedule/:
     get:
       operationId: tournaments_schedule_retrieve
@@ -30418,6 +30482,50 @@ components:
           maxLength: 300
       required:
       - reason
+    ReviewAction:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 300
+        owner:
+          type: string
+          default: ''
+          description: 'Who will do it, as a name: they may not have an account.'
+          maxLength: 120
+        due_on:
+          type: string
+          format: date
+          nullable: true
+        done:
+          type: boolean
+          default: false
+      required:
+      - done
+      - due_on
+      - owner
+      - text
+    ReviewActionRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 300
+        owner:
+          type: string
+          default: ''
+          description: 'Who will do it, as a name: they may not have an account.'
+          maxLength: 120
+        due_on:
+          type: string
+          format: date
+          nullable: true
+        done:
+          type: boolean
+          default: false
+      required:
+      - text
     ReviewEnum:
       enum:
       - pending
@@ -32983,6 +33091,60 @@ components:
       - ends_on
       - name
       - starts_on
+    TournamentReview:
+      type: object
+      description: The review. Before one is written every field is empty and `updated_at`
+        is null.
+      properties:
+        went_well:
+          type: string
+          default: ''
+          maxLength: 5000
+        went_wrong:
+          type: string
+          default: ''
+          maxLength: 5000
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewAction'
+        updated_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        can_edit:
+          type: boolean
+          readOnly: true
+          description: You run competitions for the host and the tournament is over.
+      required:
+      - actions
+      - can_edit
+      - updated_at
+      - updated_by_name
+      - went_well
+      - went_wrong
+    TournamentReviewRequest:
+      type: object
+      description: The review. Before one is written every field is empty and `updated_at`
+        is null.
+      properties:
+        went_well:
+          type: string
+          default: ''
+          maxLength: 5000
+        went_wrong:
+          type: string
+          default: ''
+          maxLength: 5000
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewActionRequest'
     TournamentScopeEnum:
       enum:
       - local

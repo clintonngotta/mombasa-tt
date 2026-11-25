@@ -770,6 +770,28 @@ class NotBefore(models.Model):
         return f"{self.user_id} not before {self.at}"
 
 
+class TournamentReview(models.Model):
+    """What the host learned from a tournament (REQ-055): what went well, what went wrong and what to do
+    next time. Written by the host's competition staff once it is over; read by them and by the officials
+    of its region and country. Never public."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.OneToOneField(Tournament, on_delete=models.CASCADE, related_name="review")
+    went_well = models.TextField(max_length=5000, blank=True)
+    went_wrong = models.TextField(max_length=5000, blank=True)
+    # What to do next time: a list of {"text": str, "owner": str, "due_on": date | null, "done": bool}.
+    # The owner is a name as staff wrote it: it may be someone without an account.
+    actions = models.JSONField(default=list, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Review of {self.tournament_id}"
+
+
 class Ceremony(models.Model):
     """A tournament's award ceremony (REQ-018, REQ-049): when and where it is held and the awards it
     gives, in the order they are presented. A draft is for the host's competition staff; once published

@@ -47,6 +47,7 @@ from competitions.models import (
     ScheduleVersion,
     Tournament,
     TournamentDocument,
+    TournamentReview,
 )
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
@@ -245,6 +246,8 @@ ACCESS: dict[str, dict[str, str]] = {
     # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
     # Published tournaments are public (TASK-035): a draft ceremony is still the staff's (test_public_views).
     "tournament-ceremony": {"get": PUBLIC, "put": STAFF},
+    # The review of a finished tournament: its host's competition staff (and the region's officials).
+    "tournament-review": {"get": STAFF, "put": STAFF},
     # Results announcements (TASK-085): the feed of a published tournament is public; drafts and every
     # change are the host's competition staff's. The detail route is exercised on a draft (see kwargs),
     # which is "not found" for everyone else: its text is checked with the private markers below.
@@ -615,6 +618,7 @@ def pdf_upload():
 
 BODIES = {
     ("tournament-ceremony", "put"): {"location": "Main hall"},
+    ("tournament-review", "put"): {"went_well": "Ran to time"},
     ("tournament-announcements", "post"): {"scope": "tournament"},
     ("tournament-announcement", "patch"): {"body": "Edited"},
     ("tournament-ceremony-awards", "post"): {"title": "Fair play"},
@@ -1320,6 +1324,10 @@ class World:
         self.running = tournament("Running Cup", status.IN_PROGRESS)
         self.finishing = tournament("Finishing Cup", status.IN_PROGRESS, Event.Status.COMPLETED)
         self.playing = tournament("Playing Cup", status.IN_PROGRESS, Event.Status.IN_PROGRESS)
+        self.reviewed = tournament("Reviewed Cup", status.COMPLETED, Event.Status.COMPLETED)
+        TournamentReview.objects.create(
+            tournament=self.reviewed, went_wrong="MARK-REVIEW", actions=[{"text": "MARK-REVIEW-ACTION"}]
+        )
         LifecycleEntry.objects.create(
             tournament=self.published, action="published", actor=self.amina, reason="MARK-HISTORY-REASON"
         )
@@ -1871,6 +1879,9 @@ class World:
         if name.startswith(("tournament-ceremony", "tournament-announcement")):
             found["tournament_pk"] = self.published.id
             return found
+        if name == "tournament-review":
+            found["tournament_pk"] = self.reviewed.id
+            return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
             found["organization_pk"] = self.body.id
         if name in BODY_SIDE:
@@ -2046,6 +2057,7 @@ class World:
             ),
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
             "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
+            "reviews": sorted(TournamentReview.objects.values_list("went_well", "went_wrong")),
             "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
             "agenda": sorted(AgendaItem.objects.values_list("title", "starts_on")),
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
@@ -2392,6 +2404,8 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-AWARD-DRAFT": {"amina"},  # a draft ceremony isn't anyone's honour yet
         "MARK-ANNOUNCEMENT-DRAFT": {"amina"},  # a draft announcement is the host's staff's
         "MARK-CEREMONY-PLACE": {"amina"},
+        "MARK-REVIEW": {"amina"},  # the host's competition staff
+        "MARK-REVIEW-ACTION": {"amina"},
         "MARK-AGENDA": {"amina", "baraka", "faith", "grace"},
         "MARK-ARTICLE-PUB": {"amina", "baraka", "faith", "grace"},
         "MARK-ARTICLE-DRAFT": {"amina"},

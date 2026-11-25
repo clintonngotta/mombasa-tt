@@ -6698,6 +6698,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/review/: the review, for the host's competition staff and the officials of
+         *     its region and country. PUT writes it: the host's competition staff, once the tournament is over.
+         */
+        get: operations["tournaments_review_retrieve"];
+        /**
+         * @description GET /tournaments/{id}/review/: the review, for the host's competition staff and the officials of
+         *     its region and country. PUT writes it: the host's competition staff, once the tournament is over.
+         */
+        put: operations["tournaments_review_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/schedule/": {
         parameters: {
             query?: never;
@@ -12854,6 +12878,30 @@ export interface components {
         ReverseVisitRequest: {
             reason: string;
         };
+        ReviewAction: {
+            text: string;
+            /**
+             * @description Who will do it, as a name: they may not have an account.
+             * @default
+             */
+            owner: string;
+            /** Format: date */
+            due_on: string | null;
+            /** @default false */
+            done: boolean;
+        };
+        ReviewActionRequest: {
+            text: string;
+            /**
+             * @description Who will do it, as a name: they may not have an account.
+             * @default
+             */
+            owner: string;
+            /** Format: date */
+            due_on?: string | null;
+            /** @default false */
+            done: boolean;
+        };
         /**
          * @description * `pending` - Pending
          *     * `approved` - Approved
@@ -13903,6 +13951,27 @@ export interface components {
             registration_fee?: components["schemas"]["RegistrationFeeRequest"];
             /** @description A published match moved by more than this, or to another table, is news for its people. */
             schedule_notice_minutes?: number;
+        };
+        /** @description The review. Before one is written every field is empty and `updated_at` is null. */
+        TournamentReview: {
+            /** @default  */
+            went_well: string;
+            /** @default  */
+            went_wrong: string;
+            actions: components["schemas"]["ReviewAction"][];
+            readonly updated_by_name: string | null;
+            /** Format: date-time */
+            readonly updated_at: string | null;
+            /** @description You run competitions for the host and the tournament is over. */
+            readonly can_edit: boolean;
+        };
+        /** @description The review. Before one is written every field is empty and `updated_at` is null. */
+        TournamentReviewRequest: {
+            /** @default  */
+            went_well: string;
+            /** @default  */
+            went_wrong: string;
+            actions?: components["schemas"]["ReviewActionRequest"][];
         };
         /**
          * @description * `local` - Local
@@ -28949,6 +29018,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Reservation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_review_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentReview"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_review_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TournamentReviewRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentReview"];
                 };
             };
             /** @description Error envelope */

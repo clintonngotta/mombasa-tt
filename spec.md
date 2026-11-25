@@ -363,6 +363,8 @@ As built (TASK-109): a body also invites its representatives (those accepted and
 
 **Tournament reviews and feedback forms — Phase 1 (user request, 2026-11-21).** After a tournament the host's competition staff record a review: what went well, what went wrong and actions for next time, with owners. The review is visible to the host's staff and officials.
 
+As built (TASK-130): one review per tournament, written from its last day (or once it is completed) and replaced each time it is saved, with who last changed it and when. Each action has a text, an owner written as a name (they may not have an account), an optional due date and whether it is done. Officials read it and can't change it.
+
 *Feedback forms.* Staff build feedback forms with a form builder. A form has ordered sections and questions of configurable types: rating (1 to 5), single choice, multiple choice, short text, long text, yes/no and number. Each question can be required and can have help text. Forms can be saved as templates and reused. A form is sent to a tournament's attendees: players with accepted entries, umpires, staff, and optionally named guests. It opens and closes on set dates, and can be anonymous. Each attendee answers once and can edit their answers until the form closes. Staff see live totals per question (averages, counts per choice, text answers) and export the answers as CSV. An anonymous form never shows staff who answered what.
 
 ## Competition rules: version `ITTF-2026-ch3`
