@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { ChevronRight, CircleHelp, Medal, Plus, Trophy, Users, Warehouse, type LucideIcon } from "lucide-react"
 import { LiveNow, MyEntries } from "@/components/tournaments/TournamentLists"
-import { can, useActiveMembership } from "@/lib/clubs"
+import { can, sideOf, useActiveMembership } from "@/lib/clubs"
 import { AddEmailPrompt } from "@/components/profile/AddEmailPrompt"
 import { useMe } from "@/lib/session"
 import { EventsForYou } from "@/pages/club/InvitedEventsPage"
@@ -15,14 +15,19 @@ export function HomePage() {
   const me = useMe()
   const { memberships, active, all } = useActiveMembership()
   const organizer = !!active && !active.managedOnly && can(active, "competitions.manage")
-  const inAClub = all.some((m) => !m.managedOnly)
+  const own = all.filter((m) => !m.managedOnly)
+  const inAClub = own.length > 0
+  // In a team and in no club (REQ-057): Home points at the team.
+  const teamOnly = inAClub && own.every((m) => sideOf(m.organization.kind) === "team")
 
   const actions: Action[] = [
     { to: "/tournaments", icon: Medal, title: "Tournaments", description: "Enter one, or follow the live scores and results" },
     // Signed out there is no sidebar, so rankings (public, REQ-020) are reached from here.
     ...(me.isError ? [{ to: "/rankings", icon: Trophy, title: "Rankings", description: "Who leads in your city, region and country" }] : []),
     // Until the memberships arrive (or signed out, when they never do) the tile doesn't guess.
-    inAClub || (me.isSuccess && memberships.isPending)
+    teamOnly
+      ? { to: "/team", icon: Users, title: "Your team", description: "Sessions, members and news" }
+      : inAClub || (me.isSuccess && memberships.isPending)
       ? { to: "/club", icon: Users, title: "Your club", description: "Sessions, members and news" }
       : { to: "/club/find", icon: Users, title: "Join a club", description: "Search by city, or see clubs near you" },
     { to: "/facilities", icon: Warehouse, title: "Find a place to play", description: "Halls with tables near you, and which are open now" },

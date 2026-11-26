@@ -23,6 +23,9 @@ class Permission(models.TextChoices):
     WELFARE_MANAGE = "welfare.manage", "Run welfare projects"
     ACTIVITIES_MANAGE = "activities.manage", "Plan club activities such as nights out"
     GOVERNANCE_MANAGE = "governance.manage", "Set the committee, nominate representatives and run meetings"
+    # The secretary's work at every meeting of the organization (REQ-046): what a meeting's own secretary
+    # does at that one meeting. Calling, changing and approving stay with governance.manage.
+    MINUTES_MANAGE = "minutes.manage", "Write meeting minutes, take attendance and issue meeting penalties"
     # Held in a regional or national body (decision D4, 2026-11-21): approves the publication of regional
     # tournaments of the body's region, or national tournaments of its country (REQ-045, TASK-107).
     TOURNAMENTS_APPROVE = "tournaments.approve", "Approve regional or national tournaments for publication"
@@ -41,6 +44,8 @@ class RoleKey(models.TextChoices):
     CAPTAIN = "captain"
     ASSISTANT_CAPTAIN = "assistant_captain"
     COMMITTEE = "committee"
+    SECRETARY = "secretary"
+    TREASURER = "treasurer"
     REFEREE = "referee"
     OFFICIAL = "official"
     MEMBER = "member"
@@ -83,6 +88,9 @@ ROLE_TEMPLATES: list[tuple[str, str, frozenset[str]]] = [
             }
         ),
     ),
+    # Clubs and teams (user request, 2026-11-26): the secretary handles minutes, the treasurer finances.
+    (RoleKey.SECRETARY, "Secretary", frozenset({P.MINUTES_MANAGE})),
+    (RoleKey.TREASURER, "Treasurer", frozenset({P.FINANCES_VIEW, P.FINANCES_MANAGE})),
     # The referee decides matches that aren't played to a finish (decision D5, 2026-11-21).
     (RoleKey.REFEREE, "Referee", frozenset({P.RESULTS_REFEREE, P.RESULTS_MANAGE, P.SCORING_ASSIGNED})),
     # A governing body's officials approve publication in its jurisdiction (TASK-107). Bodies only.
@@ -92,3 +100,6 @@ ROLE_TEMPLATES: list[tuple[str, str, frozenset[str]]] = [
 
 # Template roles seeded only in regional and national bodies.
 BODY_ROLES: frozenset[str] = frozenset({RoleKey.OFFICIAL})
+# Template roles seeded only in clubs and teams (organization kinds club, team and club_facility).
+CLUB_ROLES: frozenset[str] = frozenset({RoleKey.SECRETARY, RoleKey.TREASURER})
+CLUB_ROLE_KINDS: frozenset[str] = frozenset({"club", "team", "club_facility"})

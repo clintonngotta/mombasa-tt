@@ -53,7 +53,7 @@ def world(club, staff, admin):
     add_member(
         club,
         treasurer,
-        Role.objects.create(organization=club, name="Treasurer", permissions=["finances.manage"]),
+        Role.objects.create(organization=club, name="Finance", permissions=["finances.manage"]),
     )
     member, outsider = (
         make_user("mary.member@example.com", display_name="Mary Member"),

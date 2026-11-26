@@ -23,6 +23,18 @@ const base = (id: string, eventId: string) => `/tournaments/${id}/events/${event
 /** Accepted entries plus the caller's own; staff get every entry. Up to 100, the API's largest page. */
 export const listEntries = (id: string, eventId: string, status: EntryStatus | "" = "") =>
   api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100${status ? `&status=${status}` : ""}`)
+/** Every entry of one status, page after page, for the draw desk: a big field is seeded as a whole. */
+export async function listAllEntries(id: string, eventId: string, status: EntryStatus) {
+  const first = await listEntries(id, eventId, status)
+  const results = [...first.results]
+  // 20 pages is 2,000 entries, far above the largest event; the bound stops a runaway loop.
+  for (let page = 2; results.length < first.count && page <= 20; page++) {
+    const next = await api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100&status=${status}&page=${page}`)
+    if (next.results.length === 0) break
+    results.push(...next.results)
+  }
+  return { ...first, results }
+}
 export const createEntry = (id: string, eventId: string, body: EntryInput) => api<Entry>(base(id, eventId), { body })
 export const withdrawEntry = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/withdraw/`, { body: {} })
 /** Checking in at the venue, where the connection may drop: kept on the device and sent later (REQ-035). */

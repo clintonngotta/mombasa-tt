@@ -42,7 +42,7 @@ export function SignUpPage() {
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email address."
     if (form.password.length < MIN_PASSWORD_LENGTH) next.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
     setErrors(next)
-    // A coach, club or facility goes on to set that up after onboarding; a player goes back where they came from.
+    // A coach, club, team or facility goes on to set that up after onboarding; a player goes back where they came from.
     const after = SIGN_UP_AS.find((option) => option.value === signUpAs)?.next ?? returnTo
     if (Object.keys(next).length === 0) mutation.mutate({ ...form, display_name: form.display_name.trim(), ...(after && { next: after }) })
   }
@@ -66,7 +66,7 @@ export function SignUpPage() {
         <ChoiceGroup legend="I'm signing up as" options={SIGN_UP_AS.map(({ value, label, description }) => ({ value, label, description }))} value={signUpAs} onChange={setSignUpAs} />
         <p className="-mt-2 text-sm text-muted-foreground">
           {signUpAs === "player"
-            ? "You can become a coach or register a club or facility later."
+            ? "You can become a coach, form a team or register a club or facility later."
             : "You get a player account first, then we take you to set this up."}{" "}
           Regional and national officials are added by the platform admin.
         </p>

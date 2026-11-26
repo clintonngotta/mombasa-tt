@@ -14,15 +14,17 @@ import {
   Trophy,
   UserRound,
   Users,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react"
 import { BatIcon } from "@/components/brand/BatIcon"
-import { can, isBodyKind, useActiveMembership, type Membership } from "@/lib/clubs"
+import { can, isBodyKind, sideOf, useActiveMembership, type Membership } from "@/lib/clubs"
 import { coachingKeys, getMyCoachProfileOrNull } from "@/lib/coaching"
 import { useMe } from "@/lib/session"
 
-/** `also` lists other paths that light this entry up, when its pages don't all sit under `to`. */
-export type NavItem = { to: string; label: string; icon: LucideIcon; also?: string[] }
+/** `also` lists other paths that light this entry up, when its pages don't all sit under `to`. `exact`
+ * lights the entry on its own path only, when the pages beneath it belong to another entry for now. */
+export type NavItem = { to: string; label: string; icon: LucideIcon; also?: string[]; exact?: boolean }
 
 /** Whose menu shows: a person's (their own play, training and record, plus any roles they hold), or a
  * facility's when the active organization is a facility the person works for. A facility isn't a person,
@@ -40,6 +42,8 @@ const PLAY: NavItem = { to: "/play", label: "Play", icon: Swords }
 const TRAINING: NavItem = { to: "/training", label: "Training", icon: BatIcon }
 const RANKINGS: NavItem = { to: "/rankings", label: "Rankings", icon: Trophy }
 const CLUB: NavItem = { to: "/club", label: "Club", icon: Users }
+// A team (REQ-057): players who play together without a training place of their own.
+const TEAM: NavItem = { to: "/team", label: "Team", icon: UsersRound }
 const COACHING: NavItem = { to: "/coaching", label: "Coaching", icon: GraduationCap }
 const REGIONAL: NavItem = { to: "/regional", label: "Regional", icon: Map }
 // The platform's back office, for platform super admins (REQ-056).
@@ -97,10 +101,20 @@ export function useNavigation() {
   const roles = [...(coach.data ? [COACHING] : []), ...(isOfficial(all) ? [REGIONAL] : []), ...(me.data?.is_platform_admin ? [ADMIN] : [])]
   // Until the memberships arrive we can't tell a facility from a person, so show no menu rather than the wrong one.
   const loading = signedIn && memberships.isPending
-  const items = loading ? [] : facility && active ? facilityItems(active) : [HOME, TOURNAMENTS, PLAY, TRAINING, RANKINGS, ...roles, CLUB, PROFILE]
+  // The organization's own pages all sit under /club. While a team is the active organization they are the
+  // team's, so Team lights up on them and Club only on its own page.
+  const teamActive = sideOf(active?.organization.kind) === "team"
+  const club = teamActive ? { ...CLUB, exact: true } : CLUB
+  const team = teamActive ? { ...TEAM, also: ["/club"] } : TEAM
+  const items = loading ? [] : facility && active ? facilityItems(active) : [HOME, TOURNAMENTS, PLAY, TRAINING, RANKINGS, ...roles, club, team, PROFILE]
 
-  // What people come for stays on the bar: tournaments, play, their club and their roles. The rest waits under More.
-  const order = facility || loading ? items : [HOME, TOURNAMENTS, PLAY, CLUB, ...roles, TRAINING, PROFILE, RANKINGS]
+  // What people come for stays on the bar: tournaments, play and their club or team. The rest waits under
+  // More. The bar has one place for the two: the team's while a team is the active organization, or for a
+  // player who is in a team and in no club; otherwise the club's.
+  const own = all.filter((m) => !m.managedOnly)
+  const teamFirst = teamActive || (own.length > 0 && own.every((m) => sideOf(m.organization.kind) === "team"))
+  const theirs = teamFirst ? [team, club] : [club, team]
+  const order = facility || loading ? items : [HOME, TOURNAMENTS, PLAY, ...theirs, ...roles, TRAINING, PROFILE, RANKINGS]
   const fits = items.length <= TAB_LIMIT
   const tabs = fits ? items : order.slice(0, TAB_LIMIT - 1)
   const more = fits ? [] : items.filter((item) => !tabs.includes(item))

@@ -299,6 +299,11 @@ urlpatterns = [
         action(DrawViewSet, "publish"),
         name="tournament-event-draw-publish",
     ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/discard/",
+        action(DrawViewSet, "discard"),
+        name="tournament-event-draw-discard",
+    ),
     *(
         path(
             f"<uuid:tournament_pk>/events/<uuid:event_pk>/entries/<uuid:pk>/{slug}/",

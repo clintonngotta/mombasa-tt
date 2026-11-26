@@ -32,6 +32,8 @@ export const submitLineup = (id: string, eventId: string, matchId: string, entry
 export const resetLineups = (id: string, eventId: string, matchId: string) => api<MatchDetail>(`/tournaments/${id}/events/${eventId}/matches/${matchId}/lineup/reset/`, { body: {} })
 /** Draw the accepted entries (again); seeds are entry ids, best first. */
 export const previewDraw = (id: string, eventId: string, seeds: string[]) => api<EventDraw>(`${base(id, eventId)}preview/`, { body: { seeded_entry_ids: seeds } })
+/** Delete the preview, before it is published, to start the draw again. */
+export const discardDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}discard/`, { body: {} })
 export const publishDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}publish/`, { body: {} })
 
 /** Matches of one stage (and group) by round, in playing order. */

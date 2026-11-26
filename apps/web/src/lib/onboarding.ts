@@ -98,12 +98,13 @@ export const completeOnboarding = () => api<void>("/me/onboarding/complete/", { 
 /** What someone signs up as. Every account is a player account; the choice decides where setup takes
  * them once they've verified and onboarded. Regional and national officials are never a sign-up choice:
  * the platform admin adds them. */
-export type SignUpAs = "player" | "coach" | "club" | "facility"
+export type SignUpAs = "player" | "coach" | "club" | "team" | "facility"
 
 export const SIGN_UP_AS: { value: SignUpAs; label: string; description: string; next: string | null; action: string }[] = [
   { value: "player", label: "Player", description: "Enter tournaments, train and track your matches", next: null, action: "Go to Home" },
   { value: "coach", label: "Coach", description: "Take trainees and bookings, give plans and drills", next: "/coaching/profile", action: "Set up your coach profile" },
   { value: "club", label: "Club", description: "Register a club and run its members and tournaments", next: "/club/new?kind=club", action: "Register your club" },
+  { value: "team", label: "Team", description: "Form a team that plays together without a hall of its own", next: "/team/new", action: "Form your team" },
   { value: "facility", label: "Facility", description: "Register a hall with tables, hours and passes", next: "/club/new?kind=facility", action: "Register your facility" },
 ]
 

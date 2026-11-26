@@ -85,6 +85,7 @@ from organizations.models import (
     MemberFieldValue,
     Membership,
     Organization,
+    OrganizationImage,
     PositionHolder,
     Representative,
     Role,
@@ -480,6 +481,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     # What a player sees before joining: location, description, training hours and coming tournaments.
     "organization-profile": {"get": SIGNED_IN},
+    # An organization's pictures of itself (REQ-058): shown with its profile; roles.manage changes them.
+    "organization-images": {"get": SIGNED_IN, "post": STAFF},
+    "organization-image": {"delete": STAFF},
     "organization-training-hours": {"get": SIGNED_IN, "put": STAFF},
     "organization-permissions": {"get": SIGNED_IN},
     "organization-join-requests": {"get": STAFF, "post": SIGNED_IN},  # anyone may ask to join
@@ -649,11 +653,13 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-scoring-conflict-resolve": {"post": STAFF},
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
+    "tournament-event-draw-discard": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": PUBLIC},  # signed out, the name of a listed player with competition records
     "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records
     "rankings": {"get": PUBLIC},  # a club's own ranking needs a session
     "club-rankings": {"get": PUBLIC},
+    "team-rankings": {"get": PUBLIC},
     "geography-rankings": {"get": PUBLIC},
 }
 
@@ -681,6 +687,7 @@ MULTIPART = {
     "tournament-cover",
     "tournament-documents",
     "organization-meeting-documents",
+    "organization-images",
 }
 PDF = b"%PDF-1.4\n%%EOF\n"
 
@@ -919,6 +926,7 @@ BODIES = {
     },
     ("organization-expense-receipt", "put"): lambda: {"file": image_upload("PNG", (64, 64), "slip.png")},
     ("tournament-cover", "put"): lambda: {"file": image_upload("PNG", (64, 64), "cover.png")},
+    ("organization-images", "post"): lambda: {"file": image_upload("PNG", (64, 64), "hall.png")},
     ("tournament-documents", "post"): lambda: {"title": "Rules", "file": pdf_upload()},
     ("organization-campaign-terms", "post"): lambda: {
         "member_id": str(Charge.objects.get(purpose="MARK-CHARGE").member_id),
@@ -1856,6 +1864,16 @@ class World:
         self.offer_to_accept = Sponsorship.objects.create(
             sponsor=self.nyali, tournament=self.published, amount_minor=100000
         )
+        self.org_image = OrganizationImage.objects.create(
+            organization=self.coast,
+            caption="MARK-HALL",
+            file=Attachment.store(
+                owner=self.amina,
+                purpose=Attachment.Purpose.ORGANIZATION_IMAGE,
+                content=b"RIFF",
+                content_type="image/webp",
+            ),
+        )
         self.document = TournamentDocument.objects.create(
             tournament=self.draft,
             title="Prospectus",
@@ -2174,6 +2192,8 @@ class World:
         if "place_pk" in names:
             past = name == "organization-squad-place-attendance"
             found["place_pk"] = (self.squad_place_past if past else self.squad_place).id
+        if "image_pk" in names:
+            found["image_pk"] = self.org_image.id
         if "document_pk" in names:
             found["document_pk"] = self.meeting_document.id
         if "plan_pk" in names:
@@ -2382,6 +2402,7 @@ class World:
             "action_items": sorted(ActionItem.objects.values_list("description", "status")),
             "amendments": MinutesAmendment.objects.count(),
             "meeting_documents": sorted(MeetingDocument.objects.values_list("title", "item")),
+            "organization_images": sorted(OrganizationImage.objects.values_list("organization", "caption")),
             "feedback_forms": sorted(FeedbackForm.objects.values_list("title", "status", "closes_at")),
             "feedback_recipients": FeedbackRecipient.objects.count(),
             "annual_reports": sorted(

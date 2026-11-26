@@ -5302,6 +5302,7 @@ paths:
             - facility
             - national_body
             - regional_body
+            - team
         description: Only these kinds
       - name: page
         required: false
@@ -10183,6 +10184,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/images/:
+    get:
+      operationId: organizations_images_retrieve
+      description: |-
+        GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+        holders of roles.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationImages'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_images_create
+      description: |-
+        GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+        holders of roles.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrganizationImageUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationImages'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/images/{image_pk}/:
+    delete:
+      operationId: organizations_images_destroy
+      description: 'DELETE /organizations/{id}/images/{image}/ removes a picture and
+        its file: roles.manage.'
+      parameters:
+      - in: path
+        name: image_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationImages'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/invitations/:
     get:
       operationId: organizations_invitations_list
@@ -14672,6 +14773,7 @@ paths:
           - facility
           - national_body
           - regional_body
+          - team
       - name: page
         required: false
         in: query
@@ -14972,8 +15074,8 @@ paths:
   /api/v1/rankings/clubs/:
     get:
       operationId: rankings_clubs_retrieve
-      description: Rank clubs by the sum of their active members' ratings for one
-        discipline.
+      description: 'Rank clubs by the sum of their active members'' ratings for one
+        discipline: the top RANKING_LIMIT.'
       parameters:
       - in: query
         name: discipline
@@ -15031,6 +15133,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GeographyRanking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/rankings/teams/:
+    get:
+      operationId: rankings_teams_retrieve
+      description: 'Rank teams (REQ-057) the way clubs are ranked: by the sum of their
+        active members'' ratings.'
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+        description: Default singles.
+      tags:
+      - rankings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubRanking'
           description: ''
         4XX:
           description: Error envelope
@@ -16761,6 +16894,42 @@ paths:
       description: |-
         The draw of one event (REQ-009). The published draw is open to every signed-in player; the
         preview, and making and publishing draws, are for the host's competition staff.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDraw'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/discard/:
+    post:
+      operationId: tournaments_events_draw_discard_create
+      description: |-
+        Delete the preview, before it is published, to start the draw again. The published draw is
+        untouched, and with no preview nothing changes.
       parameters:
       - in: path
         name: event_pk
@@ -22719,7 +22888,7 @@ components:
       properties:
         rank:
           type: integer
-          description: Clubs with the same total share a rank.
+          description: Clubs (or teams) with the same total share a rank.
         organization_id:
           type: string
           format: uuid
@@ -23907,7 +24076,7 @@ components:
           items:
             type: string
             format: uuid
-          maxItems: 32
+          maxItems: 1024
         rng_seed:
           type: integer
           maximum: 2147483647
@@ -26616,6 +26785,7 @@ components:
     KindEnum:
       enum:
       - club
+      - team
       - facility
       - club_facility
       - regional_body
@@ -26624,6 +26794,7 @@ components:
       type: string
       description: |-
         * `club` - Club
+        * `team` - Team
         * `facility` - Facility
         * `club_facility` - Club Facility
         * `regional_body` - Regional Body
@@ -30122,6 +30293,54 @@ components:
       - limit
       - nominations
       - pending
+    OrganizationImage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        caption:
+          type: string
+          readOnly: true
+        file:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - caption
+      - created_at
+      - file
+      - id
+    OrganizationImageUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: A JPEG, PNG or WebP image under 5 MB.
+        caption:
+          type: string
+          maxLength: 120
+      required:
+      - file
+    OrganizationImages:
+      type: object
+      properties:
+        limit:
+          type: integer
+          description: The most pictures an organization may show.
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationImage'
+      required:
+      - images
+      - limit
     OrganizationRef:
       type: object
       properties:
@@ -30221,6 +30440,7 @@ components:
     OrganizerKindEnum:
       enum:
       - club
+      - team
       - facility
       - club_facility
       - regional_body
@@ -30230,6 +30450,7 @@ components:
       type: string
       description: |-
         * `club` - club
+        * `team` - team
         * `facility` - facility
         * `club_facility` - club_facility
         * `regional_body` - regional_body
@@ -32852,6 +33073,7 @@ components:
       - welfare.manage
       - activities.manage
       - governance.manage
+      - minutes.manage
       - tournaments.approve
       type: string
       description: |-
@@ -32869,6 +33091,7 @@ components:
         * `welfare.manage` - Run welfare projects
         * `activities.manage` - Plan club activities such as nights out
         * `governance.manage` - Set the committee, nominate representatives and run meetings
+        * `minutes.manage` - Write meeting minutes, take attendance and issue meeting penalties
         * `tournaments.approve` - Approve regional or national tournaments for publication
     PermissionInfo:
       type: object
@@ -35306,6 +35529,8 @@ components:
       - captain
       - assistant_captain
       - committee
+      - secretary
+      - treasurer
       - referee
       - official
       - member
@@ -35315,6 +35540,8 @@ components:
         * `captain` - Captain
         * `assistant_captain` - Assistant Captain
         * `committee` - Committee
+        * `secretary` - Secretary
+        * `treasurer` - Treasurer
         * `referee` - Referee
         * `official` - Official
         * `member` - Member

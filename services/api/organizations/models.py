@@ -9,16 +9,28 @@ from django.utils import timezone
 
 from core.timezones import DEFAULT_TIMEZONE
 
-from .permissions import ALL_PERMISSIONS, BODY_ROLES, ROLE_TEMPLATES, Permission, RoleKey
+from .permissions import (
+    ALL_PERMISSIONS,
+    BODY_ROLES,
+    CLUB_ROLE_KINDS,
+    CLUB_ROLES,
+    ROLE_TEMPLATES,
+    Permission,
+    RoleKey,
+)
 
 INVITATION_TTL = timedelta(days=14)
 
 
 class Organization(models.Model):
-    """A club, a facility, or both (REQ-004). Its name and town are searchable by any signed-in user."""
+    """A club, a team, a facility, or a club and facility (REQ-004). Its name and town are searchable by
+    any signed-in user."""
 
     class Kind(models.TextChoices):
+        # A club is a place people train at. A team (REQ-057) is players who play together without a
+        # training place of their own: it has members, roles and a ranking, but no map position.
         CLUB = "club"
+        TEAM = "team"
         FACILITY = "facility"
         CLUB_FACILITY = "club_facility"
         # The table tennis body of one catalogue region (REQ-045, REQ-048): it runs regional tournaments,
@@ -174,11 +186,12 @@ class OfficialAppointment(models.Model):
 
 def seed_roles(organization: Organization) -> dict[str, Role]:
     """Create the template roles for a new organization, keyed by RoleKey. Only bodies get the body
-    templates (Official)."""
+    templates (Official); only clubs and teams get Secretary and Treasurer."""
     return {
         key: Role.objects.create(organization=organization, key=key, name=name, permissions=sorted(perms))
         for key, name, perms in ROLE_TEMPLATES
-        if organization.is_body or key not in BODY_ROLES
+        if (organization.is_body or key not in BODY_ROLES)
+        and (organization.kind in CLUB_ROLE_KINDS or key not in CLUB_ROLES)
     }
 
 
@@ -626,3 +639,28 @@ class CommitteeFieldValue(models.Model):
 
     def __str__(self):
         return f"{self.field_id} for {self.position_id or self.holder_id}"
+
+
+# How many pictures an organization shows of itself (REQ-058).
+MAX_IMAGES = 12
+
+
+class OrganizationImage(models.Model):
+    """A picture a club, team or facility shows of itself (REQ-058): its hall, its players, a trophy.
+    Uploaded by holders of roles.manage, shown with the organization's profile to any signed-in player,
+    oldest first."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="images")
+    file = models.OneToOneField(
+        "attachments.Attachment", on_delete=models.CASCADE, related_name="organization_image"
+    )
+    caption = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["organization", "created_at"], name="organization_image_order")]
+
+    def __str__(self):
+        return f"{self.organization_id} {self.caption or self.id}"

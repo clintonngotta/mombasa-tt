@@ -6,9 +6,9 @@ Updated 2026-11-26. Counted from the checkboxes in [tasks.md](../tasks.md) on `d
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 107 | 139 | 32 | 77% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 107 | 135 | 28 | 79% |
-| **Phase 1 launch** | **95** | **104** | **9** | **91%** |
+| All tasks | 110 | 142 | 32 | 77% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 110 | 138 | 28 | 80% |
+| **Phase 1 launch** | **98** | **107** | **9** | **92%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -22,7 +22,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: competitions and operations | 23 | 24 | TASK-034 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
-| Current feature checklist | 52 | 52 | — |
+| Current feature checklist | 55 | 55 | — |
 | Phase 2: reservations and finances | 8 | 8 | — |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
@@ -30,7 +30,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **107** | **139** | **32** |
+| **All tasks** | **110** | **142** | **32** |
 
 ## Left for Phase 1 launch (9)
 
@@ -77,3 +77,5 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-26 | 105 | 137 | 77% | 91% (93/102) | TASK-137 added and done (owner account made at start from the environment, no test accounts on the login page, chosen logos, image workflow, Cloudflare notes) |
 | 2026-11-26 | 106 | 138 | 77% | 91% (94/103) | TASK-138 added and done (the platform's back office at /admin: accounts, organizations, places; Django admin off /admin) |
 | 2026-11-26 | 107 | 139 | 77% | 91% (95/104) | TASK-139 added and done (up to three club admins: add by nomination, hand over, step down) |
+| 2026-11-26 | 108 | 140 | 77% | 91% (96/105) | TASK-140 added and done (teams: players without a training place form and join a team; Team menu entry; team ranking) |
+| 2026-11-26 | 110 | 142 | 77% | 92% (98/107) | TASK-141 (Secretary and Treasurer roles for clubs and teams) and TASK-142 (pictures of a club, team or facility) added and done |

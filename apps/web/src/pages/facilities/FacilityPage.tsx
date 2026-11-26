@@ -5,6 +5,8 @@ import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { OpenBadge } from "@/components/facilities/OpenBadge"
+import { OrganizationGallery } from "@/components/clubs/OrganizationGallery"
+import { useMe } from "@/lib/session"
 import { BookTable } from "@/components/facilities/BookTable"
 import { BranchSchedule, BranchTraining } from "@/components/facilities/BranchTraining"
 import { errorMessage } from "@/lib/api"
@@ -19,6 +21,7 @@ export function FacilityPage() {
   const { id = "" } = useParams()
   const facility = useQuery({ queryKey: facilityKeys.detail(id), queryFn: () => getFacility(id) })
   const f = facility.data
+  const signedIn = useMe().isSuccess
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
@@ -46,6 +49,9 @@ export function FacilityPage() {
               {f.training_tables > 0 && ` · ${f.training_tables} training ${f.training_tables === 1 ? "table" : "tables"}`}
             </p>
           </header>
+
+          {/* The facility's pictures are for signed-in players, as its organization's profile is. */}
+          {signedIn && <OrganizationGallery orgId={f.organization_id} />}
 
           {f.closed_today && (
             <p role="status" className="flex items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 p-4 font-semibold">

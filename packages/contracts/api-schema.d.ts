@@ -4409,6 +4409,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/images/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+         *     holders of roles.manage.
+         */
+        get: operations["organizations_images_retrieve"];
+        put?: never;
+        /**
+         * @description GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+         *     holders of roles.manage.
+         */
+        post: operations["organizations_images_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/images/{image_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description DELETE /organizations/{id}/images/{image}/ removes a picture and its file: roles.manage. */
+        delete: operations["organizations_images_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/invitations/": {
         parameters: {
             query?: never;
@@ -6276,7 +6317,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Rank clubs by the sum of their active members' ratings for one discipline. */
+        /** @description Rank clubs by the sum of their active members' ratings for one discipline: the top RANKING_LIMIT. */
         get: operations["rankings_clubs_retrieve"];
         put?: never;
         post?: never;
@@ -6295,6 +6336,23 @@ export interface paths {
         };
         /** @description Aggregate player ratings by the location each player provides in their profile. */
         get: operations["rankings_geography_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rankings/teams/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Rank teams (REQ-057) the way clubs are ranked: by the sum of their active members' ratings. */
+        get: operations["rankings_teams_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7146,6 +7204,26 @@ export interface paths {
         get: operations["tournaments_events_draw_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/discard/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Delete the preview, before it is published, to start the draw again. The published draw is
+         *     untouched, and with no preview nothing changes.
+         */
+        post: operations["tournaments_events_draw_discard_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9698,7 +9776,7 @@ export interface components {
             rows: components["schemas"]["ClubRankingRow"][];
         };
         ClubRankingRow: {
-            /** @description Clubs with the same total share a rank. */
+            /** @description Clubs (or teams) with the same total share a rank. */
             rank: number;
             /** Format: uuid */
             organization_id: string;
@@ -11202,6 +11280,7 @@ export interface components {
         JoinRequestStatusEnum: "pending" | "approved" | "rejected" | "withdrawn";
         /**
          * @description * `club` - Club
+         *     * `team` - Team
          *     * `facility` - Facility
          *     * `club_facility` - Club Facility
          *     * `regional_body` - Regional Body
@@ -11209,7 +11288,7 @@ export interface components {
          *     * `coaching` - Coaching
          * @enum {string}
          */
-        KindEnum: "club" | "facility" | "club_facility" | "regional_body" | "national_body" | "coaching";
+        KindEnum: "club" | "team" | "facility" | "club_facility" | "regional_body" | "national_body" | "coaching";
         LabelTally: {
             label: string;
             played: number;
@@ -12546,6 +12625,27 @@ export interface components {
             nominations: components["schemas"]["AdminHandover"][];
             history: components["schemas"]["AdminHandover"][] | null;
         };
+        OrganizationImage: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly caption: string;
+            readonly file: components["schemas"]["AttachmentLink"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        OrganizationImageUploadRequest: {
+            /**
+             * Format: binary
+             * @description A JPEG, PNG or WebP image under 5 MB.
+             */
+            file: string;
+            caption?: string;
+        };
+        OrganizationImages: {
+            /** @description The most pictures an organization may show. */
+            limit: number;
+            images: components["schemas"]["OrganizationImage"][];
+        };
         OrganizationRef: {
             /** Format: uuid */
             id: string;
@@ -12584,6 +12684,7 @@ export interface components {
         };
         /**
          * @description * `club` - club
+         *     * `team` - team
          *     * `facility` - facility
          *     * `club_facility` - club_facility
          *     * `regional_body` - regional_body
@@ -12592,7 +12693,7 @@ export interface components {
          *     * `firm` - firm
          * @enum {string}
          */
-        OrganizerKindEnum: "club" | "facility" | "club_facility" | "regional_body" | "national_body" | "coach" | "firm";
+        OrganizerKindEnum: "club" | "team" | "facility" | "club_facility" | "regional_body" | "national_body" | "coach" | "firm";
         /**
          * @description * `check_in` - check_in
          *     * `rest` - rest
@@ -13872,10 +13973,11 @@ export interface components {
          *     * `welfare.manage` - Run welfare projects
          *     * `activities.manage` - Plan club activities such as nights out
          *     * `governance.manage` - Set the committee, nominate representatives and run meetings
+         *     * `minutes.manage` - Write meeting minutes, take attendance and issue meeting penalties
          *     * `tournaments.approve` - Approve regional or national tournaments for publication
          * @enum {string}
          */
-        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "results.referee" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage" | "tournaments.approve";
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "results.referee" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage" | "minutes.manage" | "tournaments.approve";
         PermissionInfo: {
             code: components["schemas"]["PermissionEnum"];
             label: string;
@@ -14932,12 +15034,14 @@ export interface components {
          *     * `captain` - Captain
          *     * `assistant_captain` - Assistant Captain
          *     * `committee` - Committee
+         *     * `secretary` - Secretary
+         *     * `treasurer` - Treasurer
          *     * `referee` - Referee
          *     * `official` - Official
          *     * `member` - Member
          * @enum {string}
          */
-        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "referee" | "official" | "member";
+        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "secretary" | "treasurer" | "referee" | "official" | "member";
         RoleRef: {
             /** Format: uuid */
             id: string;
@@ -22087,7 +22191,7 @@ export interface operations {
                 /** @description Country code, e.g. KE */
                 country?: string;
                 /** @description Only these kinds */
-                kind?: ("club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body")[];
+                kind?: ("club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body" | "team")[];
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
@@ -26479,6 +26583,101 @@ export interface operations {
             };
         };
     };
+    organizations_images_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationImages"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_images_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["OrganizationImageUploadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationImages"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_images_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                image_pk: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationImages"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_invitations_list: {
         parameters: {
             query?: {
@@ -30461,7 +30660,7 @@ export interface operations {
     platform_organizations_list: {
         parameters: {
             query?: {
-                kind?: "club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body";
+                kind?: "club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body" | "team";
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
@@ -30801,6 +31000,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeographyRanking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rankings_teams_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Default singles. */
+                discipline?: "doubles" | "singles";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubRanking"];
                 };
             };
             /** @description Error envelope */
@@ -32420,6 +32650,37 @@ export interface operations {
         };
     };
     tournaments_events_draw_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_discard_create: {
         parameters: {
             query?: never;
             header?: never;
