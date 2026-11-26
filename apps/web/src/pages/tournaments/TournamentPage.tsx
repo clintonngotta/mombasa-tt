@@ -16,7 +16,7 @@ import { ScoreStrip } from "@/components/tournaments/LiveScore"
 import { NewsFeed } from "@/components/news/NewsFeed"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
-import { formatDayRange, formatInstant } from "@/lib/dates"
+import { formatDayRange, formatInstant, isAhead } from "@/lib/dates"
 import { entryBlock, placesTaken } from "@/lib/entries"
 import { countryName } from "@/lib/geography"
 import {
@@ -98,6 +98,7 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
           {formatDayRange(t.starts_on, t.ends_on)}
           {soon && <span className="font-semibold text-brand-blue"> · {soon}</span>}
         </Fact>
+        <RegistrationDeadline tournament={t} />
         <Fact icon={<MapPin aria-hidden className="size-5" />} label="Venue">
           {t.venue ? [t.venue.name, t.venue.address, t.venue.town].filter(Boolean).join(", ") : "Venue to be announced"}
           {t.venue && <PlaceDirections place={t.venue} className="mt-1 text-muted-foreground" />}
@@ -124,6 +125,28 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
       <p className="text-sm text-muted-foreground">Dates and times are venue local ({t.timezone}).</p>
       <TournamentDocuments tournament={t} />
     </header>
+  )
+}
+
+/** When entering stops, by the venue's clock: one line when every event shares a deadline, otherwise
+ * the first one (each event's card carries its own). Nothing when no event has a deadline. */
+function RegistrationDeadline({ tournament: t }: { tournament: Tournament }) {
+  const deadlines = [...new Set(t.events.filter((event) => event.status !== "cancelled").flatMap((event) => event.registration_closes_at ?? []))].sort(
+    (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+  )
+  if (deadlines.length === 0 || t.status === "cancelled") return null
+  const next = deadlines.find((deadline) => isAhead(deadline))
+  return (
+    <Fact icon={<Clock aria-hidden className="size-5" />} label="Registration deadline">
+      {next ? (
+        <>
+          Registration closes <span className="font-semibold">{formatInstant(next, t.timezone)}</span>
+          {deadlines.length > 1 && <span className="text-muted-foreground"> · first deadline, each event has its own below</span>}
+        </>
+      ) : (
+        <>Registration closed {formatInstant(deadlines[deadlines.length - 1], t.timezone)}</>
+      )}
+    </Fact>
   )
 }
 
@@ -215,7 +238,11 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
           <Clock aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
             {event.registration_opens_at && <>Registration opens {formatInstant(event.registration_opens_at, t.timezone)}. </>}
-            {event.registration_closes_at && <>Closes {formatInstant(event.registration_closes_at, t.timezone)}.</>}
+            {event.registration_closes_at && (
+              <span className="font-semibold text-foreground">
+                Registration {isAhead(event.registration_closes_at) ? "closes" : "closed"} {formatInstant(event.registration_closes_at, t.timezone)}.
+              </span>
+            )}
           </span>
         </p>
       )}

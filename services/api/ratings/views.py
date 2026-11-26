@@ -161,10 +161,11 @@ class RankingView(APIView):
 
 
 class ClubRankingView(APIView):
-    """Rank clubs by the sum of their active members' ratings for one discipline."""
+    """Rank clubs by the sum of their active members' ratings for one discipline: the top RANKING_LIMIT."""
 
     permission_classes = [PublicReads]
     public_actions = ("get",)  # TASK-035
+    kinds: tuple[str, ...] = (Organization.Kind.CLUB, Organization.Kind.CLUB_FACILITY)
 
     @extend_schema(
         parameters=[
@@ -177,7 +178,7 @@ class ClubRankingView(APIView):
         totals = (
             Membership.objects.active()
             .filter(
-                organization__kind__in=(Organization.Kind.CLUB, Organization.Kind.CLUB_FACILITY),
+                organization__kind__in=self.kinds,
                 user__is_active=True,
                 user__ratings__discipline=discipline,
                 user__ratings__played__gt=0,
@@ -185,7 +186,7 @@ class ClubRankingView(APIView):
             .values("organization_id", name=F("organization__name"), town=F("organization__town"))
             .annotate(total_points=Sum("user__ratings__rating"), rated_members=Count("user_id"))
             .order_by("-total_points", "name", "town", "organization_id")
-        )
+        )[:RANKING_LIMIT]
         return Response(
             ClubRankingSerializer(
                 {
@@ -195,6 +196,12 @@ class ClubRankingView(APIView):
                 }
             ).data
         )
+
+
+class TeamRankingView(ClubRankingView):
+    """Rank teams (REQ-057) the way clubs are ranked: by the sum of their active members' ratings."""
+
+    kinds = (Organization.Kind.TEAM,)
 
 
 class GeographyRankingView(APIView):

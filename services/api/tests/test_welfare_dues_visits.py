@@ -21,7 +21,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def people(club):
-    treasurer = Role.objects.create(organization=club, name="Treasurer", permissions=["finances.manage"])
+    treasurer = Role.objects.create(organization=club, name="Finance", permissions=["finances.manage"])
     welfare = Role.objects.create(organization=club, name="Welfare", permissions=["welfare.manage"])
     social = Role.objects.create(organization=club, name="Social", permissions=["activities.manage"])
     found = {}

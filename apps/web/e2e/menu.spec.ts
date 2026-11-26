@@ -60,3 +60,20 @@ test("a player doesn't see New tournament", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Find a tournament" })).toBeVisible()
   await expect(page.getByRole("link", { name: "New tournament" })).toHaveCount(0)
 })
+
+test("Team has its own entry beside Club", async ({ page }, info) => {
+  await page.goto("/home")
+  // The test player is in a club and in no team, so on a phone the bar's place goes to Club and Team is under More.
+  if (info.project.name === "phone") {
+    await expect(menu(page).getByRole("link", { name: "Club", exact: true })).toBeVisible()
+    await menu(page).getByRole("link", { name: "More", exact: true }).click()
+    await page.getByRole("main").getByRole("link", { name: /^Team/ }).click()
+  } else {
+    await menu(page).getByRole("link", { name: "Team", exact: true }).click()
+  }
+  await expect(page).toHaveURL(/\/team$/)
+  await expect(page.getByRole("heading", { level: 1, name: "Team" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Find a team" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Form a team" })).toBeVisible()
+  await expect(menu(page).locator('[aria-current="page"]')).toHaveText(/Team|More/)
+})

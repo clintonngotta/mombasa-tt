@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { SelectField, TextAreaField } from "@/components/forms/SelectField"
 import { AccessLost } from "@/components/clubs/AccessLost"
+import { OrganizationGallery } from "@/components/clubs/OrganizationGallery"
 import { ApiError, errorMessage } from "@/lib/api"
 import {
   can,
@@ -22,8 +23,8 @@ import { WEEKDAYS } from "@/lib/coaching"
 const MAX_HOURS = 42
 const NO_VENUE = "none"
 
-/** What players looking for a club see: the description (roles.manage) and the weekly training hours
- * (training.manage). The rest of the profile comes from the club's location and venues. */
+/** What players looking for a club see: the description and pictures (roles.manage) and the weekly
+ * training hours (training.manage). The rest of the profile comes from the club's location and venues. */
 export function ClubProfileEditPage() {
   const { memberships, active } = useActiveMembership()
   const orgId = active?.organization.id ?? ""
@@ -50,6 +51,7 @@ export function ClubProfileEditPage() {
       {profile.isPending && allowed && <p className="text-muted-foreground">Loading…</p>}
       {profile.isError && <FormAlert>{errorMessage(profile.error, "We couldn't load the club profile.")}</FormAlert>}
       {profile.isSuccess && editDescription && <DescriptionForm club={profile.data} />}
+      {profile.isSuccess && editDescription && <OrganizationGallery orgId={orgId} manage />}
       {profile.isSuccess && editHours && <TrainingHoursForm club={profile.data} />}
     </div>
   )

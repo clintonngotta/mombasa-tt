@@ -17,6 +17,7 @@ export const DISCIPLINE_LABEL: Record<Discipline, string> = { singles: "Singles"
 export const ratingKeys = {
   ranking: (discipline: Discipline, organizationId: string) => ["ratings", "ranking", discipline, organizationId] as const,
   clubs: (discipline: Discipline) => ["ratings", "clubs", discipline] as const,
+  teams: (discipline: Discipline) => ["ratings", "teams", discipline] as const,
   geography: (discipline: Discipline, level: GeographyLevel) => ["ratings", "geography", discipline, level] as const,
   player: (userId: string, discipline: Discipline, result: ResultFilter) => ["ratings", "player", userId, discipline, result] as const,
 }
@@ -24,6 +25,8 @@ export const ratingKeys = {
 /** The ranking of one discipline: the whole platform, or one of the caller's clubs. */
 export const getRanking = (discipline: Discipline, organizationId: string) => api<Ranking>(`/rankings/?discipline=${discipline}${organizationId ? `&organization=${organizationId}` : ""}`)
 export const getClubRanking = (discipline: Discipline) => api<ClubRanking>(`/rankings/clubs/?discipline=${discipline}`)
+/** Teams ranked as clubs are: by the summed ratings of their active members. */
+export const getTeamRanking = (discipline: Discipline) => api<ClubRanking>(`/rankings/teams/?discipline=${discipline}`)
 export const getGeographyRanking = (discipline: Discipline, level: GeographyLevel) =>
   api<GeographyRanking>(`/rankings/geography/?discipline=${discipline}&level=${level}`)
 /** One player's ratings and the rating changes of one discipline, newest first. */

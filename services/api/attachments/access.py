@@ -23,6 +23,12 @@ def can_read(user, attachment: Attachment) -> bool:
         from regions.minutes import reads_document
 
         return reads_document(user, attachment)
+    if attachment.purpose == Attachment.Purpose.ORGANIZATION_IMAGE:
+        # Shown with the organization's profile, which any signed-in player reads; only while it is in
+        # the gallery, even for whoever uploaded it.
+        from organizations.models import OrganizationImage
+
+        return OrganizationImage.objects.filter(file=attachment).exists()
     if attachment.owner_id == user.id:
         return True
     if attachment.purpose == Attachment.Purpose.AVATAR:

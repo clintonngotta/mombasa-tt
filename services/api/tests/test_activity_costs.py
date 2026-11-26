@@ -19,7 +19,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def people(club):
     social = Role.objects.create(organization=club, name="Social", permissions=["activities.manage"])
-    treasurer = Role.objects.create(organization=club, name="Treasurer", permissions=["finances.manage"])
+    treasurer = Role.objects.create(organization=club, name="Finance", permissions=["finances.manage"])
     found = {}
     for name in "ABCD":
         found[name] = make_user(f"{name.lower()}@example.com", display_name=f"Member {name}")

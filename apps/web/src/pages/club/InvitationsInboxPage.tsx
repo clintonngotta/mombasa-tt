@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { OrganizationCard } from "@/components/clubs/OrganizationCard"
 import { ApiError, errorMessage } from "@/lib/api"
-import { acceptInvitation, clubKeys, declineInvitation, listMyInvitations, setActiveOrganization } from "@/lib/clubs"
+import { SIDE, acceptInvitation, clubKeys, declineInvitation, listMyInvitations, setActiveOrganization, sideOf } from "@/lib/clubs"
 import { useMe } from "@/lib/session"
 
 /** Invitations addressed to the player's verified email (REQ-004: members explicitly accept). */
@@ -20,7 +20,7 @@ export function InvitationsInboxPage() {
     onSuccess: (invitation, { accept }) => {
       if (accept) {
         setActiveOrganization(invitation.organization.id)
-        navigate("/club")
+        navigate(SIDE[sideOf(invitation.organization.kind)].path)
       }
     },
     // Also on error: a 404 means the invitation was revoked, answered or expired, so drop it from the list.

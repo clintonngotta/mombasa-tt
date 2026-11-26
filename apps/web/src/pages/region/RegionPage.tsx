@@ -112,7 +112,7 @@ function Clubs({ orgId }: { orgId: string }) {
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="font-semibold">{club.name}</span>
               <span className="text-sm text-muted-foreground">
-                {club.town} · {club.kind === "facility" ? "Facility" : club.kind === "club_facility" ? "Club and facility" : "Club"}
+                {club.town} · {club.kind === "facility" ? "Facility" : club.kind === "club_facility" ? "Club and facility" : club.kind === "team" ? "Team" : "Club"}
               </span>
             </span>
             <span className="text-sm text-muted-foreground">

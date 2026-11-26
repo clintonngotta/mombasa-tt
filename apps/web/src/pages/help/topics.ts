@@ -126,6 +126,26 @@ export const TOPICS: Topic[] = [
         link: { to: "/club/new", label: "Register a club" },
       },
       {
+        id: "club-or-team",
+        question: "What is the difference between a club and a team?",
+        notes: [
+          "A club is a place people train at: it has a hall or tables you can find on the map.",
+          "A team is players who play together without a training place of their own. It has members, roles and its own ranking, and a home town instead of a map location.",
+          "You can belong to a club and a team at once. Each has its own tab: Club and Team.",
+        ],
+      },
+      {
+        id: "form-a-team",
+        question: "How do I form or join a team?",
+        steps: [
+          "Open Team. On a phone it may be under More.",
+          "To join one, choose Find a team, search by name or city, and choose Request to join.",
+          "To start one, choose Form a team, enter its name and home town, and save. You become its admin and can invite your teammates.",
+        ],
+        notes: ["Rankings has a Teams tab: a team's points are the combined ratings of its members."],
+        link: { to: "/team", label: "Open Team" },
+      },
+      {
         id: "more-than-one-club",
         question: "Can I belong to more than one club?",
         notes: ["Yes. Use the club name at the top of the screen to switch between them. The Club tab and its menus follow the one you picked."],

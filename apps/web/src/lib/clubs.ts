@@ -34,6 +34,8 @@ export type CommitteeFieldInput = Schemas["PatchedCommitteeFieldRequest"]
 export type PositionInput = Schemas["PatchedPositionInputRequest"]
 export type PastHolder = Schemas["PastHolder"]
 export type ClubProfile = Schemas["ClubProfile"]
+export type OrganizationImages = Schemas["OrganizationImages"]
+export type OrganizationImage = Schemas["OrganizationImage"]
 export type TrainingHour = Schemas["TrainingHour"]
 export type TrainingHourInput = Schemas["TrainingHourRequest"]
 /** Filters for finding clubs: a name and/or an area. Empty strings mean "any". */
@@ -53,6 +55,7 @@ export const roleNames = (roles: readonly { name: string }[]) => (roles.length ?
 
 export const KIND_LABEL: Record<OrganizationKind, string> = {
   club: "Club",
+  team: "Team",
   facility: "Facility",
   club_facility: "Club and facility",
   regional_body: "Regional body",
@@ -62,6 +65,15 @@ export const KIND_LABEL: Record<OrganizationKind, string> = {
 
 /** A regional or national body (REQ-045): the governing bodies, whose members are officials and committee. */
 export const isBodyKind = (kind?: OrganizationKind) => kind === "regional_body" || kind === "national_body"
+
+/** A club is a place people train at; a team (REQ-057) is players who play together without one. Each has
+ * its own tab: everything that isn't a team sits on the club side. */
+export type Side = "club" | "team"
+export const sideOf = (kind?: OrganizationKind): Side => (kind === "team" ? "team" : "club")
+export const SIDE: Record<Side, { path: string; noun: string; title: string; plural: string; start: string }> = {
+  club: { path: "/club", noun: "club", title: "Club", plural: "clubs", start: "Register a club" },
+  team: { path: "/team", noun: "team", title: "Team", plural: "teams", start: "Form a team" },
+}
 
 export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {
   text: "Text",
@@ -75,8 +87,9 @@ export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {
 export const clubKeys = {
   all: ["clubs"] as const,
   search: (term: string) => ["clubs", "search", term] as const,
-  find: (filters: ClubSearch) => ["clubs", "find", filters] as const,
+  find: (side: Side, filters: ClubSearch) => ["clubs", "find", side, filters] as const,
   profile: (orgId: string) => ["clubs", orgId, "profile"] as const,
+  images: (orgId: string) => ["clubs", orgId, "images"] as const,
   trainingHours: (orgId: string) => ["clubs", orgId, "training-hours"] as const,
   memberships: ["clubs", "memberships"] as const,
   management: ["clubs", "management"] as const,
@@ -105,16 +118,27 @@ const orgPath = (id: string) => `/organizations/${id}`
 
 export const searchOrganizations = (query: string) =>
   api<Schemas["PaginatedOrganizationList"]>(`/organizations/?search=${encodeURIComponent(query)}`)
-/** Clubs (and club facilities) by name and area, for players looking for a club to join. */
-export const findClubs = ({ name, country, region, city }: ClubSearch) => {
+const SIDE_KINDS: Record<Side, OrganizationKind[]> = { club: ["club", "club_facility"], team: ["team"] }
+/** Clubs (and club facilities), or teams, by name and area, for players looking for one to join. */
+export const findOrganizations = (side: Side, { name, country, region, city }: ClubSearch) => {
   const params = new URLSearchParams({ page_size: "50" })
   for (const [key, value] of Object.entries({ search: name, country, region, city })) if (value.trim()) params.set(key, value.trim())
-  params.append("kind", "club")
-  params.append("kind", "club_facility")
+  for (const kind of SIDE_KINDS[side]) params.append("kind", kind)
   return api<Schemas["PaginatedOrganizationList"]>(`/organizations/?${params}`)
 }
 /** What any signed-in player sees of a club before joining. */
 export const getClubProfile = (orgId: string) => api<ClubProfile>(`${orgPath(orgId)}/profile/`)
+// Pictures an organization shows of itself (REQ-058). Any signed-in player sees them; holders of
+// roles.manage add and remove them. Each change answers with the whole gallery.
+export const listOrganizationImages = (orgId: string) => api<OrganizationImages>(`${orgPath(orgId)}/images/`)
+export function addOrganizationImage(orgId: string, file: File, caption: string) {
+  const body = new FormData()
+  body.append("file", file)
+  if (caption) body.append("caption", caption)
+  return api<OrganizationImages>(`${orgPath(orgId)}/images/`, { body })
+}
+export const removeOrganizationImage = (orgId: string, imageId: string) =>
+  api<OrganizationImages>(`${orgPath(orgId)}/images/${imageId}/`, { method: "DELETE" })
 export const listTrainingHours = (orgId: string) => api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`)
 export const saveTrainingHours = (orgId: string, hours: TrainingHourInput[]) =>
   api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`, { method: "PUT", body: { hours } })

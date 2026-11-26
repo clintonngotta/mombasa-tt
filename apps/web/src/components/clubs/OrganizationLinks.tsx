@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils"
 
 type OrgLink = { to: string; label: string; icon: LucideIcon }
 type Group = { title: string; links: OrgLink[] }
+/** A team (REQ-057) gets what a club gets, in its own words, except representatives to a regional body. */
+type Variant = "club" | "team" | "facility"
 
 const runsTables = (membership: Membership) =>
   membership.organization.kind === "facility" || membership.organization.kind === "club_facility"
@@ -38,7 +40,7 @@ const runsTables = (membership: Membership) =>
 /** Everything an organization offers the signed-in person, grouped by what it's for and limited to what
  * their roles allow (REQ-005). A club lists its members' own pages first; a facility, which isn't a
  * person's club, starts with the front desk. */
-function organizationGroups(membership: Membership, variant: "club" | "facility"): Group[] {
+function organizationGroups(membership: Membership, variant: Variant): Group[] {
   const member = !membership.managedOnly
   const manageMembers = can(membership, "members.manage")
   const manageRoles = can(membership, "roles.manage")
@@ -50,7 +52,8 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
   const activities = can(membership, "activities.manage")
   const governance = can(membership, "governance.manage")
   const pick = (...links: (OrgLink | false)[]) => links.filter(Boolean) as OrgLink[]
-  const word = variant === "facility" ? "facility" : "club"
+  const word = variant
+  const Word = { club: "Club", team: "Team", facility: "Facility" }[variant]
 
   const desk: Group = {
     title: variant === "facility" ? "Front desk" : "Tables and venues",
@@ -63,7 +66,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
   const programme: Group = {
     title: "Programme",
     links: pick(
-      (manageRoles || training) && { to: "/club/profile", label: `${variant === "facility" ? "Facility" : "Club"} profile and training hours`, icon: Store },
+      (manageRoles || training) && { to: "/club/profile", label: `${Word} profile, pictures and training hours`, icon: Store },
       training && { to: "/club/sessions", label: "Training sessions: invitations and attendance", icon: CalendarClock },
       competitions && { to: "/club/tournaments", label: "Tournaments and their dashboards", icon: Trophy },
       competitions && { to: "/club/squads", label: "Squads: who represents us away", icon: Shield },
@@ -86,7 +89,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
     links: pick(
       finances && { to: "/club/finance", label: "Finances: charges, payments and balances", icon: Banknote },
       finances && { to: "/club/finance/external", label: "Outside income: sponsors, grants and gate takings", icon: Banknote },
-      member && { to: "/club/finance/reports", label: "Annual reports: the club's accounts", icon: FileText },
+      member && { to: "/club/finance/reports", label: `Annual reports: the ${word}'s accounts`, icon: FileText },
     ),
   }
   const governanceGroup: Group = {
@@ -121,7 +124,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
   return groups.filter((group) => group.links.length > 0)
 }
 
-export function OrganizationLinks({ membership, variant }: { membership: Membership; variant: "club" | "facility" }) {
+export function OrganizationLinks({ membership, variant }: { membership: Membership; variant: Variant }) {
   return (
     <div className="flex flex-col gap-6">
       {organizationGroups(membership, variant).map((group) => (

@@ -41,6 +41,9 @@ export function formatInstant(iso: string, timeZone: string) {
   }).format(new Date(iso))
 }
 
+/** Whether an instant is still ahead. */
+export const isAhead = (iso: string, now = new Date()) => new Date(iso).getTime() > now.getTime()
+
 /** The calendar day ("YYYY-MM-DD") an instant falls on in `timeZone`. */
 export const dayOf = (iso: string, timeZone: string) => todayIn(timeZone, new Date(iso))
 

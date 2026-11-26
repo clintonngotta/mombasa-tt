@@ -6,9 +6,10 @@ import { formatDistance, RADII, type NearMe } from "@/lib/nearby"
 import { cn } from "@/lib/utils"
 
 /** Clubs or places to play: the two finders share one search, so each links to the other. */
-export function FinderTabs({ current }: { current: "clubs" | "facilities" }) {
+export function FinderTabs({ current }: { current: "clubs" | "teams" | "facilities" }) {
   const tabs = [
     { key: "clubs", to: "/club/find", label: "Clubs" },
+    { key: "teams", to: "/team/find", label: "Teams" },
     { key: "facilities", to: "/facilities", label: "Places to play" },
   ] as const
   return (

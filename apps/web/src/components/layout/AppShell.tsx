@@ -105,7 +105,7 @@ function currentEntry(pathname: string, entries: readonly NavItem[]): string | u
   let best: { to: string; length: number } | undefined
   for (const entry of entries) {
     for (const path of [entry.to, ...(entry.also ?? [])]) {
-      const under = pathname === path || pathname.startsWith(`${path}/`)
+      const under = pathname === path || (!entry.exact && pathname.startsWith(`${path}/`))
       if (under && path.length > (best?.length ?? 0)) best = { to: entry.to, length: path.length }
     }
   }

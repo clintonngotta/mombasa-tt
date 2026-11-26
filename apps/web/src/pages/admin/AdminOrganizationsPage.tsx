@@ -1,21 +1,21 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { Building2, ChevronRight, GraduationCap, Landmark, Map, Users } from "lucide-react"
+import { Building2, ChevronRight, GraduationCap, Landmark, Map, Users, UsersRound } from "lucide-react"
 import { FormAlert } from "@/components/forms/Field"
 import { SearchSelect } from "@/components/forms/SelectField"
 import { errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
-import { KIND_LABEL, setActiveOrganization, type OrganizationKind } from "@/lib/clubs"
+import { KIND_LABEL, SIDE, setActiveOrganization, sideOf, type OrganizationKind } from "@/lib/clubs"
 import { countryName } from "@/lib/geography"
 import { dayLabel, listOrganizations, platformKeys } from "@/lib/platform"
 import { cn } from "@/lib/utils"
 import { Pager, SearchBox } from "@/pages/admin/BackOffice"
 
-const ICON = { club: Users, facility: Building2, club_facility: Building2, regional_body: Map, national_body: Landmark, coaching: GraduationCap } as const
+const ICON = { club: Users, team: UsersRound, facility: Building2, club_facility: Building2, regional_body: Map, national_body: Landmark, coaching: GraduationCap } as const
 const KINDS = [{ value: "all", label: "Every kind" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))]
 
-/** Every club, facility, governing body and coaching desk. Opening one shows it as its members see it,
+/** Every club, team, facility, governing body and coaching desk. Opening one shows it as its members see it,
  * with the platform's authority to change it (its place, its admin). */
 export function AdminOrganizationsPage() {
   const navigate = useNavigate()
@@ -28,9 +28,9 @@ export function AdminOrganizationsPage() {
     placeholderData: keepPreviousData,
   })
 
-  function open(id: string) {
+  function open(id: string, kind: OrganizationKind) {
     setActiveOrganization(id)
-    navigate("/club")
+    navigate(SIDE[sideOf(kind)].path)
   }
 
   return (
@@ -54,7 +54,7 @@ export function AdminOrganizationsPage() {
             const place = [organization.town, organization.region, organization.country && countryName(organization.country)].filter(Boolean).join(", ")
             return (
               <li key={organization.id}>
-                <button type="button" onClick={() => open(organization.id)} className={cn(ROW, "w-full min-h-12 text-left outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50")}>
+                <button type="button" onClick={() => open(organization.id, organization.kind as OrganizationKind)} className={cn(ROW, "w-full min-h-12 text-left outline-none hover:border-brand-blue focus-visible:ring-3 focus-visible:ring-ring/50")}>
                   <Icon aria-hidden className="size-5 shrink-0 text-brand-blue" />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="font-semibold break-words">{organization.name}</span>

@@ -57,6 +57,42 @@ def test_create_validation(admin):
     assert set(response.json()["fields"]) == {"name", "kind"}
 
 
+def test_players_form_a_team_without_a_training_place(admin, player):
+    """REQ-057: a team registers like a club, with a home town and no place to find."""
+    client = logged_in(admin)
+    placed = {"name": "Loopers", "town": "Mombasa", "kind": "team", "latitude": "-4.05", "longitude": "39.66"}
+    refused = client.post(ORGS, placed, format="json")
+    assert refused.status_code == 400 and set(refused.json()["fields"]) == {"latitude"}
+    directed = client.post(
+        ORGS,
+        {"name": "Loopers", "town": "Mombasa", "kind": "team", "directions": "Opposite the stage"},
+        format="json",
+    )
+    assert directed.status_code == 400 and set(directed.json()["fields"]) == {"directions"}
+
+    created = client.post(ORGS, {"name": "Loopers", "town": "Mombasa", "kind": "team"}, format="json")
+    assert created.status_code == 201, created.json()
+    team = Organization.objects.get(pk=created.json()["id"])
+    assert team.kind == "team" and role_keys(team, admin) == ["admin"]
+    # Its admin can't give it a map position later either.
+    moved = client.patch(
+        f"{ORGS}{team.id}/",
+        {"country": "KE", "region": "Mombasa", "town": "Mombasa", "latitude": "-4.05", "longitude": "39.66"},
+        format="json",
+    )
+    assert moved.status_code == 400 and set(moved.json()["fields"]) == {"latitude"}
+
+    # Players find it by kind and join it the way they join a club.
+    found = logged_in(player).get(ORGS + "?kind=team&search=loop").json()["results"]
+    assert [row["id"] for row in found] == [str(team.id)]
+    assert logged_in(player).get(ORGS + "?kind=club&kind=club_facility&search=loop").json()["results"] == []
+    asked = logged_in(player).post(requests_url(team), {}, format="json")
+    assert asked.status_code == 201, asked.json()
+    request = JoinRequest.objects.get(organization=team, user=player)
+    assert client.post(f"{requests_url(team)}{request.id}/approve/", {}, format="json").status_code == 200
+    assert Membership.objects.active().filter(organization=team, user=player).exists()
+
+
 def test_search_by_name_or_town(player, club):
     Organization.objects.create(name="Nairobi Spin", town="Nairobi", kind="club")
     client = logged_in(player)

@@ -21,7 +21,7 @@ def path(club, tail=""):
 
 @pytest.fixture
 def people(club):
-    treasurer_role = Role.objects.create(organization=club, name="Treasurer", permissions=["finances.manage"])
+    treasurer_role = Role.objects.create(organization=club, name="Finance", permissions=["finances.manage"])
     found = {}
     for name in "ABCDE":
         found[name] = make_user(f"{name.lower()}@example.com", display_name=f"Member {name}")

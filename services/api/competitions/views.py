@@ -903,6 +903,17 @@ class DrawViewSet(viewsets.GenericViewSet):
         return self._shown(event, staff=True)
 
     @extend_schema(request=None, responses={200: EventDrawSerializer})
+    def discard(self, request, tournament_pk, event_pk):
+        """Delete the preview, before it is published, to start the draw again. The published draw is
+        untouched, and with no preview nothing changes."""
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+            drawing.ensure_drawable(tournament, event)
+            drawing.discard_preview(event)
+        return self._shown(event, staff=True)
+
+    @extend_schema(request=None, responses={200: EventDrawSerializer})
     def publish(self, request, tournament_pk, event_pk):
         """Publish the preview as the event's draw, superseding the one before. Refused when the
         accepted entries have changed since it was drawn (`draw_stale`)."""

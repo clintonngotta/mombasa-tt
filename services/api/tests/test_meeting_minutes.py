@@ -281,6 +281,34 @@ def test_minutes_are_a_draft_until_approved_then_never_change(club, people):
     assert "Minutes of AGM were amended" in titles(people["users"]["baraka"])
 
 
+def test_the_secretary_role_does_the_secretarys_work_at_every_meeting(club, people):
+    """A club's Secretary role (minutes.manage) covers meetings its holder isn't named on or invited to."""
+    scribe = make_user("scribe@example.com", display_name="Scribe")
+    membership = add_member(club, scribe)
+    hidden = draft(club, people, title="Not yet called")
+    meeting = published(club, people, audience="named", named_ids=[str(people["users"]["amina"].id)])
+    client = logged_in(scribe)
+    path = url(club, meeting["id"], "minutes/")
+    start(meeting)
+    # A plain member who wasn't invited doesn't see the meeting at all.
+    assert client.get(url(club)).json() == []
+    assert client.post(path, minutes_body(meeting, people), format="json").status_code == 404
+
+    membership.roles.add(club.roles.get(key="secretary"))
+    listed = client.get(url(club)).json()
+    assert [row["id"] for row in listed] == [meeting["id"]] and listed[0]["can_take_attendance"] is True
+    assert client.get(url(club, hidden["id"])).status_code == 404  # a draft stays with governance staff
+    saved = client.post(path, minutes_body(meeting, people), format="json")
+    assert saved.status_code == 200, saved.json()
+    assert saved.json()["minutes_status"] == "draft"
+    # Calling, changing and approving meetings stay with governance staff.
+    assert client.post(path + "approve/", {}, format="json").status_code == 403
+    assert client.patch(url(club, meeting["id"]), {"title": "Mine now"}, format="json").status_code == 403
+    assert client.post(url(club), {"title": "Extra"}, format="json").status_code == 403
+    # The role is for minutes, not for money.
+    assert client.get(f"{ORGS}{club.id}/finance/charges/").status_code == 403
+
+
 def test_amendments_need_approved_minutes(club, people):
     meeting = published(club, people)
     start(meeting, over=True)

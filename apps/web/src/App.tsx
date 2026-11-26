@@ -55,7 +55,7 @@ import { PlayersPage } from "@/pages/players/PlayersPage"
 import { PlayerPage } from "@/pages/players/PlayerPage"
 import { PlayerRatingsPage } from "@/pages/ratings/PlayerRatingsPage"
 import { RankingsPage } from "@/pages/ratings/RankingsPage"
-import { ClubPage } from "@/pages/club/ClubPage"
+import { ClubPage, TeamPage } from "@/pages/club/ClubPage"
 import { FindClubPage } from "@/pages/club/FindClubPage"
 import { RegisterOrganizationPage } from "@/pages/club/RegisterOrganizationPage"
 import { InvitationsInboxPage } from "@/pages/club/InvitationsInboxPage"
@@ -240,6 +240,10 @@ function App() {
               <Route path="/club/find/:id" element={<ClubProfilePage />} />
               <Route path="/club/profile" element={<ClubProfileEditPage />} />
               <Route path="/club/new" element={<RegisterOrganizationPage />} />
+              <Route path="/team" element={<TeamPage />} />
+              <Route path="/team/find" element={<FindClubPage side="team" />} />
+              <Route path="/team/find/:id" element={<ClubProfilePage side="team" />} />
+              <Route path="/team/new" element={<RegisterOrganizationPage side="team" />} />
               <Route path="/club/invitations" element={<InvitationsInboxPage />} />
               <Route path="/club/admin-nominations" element={<AdminNominationsPage />} />
               <Route path="/club/members" element={<MembersPage />} />

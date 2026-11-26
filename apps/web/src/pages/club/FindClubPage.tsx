@@ -10,7 +10,7 @@ import { OrganizationCard } from "@/components/clubs/OrganizationCard"
 import { JoinStatus } from "@/components/clubs/JoinStatus"
 import { FinderTabs, NearMeControls } from "@/components/places/NearMe"
 import { errorMessage } from "@/lib/api"
-import { clubKeys, findClubs, requestToJoin, useJoinState, type ClubSearch, type Organization } from "@/lib/clubs"
+import { SIDE, clubKeys, findOrganizations, requestToJoin, useJoinState, type ClubSearch, type Organization, type Side } from "@/lib/clubs"
 import { findClubsNear, formatDistance, useNearMe } from "@/lib/nearby"
 
 const DEFAULT_COUNTRY = "KE"
@@ -29,8 +29,11 @@ function filtersFrom(params: URLSearchParams): ClubSearch {
 const searchable = (f: ClubSearch) => f.name.trim().length >= 2 || !!f.region || !!f.city
 
 /** Find clubs by name or city, by region, or by distance from where you are; open one to see its
- * details, and ask to join (REQ-004). */
-export function FindClubPage() {
+ * details, and ask to join (REQ-004). With `side="team"` it finds teams (REQ-057), which have a home town
+ * but no place on the map, so there is no "Near me". */
+export function FindClubPage({ side = "club" }: { side?: Side }) {
+  const { path, noun, title, plural } = SIDE[side]
+  const team = side === "team"
   const queryClient = useQueryClient()
   const [params, setParams] = useSearchParams()
   const applied = filtersFrom(params)
@@ -41,7 +44,7 @@ export function FindClubPage() {
   const near = useNearMe()
   const listed = !near.position && params.has("searched") && searchable(applied)
 
-  const list = useQuery({ queryKey: clubKeys.find(applied), queryFn: () => findClubs(applied), enabled: listed })
+  const list = useQuery({ queryKey: clubKeys.find(side, applied), queryFn: () => findOrganizations(side, applied), enabled: listed })
   // Keyed by a counter, never by the coordinates, and never saved on the device (lib/offline).
   const nearby = useQuery({
     queryKey: ["nearby", "clubs", near.stamp, near.radius, applied.name],
@@ -82,24 +85,28 @@ export function FindClubPage() {
   const shown = near.position ? nearby.isSuccess : list.isSuccess && listed
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <BackLink to="/club">Club</BackLink>
+      <BackLink to={path}>{title}</BackLink>
       <div className="flex flex-col gap-1">
-        <h1 className="text-[32px] leading-9 font-bold">Find a club</h1>
-        <p className="text-muted-foreground">Type a club name or a city, or see the clubs near you. Open a club to see where it plays and when it trains, then ask to join.</p>
+        <h1 className="text-[32px] leading-9 font-bold">Find a {noun}</h1>
+        <p className="text-muted-foreground">
+          {team
+            ? "Type a team name or a city. A team is players who play together without a training place of their own. Open one to see what it's about, then ask to join."
+            : "Type a club name or a city, or see the clubs near you. Open a club to see where it plays and when it trains, then ask to join."}
+        </p>
       </div>
-      <FinderTabs current="clubs" />
+      <FinderTabs current={team ? "teams" : "clubs"} />
 
       <form role="search" noValidate onSubmit={onSearch} className="flex flex-col gap-4 rounded-xl border bg-card p-4">
         <Field
-          label="Club name, city or town"
+          label={`${title} name, city or town`}
           type="search"
           maxLength={120}
-          placeholder="e.g. Coast Spinners, or Mombasa"
+          placeholder={team ? "e.g. Nyali Loopers, or Mombasa" : "e.g. Coast Spinners, or Mombasa"}
           value={draft.name}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
         />
         {byArea && !near.position && <LocationFields value={draft} onChange={(location) => setDraft({ ...draft, ...location })} />}
-        {tooShort && <FormAlert>Type at least two letters of a club name or city{byArea ? ", or choose a region or city" : ""}.</FormAlert>}
+        {tooShort && <FormAlert>Type at least two letters of a {noun} name or city{byArea ? ", or choose a region or city" : ""}.</FormAlert>}
         <div className="flex flex-wrap gap-2">
           <Button type="submit">
             <Search aria-hidden className="size-4" /> Search
@@ -115,19 +122,19 @@ export function FindClubPage() {
             </Button>
           )}
         </div>
-        <NearMeControls near={near} what="Clubs" />
+        {!team && <NearMeControls near={near} what="Clubs" />}
       </form>
 
-      <section aria-live="polite" aria-label="Clubs found" className="flex flex-col gap-3">
+      <section aria-live="polite" aria-label={team ? "Teams found" : "Clubs found"} className="flex flex-col gap-3">
         {results.isFetching && !results.data && <p className="text-muted-foreground">Searching…</p>}
         {results.isError && <FormAlert>{errorMessage(results.error, "Search isn't working right now.")}</FormAlert>}
         {shown && clubs.length === 0 && (
           <p className="text-muted-foreground">
             {near.position
               ? `No club has a map location within ${formatDistance(near.radius)} of you. Try a wider distance or search by city: clubs that haven't set their map location only show in a city search. Or `
-              : "No clubs match. Try a shorter name or another city, or "}
-            <Link to="/club/new" className="font-semibold text-brand-blue underline">
-              register your club
+              : `No ${plural} match. Try a shorter name or another city, or `}
+            <Link to={`${path}/new`} className="font-semibold text-brand-blue underline">
+              {team ? "form your team" : "register your club"}
             </Link>
             .
           </p>
@@ -135,11 +142,11 @@ export function FindClubPage() {
         {shown && clubs.length > 0 && (
           <p className="text-sm text-muted-foreground">
             {count === clubs.length
-              ? `${clubs.length} ${clubs.length === 1 ? "club" : "clubs"}${near.position ? `, nearest first` : ""}`
-              : `Showing ${near.position ? "the nearest " : ""}${clubs.length} of ${count} clubs. ${near.position ? "Choose a shorter distance" : "Add a city or more of the name"} to narrow the list.`}
+              ? `${clubs.length} ${clubs.length === 1 ? noun : plural}${near.position ? `, nearest first` : ""}`
+              : `Showing ${near.position ? "the nearest " : ""}${clubs.length} of ${count} ${plural}. ${near.position ? "Choose a shorter distance" : "Add a city or more of the name"} to narrow the list.`}
           </p>
         )}
-        {joinState.failed && <FormAlert>We couldn't check which clubs you've joined, so join requests are paused. Try again shortly.</FormAlert>}
+        {joinState.failed && <FormAlert>We couldn't check which {plural} you've joined, so join requests are paused. Try again shortly.</FormAlert>}
         {join.isError && <FormAlert>{errorMessage(join.error, "We couldn't send that join request.")}</FormAlert>}
 
         <ul className="flex flex-col gap-3">
@@ -149,7 +156,7 @@ export function FindClubPage() {
                 <OrganizationCard organization={club}>
                   <div className="flex flex-wrap items-center gap-2">
                     {club.distance_m !== undefined && <span className="text-sm font-semibold text-brand-blue">{formatDistance(club.distance_m)} away</span>}
-                    <Link to={`/club/find/${club.id}`} state={{ from: `/club/find?${params}` }} className={buttonVariants({ variant: "ghost" })} aria-label={`Details of ${club.name}`}>
+                    <Link to={`${path}/find/${club.id}`} state={{ from: `${path}/find?${params}` }} className={buttonVariants({ variant: "ghost" })} aria-label={`Details of ${club.name}`}>
                       Details
                     </Link>
                     <JoinStatus state={joinState.of(club.id)} name={club.name} busy={join.isPending && join.variables === club.id} onJoin={() => join.mutate(club.id)} />

@@ -13,16 +13,16 @@ import { buttonVariants } from "@/components/ui/button"
 import { errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
 import { countryName } from "@/lib/geography"
-import { DISCIPLINE_LABEL, getClubRanking, getGeographyRanking, getRanking, ratingKeys, shown, signed, winRate, type Discipline, type GeographyLevel, type RankingRow } from "@/lib/ratings"
+import { DISCIPLINE_LABEL, getClubRanking, getGeographyRanking, getRanking, getTeamRanking, ratingKeys, shown, signed, winRate, type Discipline, type GeographyLevel, type RankingRow } from "@/lib/ratings"
 import { cn } from "@/lib/utils"
 
-type RankingTab = "players" | "clubs" | "geography"
+type RankingTab = "players" | "clubs" | "teams" | "geography"
 
 const ratingPoints = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 })
 const GEOGRAPHY_LABEL: Record<GeographyLevel, string> = { country: "Countries", region: "Regions", city: "Cities" }
 
 /**
- * Ratings by discipline, for individual players or by the points their clubs hold together.
+ * Ratings by discipline, for individual players or by the points their clubs, teams or places hold together.
  */
 export function RankingsPage() {
   const [tab, setTab] = useState<RankingTab>("players")
@@ -49,7 +49,7 @@ export function RankingsPage() {
         label="Rankings"
         value={tab}
         onChange={setTab}
-        options={[{ value: "players", label: "Players" }, { value: "clubs", label: "Clubs" }, { value: "geography", label: "Geography" }]}
+        options={[{ value: "players", label: "Players" }, { value: "clubs", label: "Clubs" }, { value: "teams", label: "Teams" }, { value: "geography", label: "Geography" }]}
       />
       <div className="flex flex-wrap items-end gap-3">
         <Segmented
@@ -75,7 +75,8 @@ export function RankingsPage() {
           </div>
         )}
       </div>
-      {tab === "clubs" && <ClubRankings discipline={discipline} />}
+      {tab === "clubs" && <ClubRankings discipline={discipline} of="clubs" />}
+      {tab === "teams" && <ClubRankings discipline={discipline} of="teams" />}
       {tab === "geography" && <GeographyRankings discipline={discipline} />}
       {tab === "players" && ranking.isPending && <p className="text-muted-foreground">Loading the ranking…</p>}
       {tab === "players" && ranking.isError && <FormAlert>{errorMessage(ranking.error, "We couldn't load the ranking.")}</FormAlert>}
@@ -106,26 +107,44 @@ export function RankingsPage() {
   )
 }
 
-function ClubRankings({ discipline }: { discipline: Discipline }) {
+/** Clubs or teams by the points their members hold together. */
+function ClubRankings({ discipline, of }: { discipline: Discipline; of: "clubs" | "teams" }) {
+  const one = of === "clubs" ? "club" : "team"
   const ranking = useQuery({
-    queryKey: ratingKeys.clubs(discipline),
-    queryFn: () => getClubRanking(discipline),
+    queryKey: ratingKeys[of](discipline),
+    queryFn: () => (of === "clubs" ? getClubRanking(discipline) : getTeamRanking(discipline)),
     refetchInterval: (query) => (query.state.data?.processing ? 5000 : false),
   })
   return (
-    <section aria-labelledby="club-rankings-heading" className="flex flex-col gap-3">
-      <h2 id="club-rankings-heading" className="text-2xl font-bold">{DISCIPLINE_LABEL[discipline]} · Clubs</h2>
-      <p className="text-sm text-muted-foreground">Club points are the sum of current ratings for active members with a played match in this discipline.</p>
-      {ranking.isPending && <p className="text-muted-foreground">Loading club rankings…</p>}
-      {ranking.isError && <FormAlert>{errorMessage(ranking.error, "We couldn't load the club rankings.")}</FormAlert>}
+    <section aria-labelledby={`${one}-rankings-heading`} className="flex flex-col gap-3">
+      <h2 id={`${one}-rankings-heading`} className="text-2xl font-bold">{DISCIPLINE_LABEL[discipline]} · {of === "clubs" ? "Clubs" : "Teams"}</h2>
+      <p className="text-sm text-muted-foreground">
+        {of === "clubs" ? "Club" : "Team"} points are the sum of current ratings for active members with a played match in this discipline.
+        {of === "teams" && " A team is players who play together without a training place of their own."}
+      </p>
+      {ranking.isPending && <p className="text-muted-foreground">Loading {one} rankings…</p>}
+      {ranking.isError && <FormAlert>{errorMessage(ranking.error, `We couldn't load the ${one} rankings.`)}</FormAlert>}
       {ranking.data?.processing && <Processing />}
-      {ranking.data?.rows.length === 0 && <p className="text-muted-foreground">No clubs have rated {discipline} members yet.</p>}
-      <AggregateList rows={ranking.data?.rows.map((club) => ({
-        id: club.organization_id,
-        rank: club.rank,
-        name: club.name,
-        context: [club.town, `${club.rated_members} rated ${club.rated_members === 1 ? "member" : "members"}`].filter(Boolean).join(" · "),
-        points: club.total_points,
+      {ranking.data?.rows.length === 0 && (
+        <p className="text-muted-foreground">
+          No {of} have rated {discipline} members yet.
+          {of === "teams" && (
+            <>
+              {" "}
+              <Link to="/team" className="font-semibold text-brand-blue underline">
+                Form or join a team
+              </Link>
+              .
+            </>
+          )}
+        </p>
+      )}
+      <AggregateList rows={ranking.data?.rows.map((row) => ({
+        id: row.organization_id,
+        rank: row.rank,
+        name: row.name,
+        context: [row.town, `${row.rated_members} rated ${row.rated_members === 1 ? "member" : "members"}`].filter(Boolean).join(" · "),
+        points: row.total_points,
       })) ?? []} />
     </section>
   )
