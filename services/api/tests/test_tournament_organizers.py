@@ -7,7 +7,7 @@ import pytest
 from attachments.models import Attachment
 from organizations.models import Membership, Organization
 
-from .helpers import image_upload, logged_in, make_user
+from .helpers import image_upload, logged_in, make_official, make_user
 from .test_authority import kenya, official  # noqa: F401  (fixture)
 from .test_coaching import ME, become_coach
 from .test_roles import ORGS
@@ -49,15 +49,13 @@ def test_a_club_tournament_names_the_club_as_organizer(staff, club):
 
 
 def test_a_regional_body_tournament_names_the_body(kenya):  # noqa: F811
+    # Only a platform super admin creates a body (TASK-107); here it exists and has its admin.
     region = kenya["mombasa"]
-    officer = official("officer@example.com", kenya, region)
-    made = officer.post(
-        "/api/v1/regional-bodies/",
-        {"name": "Coast Table Tennis Committee", "region_id": region.id},
-        format="json",
-    )
-    assert made.status_code == 201, made.json()
-    body = Organization.objects.get(pk=made.json()["id"])
+    admin = make_user("officer@example.com")
+    body = make_official(admin, kenya["country"].code, region.name, role="admin")
+    body.name = "Coast Table Tennis Committee"
+    body.save(update_fields=["name"])
+    officer = logged_in(admin)
     tournament = make_tournament(officer, body)
     assert tournament["organizer"] == {
         "name": "Coast Table Tennis Committee",
@@ -134,12 +132,7 @@ def test_officials_oversee_published_tournaments_in_their_region(staff, club, ke
     assert player.get(OVERSEEN).json()["results"] == []
 
     # A regional body's members oversee their region too, even without an appointment.
-    made = mombasa.post(
-        "/api/v1/regional-bodies/",
-        {"name": "Coast TT Committee", "region_id": kenya["mombasa"].id},
-        format="json",
-    )
-    body = Organization.objects.get(pk=made.json()["id"])
+    body = Organization.objects.get(kind=Organization.Kind.REGIONAL_BODY, region=kenya["mombasa"].name)
     secretary = make_user("secretary@example.com")
     Membership.objects.create(organization=body, user=secretary)
     assert [row["name"] for row in logged_in(secretary).get(OVERSEEN).json()["results"]] == ["Coast Open"]
