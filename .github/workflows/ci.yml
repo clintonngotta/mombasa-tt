@@ -94,6 +94,8 @@ jobs:
         run: pnpm test:offline
       - name: Live views carry no umpire controls
         run: pnpm test:live
+      - name: Form draft tests
+        run: pnpm test:drafts
       - name: Typecheck and build
         run: pnpm build
       - name: Dependency audit

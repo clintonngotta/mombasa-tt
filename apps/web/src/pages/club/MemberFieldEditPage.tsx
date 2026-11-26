@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useId, useState, type FormEvent } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -55,12 +57,13 @@ function FieldForm({ orgId, field }: { orgId: string; field?: MemberField }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const optionsId = useId()
-  const [label, setLabel] = useState(field?.label ?? "")
-  const [kind, setKind] = useState<MemberFieldKind | "">(field?.kind ?? "")
-  const [options, setOptions] = useState(field?.options.join("\n") ?? "")
-  const [required, setRequired] = useState(field?.required ?? false)
+  const draft = useDraft(`member-field:${field?.id ?? "new"}`)
+  const [label, setLabel] = useDraftState(draft, "label", field?.label ?? "")
+  const [kind, setKind] = useDraftState<MemberFieldKind | "">(draft, "kind", field?.kind ?? "")
+  const [options, setOptions] = useDraftState(draft, "options", field?.options.join("\n") ?? "")
+  const [required, setRequired] = useDraftState(draft, "required", field?.required ?? false)
   // New fields start staff-only, like the API: nothing is shown to members until someone chooses to.
-  const [visibility, setVisibility] = useState<MemberField["visibility"]>(field?.visibility ?? "staff")
+  const [visibility, setVisibility] = useDraftState<MemberField["visibility"]>(draft, "visibility", field?.visibility ?? "staff")
   const [confirmRetire, setConfirmRetire] = useState(false)
 
   const done = async () => {
@@ -78,7 +81,10 @@ function FieldForm({ orgId, field }: { orgId: string; field?: MemberField }) {
       }
       return field ? updateMemberField(orgId, field.id, body) : createMemberField(orgId, { ...body, kind: (kind || undefined) as MemberFieldKind })
     },
-    onSuccess: done,
+    onSuccess: () => {
+      draft.clear()
+      return done()
+    },
   })
   const retire = useMutation({ mutationFn: () => setMemberFieldRetired(orgId, field!.id, true), onSuccess: done })
 
@@ -144,6 +150,7 @@ function FieldForm({ orgId, field }: { orgId: string; field?: MemberField }) {
         description="An answer can't be left blank or cleared when these details are saved."
       />
       {save.isError && Object.keys(errors).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : field ? "Save field" : "Create field"}
       </Button>

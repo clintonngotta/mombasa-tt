@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -107,17 +109,18 @@ function NewSession({ orgId, timeZone, facility, onClose }: { orgId: string; tim
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const venues = useQuery({ queryKey: venueKeys.list(orgId), queryFn: () => listVenues(orgId) })
-  const [title, setTitle] = useState("")
-  const [starts, setStarts] = useState("")
-  const [ends, setEnds] = useState("")
-  const [tables, setTables] = useState<string[]>([])
-  const [capacity, setCapacity] = useState("")
-  const [notes, setNotes] = useState("")
-  const [coach, setCoach] = useState("")
-  const [level, setLevel] = useState("")
-  const [fee, setFee] = useState("")
-  const [open, setOpen] = useState(facility)
-  const [weeks, setWeeks] = useState("1")
+  const draft = useDraft(`club-session-new:${orgId}`)
+  const [title, setTitle] = useDraftState(draft, "title", "")
+  const [starts, setStarts] = useDraftState(draft, "starts", "")
+  const [ends, setEnds] = useDraftState(draft, "ends", "")
+  const [tables, setTables] = useDraftState<string[]>(draft, "tables", [])
+  const [capacity, setCapacity] = useDraftState(draft, "capacity", "")
+  const [notes, setNotes] = useDraftState(draft, "notes", "")
+  const [coach, setCoach] = useDraftState(draft, "coach", "")
+  const [level, setLevel] = useDraftState(draft, "level", "")
+  const [fee, setFee] = useDraftState(draft, "fee", "")
+  const [open, setOpen] = useDraftState(draft, "open", facility)
+  const [weeks, setWeeks] = useDraftState(draft, "weeks", "1")
   const members = useQuery({ queryKey: ["clubs", orgId, "members", ""], queryFn: () => listMembers(orgId, "") })
   // A facility keeps its match tables for play; training goes on its training tables.
   const options = (venues.data ?? [])
@@ -142,6 +145,7 @@ function NewSession({ orgId, timeZone, facility, onClose }: { orgId: string; tim
         repeat_weeks: Number(weeks) || 1,
       }),
     onSuccess: (made) => {
+      draft.clear()
       void queryClient.invalidateQueries({ queryKey: clubSessionKeys.all })
       navigate(`/club/sessions/${made.id}`)
     },
@@ -187,6 +191,7 @@ function NewSession({ orgId, timeZone, facility, onClose }: { orgId: string; tim
       <TextAreaField label="Notes for members" optional maxLength={1000} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       <ConflictList conflicts={clashes} timeZone={timeZone} lead="A table you chose is in use then:" next="Choose other tables or another time." />
       {save.isError && !clashes.length && !Object.keys(errors).length && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={save.isPending || !title.trim() || !starts || !ends || !tables.length}>
           {save.isPending ? "Saving…" : "Save session"}

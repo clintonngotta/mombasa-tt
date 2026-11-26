@@ -4,6 +4,7 @@
 import { useSyncExternalStore } from "react"
 import { dehydrate, hydrate, type DehydratedState, type QueryClient, type QueryKey } from "@tanstack/react-query"
 import { api, ApiError } from "@/lib/api"
+import { forgetDrafts } from "@/lib/drafts"
 import { APP_BUILD } from "@/lib/pwa"
 import { OfflineStore, StorageError, type FlushResult, type Outcome, type PendingChange } from "@/lib/offline/store"
 
@@ -242,7 +243,10 @@ export async function restoreScreens(queryClient: QueryClient): Promise<void> {
 /** The account now signed in, from /auth/me/. A different person's saved screens are removed. */
 export function setAccount(userId: string | null) {
   if (!userId) return
-  if (lastAccount() !== userId) {
+  const before = lastAccount()
+  if (before !== userId) {
+    // Someone else used this device last: what they typed and kept as drafts goes too.
+    if (before) forgetDrafts(localStorage, before)
     localStorage.setItem(ACCOUNT, userId)
     void recount()
   }
@@ -252,6 +256,7 @@ export function setAccount(userId: string | null) {
 /** Logging out: forget the account's saved screens and kept changes (after the person decided). */
 export async function forgetAccount(userId: string) {
   await offlineStore()?.purge(userId).catch(() => undefined)
+  forgetDrafts(localStorage, userId)
   if (lastAccount() === userId) localStorage.removeItem(ACCOUNT)
   set({ waiting: 0, refused: 0, savedAt: null, signedOut: false })
 }

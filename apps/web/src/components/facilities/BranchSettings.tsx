@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, Trash2 } from "lucide-react"
@@ -23,11 +25,12 @@ function useSaved(orgId: string) {
  * what a visitor gets, and who may find it. */
 export function BranchProfile({ orgId, venue }: { orgId: string; venue: Venue }) {
   const saved = useSaved(orgId)
-  const [location, setLocation] = useState({ country: venue.country, region: venue.region, city: venue.town })
-  const [phone, setPhone] = useState(venue.phone)
-  const [rules, setRules] = useState(venue.rules)
-  const [amenities, setAmenities] = useState(venue.amenities.join("\n"))
-  const [profile, setProfile] = useState<VenueProfile>(venue.profile)
+  const draft = useDraft(`branch-profile:${venue.id}`)
+  const [location, setLocation] = useDraftState(draft, "location", { country: venue.country, region: venue.region, city: venue.town })
+  const [phone, setPhone] = useDraftState(draft, "phone", venue.phone)
+  const [rules, setRules] = useDraftState(draft, "rules", venue.rules)
+  const [amenities, setAmenities] = useDraftState(draft, "amenities", venue.amenities.join("\n"))
+  const [profile, setProfile] = useDraftState<VenueProfile>(draft, "profile", venue.profile)
   const save = useMutation({
     mutationFn: () =>
       updateVenue(orgId, venue.id, {
@@ -42,7 +45,10 @@ export function BranchProfile({ orgId, venue }: { orgId: string; venue: Venue })
           .filter(Boolean),
         profile,
       }),
-    onSuccess: saved,
+    onSuccess: (fresh) => {
+      draft.clear()
+      saved(fresh)
+    },
   })
   const errors = save.error instanceof ApiError ? save.error.fieldErrors() : {}
   const submit = (event: FormEvent) => {
@@ -70,6 +76,7 @@ export function BranchProfile({ orgId, venue }: { orgId: string; venue: Venue })
         />
         <ChoiceGroup legend="Who finds this branch" options={PROFILE_OPTIONS} value={profile} onChange={setProfile} columns={3} error={errors.profile} />
         {save.isError && !Object.keys(errors).length && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+        <DraftBar draft={draft} />
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={save.isPending}>
             {save.isPending ? "Saving…" : "Save profile"}

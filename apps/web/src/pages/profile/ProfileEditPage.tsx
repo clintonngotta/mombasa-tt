@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -51,7 +53,8 @@ export function ProfileEditPage() {
 function ProfileForm({ initial }: { initial: Profile }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [form, setForm] = useState(initial)
+  const draft = useDraft("profile")
+  const [form, setForm] = useDraftState(draft, "form", initial)
   const set = (patch: Partial<Profile>) => setForm((prev) => ({ ...prev, ...patch }))
 
   const save = useMutation({
@@ -68,7 +71,10 @@ function ProfileForm({ initial }: { initial: Profile }) {
         queryClient.invalidateQueries({ queryKey: meQueryKey }),
         queryClient.invalidateQueries({ queryKey: playerKeys.all }),
       ]),
-    onSuccess: () => navigate("/profile"),
+    onSuccess: () => {
+      draft.clear()
+      navigate("/profile")
+    },
   })
 
   function onSubmit(e: FormEvent) {
@@ -173,6 +179,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 
       {save.isError && !hasFieldErrors && <FormAlert>{errorMessage(save.error, "We couldn't save your profile. Try again.")}</FormAlert>}
       {hasFieldErrors && <FormAlert>Check the highlighted fields.</FormAlert>}
+      <DraftBar draft={draft} />
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : "Save profile"}
       </Button>
