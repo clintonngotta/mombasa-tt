@@ -9,7 +9,15 @@ from django.utils import timezone
 
 from core.timezones import DEFAULT_TIMEZONE
 
-from .permissions import ALL_PERMISSIONS, BODY_ROLES, ROLE_TEMPLATES, Permission, RoleKey
+from .permissions import (
+    ALL_PERMISSIONS,
+    BODY_ROLES,
+    CLUB_ROLE_KINDS,
+    CLUB_ROLES,
+    ROLE_TEMPLATES,
+    Permission,
+    RoleKey,
+)
 
 INVITATION_TTL = timedelta(days=14)
 
@@ -178,11 +186,12 @@ class OfficialAppointment(models.Model):
 
 def seed_roles(organization: Organization) -> dict[str, Role]:
     """Create the template roles for a new organization, keyed by RoleKey. Only bodies get the body
-    templates (Official)."""
+    templates (Official); only clubs and teams get Secretary and Treasurer."""
     return {
         key: Role.objects.create(organization=organization, key=key, name=name, permissions=sorted(perms))
         for key, name, perms in ROLE_TEMPLATES
-        if organization.is_body or key not in BODY_ROLES
+        if (organization.is_body or key not in BODY_ROLES)
+        and (organization.kind in CLUB_ROLE_KINDS or key not in CLUB_ROLES)
     }
 
 

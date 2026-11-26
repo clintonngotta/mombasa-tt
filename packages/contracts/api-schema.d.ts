@@ -13891,10 +13891,11 @@ export interface components {
          *     * `welfare.manage` - Run welfare projects
          *     * `activities.manage` - Plan club activities such as nights out
          *     * `governance.manage` - Set the committee, nominate representatives and run meetings
+         *     * `minutes.manage` - Write meeting minutes, take attendance and issue meeting penalties
          *     * `tournaments.approve` - Approve regional or national tournaments for publication
          * @enum {string}
          */
-        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "results.referee" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage" | "tournaments.approve";
+        PermissionEnum: "members.manage" | "roles.manage" | "competitions.manage" | "results.manage" | "results.referee" | "scoring.assigned" | "facilities.manage" | "finances.view" | "finances.manage" | "announcements.manage" | "training.manage" | "welfare.manage" | "activities.manage" | "governance.manage" | "minutes.manage" | "tournaments.approve";
         PermissionInfo: {
             code: components["schemas"]["PermissionEnum"];
             label: string;
@@ -14951,12 +14952,14 @@ export interface components {
          *     * `captain` - Captain
          *     * `assistant_captain` - Assistant Captain
          *     * `committee` - Committee
+         *     * `secretary` - Secretary
+         *     * `treasurer` - Treasurer
          *     * `referee` - Referee
          *     * `official` - Official
          *     * `member` - Member
          * @enum {string}
          */
-        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "referee" | "official" | "member";
+        RoleKeyEnum: "admin" | "captain" | "assistant_captain" | "committee" | "secretary" | "treasurer" | "referee" | "official" | "member";
         RoleRef: {
             /** Format: uuid */
             id: string;

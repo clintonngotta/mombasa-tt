@@ -32889,6 +32889,7 @@ components:
       - welfare.manage
       - activities.manage
       - governance.manage
+      - minutes.manage
       - tournaments.approve
       type: string
       description: |-
@@ -32906,6 +32907,7 @@ components:
         * `welfare.manage` - Run welfare projects
         * `activities.manage` - Plan club activities such as nights out
         * `governance.manage` - Set the committee, nominate representatives and run meetings
+        * `minutes.manage` - Write meeting minutes, take attendance and issue meeting penalties
         * `tournaments.approve` - Approve regional or national tournaments for publication
     PermissionInfo:
       type: object
@@ -35343,6 +35345,8 @@ components:
       - captain
       - assistant_captain
       - committee
+      - secretary
+      - treasurer
       - referee
       - official
       - member
@@ -35352,6 +35356,8 @@ components:
         * `captain` - Captain
         * `assistant_captain` - Assistant Captain
         * `committee` - Committee
+        * `secretary` - Secretary
+        * `treasurer` - Treasurer
         * `referee` - Referee
         * `official` - Official
         * `member` - Member

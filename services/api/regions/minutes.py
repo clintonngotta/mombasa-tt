@@ -37,6 +37,7 @@ from .models import (
     MeetingDocument,
     MinutesAmendment,
 )
+from .secretary import is_secretary
 from .serializers import (
     ActionItemStatusSerializer,
     AmendmentInputSerializer,
@@ -99,9 +100,10 @@ def owner_choices(meeting: Meeting) -> dict:
 def sees_meeting(user, meeting: Meeting) -> tuple[bool, bool]:
     """(may see it, is governance staff of the host). A draft is for staff; otherwise the invitees, the
     secretary and staff."""
-    staff = GOVERNANCE in effective_permissions(user, meeting.organization)
+    granted = effective_permissions(user, meeting.organization)
+    staff = GOVERNANCE in granted
     invited = meeting.status != Meeting.Status.DRAFT and (
-        meeting.secretary_id == user.pk or meeting.invitees.filter(user=user).exists()
+        is_secretary(user, meeting, granted) or meeting.invitees.filter(user=user).exists()
     )
     return staff or invited, staff
 
@@ -148,7 +150,7 @@ class MeetingAction(APIView):
     def writer(self, request, organization_pk, pk) -> tuple[Meeting, bool]:
         """For whoever writes the minutes: governance staff or the secretary."""
         meeting, staff = self.locked(request, organization_pk, pk)
-        if not (staff or meeting.secretary_id == request.user.pk):
+        if not (staff or is_secretary(request.user, meeting)):
             raise ApiException(
                 "permission_denied", "Only the secretary or governance staff write the minutes.", 403
             )
@@ -355,7 +357,7 @@ class ActionItemView(MeetingAction):
             meeting = action.meeting
             seen, staff = sees_meeting(request.user, meeting)
             owns = action.owner_id == request.user.pk
-            writes = staff or meeting.secretary_id == request.user.pk
+            writes = staff or is_secretary(request.user, meeting)
             # An owner who wasn't invited still reaches their own item, once the minutes are out.
             approved = meeting.minutes_status == Meeting.MinutesStatus.APPROVED
             if not (writes or (owns and approved)):

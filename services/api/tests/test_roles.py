@@ -62,6 +62,8 @@ def test_new_organization_gets_role_templates_and_admin_holds_everything(admin, 
         "committee",
         "member",
         "referee",
+        "secretary",
+        "treasurer",
     ]
     client = logged_in(admin)
     mine = client.get(MEMBERSHIPS).json()["results"][0]
@@ -71,6 +73,31 @@ def test_new_organization_gets_role_templates_and_admin_holds_everything(admin, 
     roles = {r["key"]: r for r in client.get(roles_url(club)).json()}
     assert set(roles["admin"]["permissions"]) == ALL_PERMISSIONS
     assert roles["admin"]["member_count"] == 1 and roles["member"]["permissions"] == []
+
+
+def test_clubs_and_teams_start_with_a_secretary_and_a_treasurer(admin, club):
+    """The secretary handles minutes and the treasurer finances; a facility gets neither."""
+    client = logged_in(admin)
+    made = {
+        kind: client.post(ORGS, {"name": f"Second {kind}", "town": "Mombasa", "kind": kind}, format="json")
+        for kind in ("team", "club_facility", "facility")
+    }
+    for kind, response in made.items():
+        assert response.status_code == 201, response.json()
+        roles = {r["key"]: r for r in client.get(f"{ORGS}{response.json()['id']}/roles/").json()}
+        assert ("secretary" in roles, "treasurer" in roles) == ((kind != "facility"),) * 2, kind
+    roles = {r["key"]: r for r in client.get(roles_url(club)).json()}
+    assert roles["secretary"]["name"] == "Secretary" and roles["secretary"]["permissions"] == ["minutes.manage"]
+    assert roles["treasurer"]["name"] == "Treasurer"
+    assert roles["treasurer"]["permissions"] == ["finances.manage", "finances.view"]
+
+    keeper = make_user("keeper@example.com")
+    add_member(club, keeper, "treasurer")
+    books = logged_in(keeper)
+    assert set(my_permissions(books, club)) == {"finances.manage", "finances.view"}
+    assert books.get(f"{ORGS}{club.id}/finance/charges/").status_code == 200
+    assert books.get(f"{ORGS}{club.id}/members/").status_code == 403
+    assert books.get(f"{ORGS}{club.id}/meetings/").json() == []
 
 
 def test_permission_catalog_lists_every_permission(admin):
@@ -121,18 +148,18 @@ def test_admin_creates_edits_and_deletes_custom_roles(admin, club):
     client = logged_in(admin)
     created = client.post(
         roles_url(club),
-        {"name": " Treasurer ", "permissions": ["finances.manage", "finances.view"]},
+        {"name": " Bursar ", "permissions": ["finances.manage", "finances.view"]},
         format="json",
     )
     assert created.status_code == 201
     body = created.json()
     assert (body["name"], body["key"], body["permissions"]) == (
-        "Treasurer",
+        "Bursar",
         "",
         ["finances.manage", "finances.view"],
     )
 
-    duplicate = client.post(roles_url(club), {"name": "treasurer"}, format="json")
+    duplicate = client.post(roles_url(club), {"name": "bursar"}, format="json")
     assert duplicate.status_code == 400 and "name" in duplicate.json()["fields"]
     unknown = client.post(
         roles_url(club), {"name": "Ghost", "permissions": ["billing.manage"]}, format="json"
@@ -304,7 +331,7 @@ def test_removed_or_departed_members_lose_roles_and_rejoin_without_them(admin, c
 
 def test_roles_are_listed_templates_first_then_custom_then_member(admin, club):
     client = logged_in(admin)
-    client.post(roles_url(club), {"name": "Treasurer"}, format="json")
+    client.post(roles_url(club), {"name": "Welfare lead"}, format="json")
     client.post(roles_url(club), {"name": "coach"}, format="json")
     names = [r["name"] for r in client.get(roles_url(club)).json()]
     assert names == [
@@ -312,9 +339,11 @@ def test_roles_are_listed_templates_first_then_custom_then_member(admin, club):
         "Captain",
         "Assistant captain",
         "Committee",
+        "Secretary",
+        "Treasurer",
         "Referee",
         "coach",
-        "Treasurer",
+        "Welfare lead",
         "Member",
     ]
 

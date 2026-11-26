@@ -33,6 +33,7 @@ from organizations.permissions import Permission, RoleKey
 
 from . import minutes, service
 from .models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
+from .secretary import MINUTES, is_secretary
 from .serializers import (
     AgendaItemSerializer,
     AnswerSerializer,
@@ -429,12 +430,14 @@ class MeetingsView(APIView):
     @extend_schema(responses={200: MeetingSerializer(many=True)})
     def get(self, request, organization_pk):
         found = organization(organization_pk)
-        staff = GOVERNANCE in effective_permissions(request.user, found)
+        granted = effective_permissions(request.user, found)
+        staff = GOVERNANCE in granted
         found_meetings = meetings().filter(organization=found)
         if not staff:
-            found_meetings = found_meetings.filter(invitees__user=request.user).exclude(
-                status=Meeting.Status.DRAFT
-            )
+            found_meetings = found_meetings.exclude(status=Meeting.Status.DRAFT)
+            # The Secretary role covers every meeting; anyone else sees those they are invited to.
+            if MINUTES not in granted:
+                found_meetings = found_meetings.filter(invitees__user=request.user)
         shown = list(found_meetings.distinct()[:100])
         context = list_context(
             request, shown, staff=staff, organization=found, top=is_top(request.user, found)
@@ -470,11 +473,13 @@ class MeetingView(APIView):
 
     def find(self, request, organization_pk, pk, *, lock=False):
         found = organization(organization_pk)
-        staff = GOVERNANCE in effective_permissions(request.user, found)
+        granted = effective_permissions(request.user, found)
+        staff = GOVERNANCE in granted
         query = Meeting.objects.select_for_update() if lock else meetings()
         meeting = get_object_or_404(query, organization=found, pk=pk)
         invited = meeting.status != Meeting.Status.DRAFT and (
-            meeting.secretary_id == request.user.pk or meeting.invitees.filter(user=request.user).exists()
+            is_secretary(request.user, meeting, granted)
+            or meeting.invitees.filter(user=request.user).exists()
         )
         if not (staff or invited):
             raise Http404
@@ -660,15 +665,17 @@ class CheckInMeetingView(InviteeAction):
 
 
 class SecretaryAction(MeetingView):
-    """Attendance and penalties: the host's governance staff or the meeting's secretary."""
+    """Attendance and penalties: the host's governance staff, the meeting's secretary or a holder of
+    minutes.manage."""
 
     http_method_names = ["post"]
 
     def held_meeting(self, request, organization_pk, pk) -> tuple[Meeting, bool]:
         found = organization(organization_pk)
         meeting = get_object_or_404(Meeting.objects.select_for_update(), organization=found, pk=pk)
-        staff = GOVERNANCE in effective_permissions(request.user, found)
-        if not (staff or meeting.secretary_id == request.user.pk):
+        granted = effective_permissions(request.user, found)
+        staff = GOVERNANCE in granted
+        if not (staff or is_secretary(request.user, meeting, granted)):
             if staff or meeting.invitees.filter(user=request.user).exists():
                 raise ApiException(
                     "permission_denied", "Only the secretary or governance staff take attendance.", 403

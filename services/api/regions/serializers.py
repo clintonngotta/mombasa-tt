@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from attachments.serializers import AttachmentLinkSerializer
 from competitions.models import Tournament
-from organizations.access import jurisdiction
+from organizations.access import effective_permissions, jurisdiction
 from organizations.models import Organization
 
 from .models import (
@@ -20,6 +20,7 @@ from .models import (
     MinutesAmendment,
     Sponsorship,
 )
+from .secretary import is_secretary
 
 
 class OrgRefSerializer(serializers.Serializer):
@@ -542,10 +543,14 @@ class MeetingSerializer(serializers.ModelSerializer):
         ]
 
     def _takes_attendance(self, meeting) -> bool:
+        if self.context.get("staff"):
+            return True
         user = self.context["request"].user
-        return bool(self.context.get("staff")) or (
-            meeting.secretary_id is not None and meeting.secretary_id == user.pk
-        )
+        # One permission lookup per host, however many meetings are listed.
+        known = self.context.setdefault("_granted", {})
+        if meeting.organization_id not in known:
+            known[meeting.organization_id] = effective_permissions(user, meeting.organization)
+        return is_secretary(user, meeting, known[meeting.organization_id])
 
     def _reads_minutes(self, meeting) -> bool:
         """Approved minutes are for everyone who sees the meeting; a draft for whoever writes it."""
