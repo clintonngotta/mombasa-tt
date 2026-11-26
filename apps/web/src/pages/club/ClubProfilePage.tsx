@@ -1,14 +1,14 @@
 import type { ReactNode } from "react"
 import { Link, useLocation, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Building2, CalendarDays, Clock, Lock, MapPin, Trophy } from "lucide-react"
+import { Building2, CalendarDays, Clock, Lock, MapPin, Trophy, UsersRound } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { JoinStatus } from "@/components/clubs/JoinStatus"
 import { buttonVariants } from "@/components/ui/button"
 import { errorMessage } from "@/lib/api"
-import { KIND_LABEL, clubKeys, getClubProfile, requestToJoin, useJoinState, type TrainingHour } from "@/lib/clubs"
+import { KIND_LABEL, SIDE, clubKeys, getClubProfile, requestToJoin, sideOf, useJoinState, type Side, type TrainingHour } from "@/lib/clubs"
 import { WEEKDAYS } from "@/lib/coaching"
 import { countryName } from "@/lib/geography"
 import { SCOPE_LABEL } from "@/lib/tournaments"
@@ -17,9 +17,10 @@ const dateLabel = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
 const time = (value: string) => value.slice(0, 5)
 
-/** A club as a player sees it before joining: where it is, what it is about, when it trains and its coming
- * tournaments. Members, training plans and everything else stay inside the club. */
-export function ClubProfilePage() {
+/** A club or team as a player sees it before joining: where it is, what it is about, when it trains and
+ * its coming tournaments. Members, training plans and everything else stay inside it. `side` is the finder
+ * the player came from; once loaded, the organization's own kind decides the wording. */
+export function ClubProfilePage({ side: from = "club" }: { side?: Side }) {
   const { id = "" } = useParams()
   const { state } = useLocation()
   const queryClient = useQueryClient()
@@ -29,14 +30,16 @@ export function ClubProfilePage() {
     mutationFn: () => requestToJoin(id),
     onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.all }),
   })
-  const back = (state as { from?: string } | null)?.from ?? "/club/find"
+  const side = profile.data ? sideOf(profile.data.kind) : from
+  const { path, noun } = SIDE[side]
+  const back = (state as { from?: string } | null)?.from ?? `${path}/find`
 
-  if (profile.isPending) return <p className="text-muted-foreground">Loading club…</p>
+  if (profile.isPending) return <p className="text-muted-foreground">Loading {noun}…</p>
   if (profile.isError) {
     return (
       <div className="flex max-w-[720px] flex-col gap-4">
-        <BackLink to={back}>Find a club</BackLink>
-        <FormAlert>{errorMessage(profile.error, "We couldn't load this club.")}</FormAlert>
+        <BackLink to={back}>Find a {noun}</BackLink>
+        <FormAlert>{errorMessage(profile.error, `We couldn't load this ${noun}.`)}</FormAlert>
       </div>
     )
   }
@@ -46,11 +49,11 @@ export function ClubProfilePage() {
   const place = [...new Set([club.town, club.region, countryName(club.country)])].filter(Boolean).join(", ")
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <BackLink to={back}>Find a club</BackLink>
+      <BackLink to={back}>Find a {noun}</BackLink>
 
       <header className="flex flex-wrap items-start gap-4">
         <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-surface-selected">
-          <Building2 aria-hidden className="size-7 text-brand-blue" />
+          {side === "team" ? <UsersRound aria-hidden className="size-7 text-brand-blue" /> : <Building2 aria-hidden className="size-7 text-brand-blue" />}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h1 className="text-[32px] leading-9 font-bold">{club.name}</h1>
@@ -61,21 +64,21 @@ export function ClubProfilePage() {
         <div className="flex items-center gap-2 self-center">
           <JoinStatus state={membership} name={club.name} busy={join.isPending} onJoin={() => join.mutate()} />
           {membership === "member" && (
-            <Link to="/club" className={buttonVariants({ variant: "outline" })}>
-              Open club
+            <Link to={path} className={buttonVariants({ variant: "outline" })}>
+              Open {noun}
             </Link>
           )}
         </div>
       </header>
       {join.isError && <FormAlert>{errorMessage(join.error, "We couldn't send that join request.")}</FormAlert>}
       {joinState.failed && <FormAlert>We couldn't check whether you've joined, so join requests are paused. Try again shortly.</FormAlert>}
-      {membership === "pending" && <p className="text-sm text-muted-foreground">The club's staff will approve or decline your request.</p>}
+      {membership === "pending" && <p className="text-sm text-muted-foreground">The {noun}'s staff will approve or decline your request.</p>}
 
       {club.description && <p className="whitespace-pre-line">{club.description}</p>}
 
-      <Section title="Where it plays" icon={<MapPin aria-hidden className="size-5 text-brand-blue" />}>
+      <Section title={side === "team" ? "Where it's based" : "Where it plays"} icon={<MapPin aria-hidden className="size-5 text-brand-blue" />}>
         <PlaceDirections place={club} />
-        {club.venues.length === 0 && !club.directions && <p className="text-muted-foreground">{place || "The club hasn't added its location yet."}</p>}
+        {club.venues.length === 0 && !club.directions && <p className="text-muted-foreground">{place || `The ${noun} hasn't added its location yet.`}</p>}
         {club.venues.length > 0 && (
           <ul className="flex flex-col gap-2">
             {club.venues.map((venue) => (
@@ -91,7 +94,7 @@ export function ClubProfilePage() {
 
       <Section title="Training hours" icon={<Clock aria-hidden className="size-5 text-brand-blue" />}>
         {club.training_hours.length === 0 ? (
-          <p className="text-muted-foreground">The club hasn't published its training hours.</p>
+          <p className="text-muted-foreground">The {noun} hasn't published its training hours.</p>
         ) : (
           <>
             <TrainingTimetable hours={club.training_hours} />
@@ -128,7 +131,7 @@ export function ClubProfilePage() {
       {membership !== "member" && (
         <p className="flex items-center gap-2 border-t pt-4 text-sm text-muted-foreground">
           <Lock aria-hidden className="size-4 shrink-0" />
-          Members, training plans and drills are shared once the club accepts you.
+          Members, training plans and drills are shared once the {noun} accepts you.
         </p>
       )}
     </div>

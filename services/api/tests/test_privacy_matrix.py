@@ -654,6 +654,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records
     "rankings": {"get": PUBLIC},  # a club's own ranking needs a session
     "club-rankings": {"get": PUBLIC},
+    "team-rankings": {"get": PUBLIC},
     "geography-rankings": {"get": PUBLIC},
 }
 

@@ -39,7 +39,7 @@ class RankingSerializer(serializers.Serializer):
 
 
 class ClubRankingRowSerializer(serializers.Serializer):
-    rank = serializers.IntegerField(help_text="Clubs with the same total share a rank.")
+    rank = serializers.IntegerField(help_text="Clubs (or teams) with the same total share a rank.")
     organization_id = serializers.UUIDField()
     name = serializers.CharField()
     town = serializers.CharField(allow_blank=True)

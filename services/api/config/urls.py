@@ -22,7 +22,13 @@ from notifications.urls import my_urls as notification_my_urls
 from penalties.urls import me_urlpatterns as my_penalties
 from penalties.urls import organization_urlpatterns as penalty_routes
 from profiles.views import PlayerDetailView, PlayerDirectoryView
-from ratings.views import ClubRankingView, GeographyRankingView, PlayerRatingsView, RankingView
+from ratings.views import (
+    ClubRankingView,
+    GeographyRankingView,
+    PlayerRatingsView,
+    RankingView,
+    TeamRankingView,
+)
 from regions.urls import body_urlpatterns as regional_bodies
 from regions.urls import me_urlpatterns as my_region
 from regions.urls import organization_urlpatterns as body_routes
@@ -85,6 +91,7 @@ api_v1 = [
     path("players/<uuid:pk>/ratings/", PlayerRatingsView.as_view(), name="player-ratings"),
     path("rankings/", RankingView.as_view(), name="rankings"),
     path("rankings/clubs/", ClubRankingView.as_view(), name="club-rankings"),
+    path("rankings/teams/", TeamRankingView.as_view(), name="team-rankings"),
     path("rankings/geography/", GeographyRankingView.as_view(), name="geography-rankings"),
     path("geography/countries/", CountryOptionsView.as_view(), name="geography-countries"),
     path("geography/countries/<str:code>/", CountryCatalogueView.as_view(), name="geography-country"),

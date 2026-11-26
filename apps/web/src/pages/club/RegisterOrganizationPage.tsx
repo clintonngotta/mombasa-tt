@@ -10,13 +10,16 @@ import { LocationFields } from "@/components/forms/LocationFields"
 import { PlaceFinderFields } from "@/components/forms/PlaceFinderFields"
 import { placeFinderBody, placeFinderErrors, placeFinderFrom } from "@/lib/place"
 import { ApiError, errorMessage } from "@/lib/api"
-import { KIND_LABEL, clubKeys, createOrganization, isBodyKind, setActiveOrganization, type OrganizationInput, type OrganizationKind } from "@/lib/clubs"
+import { KIND_LABEL, SIDE, clubKeys, createOrganization, isBodyKind, setActiveOrganization, type OrganizationInput, type OrganizationKind, type Side } from "@/lib/clubs"
 import { locationErrors } from "@/lib/geography"
 
-// A regional body is set up by its region's official, not registered here.
-const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).filter((value) => !isBodyKind(value) && value !== "coaching").map((value) => ({ value, label: KIND_LABEL[value] }))
+// A regional body is set up by its region's official, not registered here; a team is formed from the Team tab.
+const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).filter((value) => !isBodyKind(value) && value !== "coaching" && value !== "team").map((value) => ({ value, label: KIND_LABEL[value] }))
 
-export function RegisterOrganizationPage() {
+/** Register a club or facility, or with `side="team"` form a team (REQ-057): a name and a home town,
+ * with no place to find. */
+export function RegisterOrganizationPage({ side = "club" }: { side?: Side }) {
+  const team = side === "team"
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   // Someone who signed up as a club or a facility arrives with that kind chosen.
@@ -27,19 +30,19 @@ export function RegisterOrganizationPage() {
     country: "",
     region: "",
     description: "",
-    kind: KIND_OPTIONS.find((option) => option.value === asked)?.value ?? "club",
+    kind: team ? "team" : (KIND_OPTIONS.find((option) => option.value === asked)?.value ?? "club"),
   })
   const [finder, setFinder] = useState(placeFinderFrom())
   const [submitted, setSubmitted] = useState(false)
   const location = { country: form.country, region: form.region, city: form.town }
-  const missingLocation = { ...locationErrors(location), ...placeFinderErrors(finder) }
+  const missingLocation = { ...locationErrors(location), ...(team ? {} : placeFinderErrors(finder)) }
 
   const create = useMutation({
     mutationFn: createOrganization,
     onSuccess: async (organization) => {
       await queryClient.invalidateQueries({ queryKey: clubKeys.all })
       setActiveOrganization(organization.id)
-      navigate("/club")
+      navigate(SIDE[side].path)
     },
   })
 
@@ -47,7 +50,7 @@ export function RegisterOrganizationPage() {
     e.preventDefault()
     setSubmitted(true)
     if (Object.keys(missingLocation).length > 0) return
-    create.mutate({ ...form, name: form.name.trim(), town: form.town.trim(), ...placeFinderBody(finder) })
+    create.mutate({ ...form, name: form.name.trim(), town: form.town.trim(), ...(team ? { directions: "", latitude: null, longitude: null } : placeFinderBody(finder)) })
   }
 
   const fields = create.error instanceof ApiError ? create.error.fieldErrors() : {}
@@ -55,15 +58,18 @@ export function RegisterOrganizationPage() {
 
   return (
     <div className="flex max-w-[640px] flex-col gap-6">
-      <BackLink to="/club">Club</BackLink>
+      <BackLink to={SIDE[side].path}>{SIDE[side].title}</BackLink>
       <div className="flex flex-col gap-1">
-        <h1 className="text-[32px] leading-9 font-bold">Register an organization</h1>
-        <p className="text-muted-foreground">You become its first admin and can then invite members and approve join requests.</p>
+        <h1 className="text-[32px] leading-9 font-bold">{team ? "Form a team" : "Register an organization"}</h1>
+        <p className="text-muted-foreground">
+          {team && "A team is players who play together without a training place of their own. If you run a place people train at, register a club instead. "}
+          You become its first admin and can then invite members and approve join requests.
+        </p>
       </div>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
         <Field
-          label="Name"
+          label={team ? "Team name" : "Name"}
           required
           maxLength={120}
           value={form.name}
@@ -76,7 +82,7 @@ export function RegisterOrganizationPage() {
           errors={submitted ? { ...fields, ...missingLocation } : fields}
           cityLimit={80}
         />
-        <PlaceFinderFields value={finder} onChange={setFinder} errors={submitted ? { ...fields, ...missingLocation } : fields} place={form.kind === "facility" ? "facility" : "club"} />
+        {!team && <PlaceFinderFields value={finder} onChange={setFinder} errors={submitted ? { ...fields, ...missingLocation } : fields} place={form.kind === "facility" ? "facility" : "club"} />}
         <TextAreaField
           label="About"
           optional
@@ -85,18 +91,20 @@ export function RegisterOrganizationPage() {
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           error={fields.description}
-          hint="Players looking for a club read this. You can change it later."
+          hint={`Players looking for a ${SIDE[side].noun} read this. You can change it later.`}
         />
-        <ChoiceGroup
-          legend="Type"
-          columns={3}
-          options={KIND_OPTIONS}
-          value={form.kind}
-          onChange={(kind) => setForm({ ...form, kind })}
-        />
+        {!team && (
+          <ChoiceGroup
+            legend="Type"
+            columns={3}
+            options={KIND_OPTIONS}
+            value={form.kind}
+            onChange={(kind) => setForm({ ...form, kind })}
+          />
+        )}
         {create.isError && !hasFieldErrors && <FormAlert>{errorMessage(create.error)}</FormAlert>}
         <Button type="submit" size="lg" disabled={create.isPending}>
-          {create.isPending ? "Registering…" : "Register"}
+          {create.isPending ? (team ? "Forming…" : "Registering…") : team ? "Form team" : "Register"}
         </Button>
       </form>
     </div>

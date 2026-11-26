@@ -15,10 +15,14 @@ INVITATION_TTL = timedelta(days=14)
 
 
 class Organization(models.Model):
-    """A club, a facility, or both (REQ-004). Its name and town are searchable by any signed-in user."""
+    """A club, a team, a facility, or a club and facility (REQ-004). Its name and town are searchable by
+    any signed-in user."""
 
     class Kind(models.TextChoices):
+        # A club is a place people train at. A team (REQ-057) is players who play together without a
+        # training place of their own: it has members, roles and a ranking, but no map position.
         CLUB = "club"
+        TEAM = "team"
         FACILITY = "facility"
         CLUB_FACILITY = "club_facility"
         # The table tennis body of one catalogue region (REQ-045, REQ-048): it runs regional tournaments,

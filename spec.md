@@ -50,7 +50,7 @@ The PWA uses secure HttpOnly session cookies with CSRF protection. Revoke sessio
 
 ### REQ-004
 
-**Organizations — Phase 1.** Register club, facility, or both. Creator becomes first admin. Players can join multiple organizations. Join requests are pending/approved/rejected; invited members explicitly accept. Public tournament entry is independent of host membership. Organization switching changes operational context, not the global player identity. Platform operator authority is separate from club roles.
+**Organizations — Phase 1.** Register club, facility, or both, or form a team (REQ-057). Creator becomes first admin. Players can join multiple organizations. Join requests are pending/approved/rejected; invited members explicitly accept. Public tournament entry is independent of host membership. Organization switching changes operational context, not the global player identity. Platform operator authority is separate from club roles.
 
 *Adding members directly (user request, 2026-11-22).* Besides invitations, club staff with members.manage can add someone directly by name and an email, a phone or both. The person is a member at once (shown to staff as "added by staff, hasn't signed in yet") and gets a single-use link, valid 14 days, by email, or shared by staff over WhatsApp or SMS. From it they set a password and sign in. Somebody already on Coast TT signs in from the same link and the membership moves to their account (REQ-003 guest claim; a clash goes to staff). Adding answers the same whether or not the address is registered. Tournament staff add entrants the same way: they pick registered players from the directory, and anyone else gets a guest entry and the same link (REQ-003).
 
@@ -399,6 +399,18 @@ As built (TASK-138), under `/api/v1/platform/`:
 - *Places.* A country's regions and towns: add, rename, remove, and whether the country takes listed regions only. A rename carries the clubs and players stored under the old name; a place still in use is not removed.
 
 Every change is written to the server log with who made it and the ids involved, never names, emails or phones. Django admin stays in the API as a fallback at `/django-admin/`, which the production proxy does not serve; its login keeps the login rate limit.
+
+### REQ-057
+
+**Teams — Phase 1 (user request, 2026-11-26).** In Coast TT a **club** is a place people train at. A **team** is players who play together without a training place of their own. A team is an organization of kind `team` (REQ-004): any signed-in player forms one and becomes its first admin, others find it by name or city and ask to join or are invited, and a player may be in clubs and teams at once. It has what a club has (members, roles, up to three admins, committee, meetings, training sessions, tournaments, squads, finances), with these differences:
+
+- *No place.* A team has a home town, region and country, and no directions or map position; the API refuses them (`POST /organizations/`, `PATCH /organizations/{id}/`). So a team never appears in a "Near me" search, which lists places.
+- *Finding one.* The finder has a **Teams** tab beside Clubs and Places to play (`GET /organizations/?kind=team`); the club finder lists clubs only.
+- *Its own tab.* The menu has a **Team** entry beside Club (`/team`): the team the player is acting for, or the way to find or form one. Opening Club or Team while the other side's organization is active switches to the player's only club or team, or lists them to choose from. While a team is the active organization its pages (members, roles, sessions and the rest, under `/club/...`) light up Team and lead back to it. On a phone the bottom bar has one place for the two: Team's while a team is the active organization or for a player who is in a team and in no club, otherwise Club's; the other is under More.
+- *Ranking.* Rankings has a **Teams** tab between Clubs and Geography (`GET /rankings/teams/`, open signed out as the club ranking is): a team's points are the sum of the current ratings of its active members with a played match in the discipline. Teams are not in the club ranking.
+- *Governance.* A team sends no representatives to a regional body; its region's and country's officials oversee it as they do a club.
+
+Signing up offers **Team** beside Player, Coach, Club and Facility, which leads to forming one. A team that gets a place registers a club; an organization's kind does not change in the app.
 
 ## Competition rules: version `ITTF-2026-ch3`
 

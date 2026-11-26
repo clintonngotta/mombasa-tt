@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Building2, Clock, LogOut, Mail, Plus, Search, ShieldCheck } from "lucide-react"
@@ -28,11 +28,15 @@ import {
   roleNames,
   saveMyFieldValues,
   sendInvitation,
+  setActiveOrganization,
+  SIDE,
+  sideOf,
   useActiveMembership,
   updateOrganizationLocation,
   type JoinDecision,
   type Membership,
   type Organization,
+  type Side,
 } from "@/lib/clubs"
 import { locationErrors } from "@/lib/geography"
 import { tournamentKeys } from "@/lib/tournaments"
@@ -41,29 +45,41 @@ import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
 
-export function ClubPage() {
-  const { memberships, active } = useActiveMembership()
+/** The Club tab, and with `side="team"` the Team tab (REQ-057): the organization the player is acting
+ * for when it is on this side, or the way to one. */
+export function ClubPage({ side = "club" }: { side?: Side }) {
+  const { memberships, all, active: current } = useActiveMembership()
+  const { path, noun, title, plural, start } = SIDE[side]
+  const mine = all.filter((m) => sideOf(m.organization.kind) === side)
+  const active = current && sideOf(current.organization.kind) === side ? current : undefined
+  // Opening the tab with the other side's organization active: a player's only club (or team) opens by
+  // itself; with several they choose below.
+  const only = !active && mine.length === 1 ? mine[0].organization.id : null
+  useEffect(() => {
+    if (only) setActiveOrganization(only)
+  }, [only])
   const myInvitations = useQuery({ queryKey: clubKeys.myInvitations, queryFn: listMyInvitations })
   const invitationCount = myInvitations.data?.count ?? 0
   const myNominations = useQuery({ queryKey: clubKeys.myAdminNominations, queryFn: listMyAdminNominations })
   const nominationCount = myNominations.data?.count ?? 0
   const myRequests = useQuery({ queryKey: clubKeys.myJoinRequests, queryFn: listMyJoinRequests })
-  const pendingRequests = myRequests.data?.results.filter((r) => r.status === "pending") ?? []
+  const pendingRequests = myRequests.data?.results.filter((r) => r.status === "pending" && sideOf(r.organization.kind) === side) ?? []
+  const actions = (primary: boolean) => (
+    <div className="flex flex-wrap gap-2">
+      <Link to={`${path}/find`} className={buttonVariants({ variant: primary ? "default" : "outline" })}>
+        <Search aria-hidden className="size-5" /> Find a {noun}
+      </Link>
+      <Link to={`${path}/new`} className={buttonVariants({ variant: "outline" })}>
+        <Plus aria-hidden className="size-5" /> {start}
+      </Link>
+    </div>
+  )
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-[32px] leading-9 font-bold">{active?.organization.name ?? "Club"}</h1>
-        {active && (
-          <div className="flex gap-2">
-            <Link to="/club/find" className={buttonVariants({ variant: "outline" })}>
-              <Search aria-hidden className="size-5" /> Find a club
-            </Link>
-            <Link to="/club/new" className={buttonVariants({ variant: "outline" })}>
-              <Plus aria-hidden className="size-5" /> Register a club
-            </Link>
-          </div>
-        )}
+        <h1 className="text-[32px] leading-9 font-bold">{active?.organization.name ?? title}</h1>
+        {(active || mine.length > 1) && actions(false)}
       </div>
 
       {invitationCount > 0 && (
@@ -72,7 +88,7 @@ export function ClubPage() {
           className="flex items-center gap-3 rounded-xl border border-brand-blue bg-surface-selected p-4 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Mail aria-hidden className="size-5 text-brand-blue" />
-          You have {invitationCount} invitation{invitationCount > 1 && "s"} to join a club. Review
+          You have {invitationCount} invitation{invitationCount > 1 && "s"} to join a club or team. Review
         </Link>
       )}
       {nominationCount > 0 && (
@@ -81,26 +97,41 @@ export function ClubPage() {
           className="flex items-center gap-3 rounded-xl border border-brand-blue bg-surface-selected p-4 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <ShieldCheck aria-hidden className="size-5 text-brand-blue" />
-          You're nominated as a club admin. Review
+          You're nominated as an admin. Review
         </Link>
       )}
-      {myInvitations.isError && <FormAlert>{errorMessage(myInvitations.error, "We couldn't check for club invitations.")}</FormAlert>}
+      {myInvitations.isError && <FormAlert>{errorMessage(myInvitations.error, "We couldn't check for invitations.")}</FormAlert>}
 
-      {memberships.isPending && <p className="text-muted-foreground">Loading your clubs…</p>}
-      {memberships.isError && <FormAlert>{errorMessage(memberships.error, "We couldn't load your clubs.")}</FormAlert>}
-      {memberships.isSuccess && !active && (
+      {memberships.isPending && <p className="text-muted-foreground">Loading your {plural}…</p>}
+      {memberships.isError && <FormAlert>{errorMessage(memberships.error, `We couldn't load your ${plural}.`)}</FormAlert>}
+      {memberships.isSuccess && mine.length === 0 && (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed bg-card p-6">
-          <p className="font-semibold">You haven't joined a club yet.</p>
-          <p className="text-muted-foreground">Find your club and ask to join, or register one you run.</p>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/club/find" className={buttonVariants()}>
-              <Search aria-hidden className="size-5" /> Find a club
-            </Link>
-            <Link to="/club/new" className={buttonVariants({ variant: "outline" })}>
-              <Plus aria-hidden className="size-5" /> Register a club
-            </Link>
-          </div>
+          <p className="font-semibold">You haven't joined a {noun} yet.</p>
+          <p className="text-muted-foreground">
+            {side === "team"
+              ? "A team is players who play together without a training place of their own. Find yours and ask to join, or form one and invite your teammates."
+              : "A club is a place people train at. Find yours and ask to join, or register one you run."}
+          </p>
+          {actions(true)}
         </div>
+      )}
+      {!active && mine.length > 1 && (
+        <section aria-labelledby="choose-heading" className="flex flex-col gap-3">
+          <h2 id="choose-heading" className="text-xl font-bold">
+            Your {plural}
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {mine.map(({ organization }) => (
+              <li key={organization.id}>
+                <OrganizationCard organization={organization}>
+                  <Button variant="outline" aria-label={`Open ${organization.name}`} onClick={() => setActiveOrganization(organization.id)}>
+                    Open
+                  </Button>
+                </OrganizationCard>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {active && <ActiveOrganization key={active.organization.id} membership={active} />}
@@ -127,6 +158,8 @@ export function ClubPage() {
     </div>
   )
 }
+
+export const TeamPage = () => <ClubPage side="team" />
 
 
 /** "Showing 20 of 34" when the list is longer than one page. */
@@ -158,8 +191,8 @@ function ActiveOrganization({ membership }: { membership: Membership }) {
           Open the facility desk
         </OrgLinkRow>
       )}
-      <OrganizationLinks membership={membership} variant={membership.organization.kind === "facility" ? "facility" : "club"} />
-      {!membership.managedOnly && <MyClubDetails membershipId={membership.id} />}
+      <OrganizationLinks membership={membership} variant={membership.organization.kind === "facility" ? "facility" : sideOf(membership.organization.kind)} />
+      {!membership.managedOnly && <MyClubDetails membershipId={membership.id} noun={SIDE[sideOf(membership.organization.kind)].noun} />}
       {manageMembers && (
         <>
           <JoinRequestsPanel orgId={orgId} />
@@ -179,9 +212,11 @@ function ClubLocation({ organization }: { organization: Organization }) {
     country: organization.country, region: organization.region, city: organization.town,
   })
   const [finder, setFinder] = useState(() => placeFinderFrom(organization))
+  // A team has a home town and no training place to find (REQ-057).
+  const team = organization.kind === "team"
   const save = useMutation({
     mutationFn: () => updateOrganizationLocation(organization.id, {
-      country: location.country, region: location.region, town: location.city, ...placeFinderBody(finder),
+      country: location.country, region: location.region, town: location.city, ...(team ? {} : placeFinderBody(finder)),
     }),
     onSuccess: async () => {
       await Promise.all([
@@ -191,7 +226,7 @@ function ClubLocation({ organization }: { organization: Organization }) {
       setEditing(false)
     },
   })
-  const missing = { ...locationErrors(location), ...placeFinderErrors(finder) }
+  const missing = { ...locationErrors(location), ...(team ? {} : placeFinderErrors(finder)) }
   const fields = save.error instanceof ApiError ? save.error.fieldErrors() : {}
 
   if (!editing) {
@@ -203,7 +238,7 @@ function ClubLocation({ organization }: { organization: Organization }) {
         save.reset()
         setEditing(true)
       }}>
-        {organization.country ? "Edit club location" : "Set club location"}
+        {team ? (organization.country ? "Edit home town" : "Set home town") : organization.country ? "Edit club location" : "Set club location"}
       </Button>
     )
   }
@@ -215,7 +250,7 @@ function ClubLocation({ organization }: { organization: Organization }) {
       if (Object.keys(missing).length === 0) save.mutate()
     }}>
       <LocationFields value={location} onChange={setLocation} errors={submitted ? { ...fields, ...missing } : fields} cityLimit={80} />
-      <PlaceFinderFields value={finder} onChange={setFinder} errors={submitted ? { ...fields, ...missing } : fields} place={organization.kind === "facility" ? "facility" : "club"} />
+      {!team && <PlaceFinderFields value={finder} onChange={setFinder} errors={submitted ? { ...fields, ...missing } : fields} place={organization.kind === "facility" ? "facility" : "club"} />}
       {save.isError && Object.keys(fields).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={save.isPending}>Save location</Button>
@@ -226,20 +261,20 @@ function ClubLocation({ organization }: { organization: Organization }) {
 }
 
 /** The member's own answers to the club's member-visible fields (REQ-005). Hidden when the club asks for none. */
-function MyClubDetails({ membershipId }: { membershipId: string }) {
+function MyClubDetails({ membershipId, noun }: { membershipId: string; noun: string }) {
   const queryClient = useQueryClient()
   const key = clubKeys.myFieldValues(membershipId)
   const details = useQuery({ queryKey: key, queryFn: () => getMyFieldValues(membershipId) })
-  if (details.isError) return <FormAlert>{errorMessage(details.error, "We couldn't load your club details.")}</FormAlert>
+  if (details.isError) return <FormAlert>{errorMessage(details.error, `We couldn't load your ${noun} details.`)}</FormAlert>
   if (!details.data?.length) return null
   const missing = details.data.filter((entry) => entry.field.required && entry.value === null).length
   return (
     <section aria-labelledby="my-details-heading" className="flex flex-col gap-3">
       <h2 id="my-details-heading" className="text-xl font-bold">
-        Your club details
+        Your {noun} details
       </h2>
       <p className="text-sm text-muted-foreground">
-        Asked for by this club and seen by you and the people who manage its members.
+        Asked for by this {noun} and seen by you and the people who manage its members.
         {missing > 0 && ` ${missing} required ${missing === 1 ? "answer is" : "answers are"} missing.`}
       </p>
       <div className="rounded-xl border bg-card p-4">
@@ -259,9 +294,10 @@ function LeaveOrganization({ membership }: { membership: Membership }) {
   const navigate = useNavigate()
   const [confirming, setConfirming] = useState(false)
   const name = membership.organization.name
+  const { path, noun } = SIDE[sideOf(membership.organization.kind)]
   const leave = useMutation({
     mutationFn: () => leaveOrganization(membership.id),
-    onSuccess: () => navigate("/club"),
+    onSuccess: () => navigate(path),
     onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.all }),
   })
   return (
@@ -274,7 +310,7 @@ function LeaveOrganization({ membership }: { membership: Membership }) {
             Stay
           </Button>
           <Button variant="destructive" disabled={leave.isPending} onClick={() => leave.mutate()}>
-            {leave.isPending ? "Leaving…" : "Leave club"}
+            {leave.isPending ? "Leaving…" : `Leave ${noun}`}
           </Button>
         </div>
       ) : (

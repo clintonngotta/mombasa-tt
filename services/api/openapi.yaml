@@ -5302,6 +5302,7 @@ paths:
             - facility
             - national_body
             - regional_body
+            - team
         description: Only these kinds
       - name: page
         required: false
@@ -14672,6 +14673,7 @@ paths:
           - facility
           - national_body
           - regional_body
+          - team
       - name: page
         required: false
         in: query
@@ -15031,6 +15033,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GeographyRanking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/rankings/teams/:
+    get:
+      operationId: rankings_teams_retrieve
+      description: 'Rank teams (REQ-057) the way clubs are ranked: by the sum of their
+        active members'' ratings.'
+      parameters:
+      - in: query
+        name: discipline
+        schema:
+          type: string
+          enum:
+          - doubles
+          - singles
+        description: Default singles.
+      tags:
+      - rankings
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubRanking'
           description: ''
         4XX:
           description: Error envelope
@@ -22719,7 +22752,7 @@ components:
       properties:
         rank:
           type: integer
-          description: Clubs with the same total share a rank.
+          description: Clubs (or teams) with the same total share a rank.
         organization_id:
           type: string
           format: uuid
@@ -26616,6 +26649,7 @@ components:
     KindEnum:
       enum:
       - club
+      - team
       - facility
       - club_facility
       - regional_body
@@ -26624,6 +26658,7 @@ components:
       type: string
       description: |-
         * `club` - Club
+        * `team` - Team
         * `facility` - Facility
         * `club_facility` - Club Facility
         * `regional_body` - Regional Body
@@ -30221,6 +30256,7 @@ components:
     OrganizerKindEnum:
       enum:
       - club
+      - team
       - facility
       - club_facility
       - regional_body
@@ -30230,6 +30266,7 @@ components:
       type: string
       description: |-
         * `club` - club
+        * `team` - team
         * `facility` - facility
         * `club_facility` - club_facility
         * `regional_body` - regional_body

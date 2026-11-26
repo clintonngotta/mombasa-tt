@@ -224,13 +224,23 @@ class OrganizerSerializer(serializers.Serializer):
 
     name = serializers.CharField()
     kind = serializers.ChoiceField(
-        choices=["club", "facility", "club_facility", "regional_body", "national_body", "coach", "firm"]
+        choices=[
+            "club",
+            "team",
+            "facility",
+            "club_facility",
+            "regional_body",
+            "national_body",
+            "coach",
+            "firm",
+        ]
     )
     label = serializers.CharField()
 
 
 ORGANIZER_LABELS = {
     Organization.Kind.CLUB: "Club",
+    Organization.Kind.TEAM: "Team",
     Organization.Kind.FACILITY: "Facility",
     Organization.Kind.CLUB_FACILITY: "Club and facility",
     Organization.Kind.REGIONAL_BODY: "Regional body",

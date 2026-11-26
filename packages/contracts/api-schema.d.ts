@@ -6303,6 +6303,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rankings/teams/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Rank teams (REQ-057) the way clubs are ranked: by the sum of their active members' ratings. */
+        get: operations["rankings_teams_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/regional-bodies/": {
         parameters: {
             query?: never;
@@ -9698,7 +9715,7 @@ export interface components {
             rows: components["schemas"]["ClubRankingRow"][];
         };
         ClubRankingRow: {
-            /** @description Clubs with the same total share a rank. */
+            /** @description Clubs (or teams) with the same total share a rank. */
             rank: number;
             /** Format: uuid */
             organization_id: string;
@@ -11202,6 +11219,7 @@ export interface components {
         JoinRequestStatusEnum: "pending" | "approved" | "rejected" | "withdrawn";
         /**
          * @description * `club` - Club
+         *     * `team` - Team
          *     * `facility` - Facility
          *     * `club_facility` - Club Facility
          *     * `regional_body` - Regional Body
@@ -11209,7 +11227,7 @@ export interface components {
          *     * `coaching` - Coaching
          * @enum {string}
          */
-        KindEnum: "club" | "facility" | "club_facility" | "regional_body" | "national_body" | "coaching";
+        KindEnum: "club" | "team" | "facility" | "club_facility" | "regional_body" | "national_body" | "coaching";
         LabelTally: {
             label: string;
             played: number;
@@ -12584,6 +12602,7 @@ export interface components {
         };
         /**
          * @description * `club` - club
+         *     * `team` - team
          *     * `facility` - facility
          *     * `club_facility` - club_facility
          *     * `regional_body` - regional_body
@@ -12592,7 +12611,7 @@ export interface components {
          *     * `firm` - firm
          * @enum {string}
          */
-        OrganizerKindEnum: "club" | "facility" | "club_facility" | "regional_body" | "national_body" | "coach" | "firm";
+        OrganizerKindEnum: "club" | "team" | "facility" | "club_facility" | "regional_body" | "national_body" | "coach" | "firm";
         /**
          * @description * `check_in` - check_in
          *     * `rest` - rest
@@ -22087,7 +22106,7 @@ export interface operations {
                 /** @description Country code, e.g. KE */
                 country?: string;
                 /** @description Only these kinds */
-                kind?: ("club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body")[];
+                kind?: ("club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body" | "team")[];
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
@@ -30461,7 +30480,7 @@ export interface operations {
     platform_organizations_list: {
         parameters: {
             query?: {
-                kind?: "club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body";
+                kind?: "club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body" | "team";
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
@@ -30801,6 +30820,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeographyRanking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rankings_teams_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Default singles. */
+                discipline?: "doubles" | "singles";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClubRanking"];
                 };
             };
             /** @description Error envelope */

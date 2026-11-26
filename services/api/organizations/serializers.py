@@ -21,6 +21,19 @@ def description_field():
     return serializers.CharField(max_length=2000, allow_blank=True, required=False, trim_whitespace=True)
 
 
+def validate_no_place_for_team(attrs, instance=None):
+    """A team has a home town but no training place (REQ-057): no directions and no map position, so it
+    is never offered as somewhere to go."""
+    kind = attrs.get("kind", instance.kind if instance else Organization.Kind.CLUB)
+    if kind != Organization.Kind.TEAM:
+        return
+    for name in ("directions", "latitude", "longitude"):
+        if attrs.get(name) not in (None, ""):
+            raise serializers.ValidationError(
+                {name: "A team has no training place. Register a club for a place people train at."}
+            )
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=120, trim_whitespace=True)
     town = serializers.CharField(max_length=80, trim_whitespace=True)
@@ -41,13 +54,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
         never by picking the kind, and no organization changes into or out of one."""
         current = self.instance.kind if self.instance else None
         if value in BODY_KINDS and value != current:
-            raise serializers.ValidationError("Choose club, facility or both.")
+            raise serializers.ValidationError("Choose club, team, facility or club and facility.")
         if self.instance and self.instance.is_body and value != current:
             raise serializers.ValidationError("A governing body stays what it is.")
         # A coach's organizing desk is made from their coach profile (POST /me/coach-profile/organizer/).
         coaching = Organization.Kind.COACHING
         if value == coaching and not (self.instance and self.instance.is_coaching):
-            raise serializers.ValidationError("Choose club, facility or both.")
+            raise serializers.ValidationError("Choose club, team, facility or club and facility.")
         if self.instance and self.instance.is_coaching and value != coaching:
             raise serializers.ValidationError("A coach's organizing desk stays one.")
         return value
@@ -55,6 +68,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         validate_location(attrs, self.instance, city_field="town", legacy_town=True)
         validate_coordinates(attrs, self.instance)
+        validate_no_place_for_team(attrs, self.instance)
         if self.instance and self.instance.is_body:
             for name in ("country", "region"):
                 if name in attrs and attrs[name] != getattr(self.instance, name):
@@ -97,6 +111,7 @@ class OrganizationLocationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         validate_location(attrs, self.instance, city_field="town")
         validate_coordinates(attrs, self.instance)
+        validate_no_place_for_team(attrs, self.instance)
         return attrs
 
 

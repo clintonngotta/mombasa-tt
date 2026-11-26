@@ -11,6 +11,7 @@ from profiles.models import PlayerProfile
 from ratings import elo, service
 from ratings.models import Rating, RatingEvent
 
+from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
 from .test_official_results import GAMES, LOST, correct, enter, fresh, hall, knockout  # noqa: F401
 from .test_reservations import person, started
@@ -375,6 +376,63 @@ def test_club_rankings_sum_current_ratings_of_active_members_by_discipline():
         ("Tudor", 1, 984),
     ]
     assert viewer.get(endpoint + "?discipline=mixed").status_code == 400
+
+
+def test_team_rankings_rank_teams_apart_from_clubs():
+    club = Organization.objects.create(name="Coast", town="Mombasa")
+    loopers = Organization.objects.create(name="Loopers", town="Mombasa", kind=Organization.Kind.TEAM)
+    choppers = Organization.objects.create(name="Choppers", town="Kilifi", kind=Organization.Kind.TEAM)
+    empty = Organization.objects.create(name="Unrated", town="Kwale", kind=Organization.Kind.TEAM)
+    both = make_user("both@example.com")
+    one = make_user("one@example.com")
+    gone = make_user("gone@example.com")
+    Membership.objects.bulk_create(
+        [
+            Membership(organization=club, user=both),
+            Membership(organization=loopers, user=both),
+            Membership(organization=loopers, user=one),
+            Membership(organization=loopers, user=gone, status=Membership.Status.LEFT),
+            Membership(organization=choppers, user=one),
+            Membership(organization=empty, user=gone),
+        ]
+    )
+    Rating.objects.bulk_create(
+        [
+            Rating(user=both, discipline="singles", rating=1040, played=3),
+            Rating(user=one, discipline="singles", rating=980, played=1),
+            Rating(user=one, discipline="doubles", rating=1010, played=1),
+            Rating(user=gone, discipline="singles", rating=1500, played=0),
+        ]
+    )
+    endpoint = "/api/v1/rankings/teams/"
+    shown = logged_in(make_user("team-rankings-viewer@example.com")).get(endpoint).json()
+    assert [
+        (row["name"], row["town"], row["rank"], row["total_points"], row["rated_members"])
+        for row in shown["rows"]
+    ] == [("Loopers", "Mombasa", 1, 2020, 2), ("Choppers", "Kilifi", 2, 980, 1)]
+    # Signed out it reads the same, as the club ranking does (TASK-035).
+    assert BrowserClient().get(endpoint + "?discipline=doubles").json()["rows"] == [
+        {
+            "rank": 1,
+            "organization_id": str(choppers.id),
+            "name": "Choppers",
+            "town": "Kilifi",
+            "total_points": 1010,
+            "rated_members": 1,
+        },
+        {
+            "rank": 1,
+            "organization_id": str(loopers.id),
+            "name": "Loopers",
+            "town": "Mombasa",
+            "total_points": 1010,
+            "rated_members": 1,
+        },
+    ]
+    assert BrowserClient().get(endpoint + "?discipline=mixed").status_code == 400
+    # A team is not a club: the club ranking leaves teams out.
+    clubs = BrowserClient().get("/api/v1/rankings/clubs/").json()["rows"]
+    assert [row["name"] for row in clubs] == ["Coast"]
 
 
 def test_geography_groups_players_by_their_full_location_and_discipline():
