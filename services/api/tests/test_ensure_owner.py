@@ -35,6 +35,24 @@ def test_the_owner_is_created_as_a_verified_super_admin_who_can_log_in(monkeypat
     assert response.status_code == 200
 
 
+def test_the_owner_signs_in_at_the_admin(monkeypatch, client):
+    run(monkeypatch)
+    assert client.get("/admin").status_code == 301  # the bare address leads to the form
+    wrong = client.post("/admin/login/", {"username": EMAIL, "password": "not-the-password"})
+    assert wrong.status_code == 200 and "_auth_user_id" not in client.session
+    response = client.post("/admin/login/?next=/admin/", {"username": EMAIL, "password": PASSWORD})
+    assert response.status_code == 302 and response["Location"] == "/admin/"
+    page = client.get("/admin/")
+    assert page.status_code == 200 and b"Users" in page.content
+
+
+def test_someone_who_is_not_staff_cannot_sign_in_at_the_admin(client):
+    User.objects.create_user(email="player@example.com", password=PASSWORD)
+    response = client.post("/admin/login/", {"username": "player@example.com", "password": PASSWORD})
+    assert response.status_code == 200 and "_auth_user_id" not in client.session
+    assert client.get("/admin/").status_code == 302
+
+
 def test_nothing_happens_without_the_settings(monkeypatch):
     run(monkeypatch, None, None)
     assert not User.objects.filter(is_superuser=True).exists()

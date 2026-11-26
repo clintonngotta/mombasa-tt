@@ -28,7 +28,7 @@ Test logins (type them in: the login page no longer lists them):
 | `umpire@mombasa-tt.test` | `mombasa-tt-dev` |
 | `admin@mombasa-tt.test` | `mombasa-tt-dev` |
 
-For a super admin (everything, and Django admin at <http://localhost:8020/admin/>), put these in a `.env` file beside `compose.yml` (git-ignored) and restart the API. The account is made at start, the same way as in production; the password needs 10 characters or more and is only used to create the account:
+For the platform owner (a super admin, who signs in at <http://localhost:8080/admin>), put these in `services/api/.env` (git-ignored; copy `services/api/.env.example` if you have none) and restart the API with `docker compose up -d api`. The account is made at start, the same way as in production; the password needs 10 characters or more and is only used to create the account:
 
 ```sh
 OWNER_EMAIL=you@example.com
