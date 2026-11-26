@@ -101,6 +101,11 @@ urlpatterns = [
         name="organization-admin-cancel",
     ),
     path(
+        "<uuid:organization_pk>/admin/step-down/",
+        handover.StepDownAdminView.as_view(),
+        name="organization-admin-step-down",
+    ),
+    path(
         "<uuid:organization_pk>/admin/appoint/",
         handover.AppointAdminView.as_view(),
         name="organization-admin-appoint",

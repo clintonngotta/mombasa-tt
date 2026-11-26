@@ -678,10 +678,10 @@ class MemberViewSet(viewsets.GenericViewSet):
             changed = current.symmetric_difference(wanted)
             require_within_authority(granted, roles_permissions(changed))
             if any(role.is_admin for role in changed):
-                # REQ-045: one admin, changed only by nomination and acceptance (or a platform appointment).
+                # REQ-045: admins change only by nomination and acceptance (or a platform appointment).
                 raise ApiException(
                     "admin_by_handover",
-                    "The admin changes only by nominating a successor, who accepts.",
+                    "Admins change only by nomination: the member nominated must accept.",
                     409,
                 )
             member.roles.set(wanted)
@@ -690,13 +690,19 @@ class MemberViewSet(viewsets.GenericViewSet):
 
     @extend_schema(request=None, responses={204: None})
     def remove(self, request, organization_pk, pk):
-        """End someone's membership. Nobody can remove a member who holds permissions they don't."""
+        """End someone's membership. Nobody can remove a member who holds permissions they don't, or
+        another admin."""
         organization = self.get_organization()
         with transaction.atomic():
             lock_organization(organization)
             granted = require_permission(request.user, organization, MANAGE_MEMBERS)
             member = self.get_member(organization, pk)
             require_within_authority(granted, membership_permissions(member))
+            if member.user_id != request.user.id and member.roles.filter(key=RoleKey.ADMIN).exists():
+                # REQ-045: admins are equals. One leaves the role by stepping down, never by another's hand.
+                raise ApiException(
+                    "admin_by_handover", "An admin can't be removed. They step down as admin first.", 409
+                )
             leave(organization, member)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

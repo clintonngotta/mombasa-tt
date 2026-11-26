@@ -683,7 +683,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        /** @description Open nominations naming the signed-in player as an admin of an organization. */
         get: operations["me_admin_nominations_list"];
         put?: never;
         post?: never;
@@ -702,7 +702,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        /** @description Open nominations naming the signed-in player as an admin of an organization. */
         post: operations["me_admin_nominations_accept_create"];
         delete?: never;
         options?: never;
@@ -719,7 +719,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open nominations naming the signed-in player as an organization's next admin. */
+        /** @description Open nominations naming the signed-in player as an admin of an organization. */
         post: operations["me_admin_nominations_decline_create"];
         delete?: never;
         options?: never;
@@ -2881,7 +2881,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description GET /organizations/{id}/admin/: any member sees who the admin is. */
+        /** @description GET /organizations/{id}/admin/: any member sees who the admins are. */
         get: operations["organizations_admin_retrieve"];
         put?: never;
         post?: never;
@@ -2933,6 +2933,23 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["organizations_admin_nominate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/admin/step-down/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /organizations/{id}/admin/step-down/: an admin gives up the role while another remains. */
+        post: operations["organizations_admin_step_down_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4949,7 +4966,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description End someone's membership. Nobody can remove a member who holds permissions they don't. */
+        /**
+         * @description End someone's membership. Nobody can remove a member who holds permissions they don't, or
+         *     another admin.
+         */
         post: operations["organizations_members_remove_create"];
         delete?: never;
         options?: never;
@@ -8655,10 +8675,12 @@ export interface components {
         };
         /**
          * @description * `nomination` - Nomination
+         *     * `addition` - Addition
          *     * `appointment` - Appointment
+         *     * `step_down` - Step Down
          * @enum {string}
          */
-        AdminHandoverKindEnum: "nomination" | "appointment";
+        AdminHandoverKindEnum: "nomination" | "addition" | "appointment" | "step_down";
         /**
          * @description * `pending` - Pending
          *     * `accepted` - Accepted
@@ -8874,6 +8896,8 @@ export interface components {
             /** Format: uuid */
             membership_id: string;
             reason: string;
+            /** Format: uuid */
+            replace_membership_id?: string;
         };
         /**
          * @description * `not_requested` - Not requested
@@ -9331,6 +9355,10 @@ export interface components {
         };
         CancelActivityRequest: {
             reason: string;
+        };
+        CancelNominationRequest: {
+            /** Format: uuid */
+            handover_id?: string;
         };
         CancelRequest: {
             reason: string;
@@ -12267,6 +12295,12 @@ export interface components {
             /** Format: date-time */
             planned_at: string | null;
         };
+        /**
+         * @description * `nomination` - nomination
+         *     * `addition` - addition
+         * @enum {string}
+         */
+        NominateKindEnum: "nomination" | "addition";
         /** @description Refuses fields it doesn't know. */
         NominateRepresentativeRequest: {
             /** Format: uuid */
@@ -12281,6 +12315,8 @@ export interface components {
         NominateRequest: {
             /** Format: uuid */
             membership_id: string;
+            /** @default nomination */
+            kind: components["schemas"]["NominateKindEnum"];
         };
         NotBefore: {
             /** Format: uuid */
@@ -12498,10 +12534,16 @@ export interface components {
             kind: components["schemas"]["KindEnum"];
             timezone: string;
         };
-        /** @description Who the admin is and any open nomination; the history only for those who manage roles. */
+        /**
+         * @description Who the admins are and the open nominations; the history only for those who manage roles.
+         *     `admin` and `pending` are the first of `admins` and `nominations`, kept for older clients.
+         */
         OrganizationAdmin: {
             admin: components["schemas"]["Person"] | null;
+            admins: components["schemas"]["Person"][];
+            limit: number;
             pending: components["schemas"]["AdminHandover"] | null;
+            nominations: components["schemas"]["AdminHandover"][];
             history: components["schemas"]["AdminHandover"][] | null;
         };
         OrganizationRef: {
@@ -22821,7 +22863,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelNominationRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -22858,6 +22904,36 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminHandover"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_admin_step_down_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

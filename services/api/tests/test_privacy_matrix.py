@@ -496,10 +496,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-guest-claim-reject": {"post": STAFF},
     "organization-roles": {"get": STAFF, "post": STAFF},
     "organization-role": {"patch": STAFF, "delete": STAFF},
-    # REQ-045: members see who the admin is; only the admin nominates or cancels; the nominee answers.
+    # REQ-045: members see who the admins are; only an admin nominates, cancels or steps down; the nominee
+    # answers.
     "organization-admin": {"get": MEMBER},
     "organization-admin-nominate": {"post": STAFF},
     "organization-admin-cancel": {"post": STAFF},
+    "organization-admin-step-down": {
+        "post": STAFF
+    },  # refused for the only admin (409), see test_admin_handover
     "organization-admin-appoint": {"post": APPROVER},  # platform super admins only, see test_admin_handover
     "me-admin-nomination-list": {"get": OWNER},
     "me-admin-nomination-accept": {"post": OWNER},
@@ -2607,7 +2611,9 @@ def test_staff_actions_succeed_for_the_clubs_own_admin(world):
                 continue
             response = call(client, method, name, world.url(name, names))
             # The join request was approved a moment earlier, so rejecting it is a conflict, not a refusal.
-            expected = {409} if name == "organization-join-request-reject" else {200, 201, 204}
+            # Amina is the club's only admin, so her stepping down is a conflict too.
+            conflicts = ("organization-join-request-reject", "organization-admin-step-down")
+            expected = {409} if name in conflicts else {200, 201, 204}
             assert response.status_code in expected, f"{method.upper()} {name}: {response.content}"
 
 
