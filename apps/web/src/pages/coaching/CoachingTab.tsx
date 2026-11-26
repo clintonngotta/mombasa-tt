@@ -1,7 +1,6 @@
-import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, ChevronLeft, ChevronRight, GraduationCap, Search, UserRound } from "lucide-react"
+import { CalendarDays, ChevronRight, GraduationCap, Search, UserRound } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
@@ -11,20 +10,18 @@ import {
   answerCoaching,
   BOOKING_STATUS_LABEL,
   coachingKeys,
-  getCalendar,
   getMyCoachProfileOrNull,
   listBookings,
   listCoachings,
-  weekOf,
   type Booking,
-  type CalendarEntry,
-  type CoachProfile,
   type Coaching,
 } from "@/lib/coaching"
-import { formatDay, formatDayRange, formatInstant } from "@/lib/dates"
+import { formatInstant } from "@/lib/dates"
 import { LOCAL_TIME_ZONE } from "@/lib/training"
 import { cn } from "@/lib/utils"
+import { CoachCalendar } from "@/components/coaching/CoachCalendar"
 import { OrganizeTournament } from "@/components/coaching/OrganizeTournament"
+import { TraineeTaskBoard } from "@/components/coaching/TraineeTaskBoard"
 
 /** Coaching (REQ-047): requests waiting for you, the people you coach and your week as a coach, and the
  * coaches you train with and the sessions you booked. */
@@ -53,7 +50,8 @@ export function CoachingTab() {
         <>
           <Trainees coachings={trainees} />
           <SessionRequests bookings={asCoach.filter((b) => b.status === "requested")} />
-          <Week profile={profile.data} />
+          <TraineeTaskBoard coachings={trainees} />
+          <CoachCalendar profile={profile.data} />
         </>
       )}
       {profile.isSuccess && (
@@ -232,99 +230,5 @@ function MySessions({ bookings }: { bookings: Booking[] }) {
         ))}
       </ul>
     </div>
-  )
-}
-
-const KIND_LABEL: Record<CalendarEntry["kind"], string> = {
-  booking: "Session",
-  session: "My training",
-  trainee_session: "Trainee's plan",
-  club_session: "Club training",
-  tournament: "Tournament",
-}
-
-/** The coach's week, Monday to Sunday, day by day. */
-function Week({ profile }: { profile: CoachProfile }) {
-  const [anchor, setAnchor] = useState(() => new Date())
-  const { from, to } = weekOf(anchor)
-  const calendar = useQuery({ queryKey: coachingKeys.calendar(from, to), queryFn: () => getCalendar(from, to) })
-  const timeZone = profile.timezone ?? LOCAL_TIME_ZONE
-  const move = (days: number) =>
-    setAnchor((d) => {
-      const next = new Date(d)
-      next.setDate(d.getDate() + days)
-      return next
-    })
-  const byDay = new Map<string, CalendarEntry[]>()
-  for (const entry of calendar.data ?? []) {
-    const day = entry.starts_at ? new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(entry.starts_at)) : (entry.starts_on ?? from)
-    const key = day < from ? from : day
-    byDay.set(key, [...(byDay.get(key) ?? []), entry])
-  }
-
-  return (
-    <section aria-labelledby="week-heading" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="week-heading" className="text-xl font-bold">
-          Calendar <span className="text-base font-normal text-muted-foreground">{formatDayRange(from, to)}</span>
-        </h2>
-        <div className="flex gap-1">
-          <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => move(-7)}>
-            <ChevronLeft aria-hidden className="size-5" />
-          </Button>
-          <Button variant="outline" onClick={() => setAnchor(new Date())}>
-            This week
-          </Button>
-          <Button variant="outline" size="icon" aria-label="Next week" onClick={() => move(7)}>
-            <ChevronRight aria-hidden className="size-5" />
-          </Button>
-        </div>
-      </div>
-      {calendar.isError && <FormAlert>{errorMessage(calendar.error, "We couldn't load your calendar.")}</FormAlert>}
-      {calendar.isSuccess && calendar.data.length === 0 && (
-        <p className="rounded-xl border border-dashed bg-card p-6 text-muted-foreground">
-          Nothing this week. Sessions, your clubs' training and tournaments appear here.
-        </p>
-      )}
-      <ol className="flex flex-col gap-4">
-        {[...byDay.entries()].map(([day, entries]) => (
-          <li key={day} className="flex flex-col gap-2">
-            <h3 className="font-semibold">{formatDay(day)}</h3>
-            <ul className="flex flex-col gap-2">
-              {entries.map((entry) => {
-                const body = (
-                  <>
-                    <span className="w-28 shrink-0 text-sm font-semibold tabular-nums">
-                      {entry.starts_at && entry.ends_at
-                        ? `${formatInstant(entry.starts_at, timeZone).slice(-5)}–${formatInstant(entry.ends_at, timeZone).slice(-5)}`
-                        : formatDayRange(entry.starts_on ?? day, entry.ends_on ?? day)}
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-semibold">{entry.title}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {KIND_LABEL[entry.kind]}
-                        {entry.kind === "booking" && entry.status === "requested" && " · waiting for you"}
-                        {entry.detail && ` · ${entry.detail}`}
-                      </span>
-                    </span>
-                  </>
-                )
-                return (
-                  <li key={`${entry.kind}-${entry.id}`}>
-                    {entry.link ? (
-                      <Link to={entry.link} className={cn(ROW, "flex-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
-                        {body}
-                      </Link>
-                    ) : (
-                      <div className={cn(ROW, "flex-nowrap", entry.kind === "booking" && entry.status === "requested" && "border-dashed")}>{body}</div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </li>
-        ))}
-      </ol>
-    </section>
   )
 }
