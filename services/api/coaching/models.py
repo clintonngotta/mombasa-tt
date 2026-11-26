@@ -124,15 +124,20 @@ class Availability(models.Model):
 
 class Booking(models.Model):
     """A session asked for with a coach. The player asks for a time inside the coach's availability; the
-    coach confirms or declines. Requested and confirmed bookings hold the time of both people."""
+    coach confirms or declines, and marks it done once it has been held. Requested and confirmed bookings
+    hold the time of both people."""
 
     class Status(models.TextChoices):
         REQUESTED = "requested"
         CONFIRMED = "confirmed"
         DECLINED = "declined"
         CANCELLED = "cancelled"
+        # The coach marked the session as held, once it had started.
+        COMPLETED = "completed"
 
     HOLDING = (Status.REQUESTED, Status.CONFIRMED)
+    # What a calendar shows: what holds time, and sessions that were held.
+    SHOWN = (*HOLDING, Status.COMPLETED)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     coach = models.ForeignKey(
@@ -199,3 +204,27 @@ class MatchComment(models.Model):
 
     def __str__(self):
         return f"Comment {self.id}"
+
+
+class CoachRating(models.Model):
+    """A player's star rating of a coach they trained with: one per player and coach, which they may
+    change or remove. Only the average and the count are shown; who gave which rating is not."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="coach_ratings"
+    )
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    stars = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["coach", "player"], name="coach_rating_one_each"),
+            models.CheckConstraint(condition=Q(stars__gte=1, stars__lte=5), name="coach_rating_one_to_five"),
+            models.CheckConstraint(condition=~Q(coach=F("player")), name="coach_rating_not_self"),
+        ]
+
+    def __str__(self):
+        return f"{self.player_id} rates {self.coach_id} {self.stars}"

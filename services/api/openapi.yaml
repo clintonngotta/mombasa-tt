@@ -509,6 +509,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/coaches/{id}/rating/:
+    put:
+      operationId: coaches_rating_update
+      description: |-
+        PUT /coaches/{user id}/rating/: the caller's star rating of a coach they trained with, set or
+        changed; DELETE removes it. The answer is the coach's profile with the new average.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - coaches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoachRatingRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: coaches_rating_destroy
+      description: |-
+        PUT /coaches/{user id}/rating/: the caller's star rating of a coach they trained with, set or
+        changed; DELETE removes it. The answer is the coach's profile with the new average.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - coaches
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachProfile'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/coaches/{id}/slots/:
     get:
       operationId: coaches_slots_list
@@ -1464,8 +1529,45 @@ paths:
     post:
       operationId: me_bookings_cancel_create
       description: |-
-        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-        person cancels a booking that hasn't started.
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/bookings/{id}/complete/:
+    post:
+      operationId: me_bookings_complete_create
+      description: |-
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
       parameters:
       - in: path
         name: id
@@ -1499,8 +1601,9 @@ paths:
     post:
       operationId: me_bookings_confirm_create
       description: |-
-        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-        person cancels a booking that hasn't started.
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
       parameters:
       - in: path
         name: id
@@ -1534,8 +1637,9 @@ paths:
     post:
       operationId: me_bookings_decline_create
       description: |-
-        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-        person cancels a booking that hasn't started.
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
       parameters:
       - in: path
         name: id
@@ -21405,12 +21509,14 @@ components:
       - confirmed
       - declined
       - cancelled
+      - completed
       type: string
       description: |-
         * `requested` - Requested
         * `confirmed` - Confirmed
         * `declined` - Declined
         * `cancelled` - Cancelled
+        * `completed` - Completed
     BranchScheduleItem:
       type: object
       properties:
@@ -22895,18 +23001,43 @@ components:
           items:
             $ref: '#/components/schemas/Availability'
           readOnly: true
+        rating_average:
+          type: number
+          format: double
+          nullable: true
+          readOnly: true
+          description: Average star rating from players who trained with the coach,
+            1 to 5; null with none.
+        rating_count:
+          type: integer
+          readOnly: true
+          default: 0
+        my_rating:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: The caller's own rating, if they gave one.
+        can_rate:
+          type: boolean
+          readOnly: true
+          default: false
+          description: Whether the caller trained with the coach and may rate.
       required:
       - accepting
       - availability
       - bio
+      - can_rate
       - currency
       - firm_name
       - headline
       - id
       - levels
+      - my_rating
       - organizations
       - organizer_id
       - rate_minor
+      - rating_average
+      - rating_count
       - region
       - specialties
       - timezone
@@ -22968,6 +23099,15 @@ components:
           maxLength: 120
       required:
       - headline
+    CoachRatingRequest:
+      type: object
+      properties:
+        stars:
+          type: integer
+          maximum: 5
+          minimum: 1
+      required:
+      - stars
     Coaching:
       type: object
       description: 'A coaching from the caller''s side: `role` is "coach" when they
@@ -26462,11 +26602,13 @@ components:
       - standard
       - personal
       - club
+      - coach
       type: string
       description: |-
         * `standard` - standard
         * `personal` - personal
         * `club` - club
+        * `coach` - coach
     LifecycleEntry:
       type: object
       properties:

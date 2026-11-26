@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, ChevronLeft, ChevronRight, GraduationCap, Search, UserRound } from "lucide-react"
+import { CalendarDays, ChevronRight, GraduationCap, Search, UserRound } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
@@ -11,20 +11,21 @@ import {
   answerCoaching,
   BOOKING_STATUS_LABEL,
   coachingKeys,
-  getCalendar,
   getMyCoachProfileOrNull,
   listBookings,
+  listPastBookings,
   listCoachings,
-  weekOf,
   type Booking,
-  type CalendarEntry,
-  type CoachProfile,
   type Coaching,
 } from "@/lib/coaching"
-import { formatDay, formatDayRange, formatInstant } from "@/lib/dates"
+import { formatInstant } from "@/lib/dates"
 import { LOCAL_TIME_ZONE } from "@/lib/training"
+import { canMarkDone, MarkDoneButton } from "@/components/coaching/MarkDoneButton"
+import { CoachStars } from "@/components/coaching/CoachStars"
 import { cn } from "@/lib/utils"
+import { CoachCalendar } from "@/components/coaching/CoachCalendar"
 import { OrganizeTournament } from "@/components/coaching/OrganizeTournament"
+import { TraineeTaskBoard } from "@/components/coaching/TraineeTaskBoard"
 
 /** Coaching (REQ-047): requests waiting for you, the people you coach and your week as a coach, and the
  * coaches you train with and the sessions you booked. */
@@ -35,6 +36,10 @@ export function CoachingTab() {
   })
   const coachings = useQuery({ queryKey: coachingKeys.coachings, queryFn: listCoachings })
   const bookings = useQuery({ queryKey: coachingKeys.bookings, queryFn: listBookings })
+  const past = useQuery({ queryKey: coachingKeys.pastBookings, queryFn: listPastBookings, enabled: !!profile.data })
+  const [now] = useState(() => Date.now())
+  // Confirmed sessions that have started, under way or over, still waiting for the coach to mark them done.
+  const held = [...(bookings.data ?? []), ...(past.data ?? [])].filter((b) => canMarkDone(b, now))
   const all = coachings.data ?? []
   const waiting = all.filter((c) => c.awaiting_me)
   const trainees = all.filter((c) => c.role === "coach" && c.status === "active")
@@ -53,7 +58,9 @@ export function CoachingTab() {
         <>
           <Trainees coachings={trainees} />
           <SessionRequests bookings={asCoach.filter((b) => b.status === "requested")} />
-          <Week profile={profile.data} />
+          <HeldSessions bookings={held} />
+          <TraineeTaskBoard coachings={trainees} />
+          <CoachCalendar profile={profile.data} />
         </>
       )}
       {profile.isSuccess && (
@@ -62,6 +69,7 @@ export function CoachingTab() {
             <span id="coach-heading" className="font-semibold">
               {profile.data ? "Your coach profile" : "Coach other players"}
             </span>
+            <CoachStars average={profile.data?.rating_average} count={profile.data?.rating_count} />
             <span className="text-sm text-muted-foreground">
               {profile.data
                 ? profile.data.accepting
@@ -172,6 +180,31 @@ function Trainees({ coachings }: { coachings: Coaching[] }) {
   )
 }
 
+function HeldSessions({ bookings }: { bookings: Booking[] }) {
+  if (bookings.length === 0) return null
+  return (
+    <section aria-labelledby="held-heading" className="flex flex-col gap-3">
+      <h2 id="held-heading" className="text-xl font-bold">
+        Sessions to mark done
+      </h2>
+      <ul className="flex flex-col gap-2">
+        {bookings.map((b) => (
+          <li key={b.id} className={ROW}>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-semibold">{b.trainee.display_name}</span>
+              <span className="text-sm text-muted-foreground">
+                {formatInstant(b.starts_at, LOCAL_TIME_ZONE)}–{formatInstant(b.ends_at, LOCAL_TIME_ZONE).slice(-5)}
+                {b.venue && ` · ${b.venue}`}
+              </span>
+            </span>
+            <MarkDoneButton booking={b} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function SessionRequests({ bookings }: { bookings: Booking[] }) {
   const refresh = useRefresh()
   const answer = useMutation({ mutationFn: ({ id, action }: { id: string; action: "confirm" | "decline" }) => answerBooking(id, action), onSuccess: refresh })
@@ -232,99 +265,5 @@ function MySessions({ bookings }: { bookings: Booking[] }) {
         ))}
       </ul>
     </div>
-  )
-}
-
-const KIND_LABEL: Record<CalendarEntry["kind"], string> = {
-  booking: "Session",
-  session: "My training",
-  trainee_session: "Trainee's plan",
-  club_session: "Club training",
-  tournament: "Tournament",
-}
-
-/** The coach's week, Monday to Sunday, day by day. */
-function Week({ profile }: { profile: CoachProfile }) {
-  const [anchor, setAnchor] = useState(() => new Date())
-  const { from, to } = weekOf(anchor)
-  const calendar = useQuery({ queryKey: coachingKeys.calendar(from, to), queryFn: () => getCalendar(from, to) })
-  const timeZone = profile.timezone ?? LOCAL_TIME_ZONE
-  const move = (days: number) =>
-    setAnchor((d) => {
-      const next = new Date(d)
-      next.setDate(d.getDate() + days)
-      return next
-    })
-  const byDay = new Map<string, CalendarEntry[]>()
-  for (const entry of calendar.data ?? []) {
-    const day = entry.starts_at ? new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(entry.starts_at)) : (entry.starts_on ?? from)
-    const key = day < from ? from : day
-    byDay.set(key, [...(byDay.get(key) ?? []), entry])
-  }
-
-  return (
-    <section aria-labelledby="week-heading" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="week-heading" className="text-xl font-bold">
-          Calendar <span className="text-base font-normal text-muted-foreground">{formatDayRange(from, to)}</span>
-        </h2>
-        <div className="flex gap-1">
-          <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => move(-7)}>
-            <ChevronLeft aria-hidden className="size-5" />
-          </Button>
-          <Button variant="outline" onClick={() => setAnchor(new Date())}>
-            This week
-          </Button>
-          <Button variant="outline" size="icon" aria-label="Next week" onClick={() => move(7)}>
-            <ChevronRight aria-hidden className="size-5" />
-          </Button>
-        </div>
-      </div>
-      {calendar.isError && <FormAlert>{errorMessage(calendar.error, "We couldn't load your calendar.")}</FormAlert>}
-      {calendar.isSuccess && calendar.data.length === 0 && (
-        <p className="rounded-xl border border-dashed bg-card p-6 text-muted-foreground">
-          Nothing this week. Sessions, your clubs' training and tournaments appear here.
-        </p>
-      )}
-      <ol className="flex flex-col gap-4">
-        {[...byDay.entries()].map(([day, entries]) => (
-          <li key={day} className="flex flex-col gap-2">
-            <h3 className="font-semibold">{formatDay(day)}</h3>
-            <ul className="flex flex-col gap-2">
-              {entries.map((entry) => {
-                const body = (
-                  <>
-                    <span className="w-28 shrink-0 text-sm font-semibold tabular-nums">
-                      {entry.starts_at && entry.ends_at
-                        ? `${formatInstant(entry.starts_at, timeZone).slice(-5)}–${formatInstant(entry.ends_at, timeZone).slice(-5)}`
-                        : formatDayRange(entry.starts_on ?? day, entry.ends_on ?? day)}
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-semibold">{entry.title}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {KIND_LABEL[entry.kind]}
-                        {entry.kind === "booking" && entry.status === "requested" && " · waiting for you"}
-                        {entry.detail && ` · ${entry.detail}`}
-                      </span>
-                    </span>
-                  </>
-                )
-                return (
-                  <li key={`${entry.kind}-${entry.id}`}>
-                    {entry.link ? (
-                      <Link to={entry.link} className={cn(ROW, "flex-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
-                        {body}
-                      </Link>
-                    ) : (
-                      <div className={cn(ROW, "flex-nowrap", entry.kind === "booking" && entry.status === "requested" && "border-dashed")}>{body}</div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </li>
-        ))}
-      </ol>
-    </section>
   )
 }

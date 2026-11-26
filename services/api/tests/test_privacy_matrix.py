@@ -25,7 +25,7 @@ from rest_framework import serializers
 from accounts.models import User
 from activities.models import Activity, Rsvp
 from attachments.models import Attachment
-from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
+from coaching.models import Availability, Booking, Coaching, CoachProfile, CoachRating, MatchComment
 from competitions import drawing, ties
 from competitions.models import (
     Announcement,
@@ -366,6 +366,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "open-session-leave": {"post": SIGNED_IN},
     "coach": {"get": SIGNED_IN},
     "coach-slots": {"get": SIGNED_IN},
+    # Any player may call it; only one who trained with the coach gets past 403 (test_coaching).
+    "coach-rating": {"put": SIGNED_IN, "delete": SIGNED_IN},
     "my-coach-profile": {"get": OWNER, "put": OWNER},
     "my-coach-organizer": {"post": OWNER},
     "my-coach-availability": {"get": OWNER, "put": OWNER},
@@ -387,6 +389,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "my-booking-confirm": {"post": OWNER},
     "my-booking-decline": {"post": OWNER},
     "my-booking-cancel": {"post": OWNER},
+    "my-booking-complete": {"post": OWNER},
     "organization-drills": {"get": MEMBER, "post": STAFF},
     "organization-drill": {"patch": STAFF, "delete": STAFF},
     # The drill library: the standard drills, your own and your clubs'. Another club's drill is a 404.
@@ -708,6 +711,7 @@ BODIES = {
     ("platform-region", "patch"): {"name": "Renamed Region"},
     ("platform-cities", "post"): {"name": "Taken Town"},
     ("platform-city", "patch"): {"name": "Renamed Town"},
+    ("coach-rating", "put"): {"stars": 5},
     ("auth-me-email", "post"): {"email": "new.address@example.com"},
     ("tournament-ceremony", "put"): {"location": "Main hall"},
     ("tournament-review", "put"): {"went_well": "Ran to time"},
@@ -1962,6 +1966,7 @@ class World:
             "tournament-stream-report": self.stream.id,
             "coach": self.kito.id,
             "coach-slots": self.kito.id,
+            "coach-rating": self.kito.id,
             "my-coach-comment": self.coach_note.id,
             "my-coaching-accept": self.coaching.id,
             "my-coaching-decline": self.coaching.id,
@@ -1975,6 +1980,7 @@ class World:
             "my-booking-confirm": self.booking.id,
             "my-booking-decline": self.booking.id,
             "my-booking-cancel": self.booking.id,
+            "my-booking-complete": self.booking.id,
             "organization-drill": self.club_drill.id,
             "drill-library-detail": self.club_drill.id,
             "training-plan-recommendations": self.baraka_plan.id,
@@ -2407,6 +2413,7 @@ class World:
                 CoachProfile.objects.values_list("user__email", "headline", "accepting")
             ),
             "coachings": sorted(Coaching.objects.values_list("id", "status")),
+            "coach_ratings": sorted(CoachRating.objects.values_list("player__email", "stars")),
             "representatives": sorted(Representative.objects.values_list("id", "status")),
             "caps": sorted(Organization.objects.values_list("id", "representative_cap")),
             "bookings": sorted(Booking.objects.values_list("id", "status", "starts_at")),

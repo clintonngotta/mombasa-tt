@@ -34,7 +34,8 @@ class LibraryChoices:
     STANDARD = "standard"
     PERSONAL = "personal"
     CLUB = "club"
-    choices = [STANDARD, PERSONAL, CLUB]
+    COACH = "coach"  # another person's drill, read because it is in a plan they gave the reader
+    choices = [STANDARD, PERSONAL, CLUB, COACH]
 
 
 class DrillSerializer(serializers.ModelSerializer):
@@ -88,7 +89,12 @@ class DrillSerializer(serializers.ModelSerializer):
     def get_library(self, drill) -> str:
         if drill.organization_id:
             return LibraryChoices.CLUB
-        return LibraryChoices.PERSONAL if drill.owner_id else LibraryChoices.STANDARD
+        if not drill.owner_id:
+            return LibraryChoices.STANDARD
+        request = self.context.get("request")
+        if request is not None and request.user.pk != drill.owner_id:
+            return LibraryChoices.COACH
+        return LibraryChoices.PERSONAL
 
 
 MAX_ACTIVITIES = 20

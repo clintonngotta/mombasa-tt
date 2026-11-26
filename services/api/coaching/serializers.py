@@ -82,6 +82,16 @@ class CoachProfileSerializer(serializers.ModelSerializer):
     organizer_id = serializers.UUIDField(
         read_only=True, allow_null=True, help_text="The coach's organizing desk, once they have organized."
     )
+    rating_average = serializers.SerializerMethodField(
+        help_text="Average star rating from players who trained with the coach, 1 to 5; null with none."
+    )
+    rating_count = serializers.IntegerField(read_only=True, default=0)
+    my_rating = serializers.IntegerField(
+        read_only=True, allow_null=True, default=None, help_text="The caller's own rating, if they gave one."
+    )
+    can_rate = serializers.BooleanField(
+        read_only=True, default=False, help_text="Whether the caller trained with the coach and may rate."
+    )
 
     class Meta:
         model = CoachProfile
@@ -103,8 +113,17 @@ class CoachProfileSerializer(serializers.ModelSerializer):
             "firm_name",
             "organizer_id",
             "availability",
+            "rating_average",
+            "rating_count",
+            "my_rating",
+            "can_rate",
         ]
         read_only_fields = ["id", "user", "organizations", "organizer_id", "availability"]
+
+    @extend_schema_field(serializers.FloatField(allow_null=True))
+    def get_rating_average(self, profile) -> float | None:
+        average = getattr(profile, "rating_average", None)
+        return None if average is None else round(float(average), 1)
 
     @extend_schema_field(AvailabilitySerializer(many=True))
     def get_availability(self, profile) -> list[dict]:
@@ -358,3 +377,7 @@ class CoachOrganizerRequestSerializer(serializers.Serializer):
 class CoachOrganizerSerializer(serializers.Serializer):
     organization_id = serializers.UUIDField()
     name = serializers.CharField()
+
+
+class CoachRatingSerializer(serializers.Serializer):
+    stars = serializers.IntegerField(min_value=1, max_value=5)

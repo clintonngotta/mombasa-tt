@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from django.utils import timezone
 
-from coaching.models import MatchComment
+from coaching.models import Booking, CoachRating, MatchComment
 
 from .helpers import logged_in, make_official, make_user
 from .test_reservations import started
@@ -229,6 +229,169 @@ def test_a_coach_gives_a_trainee_a_plan_and_sees_their_progress(people):
     assert trainee_client.get(f"{ME}training-plans/{plan['id']}/").json()["progress"]["total"] == 2
 
 
+def test_a_trainee_opens_the_coachs_own_drill_from_their_plan_and_nobody_else_does(people, staff):
+    coach, trainee, coach_client, trainee_client = people
+    coaching_id = coaching_between(coach_client, trainee_client, coach)
+    drill = lambda title: coach_client.post(  # noqa: E731
+        f"{ME}drills/", {"title": title, "instructions": "Ten short serves."}, format="json"
+    ).json()
+    listed, in_session, unused = drill("Serve ladder"), drill("Receive ladder"), drill("Not given")
+    plan = coach_client.post(f"{ME}trainees/{coaching_id}/plans/", {"title": "Serves"}, format="json").json()
+    items = f"{ME}trainees/{coaching_id}/plans/{plan['id']}/items/"
+    assert (
+        coach_client.post(items, {"kind": "checklist", "drill": listed["id"]}, format="json").status_code
+        == 201
+    )
+    start = at(day_ahead(3), 18, 0)
+    session = coach_client.post(
+        items,
+        {
+            "kind": "session",
+            "title": "Session",
+            "starts_at": start.isoformat(),
+            "ends_at": (start + timedelta(hours=1)).isoformat(),
+            "activities": [
+                {"phase": "on_table", "title": "Receive", "minutes": 10, "drill": in_session["id"]}
+            ],
+        },
+        format="json",
+    )
+    assert session.status_code == 201, session.json()
+
+    # The trainee reads both drills, labelled as the coach's, and can't change them.
+    for given in (listed, in_session):
+        seen = trainee_client.get(f"/api/v1/drills/{given['id']}/")
+        assert seen.status_code == 200 and seen.json()["library"] == "coach"
+        assert (
+            trainee_client.patch(f"{ME}drills/{given['id']}/", {"title": "x"}, format="json").status_code
+            == 404
+        )
+    assert coach_client.get(f"/api/v1/drills/{listed['id']}/").json()["library"] == "personal"
+    # Not the coach's other drills, not in the trainee's library, and nobody else reads any of them.
+    assert trainee_client.get(f"/api/v1/drills/{unused['id']}/").status_code == 404
+    assert listed["id"] not in [d["id"] for d in trainee_client.get("/api/v1/drills/").json()]
+    assert staff.get(f"/api/v1/drills/{listed['id']}/").status_code == 404
+
+
+def test_players_who_trained_with_a_coach_rate_them_and_the_profile_shows_the_average(people, staff):
+    coach, trainee, coach_client, trainee_client = people
+    rating = f"/api/v1/coaches/{coach.id}/rating/"
+    page = f"/api/v1/coaches/{coach.id}/"
+
+    # Before training with the coach nobody rates them, and nobody rates themselves.
+    seen = trainee_client.get(page).json()
+    assert (seen["rating_average"], seen["rating_count"], seen["my_rating"], seen["can_rate"]) == (
+        None,
+        0,
+        None,
+        False,
+    )
+    refused = trainee_client.put(rating, {"stars": 5}, format="json")
+    assert refused.status_code == 403 and refused.json()["code"] == "cannot_rate"
+    assert coach_client.put(rating, {"stars": 5}, format="json").status_code == 403
+
+    coaching_id = coaching_between(coach_client, trainee_client, coach)
+    assert trainee_client.get(page).json()["can_rate"] is True
+    for bad in (0, 6, "five"):
+        assert trainee_client.put(rating, {"stars": bad}, format="json").status_code == 400
+    rated = trainee_client.put(rating, {"stars": 4}, format="json")
+    assert rated.status_code == 200, rated.json()
+    assert (rated.json()["rating_average"], rated.json()["rating_count"], rated.json()["my_rating"]) == (
+        4.0,
+        1,
+        4,
+    )
+
+    # Rating again changes their one rating; it survives the coaching ending.
+    trainee_client.put(rating, {"stars": 5}, format="json")
+    coach_client.post(f"{ME}coachings/{coaching_id}/end/", format="json")
+    assert trainee_client.put(rating, {"stars": 3}, format="json").status_code == 200
+    assert CoachRating.objects.count() == 1
+
+    # Everyone sees the average and the count; only the rater sees their own rating.
+    for client in (staff, coach_client):
+        other = client.get(page).json()
+        assert (other["rating_average"], other["rating_count"], other["my_rating"], other["can_rate"]) == (
+            3.0,
+            1,
+            None,
+            False,
+        )
+    listed = staff.get("/api/v1/coaches/").json()["results"]
+    assert [(c["rating_average"], c["rating_count"]) for c in listed if c["user"]["id"] == str(coach.id)] == [
+        (3.0, 1)
+    ]
+    assert coach_client.get(f"{ME}coach-profile/").json()["rating_average"] == 3.0
+    assert staff.put(rating, {"stars": 1}, format="json").status_code == 403
+
+    gone = trainee_client.delete(rating)
+    assert gone.status_code == 200 and gone.json()["rating_count"] == 0 and gone.json()["my_rating"] is None
+
+
+def test_a_coachs_plan_session_shares_the_hour_of_their_booked_session(people):
+    coach, trainee, coach_client, trainee_client = people
+    coaching_id = coaching_between(coach_client, trainee_client, coach)
+    day = day_ahead()
+
+    def book(start, end):
+        body = {"coach_id": str(coach.id), "starts_at": start.isoformat(), "ends_at": end.isoformat()}
+        return trainee_client.post(f"{ME}bookings/", body, format="json")
+
+    def session(start, end):
+        return {
+            "kind": "session",
+            "title": "Serves",
+            "starts_at": start.isoformat(),
+            "ends_at": end.isoformat(),
+        }
+
+    assert book(at(day, 10), at(day, 11)).status_code == 201
+    plan = coach_client.post(f"{ME}trainees/{coaching_id}/plans/", {"title": "Serves"}, format="json").json()
+    items = f"{ME}trainees/{coaching_id}/plans/{plan['id']}/items/"
+    # The coach lays out the booked hour: the plan session is that booking's running order.
+    assert coach_client.post(items, session(at(day, 10), at(day, 11)), format="json").status_code == 201
+    # And the other way round: a session the coach planned can then be booked with them.
+    assert coach_client.post(items, session(at(day, 14), at(day, 15)), format="json").status_code == 201
+    assert book(at(day, 14), at(day, 15)).status_code == 201
+    # The trainee's own plan is still blocked by the booking.
+    own = trainee_client.post(f"{ME}training-plans/", {"title": "Mine"}, format="json").json()
+    clash = trainee_client.post(
+        f"{ME}training-plans/{own['id']}/items/", session(at(day, 10), at(day, 11)), format="json"
+    )
+    assert clash.status_code == 409 and clash.json()["code"] == "calendar_conflict"
+
+
+def test_the_coach_marks_a_held_session_done(people):
+    coach, trainee, coach_client, trainee_client = people
+    day = day_ahead()
+    body = {
+        "coach_id": str(coach.id),
+        "starts_at": at(day, 10).isoformat(),
+        "ends_at": at(day, 11).isoformat(),
+    }
+    booking = trainee_client.post(f"{ME}bookings/", body, format="json").json()
+    done = f"{ME}bookings/{booking['id']}/complete/"
+
+    # Not before the coach confirmed it, and not before it starts.
+    assert coach_client.post(done, format="json").json()["code"] == "not_confirmed"
+    coach_client.post(f"{ME}bookings/{booking['id']}/confirm/", format="json")
+    assert coach_client.post(done, format="json").json()["code"] == "not_started"
+    Booking.objects.filter(pk=booking["id"]).update(
+        starts_at=timezone.now() - timedelta(hours=2), ends_at=timezone.now() - timedelta(hours=1)
+    )
+    # Only the coach marks it; the trainee and a stranger get 404.
+    assert trainee_client.post(done, format="json").status_code == 404
+    assert logged_in(make_user("stranger@example.com")).post(done, format="json").status_code == 404
+    held = coach_client.post(done, format="json")
+    assert held.status_code == 200 and held.json()["status"] == "completed"
+    assert coach_client.post(done, format="json").status_code == 409
+
+    # Both sides see it as done among their past sessions, and the trainee may now rate the coach.
+    for client in (coach_client, trainee_client):
+        assert [b["status"] for b in client.get(f"{ME}bookings/", {"past": "1"}).json()] == ["completed"]
+    assert trainee_client.get(f"/api/v1/coaches/{coach.id}/").json()["can_rate"] is True
+
+
 def test_coach_notes_are_read_by_the_trainee_alone(people, staff, club):
     coach, trainee, coach_client, trainee_client = people
     coaching_id = coaching_between(coach_client, trainee_client, coach)
@@ -261,6 +424,13 @@ def test_coach_notes_are_read_by_the_trainee_alone(people, staff, club):
         path, {"match": str(game["match"].id), "body": "Watch his backhand."}, format="json"
     )
     assert official.status_code == 201, official.json()
+    # The coach's page for the trainee still loads, with each note under its match.
+    again = coach_client.get(f"{ME}trainees/{coaching_id}/")
+    assert again.status_code == 200, again.content
+    assert sorted(c["body"] for m in again.json()["matches"] for c in m["comments"]) == [
+        "Great first serve.",
+        "Watch his backhand.",
+    ]
     # Someone else's match can't be commented on.
     rival_log = (
         logged_in(make_user("rival2@example.com"))
