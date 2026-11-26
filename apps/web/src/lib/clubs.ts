@@ -132,11 +132,15 @@ export const createOrganization = (input: OrganizationInput) => api<Organization
 export const updateOrganizationLocation = (id: string, input: Schemas["PatchedOrganizationLocationRequest"]) =>
   api<Organization>(`/organizations/${id}/`, { method: "PATCH", body: input })
 
-// One admin per organization, handed over by nomination (REQ-045).
+// Up to three admins per organization, changed by nomination (REQ-045). "addition" offers a further
+// place beside the current admins; "nomination" hands the nominator's own place to a successor.
+export type AdminNominationKind = "addition" | "nomination"
 export const getOrganizationAdmin = (orgId: string) => api<OrganizationAdmin>(`${orgPath(orgId)}/admin/`)
-export const nominateAdmin = (orgId: string, membershipId: string) =>
-  api<AdminHandover>(`${orgPath(orgId)}/admin/nominate/`, { body: { membership_id: membershipId } })
-export const cancelAdminNomination = (orgId: string) => api<AdminHandover>(`${orgPath(orgId)}/admin/cancel/`, { body: {} })
+export const nominateAdmin = (orgId: string, membershipId: string, kind: AdminNominationKind) =>
+  api<AdminHandover>(`${orgPath(orgId)}/admin/nominate/`, { body: { membership_id: membershipId, kind } })
+export const cancelAdminNomination = (orgId: string, handoverId: string) =>
+  api<AdminHandover>(`${orgPath(orgId)}/admin/cancel/`, { body: { handover_id: handoverId } })
+export const stepDownAsAdmin = (orgId: string) => api<AdminHandover>(`${orgPath(orgId)}/admin/step-down/`, { body: {} })
 export const listMyAdminNominations = () => api<Schemas["PaginatedAdminHandoverList"]>("/me/admin-nominations/")
 export const answerAdminNomination = (id: string, accept: boolean) =>
   api<AdminHandover>(`/me/admin-nominations/${id}/${accept ? "accept" : "decline"}/`, { body: {} })

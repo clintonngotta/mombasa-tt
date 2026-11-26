@@ -1,9 +1,10 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react"
+import { useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Download, FileText, ImagePlus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ApiError, apiOriginUrl, errorMessage } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import { getAttachmentLink, type AttachmentLink } from "@/lib/profile"
 import {
   addTournamentDocument,
@@ -19,22 +20,73 @@ const IMAGE_TYPES = "image/jpeg,image/png,image/webp"
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
-/** The tournament's cover picture, wide across the top of its page or card. Signed links expire after a
- * few minutes, so a failed load asks once for a new one and otherwise hides the picture. */
-export function TournamentCover({ cover, className }: { cover: AttachmentLink | null; className?: string }) {
+/** What we ask organizers for. The API scales the longer side down to 1600 px, so nothing larger helps. */
+const COVER_SIZES = { horizontal: "1600 × 900 px (16:9)", vertical: "1080 × 1350 px (4:5)" } as const
+
+/** The cover's link. Signed links expire after a few minutes, so a failed load asks once for a new one
+ * and otherwise gives up (null). */
+function useCoverUrl(cover: AttachmentLink | null) {
   const [retry, setRetry] = useState<{ after: string; url: string | null } | null>(null)
-  if (!cover) return null
-  const url = retry?.after === cover.url ? retry.url : cover.url
-  if (!url) return null
+  const url = !cover ? null : retry?.after === cover.url ? retry.url : cover.url
 
   function onError() {
-    if (!cover || retry?.after === cover.url) return setRetry({ after: cover!.url, url: null })
+    if (!cover) return
+    if (retry?.after === cover.url) return setRetry({ after: cover.url, url: null })
     getAttachmentLink(cover.id)
       .then((fresh) => setRetry({ after: cover.url, url: fresh.url }))
       .catch(() => setRetry({ after: cover.url, url: null }))
   }
 
+  return { url, onError }
+}
+
+/** The tournament's cover picture on its own, as the organizer's preview. */
+export function TournamentCover({ cover, className }: { cover: AttachmentLink | null; className?: string }) {
+  const { url, onError } = useCoverUrl(cover)
+  if (!url) return null
   return <img src={apiOriginUrl(url)} alt="" onError={onError} className={className ?? "aspect-[16/7] w-full rounded-xl bg-surface-selected object-cover"} />
+}
+
+/**
+ * The cover picture as the background of a heading: `children(true)` is drawn over it in white, on a dark
+ * fade so the words stay readable on any photo. Without a picture (or when it fails to load) the children
+ * are drawn plainly. With `fit`, the block takes the picture's shape: wide for a horizontal photo, tall for
+ * a vertical one; otherwise it keeps one height and the picture is cropped around its middle.
+ */
+export function CoverBackdrop({
+  cover,
+  fit = false,
+  coverClassName,
+  children,
+}: {
+  cover: AttachmentLink | null
+  fit?: boolean
+  /** Applied only while the picture shows. */
+  coverClassName?: string
+  children: (onCover: boolean) => ReactNode
+}) {
+  const { url, onError } = useCoverUrl(cover)
+  const [vertical, setVertical] = useState(false)
+  if (!url) return <>{children(false)}</>
+  return (
+    <div
+      className={cn(
+        "relative isolate flex flex-col justify-end overflow-hidden bg-brand-navy text-white",
+        fit ? (vertical ? "aspect-[4/5] max-h-[560px] w-full" : "aspect-[16/9] w-full") : "min-h-44",
+        coverClassName,
+      )}
+    >
+      <img
+        src={apiOriginUrl(url)}
+        alt=""
+        onError={onError}
+        onLoad={(event) => setVertical(event.currentTarget.naturalHeight > event.currentTarget.naturalWidth)}
+        className="absolute inset-0 -z-20 size-full object-cover"
+      />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-linear-to-t from-black/80 via-black/35 to-black/10" />
+      {children(true)}
+    </div>
+  )
 }
 
 /** Download a document with a fresh link: the one in the tournament may have expired. */
@@ -142,7 +194,16 @@ export function TournamentMediaManager({ tournament: t }: { tournament: Tourname
             </Button>
           )}
         </div>
-        <p className="text-sm text-muted-foreground">JPEG, PNG or WebP up to 5 MB. A wide picture works best. Location and camera details are removed.</p>
+        <p className="text-sm text-muted-foreground">
+          The picture sits behind the tournament's name and is cropped to fit, so keep faces and logos near the middle. JPEG, PNG or WebP up to 5 MB. Location and
+          camera details are removed.
+        </p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          <dt className="font-semibold">Horizontal photo</dt>
+          <dd className="text-muted-foreground">{COVER_SIZES.horizontal}</dd>
+          <dt className="font-semibold">Vertical photo</dt>
+          <dd className="text-muted-foreground">{COVER_SIZES.vertical}</dd>
+        </dl>
         {coverFailed && <FormAlert>{fileError(coverFailed, "We couldn't save the picture. Try again.")}</FormAlert>}
       </div>
 

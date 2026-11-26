@@ -270,7 +270,7 @@ def test_the_admin_cannot_step_down_leave_or_be_removed(admin, club):
     assert leaving.status_code == 409 and code(leaving) == "last_admin"
     assert client.post(f"{ORGS}{club.id}/members/{me.id}/remove/").status_code == 409
 
-    # Nor can the role editor make a second admin (REQ-045).
+    # Nor can the role editor make another admin: that takes a nomination (REQ-045).
     deputy = add_member(club, make_user("deputy@example.com"))
     admin_role = club.roles.get(key="admin")
     made = client.put(member_roles_url(club, deputy), {"roles": [str(admin_role.id)]}, format="json")

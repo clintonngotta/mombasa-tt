@@ -6,7 +6,7 @@ import { FormAlert } from "@/components/forms/Field"
 import { errorMessage } from "@/lib/api"
 import { answerAdminNomination, clubKeys, listMyAdminNominations, setActiveOrganization } from "@/lib/clubs"
 
-/** Nominations naming the player as an organization's next admin (REQ-045). Nothing changes until they accept. */
+/** Nominations naming the player as an admin of an organization (REQ-045). Nothing changes until they accept. */
 export function AdminNominationsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -39,11 +39,14 @@ export function AdminNominationsPage() {
             <li key={nomination.id} className="flex flex-col gap-3 rounded-xl border bg-card p-4">
               <p className="font-semibold">{club}</p>
               <p className="text-sm text-muted-foreground">
-                {nomination.from_user?.display_name ?? "The admin"} nominated you to take over as admin. The admin has full control of the club: settings, roles,
-                committee and nominations. The current admin keeps only their other roles.
+                {nomination.from_user?.display_name ?? "An admin"}{" "}
+                {nomination.kind === "addition"
+                  ? "nominated you as a further admin, beside the current admins."
+                  : "nominated you to take over their place as admin. They keep only their other roles."}{" "}
+                An admin has full control of the club: settings, roles, committee and nominations.
               </p>
               <div className="flex gap-2">
-                <Button disabled={busy} aria-label={`Become the admin of ${club}`} onClick={() => answer.mutate({ id: nomination.id, accept: true })}>
+                <Button disabled={busy} aria-label={`Become an admin of ${club}`} onClick={() => answer.mutate({ id: nomination.id, accept: true })}>
                   Accept
                 </Button>
                 <Button variant="outline" disabled={busy} aria-label={`Decline the admin nomination for ${club}`} onClick={() => answer.mutate({ id: nomination.id, accept: false })}>
