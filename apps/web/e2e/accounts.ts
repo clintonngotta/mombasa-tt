@@ -1,6 +1,6 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test"
 
-/** The development test logins the API seeds (`manage.py seed_dev`; mirrors src/lib/devAccounts.ts). They
+/** The development test logins the API seeds (`manage.py seed_dev`). They
  * exist only where DJANGO_DEBUG is on, so these tests can never run against production. */
 const PASSWORD = process.env.E2E_PASSWORD ?? "mombasa-tt-dev"
 export const ACCOUNTS = {
@@ -14,7 +14,6 @@ export const sessionFile = (account: Account) => `e2e/.auth/${account}.json`
 
 export async function logIn(page: Page, account: Account) {
   await page.goto("/login")
-  // In development the page fills in a test account once it has loaded, which can land after we type.
   // Wait for the page to go quiet, then type until both fields hold what we mean to send.
   await page.waitForLoadState("networkidle")
   const email = page.getByLabel("Email or phone number")
