@@ -46,8 +46,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=16, unique=True, null=True, blank=True)
     phone_verified_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False, help_text="Django admin access (platform operators only).")
-    date_joined = models.DateTimeField(default=timezone.now)
+    is_staff = models.BooleanField(
+        default=False, help_text="Platform operators only; goes with platform authority."
+    )
+    date_joined = models.DateTimeField(default=timezone.now, db_index=True)  # lists show the newest first
 
     objects = UserManager()
 

@@ -16,13 +16,15 @@
 		# HSTS comes after every host is checked over HTTPS (deployment.md); don't preload early.
 	}
 
-	# The API, its live updates (/api/v1/ws/) and Django admin. Host and the HTTPS scheme are forwarded.
-	@django path /api/* /admin/* /health/*
+	# The API and its live updates (/api/v1/ws/). Host and the HTTPS scheme are forwarded. /admin is not
+	# passed on: it is the app's own back office for platform super admins (a client-side route below), and
+	# Django admin (/django-admin/ on the API) is deliberately out of reach from the internet.
+	@django path /api/* /health/*
 	handle @django {
 		reverse_proxy api:8000
 	}
 
-	# Django's own static files (admin, API browser), collected into the image.
+	# Django's own static files, collected into the image.
 	handle /static/* {
 		root * /srv
 		header Cache-Control "public, max-age=86400"

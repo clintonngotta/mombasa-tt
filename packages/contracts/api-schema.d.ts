@@ -6015,6 +6015,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/accounts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /platform/accounts/: every account, newest first. */
+        get: operations["platform_accounts_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/accounts/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description PATCH /platform/accounts/{id}/: switch an account off or on, or give or take platform authority.
+         *     Nobody changes their own account here, so the platform always keeps at least one super admin.
+         */
+        patch: operations["platform_accounts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/platform/cities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["platform_cities_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["platform_cities_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/platform/countries/{code}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The place catalogue of one country, with the ids the back office edits by. */
+        get: operations["platform_countries_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description The place catalogue of one country, with the ids the back office edits by. */
+        patch: operations["platform_countries_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/platform/countries/{code}/regions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["platform_countries_regions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GET /platform/organizations/: every club, facility, body and coaching desk, with its admin. */
+        get: operations["platform_organizations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/overview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["platform_overview_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["platform_regions_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["platform_regions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/platform/regions/{id}/cities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["platform_regions_cities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/players/": {
         parameters: {
             query?: never;
@@ -8364,6 +8516,26 @@ export interface components {
             readonly device_time: string | null;
             /** Format: date-time */
             readonly received_at: string;
+        };
+        /** @description An account as the platform's back office sees it. `email` is null for a phone-only account. */
+        Account: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly email: string | null;
+            readonly phone: string | null;
+            readonly display_name: string;
+            /** Format: date-time */
+            readonly email_verified_at: string | null;
+            /** Format: date-time */
+            readonly phone_verified_at: string | null;
+            readonly is_active: boolean;
+            readonly is_platform_admin: boolean;
+            /** @description Active memberships. */
+            readonly organizations: number;
+            /** Format: date-time */
+            readonly date_joined: string;
+            /** Format: date-time */
+            readonly last_login: string | null;
         };
         ActionItem: {
             /** Format: uuid */
@@ -12386,6 +12558,23 @@ export interface components {
          * @enum {string}
          */
         OverridesEnum: "check_in" | "rest" | "not_before";
+        Overview: {
+            accounts: number;
+            /** @description Joined in the last 30 days. */
+            accounts_new: number;
+            accounts_inactive: number;
+            platform_admins: number;
+            /** @description Count per kind. */
+            organizations: {
+                [key: string]: number;
+            };
+            /** @description Count per status. */
+            tournaments: {
+                [key: string]: number;
+            };
+            tournaments_awaiting_approval: number;
+            events_awaiting_review: number;
+        };
         /**
          * @description * `paid` - paid
          *     * `partial` - partial
@@ -12398,6 +12587,21 @@ export interface components {
             /** Format: uuid */
             id: string;
             display_name: string;
+        };
+        PaginatedAccountList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["Account"][];
         };
         PaginatedAdminHandoverList: {
             /** @example 123 */
@@ -12924,6 +13128,21 @@ export interface components {
             previous: string | null;
             results: components["schemas"]["PersonalMatch"][];
         };
+        PaginatedPlatformOrganizationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous: string | null;
+            results: components["schemas"]["PlatformOrganization"][];
+        };
         PaginatedTableBookingList: {
             /** @example 123 */
             count: number;
@@ -13025,6 +13244,10 @@ export interface components {
          * @enum {string}
          */
         PastHolderEndReasonEnum: "replaced" | "stepped_down" | "left" | "position_retired";
+        PatchedAccountChangeRequest: {
+            is_active?: boolean;
+            is_platform_admin?: boolean;
+        };
         /** @description What players change about their own account. A new phone number starts unconfirmed. */
         PatchedAccountUpdateRequest: {
             display_name?: string;
@@ -13131,6 +13354,9 @@ export interface components {
             required?: boolean;
             visibility?: components["schemas"]["MemberFieldVisibilityEnum"];
             applies_to?: components["schemas"]["CommitteeFieldAppliesToEnum"];
+        };
+        PatchedCountryChangeRequest: {
+            catalogue_only?: boolean;
         };
         /** @description A drill. Instructions are required; everything else is optional. */
         PatchedDrillRequest: {
@@ -13322,6 +13548,9 @@ export interface components {
              */
             client_ref?: string | null;
             games?: components["schemas"]["GameRequest"][];
+        };
+        PatchedPlaceInputRequest: {
+            name?: string;
         };
         /** @description A checklist item (no times) or a session (start and end). Its kind is fixed once created. */
         PatchedPlanItemRequest: {
@@ -13716,6 +13945,9 @@ export interface components {
             /** @description Whether they went; null clears it. */
             attended: boolean | null;
         };
+        PlaceInputRequest: {
+            name: string;
+        };
         Placement: {
             label: string;
             entries: components["schemas"]["DrawEntry"][];
@@ -13758,6 +13990,35 @@ export interface components {
             ends_at?: string | null;
             completed?: boolean;
             activities?: components["schemas"]["ActivityRequest"][];
+        };
+        PlatformCity: {
+            readonly id: number;
+            readonly name: string;
+        };
+        PlatformCountry: {
+            readonly code: string;
+            readonly name: string;
+            /** @description Use this catalogue as the source of location choices for this country. */
+            readonly catalogue_only: boolean;
+            readonly regions: components["schemas"]["PlatformRegion"][];
+        };
+        PlatformOrganization: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly kind: components["schemas"]["KindEnum"];
+            readonly town: string;
+            readonly region: string;
+            readonly country: string;
+            readonly members: number;
+            readonly admin_name: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        PlatformRegion: {
+            readonly id: number;
+            readonly name: string;
+            readonly cities: components["schemas"]["PlatformCity"][];
         };
         /**
          * @description Public player page: the directory card plus only the extended details the player published.
@@ -16072,6 +16333,7 @@ export interface components {
             readonly phone_verified_at: string | null;
             /** Format: date-time */
             readonly date_joined: string;
+            readonly is_platform_admin: boolean;
         };
         /** @description A venue with its tables in playing order, and its branch profile (REQ-044). */
         Venue: {
@@ -29875,6 +30137,399 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionInfo"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_accounts_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Part of a name, email or phone (80 characters at most). */
+                search?: string;
+                /** @description Default: all. */
+                show?: "admins" | "all" | "inactive";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAccountList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_accounts_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAccountChangeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_cities_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_cities_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlaceInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformCity"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_countries_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformCountry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_countries_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCountryChangeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformCountry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_countries_regions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformRegion"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_organizations_list: {
+        parameters: {
+            query?: {
+                kind?: "club" | "club_facility" | "coaching" | "facility" | "national_body" | "regional_body";
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Part of a name, town or region. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPlatformOrganizationList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_overview_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Overview"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_regions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_regions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlaceInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformRegion"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    platform_regions_cities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformCity"];
                 };
             };
             /** @description Error envelope */
