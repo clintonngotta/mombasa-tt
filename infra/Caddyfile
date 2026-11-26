@@ -16,8 +16,9 @@
 		# HSTS comes after every host is checked over HTTPS (deployment.md); don't preload early.
 	}
 
-	# The API, its live updates (/api/v1/ws/) and Django admin. Host and the HTTPS scheme are forwarded.
-	@django path /api/* /admin/* /health/*
+	# The API, its live updates (/api/v1/ws/) and Django admin, where the platform owner signs in. Host and
+	# the HTTPS scheme are forwarded. Bare /admin is passed too, so Django sends it on to /admin/.
+	@django path /api/* /admin /admin/* /health/*
 	handle @django {
 		reverse_proxy api:8000
 	}
