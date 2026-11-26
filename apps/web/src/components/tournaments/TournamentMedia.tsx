@@ -1,7 +1,8 @@
-import { useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react"
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Download, FileText, ImagePlus, Trash2 } from "lucide-react"
+import { Download, FileText, ImagePlus, Maximize2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ApiError, apiOriginUrl, errorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -40,52 +41,40 @@ function useCoverUrl(cover: AttachmentLink | null) {
   return { url, onError }
 }
 
-/** The tournament's cover picture on its own, as the organizer's preview. */
-export function TournamentCover({ cover, className }: { cover: AttachmentLink | null; className?: string }) {
+/**
+ * The tournament's cover picture on a canvas of one shape (16:9). The whole picture is always shown, scaled
+ * down to fit whatever its own shape, and a blurred copy of it fills the space left over, so a tall poster
+ * and a wide photo both sit in the same frame uncropped. With `zoom`, the picture opens at full size.
+ * Nothing is drawn without a picture, or when it fails to load.
+ */
+export function CoverCanvas({ cover, zoom = false, className }: { cover: AttachmentLink | null; zoom?: boolean; className?: string }) {
   const { url, onError } = useCoverUrl(cover)
   if (!url) return null
-  return <img src={apiOriginUrl(url)} alt="" onError={onError} className={className ?? "aspect-[16/7] w-full rounded-xl bg-surface-selected object-cover"} />
-}
-
-/**
- * The cover picture as the background of a heading: `children(true)` is drawn over it in white, on a dark
- * fade so the words stay readable on any photo. Without a picture (or when it fails to load) the children
- * are drawn plainly. With `fit`, the block takes the picture's shape: wide for a horizontal photo, tall for
- * a vertical one; otherwise it keeps one height and the picture is cropped around its middle.
- */
-export function CoverBackdrop({
-  cover,
-  fit = false,
-  coverClassName,
-  children,
-}: {
-  cover: AttachmentLink | null
-  fit?: boolean
-  /** Applied only while the picture shows. */
-  coverClassName?: string
-  children: (onCover: boolean) => ReactNode
-}) {
-  const { url, onError } = useCoverUrl(cover)
-  const [vertical, setVertical] = useState(false)
-  if (!url) return <>{children(false)}</>
-  return (
-    <div
-      className={cn(
-        "relative isolate flex flex-col justify-end overflow-hidden bg-brand-navy text-white",
-        fit ? (vertical ? "aspect-[4/5] max-h-[560px] w-full" : "aspect-[16/9] w-full") : "min-h-44",
-        coverClassName,
-      )}
-    >
-      <img
-        src={apiOriginUrl(url)}
-        alt=""
-        onError={onError}
-        onLoad={(event) => setVertical(event.currentTarget.naturalHeight > event.currentTarget.naturalWidth)}
-        className="absolute inset-0 -z-20 size-full object-cover"
-      />
-      <div aria-hidden className="absolute inset-0 -z-10 bg-linear-to-t from-black/80 via-black/35 to-black/10" />
-      {children(true)}
+  const src = apiOriginUrl(url)
+  const canvas = (
+    <div className={cn("relative isolate aspect-[16/9] w-full overflow-hidden bg-brand-navy", className)}>
+      <img src={src} alt="" aria-hidden className="absolute inset-0 -z-10 size-full scale-110 object-cover opacity-70 blur-2xl" />
+      <img src={src} alt="" onError={onError} className="size-full object-contain" />
     </div>
+  )
+  if (!zoom) return canvas
+  return (
+    <Dialog>
+      <DialogTrigger
+        render={
+          <button type="button" className="group relative block w-full cursor-zoom-in rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50" />
+        }
+      >
+        {canvas}
+        <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-sm font-semibold text-white">
+          <Maximize2 aria-hidden className="size-4" /> <span>View full size</span>
+        </span>
+      </DialogTrigger>
+      <DialogContent className="w-auto max-w-[calc(100vw-1rem)] p-2 sm:max-w-[calc(100vw-4rem)]">
+        <DialogTitle className="sr-only">Cover picture</DialogTitle>
+        <img src={src} alt="" onError={onError} className="max-h-[calc(100dvh-5rem)] max-w-full rounded-lg object-contain" />
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -181,7 +170,7 @@ export function TournamentMediaManager({ tournament: t }: { tournament: Tourname
         Cover picture and documents
       </h3>
       <div className="flex flex-col gap-2">
-        <TournamentCover cover={t.cover} />
+        <CoverCanvas cover={t.cover} className="rounded-xl" />
         <div className="flex flex-wrap gap-2">
           <input ref={coverInput} type="file" accept={IMAGE_TYPES} className="sr-only" tabIndex={-1} aria-hidden onChange={onCover} />
           <Button type="button" variant="outline" disabled={cover.isPending || uncover.isPending} onClick={() => coverInput.current?.click()}>
@@ -195,8 +184,8 @@ export function TournamentMediaManager({ tournament: t }: { tournament: Tourname
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          The picture sits behind the tournament's name and is cropped to fit, so keep faces and logos near the middle. JPEG, PNG or WebP up to 5 MB. Location and
-          camera details are removed.
+          The whole picture is shown above the tournament's name, scaled to fit a 16:9 frame, so nothing is cut off. A horizontal photo fills the frame best. JPEG,
+          PNG or WebP up to 5 MB. Location and camera details are removed.
         </p>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
           <dt className="font-semibold">Horizontal photo</dt>
