@@ -1,17 +1,17 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowDown, ArrowUp, X } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
 import { DrawView } from "@/components/tournaments/DrawView"
+import { SeedList } from "@/components/tournaments/SeedList"
 import { EventStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys, getDraw, previewDraw, publishDraw, type EventDraw } from "@/lib/draws"
-import { entryKeys, entryTitle, listEntries, type Entry } from "@/lib/entries"
+import { discardDraw, drawKeys, getDraw, previewDraw, publishDraw, type EventDraw } from "@/lib/draws"
+import { entryKeys, entryTitle, listAllEntries, type Entry } from "@/lib/entries"
 import { canManageTournament, eventSummary, eventTabPath, firstTab, getTournament, isClosed, SEEDING_LABEL, tournamentKeys, type Tournament, type TournamentEvent } from "@/lib/tournaments"
 
 /** The draw of one event (REQ-009): the published draw for everyone, and the organizers' draw desk. */
@@ -82,7 +82,7 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
   )
   const open = t.status !== "draft" && !isClosed(t) && event.status === "scheduled"
   const seeded = event.seeding !== "none"
-  const entries = useQuery({ queryKey: entryKeys.accepted(event.id), queryFn: () => listEntries(t.id, event.id, "accepted"), enabled: open })
+  const entries = useQuery({ queryKey: entryKeys.accepted(event.id), queryFn: () => listAllEntries(t.id, event.id, "accepted"), enabled: open })
   const accepted = entries.data?.results ?? []
   const total = entries.data?.count ?? 0
   const byId = new Map(accepted.map((entry) => [entry.id, entry]))
@@ -93,14 +93,15 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
   }
   const make = useMutation({ mutationFn: () => previewDraw(t.id, event.id, seeded ? chosen : []), onSuccess: settle })
   const publish = useMutation({ mutationFn: () => publishDraw(t.id, event.id), onSuccess: settle })
+  const [deleting, setDeleting] = useState(false) // asked once more before the preview goes
+  const discard = useMutation({
+    mutationFn: () => discardDraw(t.id, event.id),
+    onSuccess: (fresh) => {
+      settle(fresh)
+      setDeleting(false)
+    },
+  })
   const preview = draw.preview
-
-  function move(index: number, by: number) {
-    const next = [...chosen]
-    const [entry] = next.splice(index, 1)
-    next.splice(index + by, 0, entry)
-    setSeeds(next)
-  }
 
   return (
     <section aria-labelledby="draw-desk-heading" className="flex flex-col gap-4 rounded-xl border border-brand-blue/30 bg-surface-selected p-4">
@@ -123,34 +124,13 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
             <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
               <h3 className="text-lg font-bold">Seeds</h3>
               <p className="text-sm text-muted-foreground">
-                Put the seeds in order, best first. {event.seeding === "rating" && "The suggested order uses current rating points. "}
+                Put the seeds in order, best first: drag a row by its handle or use the arrows. {event.seeding === "rating" && "The suggested order uses current rating points. "}
                 Everyone else is drawn by lot.
               </p>
               {event.seeding === "rating" && <Button variant="outline" className="self-start" onClick={() => setSeeds(draw.recommended_seeds)}>
                 Use rating order
               </Button>}
-              {chosen.length > 0 && (
-                <ol className="flex flex-col gap-2" aria-label="Seeds in order">
-                  {chosen.map((id, index) => {
-                    const title = entryTitle(byId.get(id) as Entry)
-                    return (
-                      <li key={id} className="flex min-h-12 items-center gap-1 rounded-lg border pl-3">
-                        <span className="w-6 font-semibold tabular-nums">{index + 1}</span>
-                        <span className="min-w-0 flex-1 break-words">{title}</span>
-                        <Button variant="ghost" size="icon" aria-label={`Move ${title} up`} disabled={index === 0} onClick={() => move(index, -1)}>
-                          <ArrowUp aria-hidden className="size-5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" aria-label={`Move ${title} down`} disabled={index === chosen.length - 1} onClick={() => move(index, 1)}>
-                          <ArrowDown aria-hidden className="size-5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" aria-label={`Unseed ${title}`} onClick={() => setSeeds(chosen.filter((seed) => seed !== id))}>
-                          <X aria-hidden className="size-5" />
-                        </Button>
-                      </li>
-                    )
-                  })}
-                </ol>
-              )}
+              {chosen.length > 0 && <SeedList seeds={chosen} title={(id) => entryTitle(byId.get(id) as Entry)} onChange={setSeeds} />}
               <ul className="flex flex-wrap gap-2" aria-label="Unseeded entries">
                 {accepted
                   .filter((entry) => !chosen.includes(entry.id))
@@ -178,9 +158,33 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
               {preview.stale && <FormAlert>The accepted entries changed since this was drawn. Draw again before publishing.</FormAlert>}
               <DrawView draw={preview} />
               {publish.isError && <FormAlert>{errorMessage(publish.error)}</FormAlert>}
-              <Button size="lg" className="self-start" disabled={publish.isPending || preview.stale} onClick={() => publish.mutate()}>
-                {publish.isPending ? "Publishing…" : draw.published ? "Publish as the new draw" : "Publish draw"}
-              </Button>
+              {discard.isError && <FormAlert>{errorMessage(discard.error)}</FormAlert>}
+              <div className="flex flex-wrap gap-2">
+                <Button size="lg" disabled={publish.isPending || discard.isPending || preview.stale} onClick={() => publish.mutate()}>
+                  {publish.isPending ? "Publishing…" : draw.published ? "Publish as the new draw" : "Publish draw"}
+                </Button>
+                {!deleting && (
+                  <Button size="lg" variant="outline" disabled={publish.isPending} onClick={() => setDeleting(true)}>
+                    Delete this draw
+                  </Button>
+                )}
+              </div>
+              {deleting && (
+                <div role="group" aria-label="Delete this draw" className="flex flex-col gap-2 rounded-lg border border-destructive/40 p-3">
+                  <p>
+                    Delete this preview? Your seeds stay as they are, so you can draw again.
+                    {draw.published && ` The published draw (version ${draw.published.version}) is not affected.`}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="destructive" disabled={discard.isPending} onClick={() => discard.mutate()}>
+                      {discard.isPending ? "Deleting…" : "Yes, delete it"}
+                    </Button>
+                    <Button variant="outline" disabled={discard.isPending} onClick={() => setDeleting(false)}>
+                      Keep it
+                    </Button>
+                  </div>
+                </div>
+              )}
               {draw.published && <p className="text-sm text-muted-foreground">Version {draw.published.version} stays on record as superseded.</p>}
             </div>
           )}

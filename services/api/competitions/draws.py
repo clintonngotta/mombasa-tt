@@ -17,7 +17,9 @@ Nothing here touches the database, so the same inputs always give the same draw.
 import random
 from dataclasses import dataclass, field
 
-MAX_SEEDS = 32
+# The longest seed list a request may carry: a bound on the size of a request, not a rule of play.
+# Every entry of an event may be seeded, whatever its format.
+MAX_SEEDS = 1024
 
 
 class DrawError(ValueError):
@@ -95,12 +97,18 @@ def _seeded_places(size: int, rng: random.Random) -> list[int]:
 
 
 def knockout_lines(entries: list[str], seeds: list[str], rng: random.Random) -> list[str | None]:
-    """The first round, top to bottom; None is a bye."""
+    """The first round, top to bottom; None is a bye.
+
+    The organizers may rank more entries than there are seeded places (half the bracket), up to the
+    whole field. Those ranked below the seeded places are not drawn: the best of them meets the lowest
+    seed, the next the seed above, and so on, so a fully ranked field gives 1 v last, 2 v last but one."""
     size = bracket_size(len(entries))
     byes = size - len(entries)
     order = _seeded_places(size, rng)
     lines: dict[int, str] = dict(zip(order, seeds, strict=False))
     bye_places = {opponent(place) for place in order[:byes]}
+    # No more are ranked than entered, so each of these places is opposite a seed without a bye.
+    lines.update((opponent(order[-rank]), entry) for rank, entry in enumerate(seeds[len(order) :], start=1))
     free = [place for place in range(1, size + 1) if place not in lines and place not in bye_places]
     others = [entry for entry in entries if entry not in set(seeds)]
     rng.shuffle(others)
@@ -225,8 +233,6 @@ def build(
     plan = Plan(seeds={entry: number for number, entry in enumerate(seeds, start=1)})
 
     if event_format == "knockout":
-        if len(seeds) > min(MAX_SEEDS, bracket_size(len(entries)) // 2):
-            raise DrawError("There are more seeds than first-round matches.")
         plan.lines = knockout_lines(entries, seeds, rng)
         plan.matches = _knockout_matches([Side(entry) if entry else None for entry in plan.lines])
     elif event_format == "round_robin":

@@ -58,12 +58,7 @@ def rating_seeds(event: Event) -> list[str]:
         if any(user_id in ratings for user_id in players):
             rating = sum(ratings.get(user_id, START) for user_id in players) / len(players)
             ranked.append((-rating, entry.created_at, str(entry.id)))
-    limit = (
-        min(draws.MAX_SEEDS, draws.bracket_size(len(entries)) // 2)
-        if event.format == Event.Format.KNOCKOUT
-        else draws.MAX_SEEDS
-    )
-    return [entry_id for _, _, entry_id in sorted(ranked)[:limit]]
+    return [entry_id for _, _, entry_id in sorted(ranked)[: draws.MAX_SEEDS]]
 
 
 def is_stale(draw: DrawVersion, places=None) -> bool:
@@ -155,6 +150,18 @@ def _save_plan(draw: DrawVersion, plan: draws.Plan) -> None:
         match.save()
         if planned.stage == Match.Stage.KNOCKOUT:
             knockout[planned.round, planned.position] = match
+
+
+def discard_preview(event: Event) -> None:
+    """Throw the preview away so the organizers can start again. The published draw, if there is one,
+    stays as it is; with no preview there is nothing to do."""
+    for preview in event.draws.filter(status=D.PREVIEW):
+        if event.kind == Event.Kind.JUMBLES:
+            from . import jumbles
+
+            jumbles.drop(preview)
+        else:
+            preview.delete()
 
 
 def publish(event: Event, actor) -> DrawVersion:

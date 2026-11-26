@@ -16924,6 +16924,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/discard/:
+    post:
+      operationId: tournaments_events_draw_discard_create
+      description: |-
+        Delete the preview, before it is published, to start the draw again. The published draw is
+        untouched, and with no preview nothing changes.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDraw'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/preview/:
     post:
       operationId: tournaments_events_draw_preview_create
@@ -24040,7 +24076,7 @@ components:
           items:
             type: string
             format: uuid
-          maxItems: 32
+          maxItems: 1024
         rng_seed:
           type: integer
           maximum: 2147483647

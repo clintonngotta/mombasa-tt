@@ -653,6 +653,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-scoring-conflict-resolve": {"post": STAFF},
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
+    "tournament-event-draw-discard": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": PUBLIC},  # signed out, the name of a listed player with competition records
     "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records

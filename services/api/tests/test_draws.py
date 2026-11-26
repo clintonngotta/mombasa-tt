@@ -5,9 +5,11 @@ The expectations in the fixture tests are worked out by hand from ITTF Statutes 
 """
 
 import random
+import uuid
 from itertools import combinations
 
 import pytest
+from django.core.cache import cache
 
 from competitions import drawing, draws
 from competitions.models import DrawVersion, Entry, Event, Match
@@ -124,9 +126,52 @@ def test_sixteen_entries_eight_seeds_go_to_the_places_named_for_them():
         assert {at[s] for s in seeds[4:]} == {4, 5, 12, 13}
 
 
-def test_more_seeds_than_first_round_matches_or_unknown_seeds_are_refused():
-    with pytest.raises(draws.DrawError):
-        draws.build("knockout", ids(6), ids(6)[:5], 1)
+def test_a_big_knockout_takes_a_seed_for_every_first_round_match():
+    seeds = set(ids(128)[:64])
+    lines = draws.build("knockout", ids(128), ids(128)[:64], 5).lines
+    for first, second in zip(lines[::2], lines[1::2], strict=True):
+        assert (first in seeds) != (second in seeds)  # one seed in every first-round match
+
+
+@pytest.mark.parametrize("rng_seed", range(10))
+def test_a_fully_ranked_knockout_plays_the_first_against_the_last(rng_seed):
+    plan = draws.build("knockout", ids(8), ids(8), rng_seed)
+    assert list(plan.seeds) == ids(8)
+    assert plan.lines[0] == "e01" and plan.lines[7] == "e02"
+    pairs = {frozenset(pair) for pair in zip(plan.lines[::2], plan.lines[1::2], strict=True)}
+    assert pairs == {frozenset(p) for p in (("e01", "e08"), ("e02", "e07"), ("e03", "e06"), ("e04", "e05"))}
+
+
+@pytest.mark.parametrize("rng_seed", range(10))
+def test_entries_ranked_below_the_seeded_places_meet_the_lowest_seeds_and_byes_stay_with_the_best(rng_seed):
+    # 37 entries in a bracket of 64: 27 byes for seeds 1-27, and seeds 33-37 against 32, 31, 30, 29, 28.
+    lines = draws.build("knockout", ids(37), ids(37), rng_seed).lines
+    against = {}
+    for first, second in zip(lines[::2], lines[1::2], strict=True):
+        against[first], against[second] = second, first
+    assert all(against[seed] is None for seed in ids(27))
+    assert [against[seed] for seed in ids(37)[32:]] == ["e32", "e31", "e30", "e29", "e28"]
+    assert sorted(entry for entry in lines if entry) == ids(37)
+    # Six ranked of six: the two byes go to 1 and 2, then 3 v 6 and 4 v 5.
+    lines = draws.build("knockout", ids(6), ids(6), rng_seed).lines
+    pairs = {frozenset(pair) for pair in zip(lines[::2], lines[1::2], strict=True)}
+    assert pairs == {
+        frozenset(("e01", None)),
+        frozenset(("e02", None)),
+        frozenset(("e03", "e06")),
+        frozenset(("e04", "e05")),
+    }
+
+
+def test_every_entry_of_a_group_event_may_be_seeded():
+    plan = draws.build("groups_knockout", ids(37), ids(37), 3, group_count=8, qualifiers_per_group=2)
+    assert [group[0] for group in plan.groups] == ids(8)  # the top eight head a group each
+    assert plan.groups[7][1] == "e09" and plan.groups[0][1] == "e16"  # then the snake turns back
+    assert sorted(len(group) for group in plan.groups) == [4, 4, 4, 5, 5, 5, 5, 5]
+    assert draws.build("round_robin", ids(40), ids(40), 3).groups == [ids(40)]
+
+
+def test_unknown_or_repeated_seeds_and_a_single_entry_are_refused():
     with pytest.raises(draws.DrawError):
         draws.build("knockout", ids(6), ["nobody"], 1)
     with pytest.raises(draws.DrawError):
@@ -268,9 +313,12 @@ def cup(staff, club):
 
 
 def fill(staff, cup, event, count) -> list[dict]:
-    return [
-        enter(staff, cup, event, player_ids=[str(player(f"{event['name']}{n}").id)]) for n in range(count)
-    ]
+    made = []
+    for n in range(count):
+        if n % 25 == 0:
+            cache.clear()  # the entry desk's rate limit is not the subject here
+        made.append(enter(staff, cup, event, player_ids=[str(player(f"{event['name']}{n}").id)]))
+    return made
 
 
 def test_staff_preview_and_publish_a_draw_and_everyone_sees_the_published_one(staff, cup):
@@ -426,6 +474,46 @@ def test_winners_move_on_and_a_bye_is_never_a_played_match(staff, cup):
         drawing.record_result(final, seed)
 
 
+def test_every_entry_may_be_seeded_whatever_the_format(staff, cup):
+    """A national field is bigger than 32: the organizers rank all 34 entries of each event."""
+    for event in cup["events"]:
+        ranked = [entry["id"] for entry in fill(staff, cup, event, 34)]
+        made = staff.post(draw_url(cup, event, "preview"), {"seeded_entry_ids": ranked}, format="json")
+        assert made.status_code == 200, made.json()
+        seeded = sorted((p["seed"], p["entry"]["id"]) for p in made.json()["preview"]["places"])
+        assert [entry_id for _, entry_id in seeded] == ranked
+
+    endless = [ranked[0]] * (draws.MAX_SEEDS + 1)  # a bound on the request, far above any field
+    refused = staff.post(draw_url(cup, event, "preview"), {"seeded_entry_ids": endless}, format="json")
+    assert refused.status_code == 400 and "seeded_entry_ids" in refused.json()["fields"]
+
+
+def test_staff_delete_a_preview_to_draw_again_and_the_published_draw_stays(staff, cup):
+    singles = cup["events"][0]
+    fill(staff, cup, singles, 4)
+    stranger = logged_in(player("Passerby"))
+    assert stranger.post(draw_url(cup, singles, "discard"), {}, format="json").status_code == 403
+
+    staff.post(draw_url(cup, singles, "preview"), {"rng_seed": 1}, format="json")
+    cleared = staff.post(draw_url(cup, singles, "discard"), {}, format="json")
+    assert cleared.status_code == 200 and cleared.json()["preview"] is None
+    assert not DrawVersion.objects.exists() and not Match.objects.exists()
+    assert staff.post(draw_url(cup, singles, "discard"), {}, format="json").status_code == 200  # nothing left
+    assert staff.post(draw_url(cup, singles, "publish"), {}, format="json").json()["code"] == "no_preview"
+
+    staff.post(draw_url(cup, singles, "preview"), {"rng_seed": 2}, format="json")
+    published = staff.post(draw_url(cup, singles, "publish"), {}, format="json").json()["published"]
+    staff.post(draw_url(cup, singles, "preview"), {"rng_seed": 3}, format="json")
+    after = staff.post(draw_url(cup, singles, "discard"), {}, format="json").json()
+    assert after["preview"] is None and after["published"]["id"] == published["id"]
+    assert after["published"]["matches"] == published["matches"]
+
+    do(staff, cup, "start")
+    do(staff, cup, "start", singles)
+    closed = staff.post(draw_url(cup, singles, "discard"), {}, format="json")
+    assert closed.status_code == 409 and closed.json()["code"] == "draw_closed"
+
+
 def test_draws_are_for_staff_before_the_event_starts(staff, club, cup):
     singles, groups = cup["events"]
     entries = fill(staff, cup, singles, 2)
@@ -438,7 +526,7 @@ def test_draws_are_for_staff_before_the_event_starts(staff, club, cup):
         assert response.status_code == 409 and response.json()["code"] == code, response.json()
 
     refused(groups, "draw_not_possible")  # nobody has entered
-    refused(singles, "draw_not_possible", seeded_entry_ids=[entries[0]["id"], entries[1]["id"]])
+    refused(singles, "draw_not_possible", seeded_entry_ids=[entries[0]["id"], str(uuid.uuid4())])
     staff.patch(url(cup, event=singles), {"seeding": "none"}, format="json")
     refused(singles, "unseeded_event", seeded_entry_ids=[entries[0]["id"]])
 
