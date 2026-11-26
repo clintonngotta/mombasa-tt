@@ -1276,8 +1276,8 @@ paths:
   /api/v1/me/admin-nominations/:
     get:
       operationId: me_admin_nominations_list
-      description: Open nominations naming the signed-in player as an organization's
-        next admin.
+      description: Open nominations naming the signed-in player as an admin of an
+        organization.
       parameters:
       - name: page
         required: false
@@ -1311,8 +1311,8 @@ paths:
   /api/v1/me/admin-nominations/{id}/accept/:
     post:
       operationId: me_admin_nominations_accept_create
-      description: Open nominations naming the signed-in player as an organization's
-        next admin.
+      description: Open nominations naming the signed-in player as an admin of an
+        organization.
       parameters:
       - in: path
         name: id
@@ -1341,8 +1341,8 @@ paths:
   /api/v1/me/admin-nominations/{id}/decline/:
     post:
       operationId: me_admin_nominations_decline_create
-      description: Open nominations naming the signed-in player as an organization's
-        next admin.
+      description: Open nominations naming the signed-in player as an admin of an
+        organization.
       parameters:
       - in: path
         name: id
@@ -6109,8 +6109,8 @@ paths:
   /api/v1/organizations/{organization_pk}/admin/:
     get:
       operationId: organizations_admin_retrieve
-      description: 'GET /organizations/{id}/admin/: any member sees who the admin
-        is.'
+      description: 'GET /organizations/{id}/admin/: any member sees who the admins
+        are.'
       parameters:
       - in: path
         name: organization_pk
@@ -6180,6 +6180,11 @@ paths:
         required: true
       tags:
       - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelNominationRequest'
       security:
       - sessionAuth: []
       responses:
@@ -6217,6 +6222,35 @@ paths:
       - sessionAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHandover'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/admin/step-down/:
+    post:
+      operationId: organizations_admin_step_down_create
+      description: 'POST /organizations/{id}/admin/step-down/: an admin gives up the
+        role while another remains.'
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
           content:
             application/json:
               schema:
@@ -11481,8 +11515,9 @@ paths:
   /api/v1/organizations/{organization_pk}/members/{id}/remove/:
     post:
       operationId: organizations_members_remove_create
-      description: End someone's membership. Nobody can remove a member who holds
-        permissions they don't.
+      description: |-
+        End someone's membership. Nobody can remove a member who holds permissions they don't, or
+        another admin.
       parameters:
       - in: path
         name: id
@@ -20263,11 +20298,15 @@ components:
     AdminHandoverKindEnum:
       enum:
       - nomination
+      - addition
       - appointment
+      - step_down
       type: string
       description: |-
         * `nomination` - Nomination
+        * `addition` - Addition
         * `appointment` - Appointment
+        * `step_down` - Step Down
     AdminHandoverStatusEnum:
       enum:
       - pending
@@ -20749,6 +20788,9 @@ components:
           type: string
           minLength: 1
           maxLength: 300
+        replace_membership_id:
+          type: string
+          format: uuid
       required:
       - membership_id
       - reason
@@ -21801,6 +21843,12 @@ components:
           maxLength: 300
       required:
       - reason
+    CancelNominationRequest:
+      type: object
+      properties:
+        handover_id:
+          type: string
+          format: uuid
     CancelRequest:
       type: object
       properties:
@@ -29436,6 +29484,14 @@ components:
       - planned_at
       - table
       - table_id
+    NominateKindEnum:
+      enum:
+      - nomination
+      - addition
+      type: string
+      description: |-
+        * `nomination` - nomination
+        * `addition` - addition
     NominateRepresentativeRequest:
       type: object
       description: Refuses fields it doesn't know.
@@ -29463,6 +29519,10 @@ components:
         membership_id:
           type: string
           format: uuid
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/NominateKindEnum'
+          default: nomination
       required:
       - membership_id
     NotBefore:
@@ -30028,17 +30088,28 @@ components:
       - town
     OrganizationAdmin:
       type: object
-      description: Who the admin is and any open nomination; the history only for
-        those who manage roles.
+      description: |-
+        Who the admins are and the open nominations; the history only for those who manage roles.
+        `admin` and `pending` are the first of `admins` and `nominations`, kept for older clients.
       properties:
         admin:
           allOf:
           - $ref: '#/components/schemas/Person'
           nullable: true
+        admins:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        limit:
+          type: integer
         pending:
           allOf:
           - $ref: '#/components/schemas/AdminHandover'
           nullable: true
+        nominations:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminHandover'
         history:
           type: array
           items:
@@ -30046,7 +30117,10 @@ components:
           nullable: true
       required:
       - admin
+      - admins
       - history
+      - limit
+      - nominations
       - pending
     OrganizationRef:
       type: object

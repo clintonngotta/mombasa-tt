@@ -15,6 +15,7 @@ import {
   listMembers,
   listRoles,
   nominateAdmin,
+  type AdminNominationKind,
   removeMember,
   roleNames,
   saveMemberValues,
@@ -172,15 +173,16 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
   })
   const remove = useMutation({ mutationFn: () => removeMember(orgId, member.id), onSettled: refresh })
   const nominate = useMutation({
-    mutationFn: () => nominateAdmin(orgId, member.id),
+    mutationFn: (kind: AdminNominationKind) => nominateAdmin(orgId, member.id, kind),
     onSuccess: () => setConfirmAdmin(false),
     onSettled: () => queryClient.invalidateQueries({ queryKey: clubKeys.admin(orgId) }),
   })
   const iAmAdmin = membership.roles.some((role) => role.key === "admin")
+  const memberIsAdmin = member.roles.some((role) => role.key === "admin")
 
   // Offer only what the server would allow: roles whose permissions the actor holds can be toggled.
   const assignable = roles.filter((role) => role.key !== "member")
-  // The Admin role moves only by nomination (REQ-045), never in the role editor.
+  // The Admin role is given only by nomination (REQ-045), never in the role editor.
   const options = assignable.map((role) => ({
     value: role.id,
     label: role.name,
@@ -190,7 +192,7 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
   }))
   const heldPermissions = roles.filter((role) => member.roles.some((r) => r.id === role.id)).flatMap((r) => r.permissions)
   const canRemove =
-    roles.length > 0 && can(membership, "members.manage") && !isSelf && withinAuthority(membership, heldPermissions)
+    roles.length > 0 && can(membership, "members.manage") && !isSelf && !memberIsAdmin && withinAuthority(membership, heldPermissions)
 
   return (
     <li className={ROW}>
@@ -224,8 +226,8 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
               Roles
             </Button>
           )}
-          {iAmAdmin && !isSelf && !member.is_guest && (
-            <Button variant="outline" aria-label={`Make ${name} the admin`} onClick={() => setConfirmAdmin(true)}>
+          {iAmAdmin && !isSelf && !member.is_guest && !memberIsAdmin && (
+            <Button variant="outline" aria-label={`Make ${name} an admin`} onClick={() => setConfirmAdmin(true)}>
               Make admin
             </Button>
           )}
@@ -271,17 +273,23 @@ function MemberRow({ member, membership, roles }: { member: Member; membership: 
       {showDetails && can(membership, "members.manage") && <MemberDetails orgId={orgId} member={member} name={name} onClose={() => setShowDetails(false)} />}
 
       {confirmAdmin && (
-        <div className="flex w-full flex-wrap items-center gap-2">
-          <p className="flex-1 text-sm">
-            Nominate {name} as the club admin? Once they accept, they take over and you keep only your other roles. You can cancel until then.
+        <div className="flex w-full flex-col gap-2">
+          <p className="text-sm">
+            Nominate {name} as a club admin? Nothing changes until they accept, and you can cancel until then. Add them to be an admin beside you (a club has up to
+            three), or hand over your own place and keep only your other roles.
           </p>
           {nominate.isError && <FormAlert>{errorMessage(nominate.error)}</FormAlert>}
-          <Button variant="outline" onClick={() => setConfirmAdmin(false)}>
-            Keep
-          </Button>
-          <Button disabled={nominate.isPending} onClick={() => nominate.mutate()}>
-            {nominate.isPending ? "Nominating…" : "Nominate"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setConfirmAdmin(false)}>
+              Keep
+            </Button>
+            <Button disabled={nominate.isPending} aria-label={`Add ${name} as an admin`} onClick={() => nominate.mutate("addition")}>
+              {nominate.isPending && nominate.variables === "addition" ? "Nominating…" : "Add as admin"}
+            </Button>
+            <Button variant="outline" disabled={nominate.isPending} aria-label={`Hand over my admin place to ${name}`} onClick={() => nominate.mutate("nomination")}>
+              {nominate.isPending && nominate.variables === "nomination" ? "Nominating…" : "Hand over my place"}
+            </Button>
+          </div>
         </div>
       )}
 

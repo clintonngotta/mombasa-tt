@@ -27,7 +27,7 @@ from notifications.service import notify
 
 from .access import effective_permissions, lock_organization, require_membership, require_permission
 from .committee import local_today
-from .handover import OrganizationRefSerializer, PersonSerializer, current_admin
+from .handover import OrganizationRefSerializer, PersonSerializer, admin_memberships
 from .models import Membership, Organization, Representative
 from .permissions import Permission
 
@@ -156,11 +156,10 @@ def nominate(sender: Organization, actor, *, membership_id, term_start, term_end
         replaces=replaced,
         nominated_by=actor,
     )
-    admin = current_admin(body)
     _tell(
         representative,
         f"{sender.name} nominated a representative to {body.name}",
-        also=[admin.user_id] if admin else [],
+        also=[admin.user_id for admin in admin_memberships(body)],
     )
     return representative
 

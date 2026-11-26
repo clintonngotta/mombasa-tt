@@ -19,7 +19,7 @@ from .permissions import ALL_PERMISSIONS, Permission, RoleKey
 
 def position_roles(membership: Membership) -> list[Role]:
     """Roles granted by the committee positions the membership currently holds (REQ-045). Admin is never
-    granted this way: the organization has one admin, changed only by handover."""
+    granted this way: admins change only by nomination and acceptance."""
     return list(
         Role.objects.filter(
             organization=membership.organization_id,
@@ -158,7 +158,7 @@ def ensure_admin_remains(organization: Organization, losing: Membership) -> None
     if losing.roles.filter(key=RoleKey.ADMIN).exists() and not others.exists():
         raise ApiException(
             "last_admin",
-            "An organization needs its admin. Nominate a successor, who accepts, before leaving.",
+            "An organization needs an admin. Nominate another admin, who accepts, first.",
             409,
         )
 

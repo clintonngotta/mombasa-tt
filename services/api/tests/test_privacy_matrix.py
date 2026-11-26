@@ -496,10 +496,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-guest-claim-reject": {"post": STAFF},
     "organization-roles": {"get": STAFF, "post": STAFF},
     "organization-role": {"patch": STAFF, "delete": STAFF},
-    # REQ-045: members see who the admin is; only the admin nominates or cancels; the nominee answers.
+    # REQ-045: members see who the admins are; only an admin nominates, cancels or steps down; the nominee
+    # answers.
     "organization-admin": {"get": MEMBER},
     "organization-admin-nominate": {"post": STAFF},
     "organization-admin-cancel": {"post": STAFF},
+    "organization-admin-step-down": {
+        "post": STAFF
+    },  # refused for the only admin (409), see test_admin_handover
     "organization-admin-appoint": {"post": APPROVER},  # platform super admins only, see test_admin_handover
     "me-admin-nomination-list": {"get": OWNER},
     "me-admin-nomination-accept": {"post": OWNER},

@@ -303,12 +303,16 @@ class Invitation(models.Model):
 
 
 class AdminHandover(models.Model):
-    """Who is an organization's one admin, and how that changed (REQ-045). The admin nominates a member,
-    who must accept; a platform super admin can appoint one directly with a reason. Every row is kept."""
+    """Who an organization's admins are (at most three), and how that changed (REQ-045). An admin
+    nominates a member as a further admin or as their successor, who must accept; an admin can step down
+    while another remains; a platform super admin can appoint one directly with a reason. Every row is
+    kept. For a step-down, `from_user` and `to_user` are both the admin who left the role."""
 
     class Kind(models.TextChoices):
-        NOMINATION = "nomination"
+        NOMINATION = "nomination"  # a successor: the nominator hands the role over
+        ADDITION = "addition"  # a further admin beside the nominator
         APPOINTMENT = "appointment"
+        STEP_DOWN = "step_down"
 
     class Status(models.TextChoices):
         PENDING = "pending"
@@ -335,9 +339,9 @@ class AdminHandover(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["organization"],
+                fields=["organization", "to_user"],
                 condition=models.Q(status="pending"),
-                name="org_one_pending_admin_handover",
+                name="org_one_pending_handover_per_nominee",
             ),
         ]
 
