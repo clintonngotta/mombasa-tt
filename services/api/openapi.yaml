@@ -14393,6 +14393,388 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/accounts/:
+    get:
+      operationId: platform_accounts_list
+      description: 'GET /platform/accounts/: every account, newest first.'
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Part of a name, email or phone (80 characters at most).
+      - in: query
+        name: show
+        schema:
+          type: string
+          enum:
+          - admins
+          - all
+          - inactive
+        description: 'Default: all.'
+      tags:
+      - platform
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAccountList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/accounts/{id}/:
+    patch:
+      operationId: platform_accounts_partial_update
+      description: |-
+        PATCH /platform/accounts/{id}/: switch an account off or on, or give or take platform authority.
+        Nobody changes their own account here, so the platform always keeps at least one super admin.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAccountChangeRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/cities/{id}/:
+    patch:
+      operationId: platform_cities_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlaceInputRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformCity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: platform_cities_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - platform
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/countries/{code}/:
+    get:
+      operationId: platform_countries_retrieve
+      description: The place catalogue of one country, with the ids the back office
+        edits by.
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        required: true
+      tags:
+      - platform
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformCountry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      operationId: platform_countries_partial_update
+      description: The place catalogue of one country, with the ids the back office
+        edits by.
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        required: true
+      tags:
+      - platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCountryChangeRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformCountry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/countries/{code}/regions/:
+    post:
+      operationId: platform_countries_regions_create
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        required: true
+      tags:
+      - platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceInputRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformRegion'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/organizations/:
+    get:
+      operationId: platform_organizations_list
+      description: 'GET /platform/organizations/: every club, facility, body and coaching
+        desk, with its admin.'
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - club
+          - club_facility
+          - coaching
+          - facility
+          - national_body
+          - regional_body
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Part of a name, town or region.
+      tags:
+      - platform
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlatformOrganizationList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/overview/:
+    get:
+      operationId: platform_overview_retrieve
+      tags:
+      - platform
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Overview'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/regions/{id}/:
+    patch:
+      operationId: platform_regions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlaceInputRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformRegion'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      operationId: platform_regions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - platform
+      security:
+      - sessionAuth: []
+      responses:
+        '204':
+          description: No response body
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/platform/regions/{id}/cities/:
+    post:
+      operationId: platform_regions_cities_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceInputRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformCity'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/players/:
     get:
       operationId: players_list
@@ -19540,6 +19922,67 @@ components:
       - id
       - received_at
       - sequence
+    Account:
+      type: object
+      description: An account as the platform's back office sees it. `email` is null
+        for a phone-only account.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          nullable: true
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+          nullable: true
+        display_name:
+          type: string
+          readOnly: true
+        email_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        phone_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+          readOnly: true
+        is_platform_admin:
+          type: boolean
+          readOnly: true
+        organizations:
+          type: integer
+          readOnly: true
+          description: Active memberships.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - date_joined
+      - display_name
+      - email
+      - email_verified_at
+      - id
+      - is_active
+      - is_platform_admin
+      - last_login
+      - organizations
+      - phone
+      - phone_verified_at
     ActionItem:
       type: object
       properties:
@@ -29729,6 +30172,41 @@ components:
         * `check_in` - check_in
         * `rest` - rest
         * `not_before` - not_before
+    Overview:
+      type: object
+      properties:
+        accounts:
+          type: integer
+        accounts_new:
+          type: integer
+          description: Joined in the last 30 days.
+        accounts_inactive:
+          type: integer
+        platform_admins:
+          type: integer
+        organizations:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Count per kind.
+        tournaments:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Count per status.
+        tournaments_awaiting_approval:
+          type: integer
+        events_awaiting_review:
+          type: integer
+      required:
+      - accounts
+      - accounts_inactive
+      - accounts_new
+      - events_awaiting_review
+      - organizations
+      - platform_admins
+      - tournaments
+      - tournaments_awaiting_approval
     OwedStatusEnum:
       enum:
       - paid
@@ -29752,6 +30230,31 @@ components:
       required:
       - display_name
       - id
+    PaginatedAccountList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
     PaginatedAdminHandoverList:
       type: object
       required:
@@ -30627,6 +31130,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PersonalMatch'
+    PaginatedPlatformOrganizationList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformOrganization'
     PaginatedTableBookingList:
       type: object
       required:
@@ -30859,6 +31387,13 @@ components:
         * `stepped_down` - Stepped Down
         * `left` - Left
         * `position_retired` - Position Retired
+    PatchedAccountChangeRequest:
+      type: object
+      properties:
+        is_active:
+          type: boolean
+        is_platform_admin:
+          type: boolean
     PatchedAccountUpdateRequest:
       type: object
       description: What players change about their own account. A new phone number
@@ -31121,6 +31656,11 @@ components:
           $ref: '#/components/schemas/MemberFieldVisibilityEnum'
         applies_to:
           $ref: '#/components/schemas/CommitteeFieldAppliesToEnum'
+    PatchedCountryChangeRequest:
+      type: object
+      properties:
+        catalogue_only:
+          type: boolean
     PatchedDrillRequest:
       type: object
       description: A drill. Instructions are required; everything else is optional.
@@ -31611,6 +32151,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GameRequest'
+    PatchedPlaceInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
     PatchedPlanItemRequest:
       type: object
       description: A checklist item (no times) or a session (start and end). Its kind
@@ -32487,6 +33034,15 @@ components:
           description: Whether they went; null clears it.
       required:
       - attended
+    PlaceInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+      required:
+      - name
     Placement:
       type: object
       properties:
@@ -32599,6 +33155,104 @@ components:
           maxItems: 20
       required:
       - kind
+    PlatformCity:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
+    PlatformCountry:
+      type: object
+      properties:
+        code:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        catalogue_only:
+          type: boolean
+          readOnly: true
+          description: Use this catalogue as the source of location choices for this
+            country.
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformRegion'
+          readOnly: true
+      required:
+      - catalogue_only
+      - code
+      - name
+      - regions
+    PlatformOrganization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          readOnly: true
+        town:
+          type: string
+          readOnly: true
+        region:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        members:
+          type: integer
+          readOnly: true
+        admin_name:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - admin_name
+      - country
+      - created_at
+      - id
+      - kind
+      - members
+      - name
+      - region
+      - town
+    PlatformRegion:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        cities:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformCity'
+          readOnly: true
+      required:
+      - cities
+      - id
+      - name
     Player:
       type: object
       description: |-
@@ -38154,12 +38808,16 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_platform_admin:
+          type: boolean
+          readOnly: true
       required:
       - date_joined
       - display_name
       - email
       - email_verified_at
       - id
+      - is_platform_admin
       - phone
       - phone_verified_at
     Venue:

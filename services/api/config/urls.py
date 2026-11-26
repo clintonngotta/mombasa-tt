@@ -88,6 +88,7 @@ api_v1 = [
     path("rankings/geography/", GeographyRankingView.as_view(), name="geography-rankings"),
     path("geography/countries/", CountryOptionsView.as_view(), name="geography-countries"),
     path("geography/countries/<str:code>/", CountryCatalogueView.as_view(), name="geography-country"),
+    path("platform/", include("backoffice.urls")),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
 ]
 
@@ -95,5 +96,7 @@ urlpatterns = [
     path("health/live", core_views.live, name="health-live"),
     path("health/ready", core_views.ready, name="health-ready"),
     path("api/v1/", include(api_v1)),
-    path("admin/", admin.site.urls),
+    # Django admin is a fallback for operators on the server: the proxy doesn't pass this path, and
+    # /admin is the app's own back office (REQ-056, /api/v1/platform/).
+    path("django-admin/", admin.site.urls),
 ]

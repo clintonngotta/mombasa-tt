@@ -113,7 +113,7 @@ def test_the_shared_cache_keeps_json_not_pickle():
 
 
 def test_admin_login_is_refused_while_the_count_is_out_of_reach(client, counts_down):
-    answer = client.post("/admin/login/", {"username": "root@example.com", "password": "guess"})
+    answer = client.post("/django-admin/login/", {"username": "root@example.com", "password": "guess"})
     assert answer.status_code == 429
 
 

@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from core.geography import CountryField, validate_location
+from core.permissions import is_platform_super_admin
 
 from .models import User, normalize_email
 from .phones import looks_like_phone, normalize_phone
@@ -12,6 +13,8 @@ class UserSerializer(serializers.ModelSerializer):
     """The signed-in player's own account. `email` is null for an account that signs in by phone only."""
 
     email = serializers.SerializerMethodField()
+    # Opens the back office at /admin; every route there checks it again on the server.
+    is_platform_admin = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -23,11 +26,15 @@ class UserSerializer(serializers.ModelSerializer):
             "email_verified_at",
             "phone_verified_at",
             "date_joined",
+            "is_platform_admin",
         ]
         read_only_fields = fields
 
     def get_email(self, user) -> str | None:
         return user.email if user.can_receive_email else None
+
+    def get_is_platform_admin(self, user) -> bool:
+        return is_platform_super_admin(user)
 
 
 class EmailField(serializers.EmailField):

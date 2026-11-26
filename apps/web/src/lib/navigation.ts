@@ -9,6 +9,7 @@ import {
   Map,
   MapPin,
   Medal,
+  ShieldCheck,
   Swords,
   Trophy,
   UserRound,
@@ -41,6 +42,8 @@ const RANKINGS: NavItem = { to: "/rankings", label: "Rankings", icon: Trophy }
 const CLUB: NavItem = { to: "/club", label: "Club", icon: Users }
 const COACHING: NavItem = { to: "/coaching", label: "Coaching", icon: GraduationCap }
 const REGIONAL: NavItem = { to: "/regional", label: "Regional", icon: Map }
+// The platform's back office, for platform super admins (REQ-056).
+const ADMIN: NavItem = { to: "/admin", label: "Admin", icon: ShieldCheck }
 // Everyone's tournaments: find one, enter, follow the scores. The organizer's own list and dashboards
 // live under /club/tournaments and are reached from this tab, so they light it up too.
 const TOURNAMENTS: NavItem = { to: "/tournaments", label: "Tournaments", icon: Medal, also: ["/club/tournaments"] }
@@ -91,7 +94,7 @@ export function useNavigation() {
   })
 
   const mode: NavMode = facility ? "facility" : "person"
-  const roles = [...(coach.data ? [COACHING] : []), ...(isOfficial(all) ? [REGIONAL] : [])]
+  const roles = [...(coach.data ? [COACHING] : []), ...(isOfficial(all) ? [REGIONAL] : []), ...(me.data?.is_platform_admin ? [ADMIN] : [])]
   // Until the memberships arrive we can't tell a facility from a person, so show no menu rather than the wrong one.
   const loading = signedIn && memberships.isPending
   const items = loading ? [] : facility && active ? facilityItems(active) : [HOME, TOURNAMENTS, PLAY, TRAINING, RANKINGS, ...roles, CLUB, PROFILE]

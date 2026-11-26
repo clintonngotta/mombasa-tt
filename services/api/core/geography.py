@@ -2,7 +2,7 @@ import unicodedata
 
 from rest_framework import serializers
 
-from .models import Country, Region
+from .models import City, Country, Region
 
 # ISO 3166-1 alpha-2 and XK, the user-assigned code used by the location picker.
 COUNTRY_CODES = frozenset(
@@ -91,3 +91,55 @@ def validate_coordinates(attrs, instance=None):
     if (latitude is None) != (longitude is None):
         missing = "longitude" if longitude is None else "latitude"
         raise serializers.ValidationError({missing: "Enter both latitude and longitude, or neither."})
+
+
+def region_changed(previous: Region, region: Region) -> None:
+    """A region was renamed or moved to another country: places are stored by name on profiles and
+    organizations, so they follow it, and past appointments keep pointing at the right country."""
+    from organizations.models import OfficialAppointment, Organization
+    from profiles.models import PlayerProfile
+
+    if previous.name == region.name and previous.country_id == region.country_id:
+        return
+    for model in (PlayerProfile, Organization):
+        model.objects.filter(country=previous.country_id, region__iexact=previous.name).update(
+            country=region.country_id, region=region.name
+        )
+    OfficialAppointment.objects.filter(region=region).update(country=region.country)
+
+
+def city_changed(previous: City, city: City) -> None:
+    """A town was renamed or moved to another region: profiles and organizations there follow it.
+    `previous` must carry its region."""
+    from organizations.models import Organization
+    from profiles.models import PlayerProfile
+
+    if previous.name == city.name and previous.region_id == city.region_id:
+        return
+    before = {"country": previous.region.country_id, "region__iexact": previous.region.name}
+    after = {"country": city.region.country_id, "region": city.region.name}
+    PlayerProfile.objects.filter(**before, city__iexact=previous.name).update(**after, city=city.name)
+    Organization.objects.filter(**before, town__iexact=previous.name).update(**after, town=city.name)
+
+
+def region_in_use(region: Region) -> bool:
+    from organizations.models import Organization
+    from profiles.models import PlayerProfile
+
+    where = {"country": region.country_id, "region__iexact": region.name}
+    return (
+        region.cities.exists()
+        or Organization.objects.filter(**where).exists()
+        or PlayerProfile.objects.filter(**where).exists()
+    )
+
+
+def city_in_use(city: City) -> bool:
+    from organizations.models import Organization
+    from profiles.models import PlayerProfile
+
+    where = {"country": city.region.country_id, "region__iexact": city.region.name}
+    return (
+        Organization.objects.filter(**where, town__iexact=city.name).exists()
+        or PlayerProfile.objects.filter(**where, city__iexact=city.name).exists()
+    )

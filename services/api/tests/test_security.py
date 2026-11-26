@@ -63,7 +63,7 @@ def test_a_websocket_from_another_site_is_refused():
 def test_admin_login_guessing_is_rate_limited(client):
     cache.clear()
     answers = [
-        client.post("/admin/login/", {"username": "root@example.com", "password": "guess"}).status_code
+        client.post("/django-admin/login/", {"username": "root@example.com", "password": "guess"}).status_code
         for _ in range(11)
     ]
     assert 429 not in answers[:10] and answers[10] == 429
