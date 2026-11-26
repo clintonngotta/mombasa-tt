@@ -2611,7 +2611,9 @@ def test_staff_actions_succeed_for_the_clubs_own_admin(world):
                 continue
             response = call(client, method, name, world.url(name, names))
             # The join request was approved a moment earlier, so rejecting it is a conflict, not a refusal.
-            expected = {409} if name == "organization-join-request-reject" else {200, 201, 204}
+            # Amina is the club's only admin, so her stepping down is a conflict too.
+            conflicts = ("organization-join-request-reject", "organization-admin-step-down")
+            expected = {409} if name in conflicts else {200, 201, 204}
             assert response.status_code in expected, f"{method.upper()} {name}: {response.content}"
 
 
