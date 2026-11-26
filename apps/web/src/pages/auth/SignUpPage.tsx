@@ -9,11 +9,16 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { MIN_PASSWORD_LENGTH, signUp } from "@/lib/auth"
 import { safeNext } from "@/lib/session"
 import { EMPTY_LOCATION, locationErrors } from "@/lib/geography"
+import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
+import { isSignUpAs, SIGN_UP_AS, type SignUpAs } from "@/lib/onboarding"
 
 export function SignUpPage() {
   const navigate = useNavigate()
   // Where they came from, such as an event to enter: the verification link and "Log in" both keep it.
-  const returnTo = safeNext(useSearchParams()[0].get("next"), "")
+  const [params] = useSearchParams()
+  const returnTo = safeNext(params.get("next"), "")
+  const asParam = params.get("as")
+  const [signUpAs, setSignUpAs] = useState<SignUpAs>(isSignUpAs(asParam) ? asParam : "player")
   const [form, setForm] = useState({ display_name: "", email: "", password: "", ...EMPTY_LOCATION })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -37,14 +42,16 @@ export function SignUpPage() {
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email address."
     if (form.password.length < MIN_PASSWORD_LENGTH) next.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
     setErrors(next)
-    if (Object.keys(next).length === 0) mutation.mutate({ ...form, display_name: form.display_name.trim(), ...(returnTo && { next: returnTo }) })
+    // A coach, club or facility goes on to set that up after onboarding; a player goes back where they came from.
+    const after = SIGN_UP_AS.find((option) => option.value === signUpAs)?.next ?? returnTo
+    if (Object.keys(next).length === 0) mutation.mutate({ ...form, display_name: form.display_name.trim(), ...(after && { next: after }) })
   }
 
   const fieldErrorShown = Object.keys(errors).length > 0
   return (
     <AuthLayout
       title="Create your account"
-      description="One player profile works across every club and tournament on Coast TT."
+      description="One account works across every club and tournament on Coast TT."
       footer={
         <>
           Already have an account?{" "}
@@ -56,6 +63,13 @@ export function SignUpPage() {
     >
       <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
         {mutation.isError && !fieldErrorShown && <FormAlert>{errorMessage(mutation.error)}</FormAlert>}
+        <ChoiceGroup legend="I'm signing up as" options={SIGN_UP_AS.map(({ value, label, description }) => ({ value, label, description }))} value={signUpAs} onChange={setSignUpAs} />
+        <p className="-mt-2 text-sm text-muted-foreground">
+          {signUpAs === "player"
+            ? "You can become a coach or register a club or facility later."
+            : "You get a player account first, then we take you to set this up."}{" "}
+          Regional and national officials are added by the platform admin.
+        </p>
         <Field
           label="Display name"
           autoComplete="name"
