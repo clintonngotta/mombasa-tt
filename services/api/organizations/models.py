@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from core.timezones import DEFAULT_TIMEZONE
 
-from .permissions import ALL_PERMISSIONS, ROLE_TEMPLATES, Permission, RoleKey
+from .permissions import ALL_PERMISSIONS, BODY_ROLES, ROLE_TEMPLATES, Permission, RoleKey
 
 INVITATION_TTL = timedelta(days=14)
 
@@ -24,6 +24,9 @@ class Organization(models.Model):
         # The table tennis body of one catalogue region (REQ-045, REQ-048): it runs regional tournaments,
         # meetings, the yearly agenda, articles to the region's clubs and sponsorships.
         REGIONAL_BODY = "regional_body"
+        # The country's table tennis body (REQ-045): one per country; its officials approve national
+        # tournaments. Like a regional body it is created by a platform super admin (TASK-107).
+        NATIONAL_BODY = "national_body"
         # A coach's own organizing desk (REQ-047): set up from their coach profile so they can run
         # tournaments under their own name or their firm's. Never listed in the club directory.
         COACHING = "coaching"
@@ -40,6 +43,9 @@ class Organization(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.CLUB)
+    # A governing body's limit on the representatives each club (or region) may have with it at once,
+    # pending nominations included. Empty for no limit (REQ-045).
+    representative_cap = models.PositiveSmallIntegerField(null=True, blank=True)
     # Dates of the organization's tournaments and activities are entered and shown in this timezone.
     timezone = models.CharField(max_length=64, default=DEFAULT_TIMEZONE)
     created_by = models.ForeignKey(
@@ -60,23 +66,41 @@ class Organization(models.Model):
                 condition=~models.Q(kind="regional_body") | (~models.Q(country="") & ~models.Q(region="")),
                 name="regional_body_has_region",
             ),
+            models.UniqueConstraint(
+                "country", condition=models.Q(kind="national_body"), name="one_body_per_country"
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(kind="national_body") | (~models.Q(country="") & models.Q(region="")),
+                name="national_body_has_country",
+            ),
             models.CheckConstraint(
                 condition=models.Q(latitude__isnull=True, longitude__isnull=True)
                 | models.Q(latitude__gte=-90, latitude__lte=90, longitude__gte=-180, longitude__lte=180),
                 name="organization_coordinates_valid",
             ),
         ]
+        # Finding clubs near a point narrows on these first (core.nearby).
+        indexes = [models.Index(fields=["latitude", "longitude"], name="organization_position")]
 
     def __str__(self):
         return self.name
 
     @property
     def is_body(self) -> bool:
-        return self.kind == self.Kind.REGIONAL_BODY
+        """A governing body: regional or national (REQ-045)."""
+        return self.kind in BODY_KINDS
+
+    @property
+    def is_national_body(self) -> bool:
+        return self.kind == self.Kind.NATIONAL_BODY
 
     @property
     def is_coaching(self) -> bool:
         return self.kind == self.Kind.COACHING
+
+
+# Governing bodies (REQ-045): their members are officials and committee, not players.
+BODY_KINDS: frozenset[str] = frozenset({Organization.Kind.REGIONAL_BODY, Organization.Kind.NATIONAL_BODY})
 
 
 class Role(models.Model):
@@ -119,7 +143,9 @@ class Role(models.Model):
 
 
 class OfficialAppointment(models.Model):
-    """A platform-appointed official's geographic jurisdiction."""
+    """A platform-appointed official's geographic jurisdiction, kept read-only as history (decision D4).
+    Since TASK-107 authority comes from holding `tournaments.approve` in the region's or country's body;
+    migration 0015 made each appointment a membership of the matching body."""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="official_appointments"
@@ -147,10 +173,12 @@ class OfficialAppointment(models.Model):
 
 
 def seed_roles(organization: Organization) -> dict[str, Role]:
-    """Create the template roles for a new organization, keyed by RoleKey."""
+    """Create the template roles for a new organization, keyed by RoleKey. Only bodies get the body
+    templates (Official)."""
     return {
         key: Role.objects.create(organization=organization, key=key, name=name, permissions=sorted(perms))
         for key, name, perms in ROLE_TEMPLATES
+        if organization.is_body or key not in BODY_ROLES
     }
 
 
@@ -315,6 +343,72 @@ class AdminHandover(models.Model):
 
     def __str__(self):
         return f"{self.organization_id}: {self.from_user_id} -> {self.to_user_id} ({self.status})"
+
+
+class Representative(models.Model):
+    """Someone a club sends to its regional body, or a regional body to the national one (REQ-045).
+    The sender nominates an active member, the receiving body accepts or declines, and the sender can
+    recall or replace them. Leaving the sender ends it. Rows are never deleted. A representative holds
+    no permission in the body and is not its member: the body sees a name and who they speak for."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        ACCEPTED = "accepted"
+        DECLINED = "declined"
+        WITHDRAWN = "withdrawn"  # taken back by the sender before a decision
+        ENDED = "ended"
+
+    class EndReason(models.TextChoices):
+        REPLACED = "replaced"
+        RECALLED = "recalled"  # by the sender
+        REMOVED = "removed"  # by the body
+        LEFT = "left"  # left the sender
+        TERM_ENDED = "term_ended"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    body = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="representatives_received")
+    sender = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="representatives_sent")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    end_reason = models.CharField(max_length=10, choices=EndReason.choices, blank=True, default="")
+    term_start = models.DateField(null=True, blank=True)
+    term_end = models.DateField(null=True, blank=True)
+    # The representative this one takes over from once accepted.
+    replaces = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    # The body's words when declining or removing.
+    note = models.CharField(max_length=300, blank=True)
+    nominated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["body", "sender", "user"],
+                condition=models.Q(status__in=["pending", "accepted"]),
+                name="one_open_representation",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(term_start__isnull=True)
+                | models.Q(term_end__isnull=True)
+                | models.Q(term_end__gte=models.F("term_start")),
+                name="representative_term_in_order",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["body", "status"], name="representative_body_status"),
+            models.Index(fields=["sender", "status"], name="representative_sender_status"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} for {self.sender_id} at {self.body_id} ({self.status})"
 
 
 class MemberField(models.Model):

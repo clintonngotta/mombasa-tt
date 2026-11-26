@@ -13,8 +13,8 @@ from django.db.models import Q
 from core.exceptions import ApiException
 from core.permissions import is_platform_super_admin
 
-from .models import Membership, OfficialAppointment, Organization, Role
-from .permissions import ALL_PERMISSIONS, RoleKey
+from .models import BODY_KINDS, Membership, Organization, Role
+from .permissions import ALL_PERMISSIONS, Permission, RoleKey
 
 
 def position_roles(membership: Membership) -> list[Role]:
@@ -77,26 +77,56 @@ def require_membership(user, organization: Organization) -> Membership | None:
     return membership
 
 
+def approving_bodies(user) -> list[Organization]:
+    """The regional and national bodies where the user holds `tournaments.approve` through an active
+    membership (decision D4, TASK-107): what makes someone an official of a jurisdiction."""
+    if not user.is_authenticated or not user.is_active:
+        return []
+    memberships = (
+        Membership.objects.active()
+        .filter(user=user, organization__kind__in=BODY_KINDS)
+        .select_related("organization")
+        .prefetch_related("roles", "organization__roles")
+    )
+    return [
+        membership.organization
+        for membership in memberships
+        if Permission.TOURNAMENTS_APPROVE in membership_permissions(membership)
+    ]
+
+
+def jurisdiction(body: Organization) -> Q:
+    """The organizations a body oversees: its country's for a national body, its region's for a
+    regional one. Bodies themselves included, as their officials read them."""
+    if body.is_national_body:
+        return Q(country=body.country)
+    return Q(country=body.country, region__iexact=body.region)
+
+
 def official_for(user, organization: Organization, *, country_only=False) -> bool:
-    if not user.is_authenticated or not user.is_active or not organization.country:
+    """Whether the user is an official whose jurisdiction covers the organization: they hold
+    `tournaments.approve` in its country's body, or (unless `country_only`) in its region's body."""
+    if not organization.country:
         return False
-    matches = OfficialAppointment.objects.filter(user=user, country_id=organization.country)
-    scope = Q(region__isnull=True)
-    if organization.region and not country_only:
-        scope |= Q(region__country_id=organization.country, region__name__iexact=organization.region)
-    return matches.filter(scope).exists()
+    for body in approving_bodies(user):
+        if body.country != organization.country:
+            continue
+        if body.is_national_body:
+            return True
+        if not country_only and organization.region and body.region.lower() == organization.region.lower():
+            return True
+    return False
 
 
 def managed_organizations(user):
     if is_platform_super_admin(user):
         return Organization.objects.all()
     scope = Q(pk__in=[])
-    for appointed in OfficialAppointment.objects.filter(user=user).select_related("region"):
-        if appointed.region and appointed.region.country_id == appointed.country_id:
-            scope |= Q(country=appointed.country_id, region__iexact=appointed.region.name)
-        elif appointed.region_id is None:
-            scope |= Q(country=appointed.country_id)
-    return Organization.objects.filter(scope)
+    bodies = approving_bodies(user)
+    for body in bodies:
+        scope |= jurisdiction(body)
+    # Their own bodies they reach as members, not as overseers.
+    return Organization.objects.filter(scope).exclude(pk__in=[body.pk for body in bodies])
 
 
 def require_permission(user, organization: Organization, *any_of: str) -> frozenset[str]:

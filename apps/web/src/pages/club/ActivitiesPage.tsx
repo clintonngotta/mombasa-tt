@@ -10,8 +10,10 @@ import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { SelectField, TextAreaField } from "@/components/forms/SelectField"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ApiError, errorMessage } from "@/lib/api"
-import { activityKeys, createActivity, KIND_LABEL, listActivities, type Activity, type When } from "@/lib/activities"
-import { can, listMembers, useActiveMembership } from "@/lib/clubs"
+import { activityKeys, AUDIENCE_LABEL, createActivity, KIND_LABEL, listActivities, type Activity, type Audience, type When } from "@/lib/activities"
+import { can, isBodyKind, listMembers, useActiveMembership } from "@/lib/clubs"
+import { MIN_SEARCH_LENGTH, searchPlayers } from "@/lib/profile"
+import { listRegionClubs, regionKeys } from "@/lib/regions"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { DEFAULT_TIME_ZONE, formatInstant, fromZonedInput } from "@/lib/dates"
 import { listWelfare, welfareKeys } from "@/lib/finance"
@@ -44,7 +46,15 @@ export function ActivitiesPage() {
       {allowed && !accessLost && (
         <>
           {adding ? (
-            <NewActivity orgId={orgId} timeZone={timeZone} welfareId={welfareId} canLinkWelfare={can(active, "welfare.manage")} onClose={() => setAdding(false)} />
+            <NewActivity
+              orgId={orgId}
+              timeZone={timeZone}
+              welfareId={welfareId}
+              canLinkWelfare={can(active, "welfare.manage")}
+              body={!!active && isBodyKind(active.organization.kind)}
+              regional={active?.organization.kind === "regional_body"}
+              onClose={() => setAdding(false)}
+            />
           ) : (
             <Button className="self-start" onClick={() => setAdding(true)}>
               <Plus aria-hidden className="size-5" /> New activity
@@ -93,7 +103,7 @@ export function ActivitiesPage() {
   )
 }
 
-function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { orgId: string; timeZone: string; welfareId: string; canLinkWelfare: boolean; onClose: () => void }) {
+function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, body, regional, onClose }: { orgId: string; timeZone: string; welfareId: string; canLinkWelfare: boolean; body: boolean; regional: boolean; onClose: () => void }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [title, setTitle] = useState("")
@@ -105,8 +115,11 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { 
   const [ends, setEnds] = useState("")
   const [place, setPlace] = useState("")
   const [description, setDescription] = useState("")
-  const [audience, setAudience] = useState<Activity["audience"]>("members")
+  const [audience, setAudience] = useState<Audience>("members")
   const [invitees, setInvitees] = useState<string[]>([])
+  // Named people can be players outside the club: keep their names as they are picked.
+  const [named, setNamed] = useState<{ id: string; name: string }[]>([])
+  const [clubs, setClubs] = useState<string[]>([])
   const [capacity, setCapacity] = useState("")
   const [deadline, setDeadline] = useState("")
   const [isPublic, setPublic] = useState(false)
@@ -114,6 +127,9 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { 
   const [term, setTerm] = useState("")
   const search = useDeferredValue(term.trim())
   const members = useQuery({ queryKey: ["clubs", orgId, "members", search], queryFn: () => listMembers(orgId, search), enabled: audience === "selected" })
+  const players = useQuery({ queryKey: ["players", "search", search], queryFn: () => searchPlayers(search), enabled: audience === "named" && search.length >= MIN_SEARCH_LENGTH })
+  const senders = useQuery({ queryKey: regionKeys.clubs(orgId), queryFn: () => listRegionClubs(orgId), enabled: audience === "reps" && regional })
+  const membersOnly = audience === "members" || audience === "selected"
   const save = useMutation({
     mutationFn: () =>
       createActivity(orgId, {
@@ -124,12 +140,14 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { 
         ends_at: fromZonedInput(ends, timeZone) ?? "",
         place: place.trim(),
         audience,
-        invitee_ids: audience === "selected" ? invitees : [],
+        ...(audience === "selected" ? { invitee_ids: invitees } : {}),
+        ...(audience === "named" ? { invitee_ids: named.map((person) => person.id) } : {}),
+        ...(audience === "reps" && clubs.length ? { club_ids: clubs } : {}),
         capacity: capacity ? Number(capacity) : null,
         rsvp_deadline: deadline ? fromZonedInput(deadline, timeZone) : null,
         public: project ? false : isPublic,
         cost_note: cost.trim(),
-        welfare_project_id: project || null,
+        welfare_project_id: membersOnly ? project || null : null,
       }),
     onSuccess: (made) => {
       void queryClient.invalidateQueries({ queryKey: activityKeys.all })
@@ -146,7 +164,7 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4 rounded-xl border bg-card p-4">
       <h2 className="text-xl font-bold">New activity</h2>
-      <p className="text-sm text-muted-foreground">It's saved as a draft. Members see it once you publish it.</p>
+      <p className="text-sm text-muted-foreground">It's saved as a draft. The people it's for see it once you publish it.</p>
       <Field label="Title" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="End-of-year night out" error={errors.title} />
       <SelectField label="Kind" value={kind ?? "social"} onChange={(value) => setKind(value as Activity["kind"])} options={Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))} />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -157,14 +175,51 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { 
       <TextAreaField label="Details" optional maxLength={2000} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
       <ChoiceGroup
         legend="Who it's for"
-        options={[
-          { value: "members" as const, label: "All members" },
-          { value: "selected" as const, label: "Selected members" },
-        ]}
-        value={audience ?? "members"}
+        options={(Object.keys(AUDIENCE_LABEL) as Audience[]).filter((value) => body || value !== "reps").map((value) => ({ value, label: AUDIENCE_LABEL[value] }))}
+        value={audience}
         onChange={setAudience}
-        error={errors.invitee_ids}
+        error={errors.invitee_ids ?? errors.audience ?? errors.club_ids}
       />
+      {audience === "reps" && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">The representatives you have accepted are invited. {regional ? "Choose clubs to invite only theirs." : ""}</p>
+          {regional && (senders.data?.length ?? 0) > 0 && (
+            <ChoiceGroup legend={clubs.length ? `Only these clubs (${clubs.length})` : "Every club"} multiple options={(senders.data ?? []).map((club) => ({ value: club.id, label: club.name }))} value={clubs} onChange={setClubs} />
+          )}
+        </div>
+      )}
+      {audience === "named" && (
+        <div className="flex flex-col gap-2">
+          <label className="sr-only" htmlFor="name-search">
+            Find a player
+          </label>
+          <Input id="name-search" type="search" placeholder="Find a player by name" value={term} onChange={(e) => setTerm(e.target.value)} />
+          <p className="text-sm text-muted-foreground">Players listed in the directory. They see the event and can answer even if they aren't members.</p>
+          <ul className="flex flex-col gap-1">
+            {(players.data?.results ?? [])
+              .filter((player) => !named.some((person) => person.id === player.id))
+              .slice(0, 8)
+              .map((player) => (
+                <li key={player.id}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setNamed([...named, { id: player.id, name: player.display_name }])}>
+                    <Plus aria-hidden className="size-4" /> Invite {player.display_name}
+                  </Button>
+                </li>
+              ))}
+          </ul>
+          {named.length > 0 && (
+            <ul aria-label="People invited" className="flex flex-wrap gap-2">
+              {named.map((person) => (
+                <li key={person.id}>
+                  <Button type="button" variant="secondary" size="sm" aria-label={`Remove ${person.name}`} onClick={() => setNamed(named.filter((other) => other.id !== person.id))}>
+                    {person.name} ×
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {audience === "selected" && (
         <div className="flex flex-col gap-2">
           <label className="sr-only" htmlFor="invite-search">
@@ -179,7 +234,7 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { 
         <Field label="Answers close" optional type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} error={errors.rsvp_deadline} />
       </div>
       <Field label="Cost note" optional maxLength={200} value={cost} onChange={(e) => setCost(e.target.value)} placeholder="KES 500 each, pay on the night" hint="Shown as text only. Coast TT doesn't collect money." error={errors.cost_note} />
-      {canLinkWelfare && openProjects.length > 0 && (
+      {canLinkWelfare && membersOnly && openProjects.length > 0 && (
         <SelectField
           label="For a welfare project"
           value={project}
@@ -188,11 +243,11 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, onClose }: { 
           hint="A planned visit or support activity. It shows on the project, is never public, and is hidden with the project."
         />
       )}
-      {!project && (
+      {!project && audience !== "open" && (
         <label className="flex min-h-12 items-center gap-3">
           <input type="checkbox" className="size-5 accent-brand-blue" checked={isPublic} onChange={(e) => setPublic(e.target.checked)} />
           <span>
-            <span className="font-semibold">Public</span> <span className="text-muted-foreground">: everyone on Coast TT can see it; only your members answer.</span>
+            <span className="font-semibold">Public</span> <span className="text-muted-foreground">: everyone on Coast TT can see it; only the people it's for answer.</span>
           </span>
         </label>
       )}

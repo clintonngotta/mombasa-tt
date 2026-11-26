@@ -56,8 +56,12 @@ export const KIND_LABEL: Record<OrganizationKind, string> = {
   facility: "Facility",
   club_facility: "Club and facility",
   regional_body: "Regional body",
+  national_body: "National body",
   coaching: "Coaching desk",
 }
+
+/** A regional or national body (REQ-045): the governing bodies, whose members are officials and committee. */
+export const isBodyKind = (kind?: OrganizationKind) => kind === "regional_body" || kind === "national_body"
 
 export const FIELD_KIND_LABEL: Record<MemberFieldKind, string> = {
   text: "Text",
@@ -160,6 +164,10 @@ export const listMembers = (orgId: string, term: string) =>
   api<Schemas["PaginatedMemberList"]>(`${orgPath(orgId)}/members/?search=${encodeURIComponent(term)}`)
 export const setMemberRoles = (orgId: string, membershipId: string, roles: string[]) =>
   api<Member>(`${orgPath(orgId)}/members/${membershipId}/roles/`, { method: "PUT", body: { roles } })
+/** Add someone to the club directly (REQ-004). They get a link to set a password and sign in; `invite_link`
+ * is shown to staff once, to share by WhatsApp or SMS. */
+export const addMember = (orgId: string, body: Schemas["MemberAddRequest"]) =>
+  api<Schemas["AddedMember"]>(`${orgPath(orgId)}/members/`, { body })
 export const removeMember = (orgId: string, membershipId: string) =>
   api<void>(`${orgPath(orgId)}/members/${membershipId}/remove/`, { body: {} })
 

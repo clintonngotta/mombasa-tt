@@ -3,7 +3,91 @@ from rest_framework import serializers
 from reservations.serializers import ReservationSerializer
 
 from . import service
-from .models import EnginePhase, ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
+from .models import (
+    EnginePhase,
+    MatchIncident,
+    ScoreAssignment,
+    Scorecard,
+    ScoreConflict,
+    ScoreEvent,
+    ScoringStatus,
+)
+
+
+class IncidentSerializer(serializers.Serializer):
+    """An incident of the match as it stands (REQ-043): what happened, to whom, and at what score."""
+
+    sequence = serializers.IntegerField()
+    kind = serializers.ChoiceField(choices=MatchIncident.Kind.choices)
+    side = serializers.CharField(allow_blank=True)
+    player_name = serializers.CharField(allow_blank=True)
+    card = serializers.CharField(allow_blank=True, help_text="yellow, yellow_red or red; empty otherwise.")
+    penalty_points = serializers.IntegerField()
+    reason = serializers.CharField(allow_blank=True)
+    game_number = serializers.IntegerField()
+    score = serializers.ListField(child=serializers.IntegerField())
+    at = serializers.DateTimeField()
+
+
+class SheetIncidentSerializer(IncidentSerializer):
+    note = serializers.CharField(allow_blank=True, help_text="The umpire's note; on the sheet only.")
+
+
+class MatchScoreSerializer(serializers.Serializer):
+    """A match being scored, as everybody may watch it (REQ-043): the server's replay of the umpire's
+    events, with nothing the deck scores with."""
+
+    status = serializers.ChoiceField(choices=["not_started", "in_progress", "completed"])
+    outcome = serializers.CharField(
+        allow_null=True, help_text="How a finished sheet ended: played, retired, disqualified."
+    )
+    winner = serializers.ChoiceField(choices=["a", "b"], allow_null=True)
+    game_number = serializers.IntegerField()
+    games = serializers.ListField(
+        child=serializers.ListField(child=serializers.IntegerField()),
+        help_text="Finished games, side a's points first.",
+    )
+    games_won = serializers.ListField(child=serializers.IntegerField())
+    points = serializers.ListField(child=serializers.IntegerField(), help_text="The game in play.")
+    server = serializers.ChoiceField(choices=["a", "b"], allow_null=True)
+    server_name = serializers.CharField(
+        allow_blank=True, help_text="Who serves, named in doubles and singles alike."
+    )
+    timeouts = serializers.ListField(
+        child=serializers.BooleanField(), help_text="Time-out used, side a then b."
+    )
+    timeout_running = serializers.ListField(child=serializers.BooleanField())
+    suspended = serializers.ChoiceField(choices=["a", "b"], allow_null=True)
+    expedite = serializers.BooleanField()
+    revision = serializers.IntegerField(
+        help_text="Grows with every accepted event: a newer score has a higher one."
+    )
+
+
+class LiveCardSerializer(serializers.Serializer):
+    side = serializers.ChoiceField(choices=["a", "b"])
+    player_name = serializers.CharField(allow_blank=True)
+    card = serializers.ChoiceField(choices=MatchIncident.Card.choices)
+    penalty_points = serializers.IntegerField()
+    adviser = serializers.BooleanField()
+    reason = serializers.CharField(allow_blank=True)
+    game_number = serializers.IntegerField()
+
+
+class LiveMatchSerializer(serializers.Serializer):
+    """One match being scored now, for the score strip and the tournament's live page."""
+
+    match_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    round = serializers.CharField()
+    table = serializers.CharField(allow_blank=True)
+    a = serializers.CharField(allow_blank=True)
+    b = serializers.CharField(allow_blank=True)
+    rubber = serializers.IntegerField(allow_null=True, help_text="The rubber being played, in a team tie.")
+    rubbers_won = serializers.ListField(child=serializers.IntegerField(), allow_null=True)
+    score = MatchScoreSerializer()
+    cards = LiveCardSerializer(many=True)
 
 
 class ScoringSummarySerializer(serializers.Serializer):
@@ -15,6 +99,8 @@ class ScoringSummarySerializer(serializers.Serializer):
     umpire_name = serializers.CharField(allow_blank=True)
     can_score = serializers.BooleanField()
     can_assign = serializers.BooleanField(help_text="The caller may assign or change the umpire now.")
+    incidents = IncidentSerializer(many=True, help_text="Time-outs, cards and other incidents so far.")
+    live = MatchScoreSerializer(allow_null=True, help_text="The score so far, once scoring has started.")
 
 
 class UmpireSerializer(serializers.Serializer):
@@ -40,9 +126,24 @@ class DeckSideSerializer(serializers.Serializer):
     players = DeckPlayerSerializer(many=True)
 
 
+class OffencesSerializer(serializers.Serializer):
+    a1 = serializers.IntegerField()
+    a2 = serializers.IntegerField()
+    b1 = serializers.IntegerField()
+    b2 = serializers.IntegerField()
+
+
+class CarrySerializer(serializers.Serializer):
+    """What a tie's later rubber starts with: offences by position in this match and adviser cards."""
+
+    offences = OffencesSerializer()
+    advisers = serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2)
+
+
 class ScoringConfigSerializer(serializers.Serializer):
     best_of = serializers.IntegerField()
     doubles = serializers.BooleanField()
+    carry = CarrySerializer(required=False, help_text="A team tie's later rubber only (3.5.2.7).")
 
 
 class ScoringStateSerializer(serializers.Serializer):
@@ -63,6 +164,15 @@ class ScoringStateSerializer(serializers.Serializer):
     decider_changed = serializers.BooleanField()
     timeouts = serializers.ListField(child=serializers.BooleanField(), min_length=2, max_length=2)
     winner = serializers.CharField(allow_null=True)
+    # Incidents (TASK-083). A sheet saved before them reads with the defaults.
+    outcome = serializers.CharField(
+        allow_null=True, default=None, help_text="played, retired or disqualified."
+    )
+    timeout_running = serializers.ListField(child=serializers.BooleanField(), default=[False, False])
+    offences = OffencesSerializer(default={"a1": 0, "a2": 0, "b1": 0, "b2": 0})
+    advisers = serializers.ListField(child=serializers.IntegerField(), default=[0, 0])
+    suspended = serializers.CharField(allow_null=True, default=None)
+    expedite = serializers.BooleanField(default=False)
 
 
 class AcceptedEventSerializer(serializers.ModelSerializer):
@@ -101,6 +211,8 @@ class ScorecardSerializer(serializers.ModelSerializer):
     label = serializers.SerializerMethodField()
     table = serializers.SerializerMethodField()
     events = AcceptedEventSerializer(many=True, read_only=True)
+    incidents = serializers.SerializerMethodField()
+    can_disqualify = serializers.SerializerMethodField()
 
     class Meta:
         model = Scorecard
@@ -123,6 +235,8 @@ class ScorecardSerializer(serializers.ModelSerializer):
             "confirmed_at",
             "device",
             "events",
+            "incidents",
+            "can_disqualify",
         ]
         read_only_fields = fields
 
@@ -175,6 +289,14 @@ class ScorecardSerializer(serializers.ModelSerializer):
     def get_label(self, scorecard) -> str:
         return service.label_of(scorecard)
 
+    def get_incidents(self, scorecard) -> SheetIncidentSerializer(many=True):
+        return service.incidents_of(scorecard, with_notes=True)
+
+    def get_can_disqualify(self, scorecard) -> bool:
+        """The umpire is also the referee (decision D5): only then does the deck offer a disqualification."""
+        request = self.context.get("request")
+        return request is not None and service.may_disqualify(scorecard, request.user)
+
     def get_table(self, scorecard) -> str:
         table = scorecard.tie_or_match.table
         return table.label if table else ""
@@ -184,8 +306,16 @@ class MyScorecardSerializer(ScorecardSerializer):
     """One of the caller's assignments in a list: the sheet without its event log."""
 
     class Meta(ScorecardSerializer.Meta):
-        fields = [name for name in ScorecardSerializer.Meta.fields if name != "events"]
+        fields = [
+            name
+            for name in ScorecardSerializer.Meta.fields
+            if name not in ("events", "incidents", "can_disqualify")
+        ]
         read_only_fields = fields
+
+    def get_config(self, scorecard) -> ScoringConfigSerializer:
+        # The list needs the format alone; what a rubber carries in is read on its sheet.
+        return service.config_of(scorecard, with_carry=False)
 
 
 class SentEventSerializer(serializers.Serializer):

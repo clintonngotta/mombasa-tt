@@ -35,6 +35,21 @@ class EmailField(serializers.EmailField):
         return normalize_email(super().to_internal_value(data))
 
 
+class ReturnPathField(serializers.CharField):
+    """Where the app takes a new player once they've verified and onboarded, such as the event they
+    signed up to enter (TASK-035). A path within the app only: never another site."""
+
+    def __init__(self, **kwargs):
+        super().__init__(max_length=300, required=False, allow_blank=True, **kwargs)
+
+    def to_internal_value(self, data):
+        path = super().to_internal_value(data)
+        outside = not path.startswith("/") or path.startswith("//") or "\\" in path
+        if path and (outside or not path.isprintable() or " " in path):
+            raise serializers.ValidationError("Use a path within the app.")
+        return path
+
+
 class SignUpSerializer(serializers.Serializer):
     display_name = serializers.CharField(max_length=80, trim_whitespace=True)
     email = EmailField()
@@ -42,6 +57,7 @@ class SignUpSerializer(serializers.Serializer):
     country = CountryField(max_length=2, required=False)
     region = serializers.CharField(max_length=100, required=False)
     city = serializers.CharField(max_length=100, required=False)
+    next = ReturnPathField()
 
     def validate(self, attrs):
         validate_location(attrs)
@@ -97,6 +113,10 @@ class AccountUpdateSerializer(serializers.Serializer):
 
 class EmailOnlySerializer(serializers.Serializer):
     email = EmailField()
+
+
+class ResendVerificationSerializer(EmailOnlySerializer):
+    next = ReturnPathField()
 
 
 class TokenSerializer(serializers.Serializer):

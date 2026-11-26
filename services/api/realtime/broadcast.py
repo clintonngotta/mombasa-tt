@@ -14,18 +14,25 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
-TOPICS = {"scores", "results"}
+# "board": the match-day board of tables and calls (TASK-082) changed.
+TOPICS = {"scores", "results", "board"}
 
 
 def tournament_group(tournament_id) -> str:
     return f"tournament.{tournament_id}"
 
 
-def tournament_changed(tournament_id, topic: str, *, event_id=None) -> None:
-    """After commit, tell the tournament's open pages that its `topic` changed, in `event_id` if given."""
+def tournament_changed(tournament_id, topic: str, *, event_id=None, match_id=None) -> None:
+    """After commit, tell the tournament's open pages that its `topic` changed, in `event_id` and
+    `match_id` if given. A score message names its match, so only pages showing it fetch again."""
     if topic not in TOPICS:
         raise ValueError(f"Unknown topic {topic!r}")
-    message = {"type": "changed", "topic": topic, "event": str(event_id) if event_id else None}
+    message = {
+        "type": "changed",
+        "topic": topic,
+        "event": str(event_id) if event_id else None,
+        "match": str(match_id) if match_id else None,
+    }
     group = tournament_group(tournament_id)
     transaction.on_commit(lambda: _send(group, message))
 

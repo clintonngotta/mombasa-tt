@@ -13,11 +13,12 @@ import { TableControl } from "@/components/tournaments/TableControl"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
+import { drawKeys, gameWinner, getMatch, sideScores, OUTCOME_LABEL, OUTCOME_MARK, sideWon, spokenScore, type DrawSide, type MatchDetail } from "@/lib/draws"
 import { canManageTournament, eventTabPath, firstTab, getTournament, tieSummary, tournamentKeys, type TournamentEvent } from "@/lib/tournaments"
 import { useMemberships } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
-import { useLiveTournament } from "@/lib/live"
+import { pollUnless, useLiveTournament } from "@/lib/live"
+import { LiveScoreboard, type CardShown } from "@/components/tournaments/LiveScore"
 
 /**
  * One match of a published draw (REQ-010): the two sides left and right, the games, and where and when
@@ -25,9 +26,15 @@ import { useLiveTournament } from "@/lib/live"
  */
 export function MatchPage() {
   const { id = "", eventId = "", matchId = "" } = useParams()
-  useLiveTournament(id)
+  const socketOpen = useLiveTournament(id)
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
-  const match = useQuery({ queryKey: drawKeys.match(matchId), queryFn: () => getMatch(id, eventId, matchId), enabled: tournament.isSuccess })
+  const match = useQuery({
+    queryKey: drawKeys.match(matchId),
+    queryFn: () => getMatch(id, eventId, matchId),
+    enabled: tournament.isSuccess,
+    // While the match is being played and the socket is down, the page asks again every few seconds.
+    refetchInterval: (query) => (query.state.data?.status !== "completed" && tournament.data?.status === "in_progress" ? pollUnless(socketOpen) : false),
+  })
   const t = tournament.data
   const event = t?.events.find((candidate) => candidate.id === eventId)
   const failed = tournament.error ?? match.error
@@ -108,13 +115,15 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
           <p className="font-display text-[80px] leading-none font-bold tabular-nums max-sm:text-[56px]">
             <span aria-hidden>
               {counted ? `${games.a}–${games.b}` : decided ? "W/O" : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
-              {decided && m.outcome === "retired" && <span className="block text-center text-base font-semibold text-muted-foreground">ret.</span>}
+              {decided && OUTCOME_MARK[m.outcome] && <span className="block text-center text-base font-semibold text-muted-foreground">{OUTCOME_MARK[m.outcome]?.short.trim()}</span>}
             </span>
             <span className="sr-only">{spokenScore(m)}</span>
           </p>
           <Name side={b} won={won(b)} align="right" />
         </div>
       </header>
+
+      {!decided && <Live match={m} names={names} />}
 
       {!decided && (m.on_table || m.can_dispatch) && (
         <section aria-labelledby="table-heading" className="flex flex-col gap-2 rounded-xl border bg-card p-4">
@@ -177,7 +186,8 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
               </tbody>
             </table>
           </div>
-          {m.outcome === "retired" && <p className="text-sm text-muted-foreground">The match was not finished. The points shown are the ones that were played.</p>}
+          {OUTCOME_MARK[m.outcome] && m.games.length > 0 && <p className="text-sm text-muted-foreground">The match was not finished. The points shown are the ones that were played.</p>}
+          {m.outcome === "disqualified" && m.games.length === 0 && <p className="text-sm text-muted-foreground">The referee disqualified the loser before play.</p>}
         </section>
       )}
 
@@ -196,5 +206,36 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
         <p className="text-sm text-muted-foreground">Scores are entered by the umpire assigned to the match and become official once the umpire confirms the finished match. The organizers can record a walkover or a retirement, and correct a result with a reason.</p>
       </section>
     </>
+  )
+}
+
+type Incident = NonNullable<MatchDetail["scoring"]>["incidents"][number]
+
+/** The cards among a sheet's incidents, as the live score lists them. */
+const cardsOf = (incidents: Incident[]): CardShown[] =>
+  incidents
+    .filter((incident) => incident.kind === "card" || incident.kind === "adviser_card")
+    .map((incident) => ({
+      side: incident.side as CardShown["side"],
+      player_name: incident.player_name,
+      card: incident.card as CardShown["card"],
+      penalty_points: incident.penalty_points,
+      adviser: incident.kind === "adviser_card",
+      reason: incident.reason,
+    }))
+
+/** The live score of the match, or of the rubber of a tie being played now. Reading only: no control. */
+function Live({ match: m, names }: { match: MatchDetail; names: { a: string; b: string } }) {
+  if (m.scoring?.live) return <LiveScoreboard score={m.scoring.live} cards={cardsOf(m.scoring.incidents)} names={names} />
+  const rubber = m.tie?.rubbers.find((candidate) => candidate.status === "scheduled" && candidate.scoring?.live)
+  if (!rubber?.scoring?.live) return null
+  const team = (players: { display_name: string }[], fallback: string) => players.map((player) => player.display_name).join(" / ") || fallback
+  return (
+    <LiveScoreboard
+      heading={`Live: rubber ${rubber.position}`}
+      score={rubber.scoring.live}
+      cards={cardsOf(rubber.scoring.incidents)}
+      names={{ a: team(rubber.a_players, names.a), b: team(rubber.b_players, names.b) }}
+    />
   )
 }

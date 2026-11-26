@@ -251,6 +251,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
     campaign_id = serializers.UUIDField(allow_null=True, required=False, default=None)
     campaign_title = serializers.CharField(source="campaign.title", read_only=True, default=None)
     description = serializers.CharField(max_length=200, trim_whitespace=True)
+    payee = serializers.CharField(max_length=120, trim_whitespace=True, allow_blank=True, required=False)
     amount_minor = serializers.IntegerField(min_value=1, max_value=100_000_000)
     currency = serializers.RegexField(r"^[A-Z]{3}$", required=False, default="KES")
     reversed = serializers.SerializerMethodField()
@@ -262,6 +263,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "id",
             "campaign_id",
             "campaign_title",
+            "category",
+            "payee",
             "description",
             "amount_minor",
             "currency",

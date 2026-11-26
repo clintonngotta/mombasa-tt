@@ -50,7 +50,9 @@ def recap(match: Match) -> dict:
         elif result.projected_at is None:
             rating = "processing"
         else:
-            rating = "unrated"  # walkover, retirement, a tie as a whole, a club's local Jumbles
+            rating = (
+                "unrated"  # walkover, retirement, disqualification, a tie as a whole, a club's local Jumbles
+            )
     event = match.draw.event
     tournament = event.tournament
     winner_side = None
@@ -86,12 +88,18 @@ def _text(x, y, fill, size, content, *, bold=False, end=False) -> str:
     )
 
 
+# How the card marks a match that wasn't played to a finish.
+CARD_OUTCOME = {"walkover": " (W/O)", "retired": " (ret.)", "disqualified": " (DQ)"}
+
+
 def card_svg(shown: dict) -> str:
-    """A 1080x1080 result card: tournament, event, sides, games and the winner. Public facts only."""
-    won_a = sum(1 for a, b in shown["games"] if a > b)
+    """A 1080x1080 result card: tournament, event, sides, games and the winner. Public facts only. A game
+    left unfinished by a retirement or a disqualification is shown but not counted as won (REQ-043)."""
+    finished = [(a, b) for a, b in shown["games"] if max(a, b) >= 11 and abs(a - b) >= 2]
+    won_a = sum(1 for a, b in finished if a > b)
     sides = [
         (shown["side_a"], won_a, shown["winner_side"] == "a"),
-        (shown["side_b"], len(shown["games"]) - won_a, shown["winner_side"] == "b"),
+        (shown["side_b"], len(finished) - won_a, shown["winner_side"] == "b"),
     ]
     winner = next((name for name, _, won in sides if won), "")
     lines = [
@@ -109,7 +117,8 @@ def card_svg(shown: dict) -> str:
         lines.append(_text(1000, y, colour, 96, games, bold=True, end=True))
     lines.append(_text(80, 830, MUTED, 40, "  ".join(f"{a}-{b}" for a, b in shown["games"])))
     if winner:
-        lines.append(_text(80, 960, GOLD, 44, f"{winner[:36]} wins", bold=True))
+        how = CARD_OUTCOME.get(shown["outcome"], "")
+        lines.append(_text(80, 960, GOLD, 44, f"{winner[:36]} wins{how}", bold=True))
     elif not shown["official"]:
         lines.append(_text(80, 960, MUTED, 44, "Not played yet"))
     lines.append("</svg>")

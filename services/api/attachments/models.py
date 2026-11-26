@@ -52,6 +52,8 @@ class Attachment(models.Model):
         # A tournament's cover picture and its documents (REQ-007): whoever may see the tournament.
         TOURNAMENT_COVER = "tournament_cover"
         TOURNAMENT_DOCUMENT = "tournament_document"
+        # A document of a meeting (REQ-046): its invitees and the host's governance staff.
+        MEETING_DOCUMENT = "meeting_document"
 
     EXTENSIONS = {"image/webp": ".webp", "application/pdf": ".pdf"}
 

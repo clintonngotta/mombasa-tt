@@ -49,6 +49,7 @@ export const tournamentKeys = {
   hosted: (orgId: string) => ["tournaments", "hosted", orgId] as const,
   detail: (id: string) => ["tournaments", "detail", id] as const,
   history: (id: string) => ["tournaments", "history", id] as const,
+  dashboard: (id: string) => ["tournaments", "dashboard", id] as const,
 }
 
 const BASE = "/tournaments/"
@@ -187,3 +188,8 @@ export const canManageTournament = (memberships: readonly Membership[], t: Pick<
     memberships.find((m) => m.organization.id === t.organization.id),
     "competitions.manage"
   )
+
+/** The organizer's dashboard (TASK-035): counts of entries, draws, matches and corrections, event by event. */
+export type TournamentDashboard = Schemas["TournamentDashboard"]
+export type EventDashboard = Schemas["EventDashboard"]
+export const getTournamentDashboard = (id: string) => api<TournamentDashboard>(`${one(id)}dashboard/`)

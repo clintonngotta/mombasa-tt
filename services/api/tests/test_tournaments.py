@@ -199,8 +199,7 @@ def test_tournament_setup_is_validated(staff, club, venue):
 
 
 def test_regional_tournament_uses_the_hosts_location_and_can_be_filtered(staff, club, venue):
-    from core.models import Country, Region
-    from organizations.models import OfficialAppointment
+    from .helpers import make_official
 
     refused = staff.post(
         f"/api/v1/organizations/{club.id}/tournaments/",
@@ -215,13 +214,10 @@ def test_regional_tournament_uses_the_hosts_location_and_can_be_filtered(staff, 
     tournament = add_event(staff, tournament, name="Singles", kind="singles", format="knockout")
     assert staff.post(url(tournament, "publish"), {}, format="json").status_code == 403
     assert do(staff, tournament, "approval/request")["approval_status"] == "pending"
-    country = Country.objects.create(code="KE", name="Kenya")
-    match = Region.objects.create(country=country, name="Mombasa")
-    outside = Region.objects.create(country=country, name="Kilifi")
     official = make_user("official@example.com")
     other = make_user("outside@example.com")
-    OfficialAppointment.objects.create(user=official, country=country, region=match)
-    OfficialAppointment.objects.create(user=other, country=country, region=outside)
+    make_official(official, "KE", "Mombasa")
+    make_official(other, "KE", "Kilifi")
     denied = logged_in(other).post(url(tournament, "publish"), {}, format="json")
     assert denied.status_code == 404
     tournament = do(logged_in(official), tournament, "publish")

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, Clock, Globe, MapPin, Pencil, Plus, Users } from "lucide-react"
+import { CalendarDays, Clock, Globe, LayoutDashboard, ListOrdered, MapPin, Pencil, Plus, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { CeremonyLink } from "@/components/ceremony/CeremonyLink"
 import { SponsorsPanel } from "@/components/region/SponsorsPanel"
@@ -12,6 +12,8 @@ import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
 import { TournamentCover, TournamentDocuments, TournamentMediaManager } from "@/components/tournaments/TournamentMedia"
 import { useLiveTournament } from "@/lib/live"
+import { ScoreStrip } from "@/components/tournaments/LiveScore"
+import { NewsFeed } from "@/components/news/NewsFeed"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
 import { formatDayRange, formatInstant } from "@/lib/dates"
@@ -47,7 +49,7 @@ import {
 /** One tournament (REQ-007): what everyone sees, plus the controls of the host's competition staff. */
 export function TournamentPage() {
   const { id = "" } = useParams()
-  useLiveTournament(id)
+  const socketOpen = useLiveTournament(id)
   const { results: memberships } = useMemberships()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
   const t = tournament.data
@@ -56,19 +58,26 @@ export function TournamentPage() {
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <BackLink to="/play">Play</BackLink>
+      <BackLink to="/tournaments">Tournaments</BackLink>
       {tournament.isPending && <p className="text-muted-foreground">Loading tournament…</p>}
       {missing && <FormAlert>This tournament doesn't exist or hasn't been published.</FormAlert>}
       {tournament.isError && !missing && <FormAlert>{errorMessage(tournament.error, "We couldn't load this tournament.")}</FormAlert>}
       {t && (
         <>
           <Overview tournament={t} />
+          {t.status === "in_progress" && <ScoreStrip tournamentId={t.id} socketOpen={socketOpen} />}
           <CeremonyLink tournamentId={t.id} staff={staff} open={t.status !== "draft" && t.status !== "cancelled"} />
           <WatchLinks tournament={t} staff={staff} live={t.status === "in_progress"} />
           <SponsorsPanel tournamentId={t.id} staff={staff} />
+          <NewsFeed tournamentId={t.id} staff={staff} timeZone={t.timezone} />
           <Events tournament={t} staff={staff} />
           {staff && <Manage tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
           {!staff && <Approve tournament={t} authority={memberships.find((entry) => entry.organization.id === t.organization.id)?.authority} />}
+          {!staff && (t.status === "in_progress" || t.status === "completed") && memberships.some((entry) => entry.organization.id === t.organization.id && entry.authority) && (
+            <Link to={`/tournaments/${t.id}/review`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+              The organizers' review
+            </Link>
+          )}
         </>
       )}
     </div>
@@ -147,11 +156,18 @@ function Events({ tournament: t, staff }: { tournament: Tournament; staff: boole
         <h2 id="events-heading" className="text-2xl font-bold">
           Events
         </h2>
-        {staff && open && (
-          <Link to={`/tournaments/${t.id}/events/new`} className={buttonVariants({ variant: "outline" })}>
-            <Plus aria-hidden className="size-5" /> Add event
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {t.status !== "draft" && (
+            <Link to={`/tournaments/${t.id}/order-of-play`} className={buttonVariants({ variant: "outline" })}>
+              <ListOrdered aria-hidden className="size-5" /> Order of play
+            </Link>
+          )}
+          {staff && open && (
+            <Link to={`/tournaments/${t.id}/events/new`} className={buttonVariants({ variant: "outline" })}>
+              <Plus aria-hidden className="size-5" /> Add event
+            </Link>
+          )}
+        </div>
       </div>
       {t.events.length === 0 && <p className="text-muted-foreground">{staff ? "No events yet. Add the first one to publish." : "No events yet."}</p>}
       <ul className="flex flex-col gap-3">
@@ -215,6 +231,9 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
             )}
             <Link to={eventTabPath(t.id, event.id, firstTab(event.format))} aria-label={`Draw and results for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
               Draw and results
+            </Link>
+            <Link to={`/tournaments/${t.id}/order-of-play?event=${event.id}`} aria-label={`Order of play for ${event.name}`} className={buttonVariants({ variant: "outline" })}>
+              Order of play
             </Link>
             <Link to={`/tournaments/${t.id}/events/${event.id}/entries`} aria-label={`Entries for ${event.name}`} className={buttonVariants({ variant: entryBlock(t, event) ? "outline" : "default" })}>
               {entryBlock(t, event) ? "See entries" : "Enter or see entries"}
@@ -398,6 +417,10 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
         <p className="text-sm text-muted-foreground">Only people who run competitions for {t.organizer.name} see this.</p>
       </div>
 
+      <Link to={`/tournaments/${t.id}/dashboard`} className={buttonVariants({ className: "self-start" })}>
+        <LayoutDashboard aria-hidden className="size-4" /> Dashboard: entries, draws and matches
+      </Link>
+
       {open && <TournamentMediaManager tournament={t} />}
 
       {(t.status === "published" || t.status === "in_progress") && (
@@ -405,9 +428,24 @@ function Manage({ tournament: t, authority }: { tournament: Tournament; authorit
           Schedule: plan times and tables
         </Link>
       )}
+      {(t.status === "published" || t.status === "in_progress") && (
+        <Link to={`/tournaments/${t.id}/order-of-play`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Order of play: stage order, release time and late starts
+        </Link>
+      )}
       {t.status === "in_progress" && (
         <Link to={`/tournaments/${t.id}/dispatch`} className={buttonVariants({ className: "self-start" })}>
-          Tables: send the next matches out
+          Control centre: tables, calls and check-in
+        </Link>
+      )}
+      {(t.status === "in_progress" || t.status === "completed") && (
+        <Link to={`/tournaments/${t.id}/review`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Review: what went well, what went wrong, actions
+        </Link>
+      )}
+      {t.status !== "draft" && t.status !== "cancelled" && (
+        <Link to={`/tournaments/${t.id}/feedback`} className={buttonVariants({ variant: "outline", className: "self-start" })}>
+          Feedback forms: ask the people who came
         </Link>
       )}
       {t.events.some((event) => event.paused_at) && (

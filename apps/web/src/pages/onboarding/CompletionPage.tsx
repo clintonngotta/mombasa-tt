@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { ChevronRight, CircleCheckBig, Clock, Trophy, Users, UserRound, type LucideIcon } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { Wordmark } from "@/components/brand/Wordmark"
-import { clearOnboardingDraft, useOnboardingDraft } from "@/lib/onboarding"
+import { clearOnboardingDraft, readReturn, useOnboardingDraft } from "@/lib/onboarding"
 import type { Goal } from "@/lib/profile"
 import { cn } from "@/lib/utils"
 
@@ -11,7 +11,7 @@ type NextAction = { to: string; icon: LucideIcon; title: string; description: st
 
 // Real destinations only; ordering follows the goals the player picked.
 const ACTIONS: NextAction[] = [
-  { to: "/play", icon: Trophy, title: "Find a tournament", description: "Browse open events and enter", goals: ["compete", "rating"] },
+  { to: "/tournaments", icon: Trophy, title: "Find a tournament", description: "Browse open events and enter", goals: ["compete", "rating"] },
   { to: "/club", icon: Users, title: "Explore clubs", description: "Search for clubs and venues near you", goals: ["find_club", "organize"] },
   { to: "/profile", icon: UserRound, title: "Finish your profile", description: "Add details and choose what's public", goals: [] },
 ]
@@ -20,6 +20,8 @@ export function CompletionPage() {
   const [draft] = useOnboardingDraft()
   // Snapshot before clearing so the summary survives the cleanup.
   const [{ profile, goals, joinRequests }] = useState(draft)
+  // Signed up on the way somewhere, such as an event to enter: that is the way on (TASK-035).
+  const [returnTo] = useState(readReturn)
 
   useEffect(() => clearOnboardingDraft(), [])
 
@@ -79,8 +81,8 @@ export function CompletionPage() {
           </ul>
         </section>
 
-        <Link to="/home" className={cn(buttonVariants({ size: "lg" }), "mt-auto")}>
-          Go to Home
+        <Link to={returnTo ?? "/home"} className={cn(buttonVariants({ size: "lg" }), "mt-auto")}>
+          {returnTo ? "Continue where you left off" : "Go to Home"}
         </Link>
       </main>
     </div>

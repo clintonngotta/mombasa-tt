@@ -131,6 +131,7 @@ def record_rubber(
     games=(),
     actor=None,
     source: str = official.Source.UMPIRE,
+    reason: str = "",
 ) -> None:
     """A rubber is decided. Only the next rubber in order can be: one is played at a time. `games` are
     [a, b] points in playing order, a being the tie's side a. Who may decide a rubber arrives with
@@ -156,7 +157,7 @@ def record_rubber(
     rubber.outcome = outcome
     rubber.games = games
     rubber.save(update_fields=["winner", "status", "outcome", "games"])
-    official.accept(match, rubber, winner, outcome, games, actor=actor, source=source)
+    official.accept(match, rubber, winner, outcome, games, actor=actor, source=source, reason=reason)
     decided = max(tie_score(match)) >= match.draw.event.tie_wins_needed
     signals.rubber_decided.send(sender=Rubber, rubber=rubber, tie_decided=decided)
     if decided:
@@ -192,7 +193,7 @@ def result_of(match: Match) -> standings.Result:
         )
         # `credited` is from the rubber's winner; `games` is kept from the tie winner's side.
         games += credited if mine else [(lost_by, won_by) for won_by, lost_by in credited]
-    if match.outcome in (Match.Outcome.WALKOVER, Match.Outcome.RETIRED):
+    if match.outcome in (Match.Outcome.WALKOVER, Match.Outcome.RETIRED, Match.Outcome.DISQUALIFIED):
         # A tie that wasn't played, or wasn't finished, is completed in the winner's favour: the wins
         # still needed, each in straight games to nil.
         missing = max(event.tie_wins_needed - won, 0)

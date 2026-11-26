@@ -99,6 +99,8 @@ class Meeting(models.Model):
     class Audience(models.TextChoices):
         COMMITTEE = "committee"  # holders of the host's committee positions
         CLUB_ADMINS = "club_admins"  # a regional body's clubs' admins
+        # The representatives a body has accepted from its clubs or regions (REQ-045), in term.
+        REPRESENTATIVES = "representatives"
         MEMBERS = "members"  # every active member of the host
         NAMED = "named"  # the people listed
 
@@ -117,11 +119,15 @@ class Meeting(models.Model):
     ends_at = models.DateTimeField()
     location = models.CharField(max_length=200, blank=True)
     online_link = models.URLField(max_length=300, blank=True)
-    audience = models.CharField(max_length=12, choices=Audience.choices, default=Audience.COMMITTEE)
+    audience = models.CharField(max_length=16, choices=Audience.choices, default=Audience.COMMITTEE)
     # The people asked when the audience is `named`; the invitations themselves are MeetingInvitee rows.
     named = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
-    # The agenda in order: a list of {"title": str, "presenter": str, "tournament": tournament id | null}.
+    # The agenda in order: a list of {"id": str, "title": str, "presenter": str, "tournament": tournament
+    # id | null}. The id is given by the API and stays with the item when the agenda is reordered, so
+    # documents, decisions and action items keep pointing at it.
     agenda = models.JSONField(default=list, blank=True)
+    # Counts the changes made after publishing; each one is a new notice to the invitees.
+    revision = models.PositiveIntegerField(default=0)
     # Penalties for missing it, shown to invitees: a list of {"applies_to": "absent" | "late" |
     # "apologies", "penalty": str, "amount_minor": int | null}, at most one rule for each.
     rules = models.JSONField(default=list, blank=True)
@@ -130,8 +136,28 @@ class Meeting(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+
+    class MinutesStatus(models.TextChoices):
+        NONE = ""
+        DRAFT = "draft"
+        APPROVED = "approved"
+
     minutes = models.TextField(max_length=20000, blank=True)
     minutes_recorded_at = models.DateTimeField(null=True, blank=True)
+    # A draft is for the host's governance staff and the secretary. Approved minutes are read by the
+    # invitees and never change again; corrections are MinutesAmendment rows beside them.
+    minutes_status = models.CharField(max_length=8, choices=MinutesStatus.choices, default="", blank=True)
+    minutes_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    minutes_approved_at = models.DateTimeField(null=True, blank=True)
+    # What was decided: a list of {"item": agenda item id | "", "text": str}.
+    decisions = models.JSONField(default=list, blank=True)
+    next_meeting_at = models.DateTimeField(null=True, blank=True)
+    # The meeting whose minutes set this one's date (it was created as a draft from them).
+    follows = models.OneToOneField(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="next_meeting"
+    )
     cancel_reason = models.CharField(max_length=300, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
@@ -173,6 +199,9 @@ class MeetingInvitee(models.Model):
         ABSENT = "absent"
 
     answer = models.CharField(max_length=10, choices=Answer.choices, default=Answer.NONE)
+    # With apologies, sent before the start (REQ-046): an optional reason, for whoever takes attendance.
+    apology_reason = models.CharField(max_length=300, blank=True)
+    apologised_at = models.DateTimeField(null=True, blank=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     # The record of the meeting: self check-in marks present; the secretary marks the rest.
     attendance = models.CharField(max_length=10, choices=Attendance.choices, default="", blank=True)
@@ -220,6 +249,82 @@ class MeetingPenalty(models.Model):
 
     def __str__(self):
         return f"{self.penalty} for {self.invitee_id}"
+
+
+MAX_MEETING_DOCUMENTS = 10
+
+
+class MeetingDocument(models.Model):
+    """A PDF for the meeting, usually for one agenda item (REQ-046). Stored privately (REQ-020): read by
+    the invitees and the host's governance staff, through signed links."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="documents")
+    item = models.CharField(max_length=32, blank=True)  # an agenda item's id, or the meeting as a whole
+    title = models.CharField(max_length=120)
+    file = models.OneToOneField(
+        "attachments.Attachment", on_delete=models.CASCADE, related_name="meeting_document"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return self.title
+
+
+class ActionItem(models.Model):
+    """Something a meeting asked someone to do (REQ-046). Written with the minutes; once they are approved
+    only its status changes. The owner sees their open items across every organization."""
+
+    class Status(models.TextChoices):
+        OPEN = "open"
+        DONE = "done"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="action_items")
+    item = models.CharField(max_length=32, blank=True)  # the agenda item it came from, if any
+    description = models.CharField(max_length=300)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="action_items",
+    )
+    due_on = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=4, choices=Status.choices, default=Status.OPEN)
+    done_at = models.DateTimeField(null=True, blank=True)
+    done_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["owner", "status"], name="action_item_owner_status")]
+
+    def __str__(self):
+        return self.description
+
+
+class MinutesAmendment(models.Model):
+    """A correction to approved minutes. The minutes themselves stay as approved."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="amendments")
+    text = models.TextField(max_length=5000)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"Amendment to {self.meeting_id}"
 
 
 class Sponsorship(models.Model):

@@ -116,3 +116,13 @@ class PlayerSerializer(DirectoryPlayerSerializer):
         choices=PlayerProfile.Experience.choices, read_only=True, allow_null=True
     )
     bio = PublishedCharField(read_only=True, allow_null=True)
+
+
+class SignedOutPlayerSerializer(PlayerSerializer):
+    """A player's page to a signed-out visitor (TASK-035): the same shape, but the name alone. The
+    photo, nickname, clubs and published details are for signed-in players, as the directory is."""
+
+    def to_representation(self, instance):
+        shown = {"id": str(instance.user.id), "display_name": instance.user.display_name}
+        shown |= {"nickname": "", "avatar": None, "clubs": []}
+        return shown | {field: None for field in ("hand", "grip", "style", "experience", "bio")}

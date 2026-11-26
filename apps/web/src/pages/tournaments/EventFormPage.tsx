@@ -95,6 +95,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? "")
   const [bestOf, setBestOf] = useState<`${BestOf}`>(`${event?.best_of ?? 5}`)
   const [rest, setRest] = useState((event?.rest_minutes ?? 10).toString())
+  const [grace, setGrace] = useState((event?.call_grace_minutes ?? 10).toString())
   const [seeding, setSeeding] = useState<Seeding>(event?.seeding ?? "rating")
   const defaultFee = event?.entry_fee ?? t.registration_fee
   const [fee, setFee] = useState(defaultFee.amount_minor > 0 ? (defaultFee.amount_minor / 100).toString() : "")
@@ -121,6 +122,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
         name: name.trim(),
         capacity: whole(capacity),
         rest_minutes: whole(rest) ?? 10,
+        call_grace_minutes: whole(grace) ?? 10,
         entry_fee: { amount_minor: Math.round((Number(fee) || 0) * 100), currency },
         registration_opens_at: fromZonedInput(opens, t.timezone),
         registration_closes_at: fromZonedInput(closes, t.timezone),
@@ -270,6 +272,17 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
           value={rest}
           onChange={(e) => setRest(e.target.value)}
           error={errors.rest_minutes}
+        />
+        <Field
+          label="Time to report when called (minutes)"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={60}
+          value={grace}
+          onChange={(e) => setGrace(e.target.value)}
+          error={errors.call_grace_minutes}
+          hint="A player not at the table by then is flagged; only the referee awards a walkover."
         />
       </div>
       <Field

@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from accounts.models import User
+from accounts.serializers import SignUpSerializer
 
 from .conftest import PASSWORD, BrowserClient, link_from
 
@@ -48,6 +49,23 @@ def test_signup_saves_the_selected_location_and_rejects_a_partial_one(client):
     assert created.status_code == 201, created.json()
     profile = User.objects.get(email="kofi@example.com").profile
     assert (profile.country, profile.region, profile.city) == ("KE", "Nairobi City", "Nairobi")
+
+
+def test_the_verification_link_keeps_where_the_new_player_started(client, verified_user, mailoutbox):
+    # Signing up from an event's entries page brings the player back there once onboarded (TASK-035).
+    event = "/tournaments/abc/events/def/entries"
+    assert signup(client, next=event).status_code == 201
+    assert link_from(mailoutbox[0], "/verify-email")["next"] == event
+    resend = {"email": "kofi@example.com", "next": event}
+    assert client.post("/api/v1/auth/verification/resend/", resend, format="json").status_code == 202
+    assert link_from(mailoutbox[1], "/verify-email")["next"] == event
+    assert signup(client, email="ama@example.com", next=event).status_code == 201  # an existing account
+    assert f"/login?next={event.replace('/', '%2F')}" in mailoutbox[2].body
+    for elsewhere in ("https://evil.example", "//evil.example", "/\\\\evil.example", "/a b"):
+        form = SignUpSerializer(
+            data={"display_name": "K", "email": "k@example.com", "password": PASSWORD, "next": elsewhere}
+        )
+        assert not form.is_valid() and "next" in form.errors, elsewhere
 
 
 def test_verify_link_verifies_and_logs_in(client, mailoutbox):

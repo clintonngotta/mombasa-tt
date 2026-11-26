@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 140 452 286" font-family="'Barlow Condensed', sans-serif">
+  <!-- Coast Loopas primary logo. Text is live: it needs Barlow Condensed 600 and 700. -->
+  <g fill="none" stroke-linecap="round" stroke-width="12">
+    <path d="M70 250 Q150 110 250 190" stroke="#08b8f0" opacity=".35"/>
+    <path d="M110 262 Q175 150 262 204" stroke="#08b8f0" opacity=".65"/>
+    <path d="M152 272 Q200 190 272 220" stroke="#024385"/>
+  </g>
+  <circle cx="312" cy="222" r="34" fill="#ffd859" stroke="#031539" stroke-width="7"/>
+  <text x="256" y="366" text-anchor="middle" font-size="100" font-weight="700" fill="#031539" letter-spacing="-2">coast<tspan fill="#024385">loopas</tspan></text>
+  <text x="256" y="412" text-anchor="middle" font-size="26" font-weight="600" fill="#52647a" letter-spacing="7">COAST TABLE TENNIS</text>
+</svg>

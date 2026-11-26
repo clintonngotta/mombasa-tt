@@ -74,7 +74,7 @@ Document a deployment-specific environment file outside source control and reada
 | `DJANGO_SECRET_KEY` | Server only; unique per environment |
 | `DJANGO_DEBUG` | False outside local development |
 | `DJANGO_ALLOWED_HOSTS` | Exact API domains, no production wildcard |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Exact HTTPS browser origins |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Exact HTTPS browser origins allowed besides the API's own: CSRF, state-changing API requests (another site's POST, PUT, PATCH or DELETE gets 403 `origin_not_allowed`) and WebSockets check this list (`core/security.py`). With `DJANGO_DEBUG` off the API refuses to start with a wildcard or non-https origin, or a wildcard host in `DJANGO_ALLOWED_HOSTS`. The API sends no CORS headers: the PWA shares its origin |
 | `CORS_ALLOWED_ORIGINS` | Exact web origins; credential support restricted to them |
 | `DATABASE_URL` | Server-only private PostgreSQL address/credential |
 | `REDIS_URL` | Server-only private Redis address/credential |
@@ -92,12 +92,28 @@ Document a deployment-specific environment file outside source control and reada
 | `APP_BUILD` | Build time, public: the web release's number, `YYYYMMDDHHMM` (CI sets it; a local build uses the build time). The service worker version and the `X-Client-Build` header carry it |
 | `MIN_CLIENT_BUILD` | Server: the oldest `APP_BUILD` the API still serves (default 0, every build). An older cached app gets 426 `client_outdated` and asks to update; its queued scores stay on the device and the new version sends them. Raise only for a change that breaks older apps, after the new web release is live |
 | `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` | Server: browser push (REQ-019, TASK-034). Empty key = push off; the inbox works either way. Make the VAPID key once with `manage.py push_keys` and keep it: a new key stops every subscribed device until its player switches push on again. The subject is a `mailto:` or https contact for push services (default `FRONTEND_URL`). The worker sends push over outbound HTTPS only to the hosts in `WEB_PUSH_HOSTS` (default: Google FCM, Mozilla, Apple, Windows push services) |
+| `SECURE_HSTS_SECONDS` | Server: HSTS max-age, 0 (off) by default. Set it (e.g. `31536000`) once every host is checked over HTTPS. Django admin's login is held to `THROTTLE_AUTH_LOGIN` per address, and the live schema (`/api/v1/schema/`) needs a session |
 | `TRUSTED_PROXY_COUNT`, `THROTTLE_PUBLIC_READS` | Server: request throttles take the client address from the last `X-Forwarded-For` hop added by this many proxies (default 1, Caddy). Set it to the real number of proxies in front, or a spoofed header can dodge the login and public-page throttles. Signed-out reads of public tournament pages are limited per address (default `120/min`; TASK-035) |
 | `SODA_STAKES_ENABLED` | Server: allow soda game stakes (default off). **Leave off in production until the legal and policy sign-off (Kenyan betting and gaming law, age 18+, limits) is recorded in intent.md (TASK-078).** While off, stake fields are refused and hidden, and soda games run without stakes. Clubs can still switch stakes or soda games off for their members |
+| `OWNER_EMAIL`, `OWNER_PASSWORD`, `OWNER_NAME` | Server, secret: the platform owner's account. When the API container starts, `manage.py ensure_owner` creates a platform super admin with this email (verified, so they can sign in at once) if none exists, and gives an existing one back its authority if it was lost. The password is used only on creation and must pass the sign-up password rules; later starts never reset it, so the owner changes it in the app after the first login. Both empty: no account is made. One set without the other, a weak password or a bad email stops the API from starting. The password is never logged |
 | `APP_IMAGE`, `WEB_IMAGE` | Immutable release tag/digest, including previous release in history |
 | Later relay/billing secrets | Provision only when those phases are enabled |
 
 The implementation may refine exact variable names, but must update this contract and the checked-in secret-free example together. Enforce HTTPS/secure cookies and CSRF. Trust proxy-forwarded scheme only from the controlled proxy. Begin HSTS after validating all relevant hosts; do not preload prematurely. Sanitize errors and restrict Django Admin to authorized staff with strong authentication.
+
+## Cloudflare in front of the site
+
+Cloudflare is optional. The site works with a plain DNS record pointing at the VPS, and that is the simplest first deployment: keep the record on **DNS only** until HTTPS works, then decide.
+
+When the record is proxied (orange cloud):
+
+- **SSL/TLS mode: Full (strict).** Cloudflare then talks HTTPS to the server and checks its certificate. The server keeps its own certificate: Let's Encrypt (renewal over HTTP keeps working through the proxy) or a Cloudflare Origin CA certificate.
+- **Never Flexible.** Cloudflare would fetch the site over plain HTTP, the server redirects HTTP to HTTPS, and the browser loops for ever. It also sends passwords from Cloudflare to the server unencrypted.
+- **Plain "Full" works but doesn't check the certificate,** so it protects less than strict for no saving.
+- **Error 525** means Cloudflare could not complete HTTPS with the server: nothing listens on port 443, there is no certificate for that name, or the firewall blocks it. Check with `curl -vk --resolve NAME:443:SERVER_IP https://NAME/health/live`.
+- **`TRUSTED_PROXY_COUNT` goes up by one** (Cloudflare is one more proxy: 2 with Caddy alone, 3 with Nginx and Caddy). Left as it was, every visitor behind one Cloudflare address shares the login and API rate limits.
+- **Close the side door.** With the count raised, a request sent straight to the server's address could fake its own client address. Allow ports 80 and 443 only from [Cloudflare's published ranges](https://www.cloudflare.com/ips/) in the firewall, or turn on Authenticated Origin Pulls.
+- **Leave off** Rocket Loader and HTML or API caching rules: the service worker and the API set their own cache headers. WebSockets (live scores) pass through as they are.
 
 ## VPS provisioning runbook
 
@@ -109,7 +125,7 @@ The implementation may refine exact variable names, but must update this contrac
 6. Create `/srv/mombasa-tt` with release configuration and restricted environment file; log into the private image registry using a scoped pull credential.
 7. Provision private DB/Redis volumes, object buckets, SMTP and push credentials. Configure backups before real member data enters the system.
 8. Set DNS, start reverse proxy and obtain HTTPS certificates. Verify certificate chain and WebSocket upgrade end to end.
-9. Deploy migrations/static assets and application services using the release procedure below. Create the initial platform staff account interactively; do not seed default production passwords or fictional demo users.
+9. Deploy migrations/static assets and application services using the release procedure below. The owner account is made at start from `OWNER_EMAIL` and `OWNER_PASSWORD` in the environment file (owner decision, 2026-11-26); there is no built-in default password and no demo users in production (`seed_dev` refuses to run with `DJANGO_DEBUG` off).
 10. Complete health, auth, tenant-isolation, notification and tournament smoke checks, then record deployment evidence and enable access.
 
 Done: EVAL-034 deployment portion passes and independent monitoring sees healthy public endpoints without exposed private services.
@@ -189,7 +205,7 @@ Targets: RPO ≤15 minutes for confirmed durable data; RTO ≤4 hours for core t
 
 - **Application failure, compatible schema:** return API/worker/beat/web to previous immutable images; repeat smoke checks. Preserve database and attachment volumes.
 - **Bad migration:** stop affected writes; assess a forward repair first. Reverse migration only if tested and non-destructive. A point-in-time restore loses later writes, so make the recovery point and reconciliation explicit before cutover.
-- **Redis outage:** restore broker/channel service, reconnect clients and replay durable outbox. Scores already accepted by PostgreSQL remain authoritative.
+- **Redis outage:** restore broker/channel service, reconnect clients and replay durable outbox. Scores already accepted by PostgreSQL remain authoritative. Rate limits are counted in Redis; while it is down, log in (the API's and the admin login form), sign-in emails and invitations are refused (they can't be counted safely) and the other limits count per API process until it returns. Production refuses to start without `REDIS_URL`.
 - **Worker failure:** inspect failed jobs by ID, repair and retry idempotently. Never replay a whole payment/broadcast side effect blindly.
 - **VPS loss:** follow restore procedure on a replacement server; keep mobile API domain stable where possible.
 - **PWA bug:** stop rollout, restore prior web assets and publish a safe service-worker update. Retain backward-compatible API and IndexedDB score data; do not clear browser storage as a routine fix. Native binary rollback is handled separately when that phase exists.

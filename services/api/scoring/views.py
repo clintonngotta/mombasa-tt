@@ -10,21 +10,26 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.models import User
+from competitions import matchday
 from competitions.models import DrawVersion, Event, Match, Rubber, Tournament
 from competitions.serializers import MatchDetailSerializer
-from competitions.views import match_reply, require_staff, staff_tournament
+from competitions.views import match_reply, require_staff, sees_draft, staff_tournament
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
+from core.permissions import PublicReads
+from core.throttling import LiveReadThrottle
 from organizations.access import membership_permissions
 from organizations.models import Membership
+from reservations.serializers import UmpireNextSerializer
 
-from . import service
+from . import live, service
 from .models import Scorecard, ScoreConflict
 from .serializers import (
     AssignUmpireSerializer,
     ConfirmSerializer,
     ConflictReceiptSerializer,
     ConflictReportSerializer,
+    LiveMatchSerializer,
     MyScorecardSerializer,
     ResolveConflictSerializer,
     ScorecardSerializer,
@@ -115,8 +120,14 @@ class UmpireViewSet(viewsets.GenericViewSet):
             .prefetch_related("roles", "organization__roles")
             .order_by("user__display_name")
         )
-        able = [m.user for m in members if membership_permissions(m) & service.UMPIRE_PERMISSIONS]
-        return Response(UmpireSerializer(able, many=True).data)
+        from reservations.models import TournamentUmpire
+
+        able = {m.user.id: m.user for m in members if membership_permissions(m) & service.UMPIRE_PERMISSIONS}
+        # The tournament's own umpires, players among them, whatever their role in the host.
+        for listed in TournamentUmpire.objects.filter(tournament=tournament).select_related("user"):
+            able.setdefault(listed.user.id, listed.user)
+        people = sorted(able.values(), key=lambda user: user.display_name.lower())
+        return Response(UmpireSerializer(people, many=True).data)
 
     @extend_schema(request=AssignUmpireSerializer, responses={200: MatchDetailSerializer})
     def assign(self, request, tournament_pk, event_pk, pk):
@@ -143,6 +154,15 @@ class UmpireViewSet(viewsets.GenericViewSet):
                 if umpire is None:
                     raise ApiException("not_an_umpire", "We don't know that person.", 409)
             service.assign(match, rubber, umpire, request.user)
+            where = f" (rubber {rubber.position})" if rubber else ""
+            matchday.log(
+                tournament,
+                matchday.Action.UMPIRE_ASSIGNED if umpire else matchday.Action.UMPIRE_REMOVED,
+                f"{matchday.match_title(match)}{where}" + (f": {umpire.display_name}" if umpire else ""),
+                actor=request.user,
+                match=match,
+                table=match.table,
+            )
         return match_reply(request, match.draw, match.id)
 
 
@@ -179,7 +199,11 @@ class ScorecardViewSet(viewsets.GenericViewSet):
         return self.get_paginated_response(MyScorecardSerializer(page, many=True).data)
 
     def _shown(self, scorecard: Scorecard) -> Response:
-        return Response(ScorecardSerializer(scorecard, context={"device_id": device_of(self.request)}).data)
+        return Response(
+            ScorecardSerializer(
+                scorecard, context={"device_id": device_of(self.request), "request": self.request}
+            ).data
+        )
 
     def _reply(self, scorecard: Scorecard) -> Response:
         return self._shown(scorecards().prefetch_related("events").get(pk=scorecard.pk))
@@ -201,7 +225,9 @@ class ScorecardViewSet(viewsets.GenericViewSet):
                 scorecard, request.user, asked["device_id"], asked["label"], asked["take_over"]
             )
         fresh = scorecards().prefetch_related("events").get(pk=scorecard.pk)
-        return Response(ScorecardSerializer(fresh, context={"device_id": asked["device_id"]}).data)
+        return Response(
+            ScorecardSerializer(fresh, context={"device_id": asked["device_id"], "request": request}).data
+        )
 
     @extend_schema(request=ConflictReportSerializer, responses={201: ConflictReceiptSerializer})
     def conflicts(self, request, pk):
@@ -264,3 +290,60 @@ class ScorecardViewSet(viewsets.GenericViewSet):
                 scorecard, request.user, asked["assignment_id"], asked["revision"], device_of(request)
             )
         return self._reply(scorecard)
+
+    @extend_schema(responses={200: UmpireNextSerializer})
+    def next(self, request, pk):
+        """After confirming: the match that takes this table next (REQ-053). The match already sent
+        there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned."""
+        from reservations import board
+        from reservations.models import Reservation
+
+        scorecard = get_object_or_404(scorecards(), pk=pk, umpire=request.user)
+        match = scorecard.rubber.match if scorecard.rubber_id else scorecard.match
+        table = match.table
+        empty = {"next": None, "on_table": False, "scorecard_id": None}
+        if table is None:
+            return Response(UmpireNextSerializer(empty).data)
+        tournament = match.draw.event.tournament
+        there = (
+            Reservation.objects.filter(
+                table=table, status=Reservation.Status.ACTIVE, match__draw__event__tournament=tournament
+            )
+            .exclude(match=match)
+            .select_related("match__draw__event", "match__entry_a", "match__entry_b")
+            .first()
+        )
+        if there is not None:
+            row = board.Row(there.match, [], there.created_at)
+            on_table = True
+        else:
+            row = board.next_on(tournament, table)
+            on_table = False
+        following = board.describe_next(row, table)
+        mine = None
+        if following is not None:
+            card = Scorecard.objects.filter(
+                match_id=following["match_id"], umpire=request.user, confirmed_at__isnull=True
+            ).first()
+            mine = card.id if card else None
+        return Response(
+            UmpireNextSerializer({"next": following, "on_table": on_table, "scorecard_id": mine}).data
+        )
+
+
+class LiveViewSet(viewsets.GenericViewSet):
+    """GET /tournaments/{id}/live/: the matches being scored now, for anybody who may see the
+    tournament (published, or a draft its organizers and approvers see). Pages fetch it again when the
+    tournament's socket says a score changed, and on a timer when the socket is down (TASK-084)."""
+
+    permission_classes = [PublicReads]
+    public_actions = ("list",)
+    throttle_classes = [LiveReadThrottle]
+    pagination_class = None
+
+    @extend_schema(responses=LiveMatchSerializer(many=True))
+    def list(self, request, tournament_pk):
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        if tournament.status == Tournament.Status.DRAFT and not sees_draft(request.user, tournament):
+            raise Http404
+        return Response(live.shown_live(tournament, lambda rows: LiveMatchSerializer(rows, many=True).data))

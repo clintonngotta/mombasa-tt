@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import ActivityViewSet, ScheduleCalendarView, ScheduleView
+from .views import ActivityViewSet, MyEventsView, ScheduleCalendarView, ScheduleView
 
 activities = ActivityViewSet
 # Mounted under /organizations/<organization_pk>/.
@@ -37,6 +37,16 @@ urlpatterns = [
         name="organization-activity-attendees",
     ),
     path(
+        "activities/<uuid:pk>/check-in/",
+        activities.as_view({"post": "check_in"}),
+        name="organization-activity-check-in",
+    ),
+    path(
+        "activities/<uuid:pk>/attendance/",
+        activities.as_view({"post": "attendance"}),
+        name="organization-activity-attendance",
+    ),
+    path(
         "activities/<uuid:pk>/invitees/",
         activities.as_view({"get": "invitee_list"}),
         name="organization-activity-invitees",
@@ -44,3 +54,5 @@ urlpatterns = [
     path("schedule/", ScheduleView.as_view(), name="organization-schedule"),
     path("schedule.ics", ScheduleCalendarView.as_view(), name="organization-schedule-ics"),
 ]
+
+me_urlpatterns = [path("events/", MyEventsView.as_view(), name="my-events")]

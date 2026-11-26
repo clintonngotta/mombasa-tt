@@ -1,22 +1,24 @@
 import { useNavigate } from "react-router-dom"
 import { Building2, ChevronRight, ClipboardCheck, Map, Users } from "lucide-react"
 import { OrgLinkRow } from "@/components/clubs/OrganizationLinks"
+import { GoverningBodies } from "@/components/region/GoverningBodies"
 import { Approvals } from "@/pages/region/RegionPage"
 import { ROW } from "@/lib/clubAdmin"
-import { KIND_LABEL, setActiveOrganization, useActiveMembership, type Membership } from "@/lib/clubs"
+import { KIND_LABEL, isBodyKind, setActiveOrganization, useActiveMembership, type Membership } from "@/lib/clubs"
 import { isOfficial } from "@/lib/navigation"
 import { cn } from "@/lib/utils"
 
 const AUTHORITY_LABEL = { platform: "Platform super admin", country: "Country official", regional: "Regional official" } as const
 
 /** A regional or country official's own page (REQ-048, geographic authority): the tournaments waiting for
- * their approval, their regional body, and the clubs and facilities they oversee. Officials are players too,
+ * their approval, their regional or national body, and the clubs and facilities they oversee. Officials
+ * hold the Official role in their body (TASK-107); platform super admins also create the bodies here. Officials are players too,
  * so their personal pages stay in the menu beside this one. */
 export function RegionalPage() {
   const navigate = useNavigate()
   const { memberships, all } = useActiveMembership()
   const overseen = all.filter((m) => m.authority)
-  const bodies = all.filter((m) => m.organization.kind === "regional_body" && !m.managedOnly)
+  const bodies = all.filter((m) => isBodyKind(m.organization.kind) && !m.managedOnly)
   const authority = overseen[0]?.authority
   const platform = overseen.some((m) => m.authority === "platform")
 
@@ -27,7 +29,7 @@ export function RegionalPage() {
 
   if (memberships.isPending) return <p className="text-muted-foreground">Loading…</p>
   if (!isOfficial(all)) {
-    return <p className="max-w-[640px] text-muted-foreground">This page is for regional and country officials and regional bodies.</p>
+    return <p className="max-w-[640px] text-muted-foreground">This page is for regional and country officials and their bodies.</p>
   }
 
   return (
@@ -35,7 +37,7 @@ export function RegionalPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Regional</h1>
         <p className="text-muted-foreground">
-          {authority ? AUTHORITY_LABEL[authority] : "Regional body"}
+          {authority ? AUTHORITY_LABEL[authority] : "Governing body"}
           {overseen.length > 0 && ` · overseeing ${overseen.length} ${overseen.length === 1 ? "organization" : "organizations"}`}
         </p>
       </div>
@@ -43,14 +45,16 @@ export function RegionalPage() {
       {bodies.length > 0 && (
         <section aria-labelledby="bodies-heading" className="flex flex-col gap-2">
           <h2 id="bodies-heading" className="text-xl font-bold">
-            Your regional body
+            {bodies.length === 1 ? "Your body" : "Your bodies"}
           </h2>
           {bodies.map((body) => (
             <button key={body.id} type="button" onClick={() => open(body, "/region")} className={cn(ROW, "min-h-12 text-left font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
               <Map aria-hidden className="size-5 text-brand-blue" />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate">{body.organization.name}</span>
-                <span className="text-sm font-normal text-muted-foreground">Agenda, clubs, articles, meetings and sponsorships</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {KIND_LABEL[body.organization.kind]} · agenda, clubs, articles, meetings and sponsorships
+                </span>
               </span>
               <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
             </button>
@@ -69,6 +73,8 @@ export function RegionalPage() {
           </OrgLinkRow>
         )}
       </section>
+
+      {platform && <GoverningBodies />}
 
       {overseen.length > 0 && (
         <section aria-labelledby="overseen-heading" className="flex flex-col gap-3">

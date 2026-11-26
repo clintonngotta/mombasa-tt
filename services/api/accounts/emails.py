@@ -8,11 +8,15 @@ from .tokens import make_reset_params, make_verification_token
 
 
 def _link(path: str, **params: str) -> str:
-    return f"{settings.FRONTEND_URL}{path}?{urlencode(params)}"
+    """A link into the web app. Empty parameters are left off, so an optional one needs no branch."""
+    query = urlencode({key: value for key, value in params.items() if value})
+    return f"{settings.FRONTEND_URL}{path}" + (f"?{query}" if query else "")
 
 
-def send_verification_email(user: User) -> None:
-    link = _link("/verify-email", token=make_verification_token(user))
+def send_verification_email(user: User, next_path: str = "") -> None:
+    """`next_path` (already checked to be a path in the app) rides along, so the new player ends up where
+    they started, such as the event they wanted to enter."""
+    link = _link("/verify-email", token=make_verification_token(user), next=next_path)
     send_mail(
         "Verify your Coast TT email",
         f"Hi {user.display_name},\n\n"
@@ -23,12 +27,28 @@ def send_verification_email(user: User) -> None:
     )
 
 
-def send_existing_account_email(user: User) -> None:
+def send_add_email_email(user: User, email: str) -> None:
+    """To the address a signed-in player asked to add. Nothing changes until they open the link."""
+    from .tokens import make_add_email_token
+
+    link = _link("/verify-email", token=make_add_email_token(user, email))
+    send_mail(
+        "Confirm your email for Coast TT",
+        f"Hi {user.display_name},\n\n"
+        f"Confirm this address to get your Coast TT notifications by email and to log in with it:\n{link}\n\n"
+        "The link expires in 24 hours. If you didn't ask for this, ignore this email.",
+        None,
+        [email],
+    )
+
+
+def send_existing_account_email(user: User, next_path: str = "") -> None:
     """Sent instead of an error when someone signs up with a registered address (no enumeration)."""
+    login = _link("/login", next=next_path)
     send_mail(
         "You already have a Coast TT account",
         f"Hi {user.display_name},\n\nSomeone tried to create a Coast TT account with this email, "
-        f"but you already have one. Log in at {settings.FRONTEND_URL}/login or reset your password at "
+        f"but you already have one. Log in at {login} or reset your password at "
         f"{settings.FRONTEND_URL}/forgot-password.\n\nIf this wasn't you, you can ignore this email.",
         None,
         [user.email],

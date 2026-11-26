@@ -6,7 +6,8 @@ the same canonical state after every event, so a stream the deck accepted is acc
 else is a rule decided twice differently.
 
 Rules: ITTF Laws of Table Tennis 2.11 (a game), 2.12 (a match), 2.13 (order of serving, receiving and
-ends) and Regulations 3.4.4.2 (time-out), as transcribed in spec.md.
+ends), 2.15 (the expedite system) and Regulations 3.4.4.2 (time-out), 3.5.2 (cards and penalty points)
+and 3.4.2.3 (suspension for incapacity), as transcribed in spec.md.
 
 A state is a plain dict with the keys of `initial_state()`; an event is a dict with a `type`.
 """
@@ -17,6 +18,8 @@ GAME_POINTS = 11
 PLAYERS = ("a1", "a2", "b1", "b2")
 SIDES = ("a", "b")
 ENDS = ("left", "right")
+CARD_REASONS = ("bad_behaviour", "racket_abuse", "illegal_advice", "delay", "other")
+LADDER_MAX = 3  # a fourth offence is the referee's to decide (3.5.2.4)
 
 
 class ScoringError(Exception):
@@ -45,9 +48,28 @@ def check_config(config) -> None:
     )
     if not known:
         raise ScoringError("invalid_config")
+    if "carry" in config:
+        carry = config["carry"]
+
+        def count(n, most):
+            return type(n) is int and 0 <= n <= most
+
+        offences = carry.get("offences") if isinstance(carry, dict) else None
+        advisers = carry.get("advisers") if isinstance(carry, dict) else None
+        fine = (
+            isinstance(offences, dict)
+            and all(count(offences.get(player), LADDER_MAX) for player in PLAYERS)
+            and isinstance(advisers, list)
+            and len(advisers) == 2
+            and all(count(n, 2) for n in advisers)
+        )
+        if not fine:
+            raise ScoringError("invalid_config")
 
 
-def initial_state() -> dict:
+def initial_state(config: dict | None = None) -> dict:
+    """The state before the first event; a tie's rubber starts with what the tie carries (3.5.2.7)."""
+    carry = (config or {}).get("carry")
     return {
         "status": "not_started",
         "game_number": 1,
@@ -62,6 +84,14 @@ def initial_state() -> dict:
         "decider_changed": False,
         "timeouts": [False, False],
         "winner": None,
+        "outcome": None,
+        "timeout_running": [False, False],
+        "offences": {player: carry["offences"][player] for player in PLAYERS}
+        if carry
+        else dict.fromkeys(PLAYERS, 0),
+        "advisers": list(carry["advisers"]) if carry else [0, 0],
+        "suspended": None,
+        "expedite": False,
     }
 
 
@@ -103,6 +133,10 @@ def _point(config: dict, state: dict, event: dict) -> dict:
     side = event.get("side")
     if side not in SIDES:
         raise ScoringError("unknown_event")
+    if state["suspended"] is not None:
+        raise ScoringError("suspended")
+    # Play resumed: a time-out still running is over (the side may resume early).
+    state["timeout_running"] = [False, False]
     who = SIDES.index(side)
     state["points"][who] += 1
     a, b = state["points"]
@@ -118,6 +152,7 @@ def _point(config: dict, state: dict, event: dict) -> dict:
             state.update(
                 status="completed",
                 winner=side,
+                outcome="played",
                 server=None,
                 receiver=None,
                 first_server=None,
@@ -138,8 +173,9 @@ def _point(config: dict, state: dict, event: dict) -> dict:
         )
         return state
 
-    # 2.13.3: service changes after every 2 points, and after every point once both have 10.
-    if (a >= 10 and b >= 10) or (a + b) % 2 == 0:
+    # 2.13.3: service changes after every 2 points, and after every point once both have 10. 2.15.3:
+    # under the expedite system, after every point.
+    if state["expedite"] or (a >= 10 and b >= 10) or (a + b) % 2 == 0:
         server, receiver = state["server"], state["receiver"]
         # 2.13.5: in doubles the previous receiver serves and the previous server's partner receives.
         state["server"] = receiver
@@ -183,11 +219,153 @@ def _timeout(config: dict, state: dict, event: dict) -> dict:
     # 3.4.4.2: one time-out for each player or pair in an individual match.
     if state["timeouts"][SIDES.index(side)]:
         raise ScoringError("timeout_used")
+    # 3.4.4.2.3: both sides may claim one at the same time; play resumes when both are ready.
     state["timeouts"][SIDES.index(side)] = True
+    state["timeout_running"][SIDES.index(side)] = True
     return state
 
 
-_HANDLERS = {"start": _start, "point": _point, "choose_server": _choose_server, "timeout": _timeout}
+def _timeout_end(config: dict, state: dict, event: dict) -> dict:
+    if not any(state["timeout_running"]):
+        raise ScoringError("no_timeout")
+    state["timeout_running"] = [False, False]
+    return state
+
+
+def _other(side: str) -> str:
+    return "b" if side == "a" else "a"
+
+
+def offences_of(config: dict, state: dict, player: str) -> int:
+    """How far up the card ladder a player's next offence starts (3.5.2.6): their own count, or in
+    doubles the pair's, the higher of its two players' counts."""
+    own = state["offences"][player]
+    return max(own, state["offences"][partner_of(player)]) if config["doubles"] else own
+
+
+def _card(config: dict, state: dict, event: dict) -> dict:
+    """3.5.2.2-3.5.2.4: a player's first offence is a yellow card; the second and third are yellow and
+    red together, giving the opponent 1 and then 2 penalty points; a fourth is for the referee."""
+    if state["status"] != "in_progress":
+        raise ScoringError("not_in_progress")
+    player = event.get("player")
+    if player not in PLAYERS or (not config["doubles"] and player[1] != "1"):
+        raise ScoringError("unknown_event")
+    if event.get("reason") not in CARD_REASONS:
+        raise ScoringError("invalid_card")
+    # 3.5.2.6: in doubles a card for either player counts against the pair, so the pair stands at the
+    # higher of its players' counts (carried in from earlier rubbers too); the offender takes the new step.
+    reached = offences_of(config, state, player)
+    if reached >= LADDER_MAX:
+        raise ScoringError("refer_to_referee")
+    state["offences"][player] = reached + 1
+    owed = reached
+    if owed == 0:
+        return state
+    # 3.5.2.3: penalty points are points to the opponent, which can end a game or the match. They are
+    # played even if a suspension is running; it stands afterwards if the match goes on.
+    suspended = state["suspended"]
+    state["suspended"] = None
+    for _ in range(owed):
+        if state["status"] != "in_progress":
+            break
+        state = _point(config, state, {"side": _other(player[0])})
+    state["suspended"] = suspended if state["status"] == "in_progress" else None
+    return state
+
+
+def _adviser_card(config: dict, state: dict, event: dict) -> dict:
+    """3.5.2.1-3.5.2.2: an adviser is warned with a yellow card, then sent away with a red one."""
+    if state["status"] != "in_progress":
+        raise ScoringError("not_in_progress")
+    side = event.get("side")
+    if side not in SIDES:
+        raise ScoringError("unknown_event")
+    if event.get("reason") not in CARD_REASONS:
+        raise ScoringError("invalid_card")
+    if state["advisers"][SIDES.index(side)] >= 2:
+        raise ScoringError("adviser_sent_off")
+    state["advisers"][SIDES.index(side)] += 1
+    return state
+
+
+def _suspension(config: dict, state: dict, event: dict) -> dict:
+    if state["status"] != "in_progress":
+        raise ScoringError("not_in_progress")
+    side = event.get("side")
+    if side not in SIDES:
+        raise ScoringError("unknown_event")
+    if state["suspended"] is not None:
+        raise ScoringError("suspended")
+    state["suspended"] = side
+    return state
+
+
+def _suspension_end(config: dict, state: dict, event: dict) -> dict:
+    if state["suspended"] is None:
+        raise ScoringError("not_suspended")
+    state["suspended"] = None
+    return state
+
+
+def _expedite(config: dict, state: dict, event: dict) -> dict:
+    if state["status"] != "in_progress":
+        raise ScoringError("not_in_progress")
+    if state["expedite"]:
+        raise ScoringError("expedite_on")
+    played = sum(state["points"])
+    # 2.15.1: not introduced in a game once at least 18 points have been scored.
+    if played >= 18:
+        raise ScoringError("expedite_too_late")
+    state["expedite"] = True
+    # 2.15.3: introduced between rallies, the player who received in the rally before serves. After an
+    # odd number of points the server of that rally is still due, so service moves on one step.
+    if played % 2 == 1:
+        server = state["server"]
+        state["server"] = state["receiver"]
+        state["receiver"] = partner_of(server) if config["doubles"] else server
+    return state
+
+
+def _end_early(outcome: str):
+    """The side retires or is disqualified: the opponent wins with the points played, nothing more."""
+
+    def handler(config: dict, state: dict, event: dict) -> dict:
+        if state["status"] != "in_progress":
+            raise ScoringError("not_in_progress")
+        side = event.get("side")
+        if side not in SIDES:
+            raise ScoringError("unknown_event")
+        state.update(
+            status="completed",
+            winner=_other(side),
+            outcome=outcome,
+            timeout_running=[False, False],
+            suspended=None,
+            server=None,
+            receiver=None,
+            first_server=None,
+            first_receiver=None,
+        )
+        return state
+
+    return handler
+
+
+_HANDLERS = {
+    "start": _start,
+    "point": _point,
+    "choose_server": _choose_server,
+    "timeout": _timeout,
+    "timeout_end": _timeout_end,
+    "card": _card,
+    "adviser_card": _adviser_card,
+    "suspension": _suspension,
+    "suspension_end": _suspension_end,
+    "expedite": _expedite,
+    "retire": _end_early("retired"),
+    "disqualify": _end_early("disqualified"),
+}
 
 
 def apply(config: dict, state: dict, event: dict) -> dict:
@@ -208,7 +386,7 @@ class Scoring:
     def __init__(self, config: dict):
         check_config(config)
         self.config = config
-        self.state = initial_state()
+        self.state = initial_state(config)
         self._earlier: list[dict] = []
 
     def push(self, event: dict) -> dict:

@@ -118,6 +118,8 @@ def test_staff_assign_an_umpire_and_only_that_umpire_gets_the_sheet(staff, club,
         "umpire_name": "Zuri Umpire",
         "can_score": False,
         "can_assign": True,
+        "incidents": [],
+        "live": None,
     }
     mine = as_umpire.get(match_url(final)).json()["scoring"]
     assert mine["can_score"] is True and mine["can_assign"] is False
@@ -136,6 +138,7 @@ def test_staff_assign_an_umpire_and_only_that_umpire_gets_the_sheet(staff, club,
 
     sheet = as_umpire.get(f"/api/v1/scorecards/{mine['scorecard_id']}/").json()
     assert sheet["config"] == {"best_of": 3, "doubles": False}
+    assert sheet["incidents"] == [] and sheet["can_disqualify"] is False
     assert sheet["state"]["status"] == "not_started" and sheet["revision"] == 0 and sheet["events"] == []
     assert [p["slot"] for p in sheet["a"]["players"]] == ["a1"]
     assert sheet["a"]["title"] == final["match"].entry_a.players.get().user.display_name
@@ -211,6 +214,8 @@ def test_the_umpire_scores_a_match_and_confirming_makes_it_official(staff, final
         "umpire_name": "Zuri Umpire",
         "can_score": False,
         "can_assign": False,
+        "incidents": [],
+        "live": None,
     }
     # A confirmed result is closed to the deck: corrections are the organizers' (REQ-015).
     # Confirming again (the first answer was lost on the way) changes nothing and succeeds.

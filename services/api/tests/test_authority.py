@@ -3,9 +3,9 @@
 import pytest
 
 from core.models import Country, Region
-from organizations.models import OfficialAppointment, Organization
+from organizations.models import Organization
 
-from .helpers import logged_in, make_user
+from .helpers import logged_in, make_official, make_user
 from .test_roles import ORGS
 from .test_tournaments import add_event, do, make_tournament, url
 from .test_venues import make_venue
@@ -36,8 +36,9 @@ def coast_club(club, kenya):
 
 
 def official(email, kenya, region=None):
+    """An official of the region's body, or of Kenya's national body without a region (TASK-107)."""
     user = make_user(email)
-    OfficialAppointment.objects.create(user=user, country=kenya["country"], region=region)
+    make_official(user, kenya["country"].code, region.name if region else "")
     return logged_in(user)
 
 

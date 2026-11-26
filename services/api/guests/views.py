@@ -18,7 +18,7 @@ from competitions.models import EntryPlayer
 from core.exceptions import ApiException
 from core.pagination import StandardPagination, search_term
 from organizations.access import require_permission
-from organizations.models import Organization
+from organizations.models import Membership, Organization
 from organizations.permissions import Permission
 
 from . import service
@@ -282,6 +282,9 @@ class JoinInvitationView(APIView):
                     "email": invitation.email,
                     "phone": invitation.phone,
                     "expires_at": invitation.expires_at,
+                    "is_member": Membership.objects.active()
+                    .filter(organization_id=guest.organization_id, user_id=guest.user_id)
+                    .exists(),
                     "entries": [
                         {
                             "tournament_id": place.event.tournament_id,

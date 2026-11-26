@@ -12,6 +12,7 @@ import {
   createRole,
   deleteRole,
   listPermissions,
+  isBodyKind,
   listRoles,
   updateRole,
   useActiveMembership,
@@ -76,7 +77,9 @@ function RoleForm({ membership, role }: { membership: Membership; role?: Role })
   }
 
   const fields = save.error instanceof ApiError ? save.error.fieldErrors() : {}
-  const options = (catalog.data ?? []).map((p) => ({
+  // Tournament approval belongs to regional and national bodies only (TASK-107).
+  const body = isBodyKind(membership.organization.kind)
+  const options = (catalog.data ?? []).filter((p) => body || !p.body_only).map((p) => ({
     value: p.code,
     label: p.label,
     // Nobody grants or removes a permission they don't hold; the Admin role always has them all.

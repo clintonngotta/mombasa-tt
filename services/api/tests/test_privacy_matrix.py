@@ -28,6 +28,7 @@ from attachments.models import Attachment
 from coaching.models import Availability, Booking, Coaching, CoachProfile, MatchComment
 from competitions import drawing, ties
 from competitions.models import (
+    Announcement,
     Award,
     Ceremony,
     DrawVersion,
@@ -46,17 +47,24 @@ from competitions.models import (
     ScheduleVersion,
     Tournament,
     TournamentDocument,
+    TournamentReview,
 )
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
+from feedback import service as feedback
+from feedback.models import FeedbackForm, FeedbackRecipient, FeedbackResponse
 from finance import welfare
 from finance.models import (
     Allocation,
+    AnnualReport,
     Campaign,
     CampaignMember,
     Charge,
     Expense,
+    ExternalIncome,
+    ExternalSource,
+    FinanceSettings,
     Payment,
     WelfareContribution,
     WelfareProject,
@@ -77,18 +85,39 @@ from organizations.models import (
     Membership,
     Organization,
     PositionHolder,
+    Representative,
     Role,
     seed_roles,
 )
 from organizations.permissions import RoleKey
 from outbox.models import Job
+from penalties.models import AbsencePenalty, AbsenceRule
 from profiles.models import PlayerProfile
-from regions.models import AgendaItem, Article, Meeting, MeetingInvitee, MeetingPenalty, Sponsorship
+from regions.models import (
+    ActionItem,
+    AgendaItem,
+    Article,
+    Meeting,
+    MeetingDocument,
+    MeetingInvitee,
+    MeetingPenalty,
+    MinutesAmendment,
+    Sponsorship,
+)
 from reservations import service as reservations
-from reservations.models import Hold, Reservation
+from reservations.models import Hold, Reservation, TournamentUmpire
 from scoring.models import Scorecard, ScoreConflict, ScoreEvent
 from soda.models import Challenge, Policy
-from training.models import ClubSession, Drill, Equipment, PlanItem, SessionInvitation, TrainingPlan
+from squads.models import Squad, SquadPlace
+from training.models import (
+    ClubSession,
+    Drill,
+    Equipment,
+    PlanItem,
+    SessionInvitation,
+    TrainingPlan,
+    TrainingRules,
+)
 
 from .conftest import BrowserClient
 from .helpers import image_upload, logged_in, make_user
@@ -114,7 +143,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # The invitation link's secret is the authorization; joining creates the invitee's account.
     "auth-invitation": {"get": PUBLIC, "post": PUBLIC},
     "auth-invitation-claim": {"post": OWNER},
-    "schema": {"get": PUBLIC},
+    "schema": {"get": SIGNED_IN},
     "geography-countries": {"get": PUBLIC},
     # The events listing (REQ-042) is public; pending external events reach the submitting club only.
     "events": {"get": PUBLIC},
@@ -129,6 +158,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "geography-country": {"get": PUBLIC},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
     "auth-me": {"get": OWNER, "patch": OWNER},
+    "auth-me-email": {"post": OWNER},  # a phone-only account asks to add an email: a link is sent
     "attachment-link": {"get": SIGNED_IN},  # per-attachment policy, see test_attachments.py
     "personal-match-list": {"get": OWNER, "post": OWNER},
     "personal-match-labels": {"get": OWNER},
@@ -221,6 +251,8 @@ ACCESS: dict[str, dict[str, str]] = {
     # Club sessions (REQ-027): a member answers their own invitations; training staff run the rest.
     "my-session-invitation-list": {"get": OWNER},
     "my-session-invitation-accept": {"post": OWNER},
+    "my-session-invitation-check-in": {"post": OWNER},  # Baraka's invitation, from Baraka's phone
+    "my-session-invitation-apologise": {"post": OWNER},
     "my-session-invitation-decline": {"post": OWNER},
     "my-drill-list": {"get": OWNER, "post": OWNER},
     "my-drill-detail": {"get": OWNER, "put": OWNER, "patch": OWNER, "delete": OWNER},
@@ -233,6 +265,20 @@ ACCESS: dict[str, dict[str, str]] = {
     # Award ceremonies (REQ-049): a draft ceremony is for the host's competition staff alone.
     # Published tournaments are public (TASK-035): a draft ceremony is still the staff's (test_public_views).
     "tournament-ceremony": {"get": PUBLIC, "put": STAFF},
+    # The review of a finished tournament: its host's competition staff (and the region's officials).
+    "tournament-review": {"get": STAFF, "put": STAFF},
+    # Results announcements (TASK-085): the feed of a published tournament is public; drafts and every
+    # change are the host's competition staff's. The detail route is exercised on a draft (see kwargs),
+    # which is "not found" for everyone else: its text is checked with the private markers below.
+    "tournament-announcements": {"get": PUBLIC, "post": STAFF},
+    "tournament-announcement": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
+    "tournament-announcement-publish": {"post": STAFF},
+    "tournament-announcement-amend": {"post": STAFF},
+    "tournament-announcement-card": {"get": PUBLIC},
+    # The same published text as a PDF: one post, or the tournament's whole sheet (never drafts).
+    "tournament-announcement-pdf": {"get": PUBLIC},
+    "tournament-announcements-pdf": {"get": PUBLIC},
+    "tournament-live": {"get": PUBLIC},
     "tournament-ceremony-generate": {"post": STAFF},
     "tournament-ceremony-publish": {"post": STAFF},
     "tournament-ceremony-reorder": {"post": STAFF},
@@ -242,7 +288,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-honours": {"get": OWNER},
     # Regional bodies (REQ-048). Coast Spinners is in the Mombasa region of "Coast Region TT", whose
     # admin is Amina: the region's clubs read the agenda and published articles; body staff write them.
-    "regional-bodies": {"get": SIGNED_IN, "post": SIGNED_IN},  # setting one up needs an appointment
+    # Creating a body is for platform super admins only (TASK-107), see test_governing_bodies.
+    "regional-bodies": {"get": SIGNED_IN, "post": APPROVER},
     "organization-region-clubs": {"get": STAFF},
     "organization-agenda": {"get": MEMBER, "post": STAFF},
     "organization-agenda-item": {"patch": STAFF, "delete": STAFF},
@@ -259,6 +306,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-meeting-publish": {"post": STAFF},
     "organization-meeting-cancel": {"post": STAFF},
     "organization-meeting-minutes": {"post": STAFF},
+    # Approving and amending minutes, and a meeting's documents: governance staff. An action item's
+    # status: staff or its owner (Amina's here, so Baraka, who reads the minutes, is refused).
+    "organization-meeting-minutes-approve": {"post": STAFF},
+    "organization-meeting-minutes-amendments": {"post": STAFF},
+    "organization-meeting-action-item": {"post": STAFF},
+    "organization-meeting-documents": {"post": STAFF},
+    "organization-meeting-document": {"delete": STAFF},
+    "my-action-items": {"get": OWNER},
     "organization-meeting-answer": {"post": OWNER},  # Baraka's invitation
     "organization-meeting-check-in": {"post": OWNER},
     # Attendance and issuing: governance staff (or the meeting's secretary, nobody here). Changing an
@@ -291,6 +346,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "facility-list": {"get": SIGNED_IN},
     "facility-detail": {"get": SIGNED_IN},
     "facility-schedule": {"get": SIGNED_IN},
+    # Branches near a point the caller sends in the body: the finder's rows plus a distance.
+    "facility-nearby": {"post": SIGNED_IN},
     # Facility training slots any player may join (REQ-044); see test_facility_training.py.
     "open-session-list": {"get": SIGNED_IN},
     "open-session-join": {"post": SIGNED_IN},
@@ -339,14 +396,72 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-activity-cost-share": {"post": STAFF},
     "organization-activity-attendees": {"get": MEMBER},
     "organization-activity-invitees": {"get": STAFF},
+    # Events beyond the membership (TASK-110): whoever an activity is for checks in while it runs; those
+    # who run activities mark attendance; `my-events` lists what invites the caller.
+    "organization-activity-check-in": {"post": MEMBER},
+    "organization-activity-attendance": {"post": STAFF},
+    "my-events": {"get": OWNER},
+    # Feedback forms (TASK-131): the host's competition staff build, send and read totals; whoever was
+    # asked answers their own (Baraka's here).
+    "organization-feedback-forms": {"get": STAFF, "post": STAFF},
+    "organization-feedback-form": {"get": STAFF, "patch": STAFF, "delete": STAFF},  # a draft
+    "organization-feedback-form-send": {"post": STAFF},
+    "organization-feedback-form-closing": {"post": STAFF},
+    "organization-feedback-form-totals": {"get": STAFF},
+    "organization-feedback-form-export": {"get": STAFF},
+    "my-feedback-forms": {"get": OWNER},
+    # The financial year and the annual report (TASK-079). Reading a report is open to whoever may: a
+    # draft to finance staff, a published one to members, a public one to anybody.
+    "organization-finance-settings": {"get": STAFF, "put": STAFF},
+    # Money from outside the membership (TASK-124): finance staff only.
+    "organization-external-sources": {"get": STAFF, "post": STAFF},
+    "organization-external-source": {"patch": STAFF, "delete": STAFF},
+    "organization-external-income": {"get": STAFF, "post": STAFF},
+    "organization-external-income-reverse": {"post": STAFF},
+    "organization-income-totals": {"get": STAFF},
+    "organization-annual-reports": {"get": PUBLIC, "post": STAFF},
+    "organization-annual-report": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
+    "organization-annual-report-publish": {"post": STAFF},
+    "organization-annual-report-amend": {"post": STAFF},
+    "organization-annual-report-csv": {"get": PUBLIC},
+    "organization-annual-report-pdf": {"get": PUBLIC},
+    # Representative squads (TASK-123): competition staff pick; a player answers their own place.
+    "organization-squads": {"get": STAFF, "post": STAFF},
+    "organization-squad": {"get": STAFF, "patch": STAFF, "delete": STAFF},  # a draft
+    "organization-squad-publish": {"post": STAFF},
+    "organization-squad-recommendation": {"get": STAFF},
+    "organization-squad-places": {"post": STAFF},
+    "organization-squad-place-remove": {"post": STAFF},
+    "organization-squad-history": {"get": STAFF},
+    "organization-squad-place-attendance": {"post": STAFF},
+    # Absence penalties (TASK-129): governance staff set rules, propose, issue, waive and decide
+    # appeals; a member reads and appeals their own.
+    "organization-absence-rules": {"get": STAFF, "put": STAFF},
+    "organization-absence-penalties": {"get": STAFF},
+    "organization-absence-penalties-propose": {"post": STAFF},
+    "organization-absence-penalty-issue": {"post": STAFF},
+    "organization-absence-penalty-waive": {"post": STAFF},
+    "organization-absence-penalty-appeal": {"post": STAFF},
+    "my-absence-penalties": {"get": OWNER},
+    "my-absence-penalty-appeal": {"post": OWNER},  # Baraka's penalty
+    "my-squad-places": {"get": OWNER},
+    "my-squad-place-accept": {"post": OWNER},  # Baraka's place
+    "my-squad-place-decline": {"post": OWNER},
+    "feedback-form": {"get": OWNER, "put": OWNER},
     "organization-schedule": {"get": MEMBER},
     "organization-schedule-ics": {"get": MEMBER},
     "organization-club-sessions": {"get": STAFF, "post": STAFF},
     "organization-club-session": {"get": STAFF, "patch": STAFF},
     "organization-club-session-cancel": {"post": STAFF},
+    # Training rules (TASK-125): members read the slots, the place by name and the check-in rules;
+    # training staff set them, and where one session is held.
+    "organization-club-session-location": {"post": STAFF},
+    "organization-training-rules": {"get": MEMBER, "put": STAFF},
     "organization-club-session-invitations": {"get": STAFF, "post": STAFF},
     "organization-club-session-invitation": {"patch": STAFF},
     "organization-list": {"get": SIGNED_IN, "post": SIGNED_IN},
+    # Clubs near a point the caller sends in the body: directory rows plus a distance.
+    "organization-nearby": {"post": SIGNED_IN},
     "organization-detail": {"get": SIGNED_IN, "patch": STAFF},
     # What a player sees before joining: location, description, training hours and coming tournaments.
     "organization-profile": {"get": SIGNED_IN},
@@ -375,6 +490,14 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-admin-nomination-accept": {"post": OWNER},
     "me-admin-nomination-decline": {"post": OWNER},
     # REQ-045 committees: members see the committee and its history; governance staff change it.
+    # Representatives (REQ-045, TASK-108): members read who speaks for them; governance staff of the
+    # sender nominate and withdraw, and of the receiving body decide and set the cap.
+    "organization-representatives": {"get": MEMBER, "post": STAFF},
+    "organization-representatives-cap": {"put": STAFF},
+    "organization-representative-withdraw": {"post": STAFF},
+    "organization-representative-accept": {"post": STAFF},
+    "organization-representative-decline": {"post": STAFF},
+    "organization-representative-remove": {"post": STAFF},
     "organization-committee": {"get": MEMBER},
     "organization-committee-history": {"get": MEMBER},
     "organization-committee-candidates": {"get": STAFF},
@@ -388,7 +511,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-committee-field": {"patch": STAFF},
     "organization-committee-field-retire": {"post": STAFF},
     "organization-committee-field-restore": {"post": STAFF},
-    "organization-members": {"get": STAFF},
+    "organization-members": {"get": STAFF, "post": STAFF},
     "organization-member-roles": {"put": STAFF},
     "organization-member-remove": {"post": STAFF},
     "organization-member-fields": {"get": STAFF, "patch": STAFF},
@@ -474,6 +597,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "scorecard-detail": {"get": OWNER},
     "scorecard-events": {"post": OWNER},
     "scorecard-confirm": {"post": OWNER},
+    "scorecard-next": {"get": OWNER},
     "scorecard-device": {"post": OWNER},
     # A conflict report is taken from whoever holds the sheet or held it before (test_scoring_conflicts.py).
     "scorecard-conflicts": {"post": OWNER},
@@ -485,12 +609,29 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-dispatch-run": {"post": STAFF},
     "tournament-event-match-dispatch": {"post": STAFF},
     "tournament-event-match-recall": {"post": STAFF},
+    # The match-day control centre (REQ-043, TASK-082).
+    "tournament-event-match-call": {"post": STAFF},
+    "tournament-event-match-report": {"post": STAFF},
+    "tournament-event-match-move": {"post": STAFF},
+    "tournament-table-block": {"post": STAFF},
+    "tournament-table-unblock": {"post": STAFF},
+    "tournament-table-umpire": {"put": STAFF},
+    "tournament-umpires": {"get": STAFF, "post": STAFF},
+    "tournament-order-of-play": {"get": PUBLIC},
+    "tournament-order-of-play-stages": {"put": STAFF},
+    "tournament-order-of-play-release": {"put": STAFF},
+    "tournament-order-of-play-player": {"put": STAFF, "delete": STAFF},
+    "tournament-order-of-play-move": {"post": STAFF},
+    "tournament-umpire-candidates": {"get": STAFF},
+    "tournament-umpire": {"delete": STAFF},
+    "tournament-check-in-desk": {"get": STAFF},
+    "tournament-match-day-log": {"get": STAFF},
     "tournament-scoring": {"get": STAFF},
     "tournament-scoring-conflict-resolve": {"post": STAFF},
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
-    "player-detail": {"get": SIGNED_IN},
+    "player-detail": {"get": PUBLIC},  # signed out, the name of a listed player with competition records
     "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records
     "rankings": {"get": PUBLIC},  # a club's own ranking needs a session
     "club-rankings": {"get": PUBLIC},
@@ -498,7 +639,9 @@ ACCESS: dict[str, dict[str, str]] = {
 }
 
 SPARE_TABLE = "00000000-0000-4000-8000-0000000000aa"  # a free table for the dispatch route
+MOVE_TABLE = "00000000-0000-4000-8000-0000000000ab"  # a free table to move a match to
 FAITH_MEMBERSHIP = "00000000-0000-4000-8000-0000000000fa"  # Faith, for the admin nomination bodies
+UMPIRE_USER = "00000000-0000-4000-8000-0000000000c1"  # a member on the Scored Cup's umpires
 # Entries with known ids, so a result can name its winner.
 ENTERED_WINNER = "00000000-0000-4000-8000-0000000000b1"
 CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
@@ -507,8 +650,35 @@ NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tourname
 
 # Bodies that would succeed for someone allowed, so a refusal is about access and not about validation.
 # Routes that take a file upload rather than JSON.
-MULTIPART = {"organization-expense-receipt", "tournament-cover", "tournament-documents"}
+# Routes the receiving body's staff call, so they are tried on the regional body, not the club.
+BODY_SIDE = {
+    "organization-representatives-cap",
+    "organization-representative-accept",
+    "organization-representative-decline",
+    "organization-representative-remove",
+}
+MULTIPART = {
+    "organization-expense-receipt",
+    "tournament-cover",
+    "tournament-documents",
+    "organization-meeting-documents",
+}
 PDF = b"%PDF-1.4\n%%EOF\n"
+
+
+def order_time(hour: int) -> datetime:
+    """Tomorrow at `hour`, in the Order Cup's timezone."""
+    from zoneinfo import ZoneInfo
+
+    zone = ZoneInfo(Tournament.objects.get(name="Order Cup").timezone)
+    return datetime.combine(
+        timezone.localdate() + timedelta(days=1), datetime.min.time(), tzinfo=zone
+    ).replace(hour=hour)
+
+
+def order_stages() -> dict:
+    match = Match.objects.get(draw__event__tournament__name="Order Cup")
+    return {"stages": [{"event_id": str(match.draw.event_id), "stage": match.stage}]}
 
 
 def pdf_upload():
@@ -520,7 +690,11 @@ def pdf_upload():
 
 
 BODIES = {
+    ("auth-me-email", "post"): {"email": "new.address@example.com"},
     ("tournament-ceremony", "put"): {"location": "Main hall"},
+    ("tournament-review", "put"): {"went_well": "Ran to time"},
+    ("tournament-announcements", "post"): {"scope": "tournament"},
+    ("tournament-announcement", "patch"): {"body": "Edited"},
     ("tournament-ceremony-awards", "post"): {"title": "Fair play"},
     ("tournament-ceremony-award", "patch"): {"prize": "Trophy"},
     ("tournament-ceremony-reorder", "post"): lambda: {
@@ -538,6 +712,9 @@ BODIES = {
     ("organization-meeting", "patch"): {"location": "Clubhouse"},
     ("organization-meeting-cancel", "post"): {"reason": "Venue closed"},
     ("organization-meeting-minutes", "post"): {"minutes": "Agreed the budget."},
+    ("organization-meeting-minutes-amendments", "post"): {"text": "Corrected the date."},
+    ("organization-meeting-action-item", "post"): {"status": "done"},
+    ("organization-meeting-documents", "post"): lambda: {"title": "Accounts", "file": pdf_upload()},
     ("organization-meeting-answer", "post"): {"answer": "attending"},
     ("organization-meeting-attendance", "post"): lambda: {
         "invitee": str(MeetingInvitee.objects.get(meeting__title="MARK-MEETING-RUNNING").id),
@@ -569,8 +746,11 @@ BODIES = {
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
     ("organization-member-roles", "put"): {"roles": []},
+    ("organization-members", "post"): {"display_name": "Added", "email": "added@example.com"},
     ("organization-admin-nominate", "post"): {"membership_id": FAITH_MEMBERSHIP},
     ("organization-admin-appoint", "post"): {"membership_id": FAITH_MEMBERSHIP, "reason": "Test"},
+    ("organization-representatives", "post"): {"membership_id": FAITH_MEMBERSHIP},
+    ("organization-representatives-cap", "put"): {"cap": 5},
     ("organization-committee-positions", "post"): {"name": "Youth officer"},
     # Every active position, read when the call is made (the create above adds one).
     ("organization-committee-positions-reorder", "post"): lambda: {
@@ -614,6 +794,51 @@ BODIES = {
     ("organization-activity", "patch"): {"place": "Moved to the beach"},
     ("organization-activity-cancel", "post"): {"reason": "Rain"},
     ("organization-activity-rsvp", "post"): {"answer": "maybe"},
+    ("organization-feedback-forms", "post"): lambda: {
+        "title": "After the cup",
+        "tournament_id": str(Tournament.objects.get(name="Published Cup").id),
+    },
+    ("organization-feedback-form", "patch"): {"title": "Renamed form"},
+    ("organization-finance-settings", "put"): {"year_end_month": 12, "year_end_day": 31},
+    ("organization-external-sources", "post"): {"name": "Gate takings"},
+    ("organization-external-source", "patch"): {"active": False},
+    ("organization-external-income", "post"): lambda: {
+        "source_id": str(ExternalSource.objects.get(name="MARK-SOURCE-USED").id),
+        "amount_minor": 5000,
+        "received_on": str(timezone.localdate()),
+        "request_key": str(uuid.uuid4()),
+    },
+    ("organization-external-income-reverse", "post"): {"reason": "Entered twice"},
+    ("organization-annual-reports", "post"): lambda: {"period_end": f"{timezone.localdate().year - 5}-12-31"},
+    ("organization-annual-report", "patch"): {"narrative": "A steady year."},
+    ("organization-squads", "post"): lambda: {
+        "title": "Away cup",
+        "starts_on": str(timezone.localdate() + timedelta(days=20)),
+        "ends_on": str(timezone.localdate() + timedelta(days=21)),
+        "slots": [{"label": "Team", "places": 3}],
+    },
+    ("organization-squad", "patch"): {"notes": "Bring whites"},
+    ("organization-squad-place-attendance", "post"): {"attended": False},
+    ("organization-absence-rules", "put"): {"rules": [{"applies_to": "training", "kind": "warning"}]},
+    ("organization-absence-penalty-waive", "post"): {"reason": "Excused"},
+    ("organization-absence-penalty-appeal", "post"): {"upheld": False, "note": "Stands"},
+    ("my-absence-penalty-appeal", "post"): {"text": "I was there"},
+    ("organization-squad-places", "post"): lambda: {
+        "user_id": str(Membership.objects.get(user__email="faith.listed@coast.example").user_id),
+        "slot": "cccccccccccc",
+        "reason": "Asked to go",
+    },
+    ("organization-feedback-form-send", "post"): lambda: {
+        "closes_at": (timezone.now() + timedelta(days=5)).isoformat()
+    },
+    ("organization-feedback-form-closing", "post"): lambda: {
+        "closes_at": (timezone.now() + timedelta(days=9)).isoformat()
+    },
+    ("feedback-form", "put"): {"answers": {"aaaaaaaaaaaa": "MARK-FEEDBACK-EDITED"}},
+    ("organization-activity-attendance", "post"): lambda: {
+        "rsvp": str(Rsvp.objects.get(activity__title="Running night").id),
+        "attended": True,
+    },
     ("organization-activity-cost-share", "post"): lambda: {
         "amount_minor": 50000,
         "due_on": timezone.localdate().isoformat(),
@@ -700,6 +925,10 @@ BODIES = {
         ]
     },
     ("organization-club-session-invitation", "patch"): {"attended": None},
+    ("organization-club-session-location", "post"): {"latitude": -4.05, "longitude": 39.66, "label": "Beach"},
+    ("organization-training-rules", "put"): {"radius_m": 200},
+    ("my-session-invitation-apologise", "post"): {"reason": "Away"},
+    ("my-session-invitation-check-in", "post"): {"latitude": -4.0439, "longitude": 39.6682, "accuracy_m": 20},
     ("organization-venue", "patch"): {"town": "Nyali"},
     ("organization-venue-tables", "post"): {"label": "Table 9"},
     ("organization-venue-table", "patch"): {"label": "Table 10"},
@@ -749,8 +978,17 @@ BODIES = {
         ],
     },
     ("tournament-event-match-dispatch", "post"): {"table_id": SPARE_TABLE},
+    ("tournament-umpires", "post"): {"user_id": UMPIRE_USER},
+    ("tournament-order-of-play-stages", "put"): order_stages,
+    ("tournament-order-of-play-release", "put"): {"release_at": None},
+    ("tournament-order-of-play-player", "put"): lambda: {"at": order_time(13).isoformat(), "move": True},
+    ("tournament-order-of-play-move", "post"): lambda: {"scheduled_at": order_time(15).isoformat()},
+    ("tournament-table-umpire", "put"): {"user_id": None},
     ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
+    ("tournament-event-match-report", "post"): {"side": "a"},
+    ("tournament-event-match-move", "post"): {"table_id": MOVE_TABLE, "reason": "Light out"},
+    ("tournament-table-block", "post"): {"reason": "out_of_service"},
     ("tournament-event-match-result", "post"): {"winner_entry_id": ENTERED_WINNER, "outcome": "walkover"},
     ("tournament-event-match-result-correct", "post"): {
         "winner_entry_id": CORRECTED_WINNER,
@@ -930,6 +1168,21 @@ class World:
         self.session_invitation = SessionInvitation.objects.create(
             session=self.club_session, user=self.baraka
         )
+        # Faith sent an apology with a reason: hers and the training staff's to read.
+        SessionInvitation.objects.create(
+            session=self.club_session,
+            user=self.faith,
+            status=SessionInvitation.Status.DECLINED,
+            apologised_at=timezone.now(),
+            apology_reason="MARK-APOLOGY",
+        )
+        # Where Coast trains: members see the name of the place, training staff its coordinates too.
+        TrainingRules.objects.create(
+            organization=self.coast,
+            latitude="-4.043911",
+            longitude="39.668207",
+            location_label="MARK-TRAINING-PLACE",
+        )
         # An external event Coast submitted, still waiting for a curator.
         self.external = ExternalEvent.objects.create(
             submitted_by_org=self.coast,
@@ -1068,6 +1321,25 @@ class World:
             status=Activity.Status.PUBLISHED,
         )
         Rsvp.objects.create(activity=self.activity_to_share, user=self.baraka, answer=Rsvp.Answer.GOING)
+        self.activity_running = Activity.objects.create(
+            organization=self.coast,
+            title="Running night",
+            starts_at=timezone.now() - timedelta(minutes=10),
+            ends_at=timezone.now() + timedelta(hours=2),
+            status=Activity.Status.PUBLISHED,
+        )
+        Rsvp.objects.create(activity=self.activity_running, user=self.baraka, answer=Rsvp.Answer.GOING)
+        # An event for one named outsider: not for the club's other members.
+        named_event = Activity.objects.create(
+            organization=self.coast,
+            title="Named evening",
+            description="MARK-EVENT-NAMED",
+            audience=Activity.Audience.NAMED,
+            starts_at=later,
+            ends_at=later + timedelta(hours=3),
+            status=Activity.Status.PUBLISHED,
+        )
+        named_event.invitees.add(self.chiku)
         self.session_to_cancel = ClubSession.objects.create(
             organization=self.coast,
             title="To cancel",
@@ -1187,6 +1459,10 @@ class World:
         self.running = tournament("Running Cup", status.IN_PROGRESS)
         self.finishing = tournament("Finishing Cup", status.IN_PROGRESS, Event.Status.COMPLETED)
         self.playing = tournament("Playing Cup", status.IN_PROGRESS, Event.Status.IN_PROGRESS)
+        self.reviewed = tournament("Reviewed Cup", status.COMPLETED, Event.Status.COMPLETED)
+        TournamentReview.objects.create(
+            tournament=self.reviewed, went_wrong="MARK-REVIEW", actions=[{"text": "MARK-REVIEW-ACTION"}]
+        )
         LifecycleEntry.objects.create(
             tournament=self.published, action="published", actor=self.amina, reason="MARK-HISTORY-REASON"
         )
@@ -1234,6 +1510,11 @@ class World:
 
         # A singles match under way with Baraka as its umpire, for the scoring routes.
         self.scored_cup = tournament("Scored Cup", status.IN_PROGRESS, Event.Status.IN_PROGRESS)
+        umpire = User.objects.create(
+            id=UMPIRE_USER, email="umpire.listed@coast.example", display_name="Upendo"
+        )
+        Membership.objects.create(organization=self.coast, user=umpire)
+        TournamentUmpire.objects.create(tournament=self.scored_cup, user=umpire)
         for name in ("one", "two"):
             made = Entry.objects.create(event=self.scored_cup.event, status=Entry.Status.ACCEPTED)
             EntryPlayer.objects.create(
@@ -1271,6 +1552,12 @@ class World:
         reservations.dispatch(
             self.on_table, Table.objects.create(venue=self.venue, label="Recall table"), self.amina
         )
+        # A match on a table for the control centre's call, report and move routes.
+        self.control_cup, self.called = under_way("Control Cup", ("k1", "k2"))
+        reservations.dispatch(
+            self.called, Table.objects.create(venue=self.venue, label="Control table"), self.amina
+        )
+        Table.objects.create(id=MOVE_TABLE, venue=self.venue, label="Move table")
         # For the result routes: a match to enter a result for, a decided one to correct, and a later
         # match a correction has put in question.
         self.result_cup, self.to_decide = under_way("Result Cup", ("e1", "e2"), ENTERED_WINNER)
@@ -1288,6 +1575,18 @@ class World:
         )
         self.session.tables.add(self.spare_table)
         ScheduleVersion.objects.create(tournament=self.planned_cup, number=1, kind="published")
+        # The order of play (REQ-053): play starts tomorrow, its one match published at noon.
+        self.order_cup, ordered = under_way("Order Cup", ("o1", "o2"))
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        Tournament.objects.filter(pk=self.order_cup.pk).update(starts_on=tomorrow, ends_on=tomorrow)
+        Match.objects.filter(pk=ordered.pk).update(
+            planned_table=self.spare_table,
+            scheduled_at=order_time(12),
+            draft_table=self.spare_table,
+            draft_at=order_time(12),
+        )
+        ScheduleVersion.objects.create(tournament=self.order_cup, number=1, kind="published")
+        self.order_player = User.objects.get(email="o1@dispatch.example")
         self.resolution = Resolution.objects.create(
             event=self.question_cup.event,
             match=self.in_question,
@@ -1315,6 +1614,13 @@ class World:
             ceremony=ceremony, title="MARK-AWARD-DRAFT", recipient=self.baraka, order=1
         )
         self.award_to_present = Award.objects.create(ceremony=ceremony, title="Best umpire", order=2)
+        # Results announcements of the published cup: a draft (private to its staff), one to publish, one out.
+        news = {"tournament": self.published, "scope": "tournament", "title": "Results"}
+        self.news_draft = Announcement.objects.create(**news, body="MARK-ANNOUNCEMENT-DRAFT")
+        self.news_to_publish = Announcement.objects.create(**news, body="Ready")
+        self.news_out = Announcement.objects.create(
+            **news, body="Out", status=Announcement.Status.PUBLISHED, published_at=timezone.now()
+        )
         # Regional body (REQ-048): Coast Spinners sits in its region; Amina runs it too.
         self.coast.country, self.coast.region = "KE", "Mombasa"
         self.coast.save(update_fields=["country", "region"])
@@ -1324,6 +1630,17 @@ class World:
         Membership.objects.create(organization=self.body, user=self.amina).roles.add(
             seed_roles(self.body)[RoleKey.ADMIN]
         )
+
+        # Coast's representatives at the body: one for each thing either side can do to one.
+        def sent(user, status="pending"):
+            return Representative.objects.create(
+                body=self.body, sender=self.coast, user=user, status=status, nominated_by=self.amina
+            )
+
+        self.rep_to_withdraw = sent(self.grace)
+        self.rep_to_accept = sent(self.amina)
+        self.rep_to_decline = sent(self.chiku)
+        self.rep_to_remove = sent(self.daudi, "accepted")
         self.agenda_item = AgendaItem.objects.create(
             organization=self.body, title="MARK-AGENDA", starts_on="2027-01-10", ends_on="2027-01-10"
         )
@@ -1363,6 +1680,129 @@ class World:
         penalized = meeting("Penalized", [self.baraka], rules=[rule], **over)
         self.penalty = MeetingPenalty.objects.create(
             invitee=penalized.invitees.get(), applies_to="absent", penalty="MARK-PENALTY", amount_minor=5000
+        )
+        self.minuted_meeting = meeting(
+            "Minuted", [self.baraka], minutes="MARK-MINUTES-DRAFT", minutes_status="draft", **over
+        )
+        self.approved_meeting = meeting(
+            "Approved", [self.baraka], minutes="MARK-MINUTES-OUT", minutes_status="approved", **over
+        )
+        self.action_item = ActionItem.objects.create(
+            meeting=self.approved_meeting, description="MARK-ACTION", owner=self.amina
+        )
+        MinutesAmendment.objects.create(
+            meeting=self.approved_meeting, text="MARK-AMENDMENT", created_by=self.amina
+        )
+        question = {"id": "aaaaaaaaaaaa", "kind": "long_text", "text": "What should change?"}
+        question = {**question, "help": "", "required": False, "choices": []}
+        sections = [{"id": "bbbbbbbbbbbb", "title": "", "description": "", "questions": [question]}]
+
+        def form(title, **extra):
+            made = FeedbackForm.objects.create(
+                organization=self.coast, tournament=self.published, title=title, sections=sections, **extra
+            )
+            made.guests.add(self.baraka)
+            return made
+
+        self.form_draft = form("MARK-FORM-DRAFT")
+        self.form_to_send = form("To send", to_entrants=False)
+        open_now = {
+            "status": "sent",
+            "opens_at": now - timedelta(days=1),
+            "closes_at": now + timedelta(days=3),
+        }
+        self.form_sent = form("Sent form", intro="MARK-FORM-SENT", anonymous=True, **open_now)
+        FeedbackRecipient.objects.create(form=self.form_sent, user=self.baraka, answered=True)
+        FeedbackResponse.objects.create(
+            form=self.form_sent,
+            owner_key=feedback.owner_key(self.form_sent, self.baraka),
+            answers={"aaaaaaaaaaaa": "MARK-FEEDBACK-ANSWER"},
+        )
+        soon = timezone.localdate() + timedelta(days=30)
+        slots = [{"id": "cccccccccccc", "label": "Team", "places": 4}]
+
+        def squad(title, **extra):
+            return Squad.objects.create(
+                organization=self.coast, title=title, starts_on=soon, ends_on=soon, slots=slots, **extra
+            )
+
+        self.squad_draft = squad("MARK-SQUAD-DRAFT")
+        self.squad_to_publish = squad("To publish squad")
+        self.squad_out = squad("Away squad", notes="MARK-SQUAD-NOTES", status=Squad.Status.PUBLISHED)
+        self.squad_place = SquadPlace.objects.create(
+            squad=self.squad_out,
+            slot="cccccccccccc",
+            user=self.baraka,
+            recommended=False,
+            override_reason="MARK-SQUAD-REASON",
+        )
+        past = timezone.localdate() - timedelta(days=4)
+        squad_past = Squad.objects.create(
+            organization=self.coast,
+            title="Past squad",
+            starts_on=past,
+            ends_on=past,
+            slots=slots,
+            status=Squad.Status.PUBLISHED,
+        )
+        self.squad_place_past = SquadPlace.objects.create(
+            squad=squad_past, slot="cccccccccccc", user=self.faith, status=SquadPlace.Status.ACCEPTED
+        )
+
+        def penalty(member, what, **extra):
+            return AbsencePenalty.objects.create(
+                organization=self.coast,
+                member=member,
+                applies_to="training",
+                source_id=uuid.uuid4(),
+                what=what,
+                happened_on=past,
+                kind="warning",
+                **extra,
+            )
+
+        decided = {"status": "issued", "decided_at": timezone.now()}
+        self.penalty_proposed = penalty(self.faith, "MARK-ABSENCE-PROPOSED")
+        self.penalty_to_waive = penalty(self.faith, "To waive")
+        self.penalty_issued = penalty(self.baraka, "MARK-ABSENCE", **decided)
+        self.penalty_appealed = penalty(
+            self.baraka, "Appealed", appeal="pending", appeal_text="MARK-APPEAL", **decided
+        )
+        self.source_unused = ExternalSource.objects.create(organization=self.coast, name="MARK-SOURCE")
+        used = ExternalSource.objects.create(organization=self.coast, name="MARK-SOURCE-USED")
+        self.external_income = ExternalIncome.objects.create(
+            organization=self.coast,
+            source=used,
+            description="MARK-EXTERNAL-INCOME",
+            amount_minor=250000,
+            received_on=timezone.localdate(),
+            request_key=uuid.uuid4(),
+        )
+        this_year = timezone.localdate().year
+
+        def report(back, **extra):
+            return AnnualReport.objects.create(
+                organization=self.coast,
+                period_start=f"{this_year - back}-01-01",
+                period_end=f"{this_year - back}-12-31",
+                **extra,
+            )
+
+        frozen = {"period_start": "x", "period_end": "y", "currencies": []}
+        self.report_draft = report(1, narrative="MARK-REPORT-DRAFT")
+        self.report_to_publish = report(2)
+        self.report_out = report(
+            3, narrative="MARK-REPORT-OUT", status="published", snapshot=frozen, published_at=timezone.now()
+        )
+        self.meeting_document = MeetingDocument.objects.create(
+            meeting=self.approved_meeting,
+            title="MARK-MEETING-PAPER",
+            file=Attachment.store(
+                owner=self.amina,
+                purpose=Attachment.Purpose.MEETING_DOCUMENT,
+                content=PDF,
+                content_type="application/pdf",
+            ),
         )
         nyali_cup = Tournament.objects.create(
             id=NYALI_CUP,
@@ -1466,6 +1906,11 @@ class World:
             "training-plan-detail": self.baraka_plan.id,
             "training-plan-item": self.baraka_item.id,
             "tournament-ceremony-award": self.award.id,
+            "tournament-announcement": self.news_draft.id,
+            "tournament-announcement-publish": self.news_to_publish.id,
+            "tournament-announcement-amend": self.news_out.id,
+            "tournament-announcement-card": self.news_out.id,
+            "tournament-announcement-pdf": self.news_out.id,
             "tournament-ceremony-award-present": self.award_to_present.id,
             "organization-agenda-item": self.agenda_item.id,
             "organization-article": self.article.id,
@@ -1474,6 +1919,11 @@ class World:
             "organization-meeting-publish": self.meeting_to_publish.id,
             "organization-meeting-cancel": self.meeting_to_cancel.id,
             "organization-meeting-minutes": self.running_meeting.id,
+            "organization-meeting-minutes-approve": self.minuted_meeting.id,
+            "organization-meeting-minutes-amendments": self.approved_meeting.id,
+            "organization-meeting-action-item": self.approved_meeting.id,
+            "organization-meeting-documents": self.running_meeting.id,
+            "organization-meeting-document": self.approved_meeting.id,
             "organization-meeting-answer": self.running_meeting.id,
             "organization-meeting-check-in": self.running_meeting.id,
             "organization-meeting-attendance": self.running_meeting.id,
@@ -1509,6 +1959,10 @@ class World:
             # Faith's, because the staff checks remove Baraka before they reach this route.
             "organization-member-fields": self.faith_membership.id,
             "organization-member-field": self.staff_field.id,
+            "organization-representative-withdraw": self.rep_to_withdraw.id,
+            "organization-representative-accept": self.rep_to_accept.id,
+            "organization-representative-decline": self.rep_to_decline.id,
+            "organization-representative-remove": self.rep_to_remove.id,
             "organization-committee-position": self.position.id,
             "organization-committee-position-values": self.position.id,
             "organization-committee-position-holder": self.vacant_position.id,
@@ -1566,12 +2020,16 @@ class World:
             "tournament-event-match-umpire": self.scored_match.id,
             "tournament-event-match-dispatch": self.to_dispatch.id,
             "tournament-event-match-recall": self.on_table.id,
+            "tournament-event-match-call": self.called.id,
+            "tournament-event-match-report": self.called.id,
+            "tournament-event-match-move": self.called.id,
             "tournament-event-match-result": self.to_decide.id,
             "tournament-event-match-result-correct": self.decided.id,
             "tournament-correction-resolve": self.resolution.id,
             "scorecard-detail": self.scorecard.id,
             "scorecard-events": self.scorecard.id,
             "scorecard-confirm": self.scorecard.id,
+            "scorecard-next": self.scorecard.id,
             "scorecard-device": self.scorecard.id,
             "scorecard-conflicts": self.scorecard.id,
             "tournament-scoring-conflict-resolve": self.conflict.id,
@@ -1619,10 +2077,40 @@ class World:
             "organization-activity-publish": self.activity_draft.id,
             "organization-activity-cancel": self.activity_to_cancel.id,
             "organization-activity-rsvp": self.activity.id,
+            "organization-activity-check-in": self.activity.id,
+            "organization-activity-attendance": self.activity_running.id,
+            "organization-feedback-form": self.form_draft.id,
+            "organization-annual-report": self.report_draft.id,
+            "organization-external-source": self.source_unused.id,
+            "organization-external-income-reverse": self.external_income.id,
+            "organization-annual-report-publish": self.report_to_publish.id,
+            "organization-annual-report-amend": self.report_out.id,
+            "organization-annual-report-csv": self.report_out.id,
+            "organization-annual-report-pdf": self.report_out.id,
+            "organization-squad": self.squad_draft.id,
+            "organization-squad-publish": self.squad_to_publish.id,
+            "organization-squad-recommendation": self.squad_out.id,
+            "organization-squad-places": self.squad_out.id,
+            "organization-squad-place-remove": self.squad_out.id,
+            "organization-squad-place-attendance": self.squad_place_past.squad_id,
+            "organization-absence-penalty-issue": self.penalty_proposed.id,
+            "organization-absence-penalty-waive": self.penalty_to_waive.id,
+            "organization-absence-penalty-appeal": self.penalty_appealed.id,
+            "my-absence-penalty-appeal": self.penalty_issued.id,
+            "my-squad-place-accept": self.squad_place.id,
+            "my-squad-place-decline": self.squad_place.id,
+            "organization-feedback-form-send": self.form_to_send.id,
+            "organization-feedback-form-closing": self.form_sent.id,
+            "organization-feedback-form-totals": self.form_sent.id,
+            "organization-feedback-form-export": self.form_sent.id,
+            "feedback-form": self.form_sent.id,
             "organization-activity-cost-share": self.activity_to_share.id,
             "organization-activity-attendees": self.activity.id,
             "organization-activity-invitees": self.activity.id,
             "organization-club-session-cancel": self.session_to_cancel.id,
+            "organization-club-session-location": self.club_session.id,
+            "my-session-invitation-check-in": self.session_invitation.id,
+            "my-session-invitation-apologise": self.session_invitation.id,
             "organization-club-session-invitation": self.session_invitation.id,
             "my-session-invitation-accept": self.session_invitation.id,
             "my-session-invitation-decline": self.session_invitation.id,
@@ -1646,13 +2134,25 @@ class World:
             found["device_pk"] = self.push_device.id
         if "penalty_pk" in names:
             found["penalty_pk"] = self.penalty.id
+        if "action_pk" in names:
+            found["action_pk"] = self.action_item.id
+        if "place_pk" in names:
+            past = name == "organization-squad-place-attendance"
+            found["place_pk"] = (self.squad_place_past if past else self.squad_place).id
+        if "document_pk" in names:
+            found["document_pk"] = self.meeting_document.id
         if "plan_pk" in names:
             club = name.startswith("organization-training-plan")
             found["plan_pk"] = (self.club_plan if club else self.baraka_plan).id
-        if name.startswith("tournament-ceremony"):
+        if name.startswith(("tournament-ceremony", "tournament-announcement")):
             found["tournament_pk"] = self.published.id
             return found
+        if name == "tournament-review":
+            found["tournament_pk"] = self.reviewed.id
+            return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
+            found["organization_pk"] = self.body.id
+        if name in BODY_SIDE:
             found["organization_pk"] = self.body.id
         if name.startswith(("tournament-sponsor", "tournament-stream")):
             found["tournament_pk"] = self.published.id
@@ -1661,6 +2161,35 @@ class World:
             found["coaching_pk"] = self.coaching.id
         if "table_pk" in names:
             found["table_pk"] = self.table.id
+        if name == "tournament-umpire":
+            found["tournament_pk"], found["user_pk"] = self.scored_cup.id, UMPIRE_USER
+            return found
+        if name.startswith("tournament-order-of-play"):
+            found["tournament_pk"] = self.order_cup.id
+            if "user_pk" in names:
+                found["user_pk"] = self.order_player.id
+            if "match_pk" in names:
+                found["match_pk"] = Match.objects.get(draw__event__tournament=self.order_cup).id
+            return found
+        if name in ("tournament-table-block", "tournament-table-unblock", "tournament-table-umpire"):
+            found["tournament_pk"] = self.scored_cup.id
+            return found
+        if name in (
+            "tournament-check-in-desk",
+            "tournament-match-day-log",
+            "tournament-umpires",
+            "tournament-umpire-candidates",
+        ):
+            found["tournament_pk"] = self.scored_cup.id
+            return found
+        control = (
+            "tournament-event-match-call",
+            "tournament-event-match-report",
+            "tournament-event-match-move",
+        )
+        if name in control:
+            found["event_pk"], found["tournament_pk"] = self.control_cup.event.id, self.control_cup.id
+            return found
         if name.startswith("tournament-schedule"):
             found["tournament_pk"] = self.planned_cup.id
             if "number" in names:
@@ -1787,17 +2316,51 @@ class World:
             "soda_policies": sorted(
                 Policy.objects.values_list("organization__name", "games_enabled", "stakes_enabled")
             ),
-            "rsvps": sorted(Rsvp.objects.values_list("activity__title", "user_id", "answer")),
+            "rsvps": sorted(
+                Rsvp.objects.values_list("activity__title", "user_id", "answer", "attended", "checked_in_at")
+            ),
             "club_sessions": sorted(ClubSession.objects.values_list("title", "status", "notes")),
             "session_invitations": sorted(
-                SessionInvitation.objects.values_list("session__title", "user_id", "status", "attended")
+                SessionInvitation.objects.values_list(
+                    "session__title", "user_id", "status", "attended", "apology_reason"
+                )
             ),
+            "session_places": sorted(
+                ClubSession.objects.values_list("title", "location_label", "location_latitude"), key=str
+            ),
+            "training_rules": sorted(TrainingRules.objects.values_list("radius_m", "location_label")),
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
             "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
+            "reviews": sorted(TournamentReview.objects.values_list("went_well", "went_wrong")),
             "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
             "agenda": sorted(AgendaItem.objects.values_list("title", "starts_on")),
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
-            "meetings": sorted(Meeting.objects.values_list("title", "status", "location", "minutes")),
+            "meetings": sorted(
+                Meeting.objects.values_list("title", "status", "location", "minutes", "minutes_status")
+            ),
+            "action_items": sorted(ActionItem.objects.values_list("description", "status")),
+            "amendments": MinutesAmendment.objects.count(),
+            "meeting_documents": sorted(MeetingDocument.objects.values_list("title", "item")),
+            "feedback_forms": sorted(FeedbackForm.objects.values_list("title", "status", "closes_at")),
+            "feedback_recipients": FeedbackRecipient.objects.count(),
+            "annual_reports": sorted(
+                AnnualReport.objects.values_list("period_end", "version", "status", "narrative", "public"),
+                key=str,
+            ),
+            "finance_settings": FinanceSettings.objects.count(),
+            "external_sources": sorted(ExternalSource.objects.values_list("name", "active")),
+            "external_income": sorted(
+                ExternalIncome.objects.values_list("description", "amount_minor", "reversed_at"), key=str
+            ),
+            "squads": sorted(Squad.objects.values_list("title", "status", "notes")),
+            "squad_places": sorted(
+                SquadPlace.objects.values_list("user__email", "status", "attended"), key=str
+            ),
+            "absence_rules": AbsenceRule.objects.count(),
+            "absence_penalties": sorted(
+                AbsencePenalty.objects.values_list("what", "status", "appeal", "appeal_text")
+            ),
+            "feedback_responses": sorted(FeedbackResponse.objects.values_list("answers", flat=True), key=str),
             "meeting_invitees": sorted(
                 MeetingInvitee.objects.values_list("user__email", "answer", "checked_in_at", "attendance")
             ),
@@ -1813,6 +2376,8 @@ class World:
                 CoachProfile.objects.values_list("user__email", "headline", "accepting")
             ),
             "coachings": sorted(Coaching.objects.values_list("id", "status")),
+            "representatives": sorted(Representative.objects.values_list("id", "status")),
+            "caps": sorted(Organization.objects.values_list("id", "representative_cap")),
             "bookings": sorted(Booking.objects.values_list("id", "status", "starts_at")),
             "coach_notes": sorted(MatchComment.objects.values_list("id", "body")),
             "tables": sorted(Table.objects.values_list("label", "active")),
@@ -1894,6 +2459,16 @@ ALSO_STAFF = {
             "organization-expense-reverse",
             "organization-expense-receipt",
             "organization-finance-summary",
+            "organization-finance-settings",
+            "organization-external-sources",
+            "organization-external-source",
+            "organization-external-income",
+            "organization-external-income-reverse",
+            "organization-income-totals",
+            "organization-annual-reports",
+            "organization-annual-report",
+            "organization-annual-report-publish",
+            "organization-annual-report-amend",
             "organization-welfare-projects",
             "organization-welfare-project",
             "organization-welfare-project-hide",
@@ -1922,6 +2497,7 @@ ALSO_STAFF = {
             "organization-activity-publish",
             "organization-activity-cancel",
             "organization-activity-invitees",
+            "organization-activity-attendance",
             "organization-activity-cost-share",
         )
     },
@@ -2074,7 +2650,8 @@ def everything_served_to(world, user) -> str:
         response = client.get(url)
         if hasattr(response, "streaming_content"):
             continue  # file bytes, covered in test_attachments.py
-        served.append(response.content.decode())
+        # A PDF is Latin-1, not UTF-8: read it leniently, the markers are plain ASCII either way.
+        served.append(response.content.decode(errors="replace"))
     return "\n".join(served)
 
 
@@ -2097,7 +2674,7 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-OPPONENT": {"baraka"},
         "MARK-BARAKA-NOTE": {"baraka"},
         "MARK-BARAKA-OBSERVATION": {"baraka"},
-        "MARK-SESSION-NOTE": {"amina", "baraka"},
+        "MARK-SESSION-NOTE": {"amina", "baraka", "faith"},  # training staff and the two invited
         "MARK-ACTIVITY-PRIVATE": {"amina", "baraka", "faith", "grace"},  # the club's members
         "MARK-SODA-MESSAGE": {"baraka"},
         "MARK-ALERT": {"baraka"},
@@ -2118,9 +2695,29 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         },  # the submitting club, pre-review  # the two players (Imani isn't a viewer here)
         "MARK-SODA-STAKE": set(),  # stakes stay hidden from everyone while the policy gate is off
         "MARK-ACTIVITY-DRAFT": {"amina", "grace"},  # those who run activities
+        "MARK-EVENT-NAMED": {"amina", "grace", "chiku"},  # the person named and those who run activities
+        "MARK-FORM-DRAFT": {"amina"},  # the host's competition staff
+        "MARK-SOURCE": {"amina", "grace"},  # the club's outside sources and income: finance staff
+        "MARK-EXTERNAL-INCOME": {"amina", "grace"},
+        "MARK-REPORT-DRAFT": {
+            "amina",
+            "grace",
+        },  # a draft report: finance staff (the committee reads finances)
+        "MARK-REPORT-OUT": {"amina", "baraka", "faith", "grace"},  # published, not public: the members
+        "MARK-SQUAD-DRAFT": {"amina"},  # a draft squad is for the selectors
+        "MARK-ABSENCE-PROPOSED": {"amina"},  # undecided: governance staff only, not yet the member
+        "MARK-ABSENCE": {"amina", "baraka"},  # issued: the member too
+        "MARK-APPEAL": {"amina", "baraka"},
+        "MARK-SQUAD-NOTES": {"amina", "baraka"},  # and a published one for the players picked
+        "MARK-SQUAD-REASON": {"amina"},  # why someone was picked out of turn: selectors only
+        "MARK-FORM-SENT": {"amina", "baraka"},  # and whoever was asked
+        "MARK-FEEDBACK-ANSWER": {"amina", "baraka"},  # the answer as text, never with a name
         "MARK-WALK-IN": {"amina"},  # the facility's staff only
         "MARK-TABLE-BOOKING": {"amina", "baraka"},  # the requester and the venue's staff
         "MARK-VISIT-REF": {"amina"},  # the club's training staff and the invited member
+        "MARK-APOLOGY": {"amina", "faith"},  # the member who sent it and the training staff
+        "MARK-TRAINING-PLACE": {"amina", "baraka", "faith", "grace"},  # where the club trains, by name
+        "4.043911": {"amina"},  # its coordinates: training staff only
         str(world.baraka_avatar.id): {"baraka"},
         str(world.match.id): {"baraka"},
         "MARK-FAITH-BIO": {"faith"},  # unpublished
@@ -2129,7 +2726,10 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-BARAKA-PLAN": {"baraka"},
         "MARK-BARAKA-ITEM": {"baraka"},
         "MARK-AWARD-DRAFT": {"amina"},  # a draft ceremony isn't anyone's honour yet
+        "MARK-ANNOUNCEMENT-DRAFT": {"amina"},  # a draft announcement is the host's staff's
         "MARK-CEREMONY-PLACE": {"amina"},
+        "MARK-REVIEW": {"amina"},  # the host's competition staff
+        "MARK-REVIEW-ACTION": {"amina"},
         "MARK-AGENDA": {"amina", "baraka", "faith", "grace"},
         "MARK-ARTICLE-PUB": {"amina", "baraka", "faith", "grace"},
         "MARK-ARTICLE-DRAFT": {"amina"},
@@ -2137,6 +2737,11 @@ def test_private_values_reach_only_the_people_they_are_for(world):
         "MARK-MEETING-RUNNING": {"amina", "baraka"},
         "MARK-PENALTY-RULE": {"amina", "baraka"},  # the meeting's invitees and staff
         "MARK-PENALTY": {"amina", "baraka"},  # the penalized invitee and staff
+        "MARK-MINUTES-DRAFT": {"amina"},  # draft minutes are for whoever writes and approves them
+        "MARK-MINUTES-OUT": {"amina", "baraka"},  # approved: the invitees too
+        "MARK-ACTION": {"amina", "baraka"},
+        "MARK-AMENDMENT": {"amina", "baraka"},
+        "MARK-MEETING-PAPER": {"amina", "baraka"},
         "MARK-SPONSOR-TERMS": {"amina"},
         "MARK-COACH-NOTE": {"baraka"},
         "MARK-COACHING-MESSAGE": {"baraka"},
@@ -2271,7 +2876,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
     staff = logged_in(world.amina)
     base = f"/api/v1/organizations/{world.coast.id}"
     member = staff.get(f"{base}/members/").json()["results"][0]
-    assert set(member) == {"id", "user", "display_name", "roles", "joined_at"}
+    assert set(member) == {"id", "user", "display_name", "roles", "joined_at", "is_guest"}
     request = staff.get(f"{base}/join-requests/").json()["results"][0]
     assert set(request) == {"id", "user", "display_name", "status", "created_at", "decided_at"}
 

@@ -11,7 +11,7 @@ import { MeetingsPanel } from "@/pages/region/MeetingPages"
 import { OrganizeAsBody, OverseenTournaments } from "@/components/region/RegionTournaments"
 import { api, ApiError, errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
-import { can, useActiveMembership, type Membership } from "@/lib/clubs"
+import { can, isBodyKind, useActiveMembership, type Membership } from "@/lib/clubs"
 import { formatDay, formatDayRange } from "@/lib/dates"
 import {
   addAgendaItem,
@@ -53,8 +53,8 @@ export function RegionPage() {
   const [params, setParams] = useSearchParams()
   const tab = (TABS.find((t) => t.value === params.get("tab"))?.value ?? "agenda") as Tab
   if (!active) return null
-  if (active.organization.kind !== "regional_body") {
-    return <FormAlert>Switch to your regional body to see this page.</FormAlert>
+  if (!isBodyKind(active.organization.kind)) {
+    return <FormAlert>Switch to your regional or national body to see this page.</FormAlert>
   }
   const body = active.organization
 
@@ -63,7 +63,7 @@ export function RegionPage() {
       <BackLink to="/club">{body.name}</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">{body.name}</h1>
-        <p className="text-muted-foreground">Regional body for {body.region}</p>
+        <p className="text-muted-foreground">{body.kind === "national_body" ? `National body for ${body.country}` : `Regional body for ${body.region}`}</p>
       </div>
       <div role="tablist" aria-label="Region" className="flex gap-1 overflow-x-auto border-b">
         {TABS.map((t) => (

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import external, report_views, views
 
 # Mounted under /organizations/<organization_pk>/.
 urlpatterns = [
@@ -53,6 +53,54 @@ urlpatterns = [
         name="organization-expense-receipt",
     ),
     path("finance/summary/", views.SummaryView.as_view(), name="organization-finance-summary"),
+    path(
+        "finance/settings/", report_views.FinanceSettingsView.as_view(), name="organization-finance-settings"
+    ),
+    path(
+        "finance/external-sources/",
+        external.ExternalSourcesView.as_view(),
+        name="organization-external-sources",
+    ),
+    path(
+        "finance/external-sources/<uuid:pk>/",
+        external.ExternalSourceView.as_view(),
+        name="organization-external-source",
+    ),
+    path(
+        "finance/external-income/", external.ExternalIncomeView.as_view(), name="organization-external-income"
+    ),
+    path(
+        "finance/external-income/<uuid:pk>/reverse/",
+        external.ReverseExternalIncomeView.as_view(),
+        name="organization-external-income-reverse",
+    ),
+    path("finance/income-totals/", external.IncomeTotalsView.as_view(), name="organization-income-totals"),
+    path("annual-reports/", report_views.AnnualReportsView.as_view(), name="organization-annual-reports"),
+    path(
+        "annual-reports/<uuid:pk>/",
+        report_views.AnnualReportView.as_view(),
+        name="organization-annual-report",
+    ),
+    path(
+        "annual-reports/<uuid:pk>/publish/",
+        report_views.PublishReportView.as_view(),
+        name="organization-annual-report-publish",
+    ),
+    path(
+        "annual-reports/<uuid:pk>/amend/",
+        report_views.AmendReportView.as_view(),
+        name="organization-annual-report-amend",
+    ),
+    path(
+        "annual-reports/<uuid:pk>/export.csv",
+        report_views.ExportReportView.as_view(kind="csv"),
+        name="organization-annual-report-csv",
+    ),
+    path(
+        "annual-reports/<uuid:pk>/export.pdf",
+        report_views.ExportReportView.as_view(kind="pdf"),
+        name="organization-annual-report-pdf",
+    ),
     path("finance-purposes/", views.PurposesView.as_view(), name="organization-finance-purposes"),
     path("welfare-projects/", views.WelfareProjectsView.as_view(), name="organization-welfare-projects"),
     path(

@@ -11,8 +11,11 @@ import { can, useActiveMembership } from "@/lib/clubs"
 import { useAdminAccessLost } from "@/lib/clubAdmin"
 import { listHostedTournaments, tournamentKeys } from "@/lib/tournaments"
 
-/** Every tournament the active organization hosts, drafts included, for its competition staff (REQ-007). */
-export function HostedTournamentsPage() {
+/**
+ * The organizer's way in (REQ-007, TASK-035): every tournament the active organization hosts, drafts
+ * included, each opening its dashboard, where its desks are. Players' view of a tournament is its own page.
+ */
+export function TournamentDashboardsPage() {
   const { memberships, active } = useActiveMembership()
   const orgId = active?.organization.id ?? ""
   const allowed = can(active, "competitions.manage")
@@ -26,10 +29,10 @@ export function HostedTournamentsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-[32px] leading-9 font-bold">Tournaments</h1>
-          {active && <p className="text-muted-foreground">Hosted by {active.organization.name}</p>}
+          {active && <p className="text-muted-foreground">Hosted by {active.organization.name}. Open one for its dashboard.</p>}
         </div>
         {allowed && (
-          <Link to="/club/tournaments/new" className={buttonVariants({ variant: "outline" })}>
+          <Link to="/club/tournaments/new" className={buttonVariants()}>
             <Plus aria-hidden className="size-5" /> New tournament
           </Link>
         )}
@@ -38,14 +41,25 @@ export function HostedTournamentsPage() {
       {hosted.isPending && allowed && <p className="text-muted-foreground">Loading tournaments…</p>}
       {hosted.isError && !accessLost && <FormAlert>{errorMessage(hosted.error, "We couldn't load your tournaments.")}</FormAlert>}
       {hosted.isSuccess && items.length === 0 && !accessLost && (
-        <p className="rounded-xl border border-dashed bg-card p-6 text-muted-foreground">
-          No tournaments yet. Create a draft, add its events, then publish it for players to see.
-        </p>
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed bg-card p-6">
+          <p className="font-semibold">No tournaments yet.</p>
+          <ol className="list-decimal pl-5 text-muted-foreground">
+            <li>Create a draft with the dates and venue.</li>
+            <li>Add its events, such as Men's Singles.</li>
+            <li>Publish it so players can enter.</li>
+          </ol>
+          <Link to="/club/tournaments/new" className={buttonVariants()}>
+            <Plus aria-hidden className="size-5" /> New tournament
+          </Link>
+        </div>
       )}
       <ul className="flex flex-col gap-3">
         {items.map((tournament) => (
-          <li key={tournament.id}>
-            <TournamentCard tournament={tournament} />
+          <li key={tournament.id} className="flex flex-col gap-2">
+            <TournamentCard tournament={tournament} to={`/tournaments/${tournament.id}/dashboard`} />
+            <Link to={`/tournaments/${tournament.id}`} aria-label={`Tournament page of ${tournament.name}`} className={buttonVariants({ variant: "ghost", className: "self-start" })}>
+              Tournament page
+            </Link>
           </li>
         ))}
       </ul>

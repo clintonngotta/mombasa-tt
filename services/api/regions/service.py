@@ -1,32 +1,44 @@
-"""Who reaches a regional body's agenda, articles and meetings (REQ-048)."""
+"""Who reaches a governing body's agenda, articles and meetings (REQ-048). A regional body works for the
+clubs of its region; the national body (TASK-107) for every club of its country."""
 
 from django.db.models import Q
 
 from core.exceptions import ApiException
 from core.permissions import is_platform_super_admin
-from organizations.access import official_for
-from organizations.models import Membership, Organization, PositionHolder
+from organizations.access import jurisdiction, official_for
+from organizations.models import BODY_KINDS, Membership, Organization, PositionHolder
 
 BODY = Organization.Kind.REGIONAL_BODY
+NATIONAL = Organization.Kind.NATIONAL_BODY
 
 
 def region_clubs(body: Organization):
-    """The clubs and facilities of the body's region."""
-    return Organization.objects.filter(country=body.country, region__iexact=body.region).exclude(kind=BODY)
+    """The clubs and facilities a body works for: its region's, or its country's for the national body."""
+    return Organization.objects.filter(jurisdiction(body)).exclude(kind__in=BODY_KINDS)
+
+
+def club_reach(org: Organization) -> Q:
+    """The bodies that work for a club: its region's and its country's."""
+    if not org.country:
+        return Q(pk__in=[])
+    national = Q(kind=NATIONAL, country=org.country)
+    if not org.region:
+        return national
+    return national | Q(kind=BODY, country=org.country, region__iexact=org.region)
 
 
 def bodies_of(user):
-    """Bodies whose agenda and articles reach the user: those they belong to, and those of the regions
-    of the clubs they are an active member of."""
+    """Bodies whose agenda and articles reach the user: those they belong to, and those of the region
+    and country of the clubs they are an active member of."""
     mine = Membership.objects.active().filter(user=user).select_related("organization")
     scope = Q(pk__in=[])
     for membership in mine:
         org = membership.organization
-        if org.kind == BODY:
+        if org.is_body:
             scope |= Q(pk=org.pk)
-        elif org.country and org.region:
-            scope |= Q(country=org.country, region__iexact=org.region)
-    return Organization.objects.filter(scope, kind=BODY)
+        else:
+            scope |= club_reach(org)
+    return Organization.objects.filter(scope, kind__in=BODY_KINDS)
 
 
 def reads_body(user, body: Organization) -> bool:
@@ -42,8 +54,8 @@ def reads_body(user, body: Organization) -> bool:
 
 
 def require_body(organization: Organization) -> None:
-    if organization.kind != BODY:
-        raise ApiException("not_a_regional_body", "Only a regional body does that.", 404)
+    if not organization.is_body:
+        raise ApiException("not_a_regional_body", "Only a regional or national body does that.", 404)
 
 
 def require_reader(user, body: Organization) -> None:
@@ -71,8 +83,8 @@ def articles_for(user, base):
     region = Q(pk__in=[])
     for membership in mine:
         org = membership.organization
-        if org.kind != BODY and org.country and org.region:
-            region |= Q(organization__country=org.country, organization__region__iexact=org.region)
+        if not org.is_body:
+            region |= Q(organization__in=Organization.objects.filter(club_reach(org)))
     reach = (
         Q(organization__in=clubs) | Q(audience="chosen", clubs__in=clubs) | (Q(audience="region") & region)
     )

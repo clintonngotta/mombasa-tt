@@ -20,11 +20,12 @@ from .serializers import (
     EmailOnlySerializer,
     LogInSerializer,
     PasswordResetConfirmSerializer,
+    ResendVerificationSerializer,
     SignUpSerializer,
     TokenSerializer,
     UserSerializer,
 )
-from .tokens import read_reset_params, read_verification_token
+from .tokens import read_add_email_token, read_reset_params, read_verification_token
 
 ACCEPTED = {"message": "If that address can receive mail from us, an email is on its way."}
 
@@ -60,7 +61,7 @@ class SignUpView(PublicAuthView):
         existing = User.objects.filter(email=data["email"]).first()
         if existing:
             # Same response as a new signup; the owner hears about it by email instead (REQ-003).
-            emails.send_existing_account_email(existing)
+            emails.send_existing_account_email(existing, data.get("next", ""))
         else:
             with transaction.atomic():
                 user = User.objects.create_user(
@@ -70,22 +71,22 @@ class SignUpView(PublicAuthView):
                     PlayerProfile.objects.create(
                         user=user, country=data["country"], region=data["region"], city=data["city"]
                     )
-            emails.send_verification_email(user)
+            emails.send_verification_email(user, data.get("next", ""))
         return Response(ACCEPTED, status=status.HTTP_201_CREATED)
 
 
 class ResendVerificationView(PublicAuthView):
     throttle_scope = "auth_email"
 
-    @extend_schema(request=EmailOnlySerializer, responses={202: None})
+    @extend_schema(request=ResendVerificationSerializer, responses={202: None})
     def post(self, request):
-        serializer = EmailOnlySerializer(data=request.data)
+        serializer = ResendVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = User.objects.filter(
             email=serializer.validated_data["email"], is_active=True, email_verified_at__isnull=True
         ).first()
         if user:
-            emails.send_verification_email(user)
+            emails.send_verification_email(user, serializer.validated_data.get("next", ""))
         return Response(ACCEPTED, status=status.HTTP_202_ACCEPTED)
 
 
@@ -94,7 +95,10 @@ class VerifyEmailView(PublicAuthView):
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = read_verification_token(serializer.validated_data["token"])
+        token = serializer.validated_data["token"]
+        user = read_verification_token(token)
+        if user is None:
+            user = self.added_email(token)
         if user is None:
             raise ApiException("invalid_token", "This verification link is invalid or has expired.")
         if not user.is_email_verified:
@@ -102,6 +106,46 @@ class VerifyEmailView(PublicAuthView):
             user.save(update_fields=["email_verified_at"])
         login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         return Response(UserSerializer(user).data)
+
+    def added_email(self, token: str):
+        """A link sent by AddEmailView: put the confirmed address on the account, if it is still free and
+        the account still has none of its own."""
+        found = read_add_email_token(token)
+        if found is None:
+            return None
+        user, email = found
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=user.pk)
+            if user.can_receive_email and user.is_email_verified:
+                return user if user.email == email else None
+            if User.objects.filter(email=email).exclude(pk=user.pk).exists():
+                return None
+            user.email, user.email_verified_at = email, timezone.now()
+            user.save(update_fields=["email", "email_verified_at"])
+        return user
+
+
+class AddEmailView(APIView):
+    """POST /auth/me/email/: an account without a confirmed email address of its own (one that signs in
+    by phone) asks to add one. A link goes to the address; nothing changes until it is opened. The answer
+    is the same whether or not the address can be used."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "auth_email"
+
+    @extend_schema(request=EmailOnlySerializer, responses={202: None})
+    def post(self, request):
+        serializer = EmailOnlySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user, email = request.user, serializer.validated_data["email"]
+        if user.can_receive_email and user.is_email_verified:
+            raise ApiException("email_set", "Your account already has a confirmed email address.", 409)
+        holder = User.objects.filter(email=email).exclude(pk=user.pk).first()
+        if holder is None:
+            emails.send_add_email_email(user, email)
+        elif holder.can_receive_email:
+            emails.send_existing_account_email(holder)  # its owner hears; the caller learns nothing
+        return Response(ACCEPTED, status=status.HTTP_202_ACCEPTED)
 
 
 class LogInView(PublicAuthView):

@@ -18,7 +18,7 @@ import random
 from dataclasses import dataclass, field
 from fractions import Fraction
 
-PLAYED, WALKOVER, RETIRED = "played", "walkover", "retired"
+PLAYED, WALKOVER, RETIRED, DISQUALIFIED = "played", "walkover", "retired", "disqualified"
 GAME_POINTS = 11
 
 MEASURES = ("match_points", "rubbers", "games", "points")
@@ -27,7 +27,7 @@ MEASURES = ("match_points", "rubbers", "games", "points")
 @dataclass(frozen=True)
 class Result:
     """A decided group match. `games` are (winner's points, loser's points) as recorded; for a walkover
-    there are none, for a retirement only what was played."""
+    there are none, for a retirement or a disqualification only what was played."""
 
     winner: str
     loser: str
@@ -70,7 +70,7 @@ def credited_games(result: Result) -> list[tuple[int, int]]:
     if result.outcome == PLAYED:
         return list(result.games)
     games = list(result.games)
-    if result.outcome == RETIRED and games:
+    if result.outcome in (RETIRED, DISQUALIFIED) and games:
         mine, theirs = games[-1]
         if not (mine >= GAME_POINTS and mine - theirs >= 2) and not (
             theirs >= GAME_POINTS and theirs - mine >= 2

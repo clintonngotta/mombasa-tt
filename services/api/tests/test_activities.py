@@ -163,7 +163,11 @@ def test_selected_audience_attendees_and_deadline(officer, club, members):
     rsvp(a, club, picked, "going")
     rsvp(logged_in(members["B"]), club, picked, "not_going")
     attendees = a.get(url(club, picked, "attendees/")).json()
-    assert attendees == [{"display_name": "Member A", "answer": "going", "waitlisted": False}]
+    # Names and answers only: who checked in or attended is for the staff.
+    assert [(x["display_name"], x["answer"], x["waitlisted"]) for x in attendees] == [
+        ("Member A", "going", False)
+    ]
+    assert attendees[0]["attended"] is None and attendees[0]["checked_in_at"] is None
     assert outsider.get(url(club, picked, "attendees/")).status_code == 404
     assert officer.get(url(club, picked, "invitees/")).json()["invitee_ids"]
     assert a.get(url(club, picked, "invitees/")).status_code == 403

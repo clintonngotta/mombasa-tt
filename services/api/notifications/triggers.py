@@ -51,15 +51,16 @@ def up_next(match, players) -> None:
     )
 
 
-def called_to_table(match, reservation, players) -> None:
+def called_to_table(match, reservation, players, version: str | None = None) -> None:
+    """The match was sent to its table, or (with a `version` of its own) called there once more."""
     supersede(f"match:{match.id}", Category.UP_NEXT)
     notify(
         players,
         Category.TABLE_CALL,
-        f"Called to {reservation.table.label}",
+        f"{'Called again' if version else 'Called'} to {reservation.table.label}",
         body=f"{match.draw.event.name}: go to {reservation.table.label} now.",
         subject=f"match:{match.id}",
-        version=str(reservation.id),
+        version=version or str(reservation.id),
         link=_match_link(match),
         organization=match.draw.event.tournament.organization,
     )
@@ -91,6 +92,33 @@ def ceremony_published(tournament, players) -> None:
     )
 
 
+def order_of_play_out(tournament, players) -> None:
+    """The tournament's order of play went public (REQ-053)."""
+    notify(
+        players,
+        Category.ANNOUNCEMENT,
+        f"Order of play: {tournament.name}",
+        body="The times and tables of the matches are out.",
+        subject=f"order-of-play:{tournament.id}",
+        link=f"/tournaments/{tournament.id}/order-of-play",
+        organization=tournament.organization,
+    )
+
+
+def results_announced(announcement, players) -> None:
+    """A results announcement was published and the organizers chose to tell the players."""
+    tournament = announcement.tournament
+    notify(
+        players,
+        Category.ANNOUNCEMENT,
+        announcement.title,
+        body="New results are on the tournament's news feed.",
+        subject=f"announcement:{announcement.id}",
+        link=f"/tournaments/{tournament.id}#news-{announcement.id}",
+        organization=tournament.organization,
+    )
+
+
 def session_invited(session, users) -> None:
     notify(
         users,
@@ -98,6 +126,24 @@ def session_invited(session, users) -> None:
         f"Invited: {session.title}",
         body=f"{session.organization.name} invites you. Answer under Training.",
         subject=f"club-session:{session.id}",
+        link="/training",
+        organization=session.organization,
+    )
+
+
+def session_moved(session, place: str, actor) -> None:
+    """A session is held somewhere else: everyone invited who hasn't declined is told."""
+    invited = set(
+        session.invitations.exclude(status="declined").exclude(user=actor).values_list("user_id", flat=True)
+    )
+    where = f"Now at {place}." if place else "It is back at the usual place."
+    notify(
+        invited,
+        Category.TRAINING,
+        f"Moved: {session.title}",
+        body=where,
+        subject=f"club-session-place:{session.id}",
+        version=f"{session.location_venue_id}:{session.location_latitude}:{session.location_longitude}"[:80],
         link="/training",
         organization=session.organization,
     )
@@ -145,16 +191,9 @@ def external_event_reviewed(event) -> None:
 
 def activity_news(activity, what: str) -> None:
     """Publishing, a change of time or place, and cancelling reach the activity's audience only."""
-    from organizations.models import Membership
+    from activities.service import audience_ids
 
-    if activity.audience == "selected":
-        audience = set(activity.invitees.values_list("pk", flat=True))
-    else:
-        audience = set(
-            Membership.objects.active()
-            .filter(organization=activity.organization)
-            .values_list("user_id", flat=True)
-        )
+    audience = audience_ids(activity)
     titles = {
         "published": f"New: {activity.title}",
         "changed": f"Changed: {activity.title}",

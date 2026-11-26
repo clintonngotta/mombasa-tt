@@ -159,7 +159,34 @@ def accept(invitation: SessionInvitation) -> SessionInvitation:
     )
     invitation.status = SessionInvitation.Status.ACCEPTED
     invitation.responded_at = timezone.now()
-    invitation.save(update_fields=["status", "responded_at"])
+    # Coming after all: the apology no longer stands.
+    invitation.apologised_at, invitation.apology_reason = None, ""
+    invitation.save(update_fields=["status", "responded_at", "apologised_at", "apology_reason"])
+    return invitation
+
+
+@transaction.atomic
+def apologise(invitation: SessionInvitation, reason: str) -> SessionInvitation:
+    """The member says before the start that they can't come. Their time is free again, and the record
+    shows an apology rather than an absence. Sending it again changes the reason."""
+    invitation = (
+        SessionInvitation.objects.select_for_update(of=("self",))
+        .select_related("session")
+        .get(pk=invitation.pk)
+    )
+    session = invitation.session
+    if session.status != ClubSession.Status.SCHEDULED:
+        raise ApiException("session_cancelled", "This session was cancelled.", 409)
+    if session.starts_at <= timezone.now():
+        raise ApiException(
+            "apology_too_late", "The session has started. Apologies are sent before the start.", 409
+        )
+    now = timezone.now()
+    invitation.status = SessionInvitation.Status.DECLINED
+    invitation.responded_at = now
+    invitation.apologised_at = invitation.apologised_at or now
+    invitation.apology_reason = reason
+    invitation.save(update_fields=["status", "responded_at", "apologised_at", "apology_reason"])
     return invitation
 
 
@@ -173,17 +200,35 @@ def decline(invitation: SessionInvitation) -> SessionInvitation:
     return invitation
 
 
-def record_attendance(invitation: SessionInvitation, attended: bool | None, actor) -> SessionInvitation:
+def record_attendance(
+    invitation: SessionInvitation, attended: bool | None, actor, *, late: bool = False
+) -> SessionInvitation:
+    """Staff mark a member by hand (also over a check-in the member made). The record says it was staff."""
     session = invitation.session
     if session.status != ClubSession.Status.SCHEDULED:
         raise ApiException("session_cancelled", "This session was cancelled.", 409)
     if attended is not None and session.starts_at > timezone.now():
         raise ApiException("session_not_started", "Attendance is recorded once the session starts.", 409)
-    if invitation.attended != attended:
+    late = bool(late and attended)
+    by_staff = invitation.attendance_source == SessionInvitation.Source.STAFF
+    if invitation.attended != attended or invitation.late != late or (attended is not None and not by_staff):
         invitation.attended = attended
+        invitation.late = late
         invitation.attendance_by = actor if attended is not None else None
         invitation.attendance_at = timezone.now() if attended is not None else None
-        invitation.save(update_fields=["attended", "attendance_by", "attendance_at"])
+        invitation.attendance_source = SessionInvitation.Source.STAFF if attended is not None else ""
+        invitation.check_in_distance_m = invitation.check_in_accuracy_m = None
+        invitation.save(
+            update_fields=[
+                "attended",
+                "late",
+                "attendance_by",
+                "attendance_at",
+                "attendance_source",
+                "check_in_distance_m",
+                "check_in_accuracy_m",
+            ]
+        )
     return invitation
 
 

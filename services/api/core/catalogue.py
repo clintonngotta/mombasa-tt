@@ -32,6 +32,7 @@ class CountryCatalogueSerializer(serializers.ModelSerializer):
 class CountryOptionsView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    public_actions = ("get",)  # held to the visitors' allowance (core/throttling.py)
 
     @extend_schema(responses={200: CountryOptionSerializer(many=True)})
     def get(self, request):
@@ -41,6 +42,7 @@ class CountryOptionsView(APIView):
 class CountryCatalogueView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    public_actions = ("get",)  # held to the visitors' allowance (core/throttling.py)
 
     @extend_schema(responses={200: CountryCatalogueSerializer})
     def get(self, request, code):

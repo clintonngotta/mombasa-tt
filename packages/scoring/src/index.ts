@@ -5,15 +5,30 @@
 // ../fixtures after every event.
 //
 // Rules: ITTF Laws of Table Tennis 2.11 (a game), 2.12 (a match), 2.13 (order of serving, receiving
-// and ends) and Regulations 3.4.4.2 (time-out), as transcribed in spec.md.
+// and ends), 2.15 (the expedite system) and Regulations 3.4.4.2 (time-out), 3.5.2 (cards and penalty
+// points) and 3.4.2.3 (suspension for incapacity), as transcribed in spec.md.
 
 export type Side = "a" | "b"
 export type Player = "a1" | "a2" | "b1" | "b2"
 export type End = "left" | "right"
 
+/** Why a card is shown (REQ-043): a category the umpire must pick, kept with the card. */
+export type CardReason = "bad_behaviour" | "racket_abuse" | "illegal_advice" | "delay" | "other"
+export const CARD_REASONS: CardReason[] = ["bad_behaviour", "racket_abuse", "illegal_advice", "delay", "other"]
+
+/** Offences each player has already committed, and the advisers' cards, carried into a match. */
+export interface Carry {
+  /** Player offences so far in the tie, by position in this match. */
+  offences: Record<Player, number>
+  /** Each side's adviser: 0 nothing, 1 warned (yellow), 2 sent away (red). */
+  advisers: [number, number]
+}
+
 export interface Config {
   best_of: 3 | 5 | 7
   doubles: boolean
+  /** A team tie's rubber starts with the warnings and penalties of the tie's earlier rubbers (3.5.2.7). */
+  carry?: Carry
 }
 
 export type ScoreEvent =
@@ -22,7 +37,22 @@ export type ScoreEvent =
   | { type: "point"; side: Side }
   /** Doubles, before the first point of a later game: which of the serving pair serves first. */
   | { type: "choose_server"; player: Player }
+  /** A time-out starts (3.4.4.2); it ends with `timeout_end`, or by the next point when play resumes early. */
   | { type: "timeout"; side: Side }
+  | { type: "timeout_end" }
+  /** A player misbehaved: the ladder decides the card and the penalty points (3.5.2.2-3.5.2.4). */
+  | { type: "card"; player: Player; reason: CardReason; note?: string }
+  /** A side's adviser misbehaved: a yellow card, then a red one sending them away (3.5.2.1-3.5.2.2). */
+  | { type: "adviser_card"; side: Side; reason: CardReason; note?: string }
+  /** The referee granted a suspension for accidental incapacity of up to 10 minutes (3.4.2.3). */
+  | { type: "suspension"; side: Side }
+  | { type: "suspension_end" }
+  /** The expedite system starts and stays on for the rest of the match (2.15). */
+  | { type: "expedite" }
+  /** The side gives up: the match goes to the opponent with the points played (ret.). */
+  | { type: "retire"; side: Side }
+  /** The referee disqualified the side: the match goes to the opponent with the points played (DQ). */
+  | { type: "disqualify"; side: Side }
   /** Takes back the last action that still stands. The undo itself stays in the stream. */
   | { type: "undo" }
 
@@ -46,6 +76,18 @@ export interface State {
   /** Whether side a and side b have used their one time-out. */
   timeouts: [boolean, boolean]
   winner: Side | null
+  /** How the match ended: played to its end, a retirement or a disqualification. Null until it ends. */
+  outcome: "played" | "retired" | "disqualified" | null
+  /** Whose time-out is running: both sides may claim one at once (3.4.4.2.3). */
+  timeout_running: [boolean, boolean]
+  /** Offences each player has committed in the match (and earlier rubbers of the tie). */
+  offences: Record<Player, number>
+  /** Each side's adviser: 0 nothing, 1 warned (yellow), 2 sent away (red). */
+  advisers: [number, number]
+  /** The side whose player is suspended for incapacity, if one is. */
+  suspended: Side | null
+  /** The expedite system is on: service changes after every point. */
+  expedite: boolean
 }
 
 export type ErrorCode =
@@ -56,6 +98,14 @@ export type ErrorCode =
   | "game_under_way"
   | "not_serving_pair"
   | "timeout_used"
+  | "no_timeout"
+  | "invalid_card"
+  | "refer_to_referee"
+  | "adviser_sent_off"
+  | "suspended"
+  | "not_suspended"
+  | "expedite_on"
+  | "expedite_too_late"
   | "nothing_to_undo"
   | "unknown_event"
   | "invalid_config"
@@ -80,13 +130,31 @@ const otherEnd = (end: End | null): End | null => (end === null ? null : end ===
 /** Games a side must win: the majority of `best_of`. */
 export const gamesNeeded = (config: Config) => Math.floor(config.best_of / 2) + 1
 
+const LADDER_MAX = 3 // a fourth offence is the referee's to decide (3.5.2.4)
+const count = (n: unknown, max: number) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= max
+
 /** Refuse a configuration the rules don't know: a match is the best of 3, 5 or 7, singles or doubles. */
 export function checkConfig(config: Config): void {
   const known = typeof config === "object" && config !== null && [3, 5, 7].includes(config.best_of) && typeof config.doubles === "boolean"
   if (!known) throw new ScoringError("invalid_config")
+  if (config.carry !== undefined) {
+    const carry = config.carry
+    const fine =
+      typeof carry === "object" &&
+      carry !== null &&
+      typeof carry.offences === "object" &&
+      carry.offences !== null &&
+      PLAYERS.every((player) => count(carry.offences[player], LADDER_MAX)) &&
+      Array.isArray(carry.advisers) &&
+      carry.advisers.length === 2 &&
+      carry.advisers.every((n) => count(n, 2))
+    if (!fine) throw new ScoringError("invalid_config")
+  }
 }
 
-export function initialState(): State {
+/** The state before the first event; a tie's rubber starts with what the tie carries. */
+export function initialState(config?: Config): State {
+  const carry = config?.carry
   return {
     status: "not_started",
     game_number: 1,
@@ -101,6 +169,12 @@ export function initialState(): State {
     decider_changed: false,
     timeouts: [false, false],
     winner: null,
+    outcome: null,
+    timeout_running: [false, false],
+    offences: carry ? { a1: carry.offences.a1, a2: carry.offences.a2, b1: carry.offences.b1, b2: carry.offences.b2 } : { a1: 0, a2: 0, b1: 0, b2: 0 },
+    advisers: carry ? [carry.advisers[0], carry.advisers[1]] : [0, 0],
+    suspended: null,
+    expedite: false,
   }
 }
 
@@ -111,7 +185,27 @@ function copy(state: State): State {
     games_won: [state.games_won[0], state.games_won[1]],
     points: [state.points[0], state.points[1]],
     timeouts: [state.timeouts[0], state.timeouts[1]],
+    timeout_running: [state.timeout_running[0], state.timeout_running[1]],
+    offences: { ...state.offences },
+    advisers: [state.advisers[0], state.advisers[1]],
   }
+}
+
+const other = (side: Side): Side => (side === "a" ? "b" : "a")
+const isSide = (side: unknown): side is Side => side === "a" || side === "b"
+
+/** The match is over before its end: the opponent wins with the points played (no fabricated score). */
+function endEarly(state: State, loser: Side, outcome: "retired" | "disqualified"): State {
+  if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
+  if (!isSide(loser)) throw new ScoringError("unknown_event")
+  const next = copy(state)
+  next.status = "completed"
+  next.winner = other(loser)
+  next.outcome = outcome
+  next.timeout_running = [false, false]
+  next.suspended = null
+  next.server = next.receiver = next.first_server = next.first_receiver = null
+  return next
 }
 
 function start(config: Config, state: State, event: Extract<ScoreEvent, { type: "start" }>): State {
@@ -139,7 +233,10 @@ function start(config: Config, state: State, event: Extract<ScoreEvent, { type: 
 function point(config: Config, state: State, side: Side): State {
   if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
   if (side !== "a" && side !== "b") throw new ScoringError("unknown_event")
+  if (state.suspended !== null) throw new ScoringError("suspended")
   const next = copy(state)
+  // Play resumed: a time-out still running is over (3.4.4.2.3: the side may resume early).
+  next.timeout_running = [false, false]
   next.points[index(side)] += 1
   const [a, b] = next.points
   const lead = Math.abs(a - b)
@@ -154,6 +251,7 @@ function point(config: Config, state: State, side: Side): State {
       // 2.12.1: the match is the best of an odd number of games.
       next.status = "completed"
       next.winner = side
+      next.outcome = "played"
       next.server = next.receiver = next.first_server = next.first_receiver = null
       return next
     }
@@ -170,8 +268,9 @@ function point(config: Config, state: State, side: Side): State {
     return next
   }
 
-  // 2.13.3: service changes after every 2 points, and after every point once both have 10.
-  if ((a >= 10 && b >= 10) || (a + b) % 2 === 0) {
+  // 2.13.3: service changes after every 2 points, and after every point once both have 10. 2.15.3:
+  // under the expedite system, after every point.
+  if (next.expedite || (a >= 10 && b >= 10) || (a + b) % 2 === 0) {
     const server = next.server as Player
     const receiver = next.receiver as Player
     // 2.13.5: in doubles the previous receiver serves and the previous server's partner receives.
@@ -212,6 +311,93 @@ function timeout(state: State, side: Side): State {
   if (state.timeouts[index(side)]) throw new ScoringError("timeout_used")
   const next = copy(state)
   next.timeouts[index(side)] = true
+  next.timeout_running[index(side)] = true
+  return next
+}
+
+/** Play resumes: every running time-out is over (both sides' when both claimed one at once). */
+function timeoutEnd(state: State): State {
+  if (!state.timeout_running[0] && !state.timeout_running[1]) throw new ScoringError("no_timeout")
+  const next = copy(state)
+  next.timeout_running = [false, false]
+  return next
+}
+
+/** A penalty point is an ordinary point for the opponent: it can end a game or the match (3.5.2.3). */
+function penalties(config: Config, state: State, to: Side, points: number): State {
+  let next = state
+  for (let n = 0; n < points && next.status === "in_progress"; n += 1) next = point(config, next, to)
+  return next
+}
+
+/**
+ * How far up the card ladder a player's next offence starts (3.5.2.6): their own count, or in doubles
+ * the pair's, the higher of its two players' counts.
+ */
+export function offencesOf(config: Pick<Config, "doubles">, state: Pick<State, "offences">, player: Player): number {
+  return config.doubles ? Math.max(state.offences[player], state.offences[partnerOf(player)]) : state.offences[player]
+}
+
+function card(config: Config, state: State, player: Player, reason: CardReason): State {
+  if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
+  if (!PLAYERS.includes(player) || (!config.doubles && player[1] !== "1")) throw new ScoringError("unknown_event")
+  if (!CARD_REASONS.includes(reason)) throw new ScoringError("invalid_card")
+  // 3.5.2.6: in doubles a card for either player counts against the pair, so the pair stands at the
+  // higher of its players' counts (carried in from earlier rubbers too); the offender takes the new step.
+  const reached = offencesOf(config, state, player)
+  // 3.5.2.4: after yellow, yellow-red (1 point) and yellow-red (2 points), the referee decides.
+  if (reached >= LADDER_MAX) throw new ScoringError("refer_to_referee")
+  const next = copy(state)
+  next.offences[player] = reached + 1
+  const owed = reached // 0 for the warning, then 1, then 2
+  if (owed === 0) return next
+  // Penalty points are played as points, so a running time-out or suspension doesn't stop them.
+  const resumed = { ...next, suspended: null }
+  const after = penalties(config, resumed, other(sideOf(player)), owed)
+  return { ...after, suspended: after.status === "in_progress" ? state.suspended : null }
+}
+
+function adviserCard(state: State, side: Side, reason: CardReason): State {
+  if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
+  if (!isSide(side)) throw new ScoringError("unknown_event")
+  if (!CARD_REASONS.includes(reason)) throw new ScoringError("invalid_card")
+  if (state.advisers[index(side)] >= 2) throw new ScoringError("adviser_sent_off")
+  const next = copy(state)
+  next.advisers[index(side)] += 1
+  return next
+}
+
+function suspension(state: State, side: Side): State {
+  if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
+  if (!isSide(side)) throw new ScoringError("unknown_event")
+  if (state.suspended !== null) throw new ScoringError("suspended")
+  const next = copy(state)
+  next.suspended = side
+  return next
+}
+
+function suspensionEnd(state: State): State {
+  if (state.suspended === null) throw new ScoringError("not_suspended")
+  const next = copy(state)
+  next.suspended = null
+  return next
+}
+
+function expedite(config: Config, state: State): State {
+  if (state.status !== "in_progress") throw new ScoringError("not_in_progress")
+  if (state.expedite) throw new ScoringError("expedite_on")
+  const [a, b] = state.points
+  // 2.15.1: not introduced in a game once at least 18 points have been scored.
+  if (a + b >= 18) throw new ScoringError("expedite_too_late")
+  const next = copy(state)
+  next.expedite = true
+  // 2.15.3: introduced between rallies, the player who received in the rally before serves. After an
+  // odd number of points the server of that rally is still due, so service moves on one step.
+  if ((a + b) % 2 === 1) {
+    const server = state.server as Player
+    next.server = state.receiver
+    next.receiver = config.doubles ? partnerOf(server) : server
+  }
   return next
 }
 
@@ -230,6 +416,22 @@ export function apply(config: Config, state: State, event: ScoreEvent): State {
       return chooseServer(config, state, event.player)
     case "timeout":
       return timeout(state, event.side)
+    case "timeout_end":
+      return timeoutEnd(state)
+    case "card":
+      return card(config, state, event.player, event.reason)
+    case "adviser_card":
+      return adviserCard(state, event.side, event.reason)
+    case "suspension":
+      return suspension(state, event.side)
+    case "suspension_end":
+      return suspensionEnd(state)
+    case "expedite":
+      return expedite(config, state)
+    case "retire":
+      return endEarly(state, event.side, "retired")
+    case "disqualify":
+      return endEarly(state, event.side, "disqualified")
     default:
       throw new ScoringError("unknown_event")
   }
@@ -244,8 +446,9 @@ export class Scoring {
   readonly state: State
   private readonly earlier: readonly State[]
 
-  constructor(config: Config, state: State = initialState(), earlier: readonly State[] = []) {
+  constructor(config: Config, state?: State, earlier: readonly State[] = []) {
     checkConfig(config)
+    state ??= initialState(config)
     this.config = config
     this.state = state
     this.earlier = earlier

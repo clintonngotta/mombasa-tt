@@ -12,9 +12,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import ApiException
+from core.nearby import MAX_RESULTS, NearbySearchSerializer, within
 from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
+from guests import service as guest_service
 
+from . import representatives
 from .access import (
     OVERSIGHT,
     effective_permissions,
@@ -41,12 +44,14 @@ from .models import (
     invitation_expiry,
     seed_roles,
 )
-from .permissions import ALL_PERMISSIONS, ROLE_TEMPLATES, Permission, RoleKey
+from .permissions import ALL_PERMISSIONS, BODY_ONLY, ROLE_TEMPLATES, Permission, RoleKey
 from .serializers import (
+    AddedMemberSerializer,
     InvitationCreateSerializer,
     InvitationSerializer,
     JoinRequestSerializer,
     ManagementOrganizationSerializer,
+    MemberAddSerializer,
     MemberFieldEntrySerializer,
     MemberFieldSerializer,
     MemberFieldValuesSerializer,
@@ -55,6 +60,7 @@ from .serializers import (
     MembershipSerializer,
     MyInvitationSerializer,
     MyJoinRequestSerializer,
+    NearbyOrganizationsSerializer,
     OrganizationLocationSerializer,
     OrganizationSerializer,
     PermissionInfoSerializer,
@@ -91,14 +97,15 @@ def join(organization: Organization, user) -> Membership:
 
 
 def leave(organization: Organization, membership: Membership) -> None:
-    """End a membership, dropping its roles and committee positions. Refuses to remove the last admin.
-    Locks the organization."""
+    """End a membership, dropping its roles, committee positions and places as a representative.
+    Refuses to remove the last admin. Locks the organization."""
     lock_organization(organization)
     ensure_admin_remains(organization, membership)
     membership.status = Membership.Status.LEFT
     membership.save(update_fields=["status"])
     membership.roles.clear()
     end_holdings_on_leaving(membership)
+    representatives.end_on_leaving(membership)
 
 
 class OrganizationViewSet(
@@ -146,6 +153,29 @@ class OrganizationViewSet(
             # A coach's organizing desk isn't a club anyone joins.
             queryset = queryset.exclude(kind=Organization.Kind.COACHING)
         return queryset
+
+    @property
+    def throttle_scope(self):
+        # A distance search works harder than a list, and repeated ones could be used to place a club.
+        return "nearby" if self.action == "nearby" else None
+
+    @extend_schema(request=NearbySearchSerializer, responses={200: NearbyOrganizationsSerializer})
+    @action(detail=False, methods=["post"])
+    def nearby(self, request):
+        """Clubs with a map position inside `radius_m` of the given point, nearest first, at most 50.
+        The point is sent in the body so the player's position stays out of URLs and logs."""
+        search = NearbySearchSerializer(data=request.data)
+        search.is_valid(raise_exception=True)
+        where = search.validated_data
+        clubs = Organization.objects.filter(
+            kind__in=[Organization.Kind.CLUB, Organization.Kind.CLUB_FACILITY]
+        )
+        if term := where.get("search"):
+            clubs = clubs.filter(Q(name__icontains=term) | Q(town__icontains=term))
+        found = within(clubs, where["latitude"], where["longitude"], where["radius_m"])
+        results = list(found[:MAX_RESULTS])
+        count = len(results) if len(results) < MAX_RESULTS else found.count()
+        return Response(NearbyOrganizationsSerializer({"count": count, "results": results}).data)
 
     @extend_schema(request=OrganizationLocationSerializer, responses={200: OrganizationSerializer})
     @transaction.atomic
@@ -451,7 +481,18 @@ class PermissionCatalogView(generics.GenericAPIView):
 
     @extend_schema(responses={200: PermissionInfoSerializer(many=True)})
     def get(self, request):
-        return Response([{"code": code, "label": label} for code, label in Permission.choices])
+        return Response(
+            [
+                {"code": code, "label": label, "body_only": code in BODY_ONLY}
+                for code, label in Permission.choices
+            ]
+        )
+
+
+def require_body_for(organization: Organization, permissions) -> None:
+    """Tournament approval belongs to regional and national bodies (TASK-107): a club's role can't hold it."""
+    if not organization.is_body and BODY_ONLY.intersection(permissions):
+        raise ValidationError({"permissions": "Only a regional or national body grants tournament approval."})
 
 
 class RoleViewSet(viewsets.GenericViewSet):
@@ -495,6 +536,7 @@ class RoleViewSet(viewsets.GenericViewSet):
             granted = require_permission(request.user, organization, MANAGE_ROLES)
             permissions = serializer.validated_data.get("permissions", [])
             require_within_authority(granted, permissions)
+            require_body_for(organization, permissions)
             role = self._save(serializer, organization=organization, permissions=permissions)
         return Response(RoleSerializer(role).data, status=status.HTTP_201_CREATED)  # new: no members yet
 
@@ -516,6 +558,8 @@ class RoleViewSet(viewsets.GenericViewSet):
                         "admin_role_locked", "The Admin role always has every permission.", 409
                     )
                 require_within_authority(granted, new)
+                if not role.is_admin:
+                    require_body_for(organization, new)
             role = self._save(serializer)
             role.member_count = role.memberships.active().count()
         return Response(RoleSerializer(role).data)
@@ -550,6 +594,11 @@ class MemberViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardPagination
 
+    @property
+    def throttle_scope(self):
+        # Adding someone sends them an email, so it shares the invitation allowance.
+        return "invitations" if self.action == "add" else None
+
     def get_organization(self) -> Organization:
         return get_object_or_404(Organization, pk=self.kwargs["organization_pk"])
 
@@ -557,7 +606,7 @@ class MemberViewSet(viewsets.GenericViewSet):
         return get_object_or_404(
             Membership.objects.active()
             .select_for_update(of=("self",))
-            .select_related("organization", "user")
+            .select_related("organization", "user", "user__guest")
             .prefetch_related("roles", "organization__roles"),
             pk=pk,
             organization=organization,
@@ -572,7 +621,7 @@ class MemberViewSet(viewsets.GenericViewSet):
         require_permission(request.user, organization, MANAGE_MEMBERS, MANAGE_ROLES)
         members = (
             organization.memberships.active()
-            .select_related("user")
+            .select_related("user", "user__guest")
             .prefetch_related("roles")
             .order_by("user__display_name", "joined_at")
         )
@@ -581,6 +630,34 @@ class MemberViewSet(viewsets.GenericViewSet):
             members = members.filter(user__display_name__icontains=term)
         page = self.paginate_queryset(members)
         return self.get_paginated_response(MemberSerializer(page, many=True).data)
+
+    @extend_schema(request=MemberAddSerializer, responses={201: AddedMemberSerializer})
+    def add(self, request, organization_pk):
+        """Add someone to the club directly. They become a member at once and get a link (by email, or
+        `invite_link` for staff to share by phone, shown this once) to set a password and sign in. If they
+        already have an account, the same link signs them in and moves the membership to it. The reply is
+        the same either way, so adding never reveals who is registered."""
+        organization = self.get_organization()
+        require_permission(request.user, organization, MANAGE_MEMBERS)  # before saying what's wrong
+        body = MemberAddSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+        with transaction.atomic():
+            lock_organization(organization)
+            require_permission(request.user, organization, MANAGE_MEMBERS)
+            guest = guest_service.create(organization, data["display_name"], request.user)
+            membership = join(organization, guest.user)
+            _, token = guest_service.invite(
+                guest,
+                data.get("email"),
+                request.user,
+                data.get("phone") or "",
+                purpose=guest_service.MEMBER,
+            )
+            member = self.get_member(organization, membership.pk)
+        reply = AddedMemberSerializer(member).data
+        reply["invite_link"] = guest_service.join_link(token)
+        return Response(reply, status=status.HTTP_201_CREATED)
 
     @extend_schema(request=MemberRolesSerializer, responses={200: MemberSerializer})
     def set_roles(self, request, organization_pk, pk):

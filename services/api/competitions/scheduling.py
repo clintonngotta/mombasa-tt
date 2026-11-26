@@ -248,17 +248,22 @@ def recommend(
 ) -> list[dict]:
     """A start and table for every plannable match, earliest first, inside the sessions (or the day
     hours). A match no session can hold comes back without either. Nothing is saved."""
+    from . import order_of_play
+
     zone = ZoneInfo(tournament.timezone)
     first_day = _at(tournament.starts_on, day_starts, zone)
     start = _round_up(max(starts_at or first_day, timezone.now(), first_day))
     items = items_for(plannable(tournament))
-    order = sorted(items.values(), key=lambda i: (i.level, i.match.round, *_order_key(i.match)))
+    order = _in_order(items, order_of_play.ranks(tournament))
     if not tables:
         return []
     spans = [w for w in windows(tournament, tables, day_starts, day_ends) if w.end > start]
 
     table_free = {table.id: start for table in tables}
-    person_free: dict = {}
+    # A player who can't play before a time is free from then (REQ-053).
+    person_free: dict = {
+        user_id: max(at, start) for user_id, at in order_of_play.not_before(tournament).items()
+    }
     everyone = {user_id for item in items.values() for user_id in item.people}
     for busy in reserved(tournament, everyone):
         if busy.table and busy.table.id in table_free:
@@ -301,6 +306,30 @@ def recommend(
             }
         )
     return slots
+
+
+def _in_order(items: dict, ranks: dict | None) -> list[Item]:
+    """The matches in the order they are given starts: by stage in the order of play when staff saved
+    one, then by how deep in the draw, round and position; a match always after those it waits for."""
+    from . import order_of_play
+
+    def key(item: Item) -> tuple:
+        return (
+            order_of_play.rank_of(ranks, item.match),
+            item.level,
+            item.match.round,
+            *_order_key(item.match),
+        )
+
+    waiting = sorted(items.values(), key=key)
+    placed: set = set()
+    order = []
+    while waiting:
+        index = next((n for n, item in enumerate(waiting) if all(pk in placed for pk in item.after)), 0)
+        item = waiting.pop(index)
+        placed.add(item.match.id)
+        order.append(item)
+    return order
 
 
 def _order_key(match: Match) -> tuple:
@@ -355,10 +384,22 @@ def _problems(tournament: Tournament, plans: dict, items: dict, zone) -> tuple[l
         )
         for session in sessions(tournament)
     ]
+    from .models import NotBefore
+
+    earliest = {found.user_id: found.at for found in NotBefore.objects.filter(tournament=tournament)}
     for plan in timed:
         day = _local(plan.at, zone).date()
         if not tournament.starts_on <= day <= tournament.ends_on:
             problem(conflicts, plan, "outside_dates", "It is planned outside the tournament's dates.")
+        late = [user for user in plan.item.people if user in earliest and plan.at < earliest[user]]
+        if late:
+            name = min(plan.item.people[user] for user in late)
+            problem(
+                conflicts,
+                plan,
+                "player_not_before",
+                f"{name} can't play before {_local(max(earliest[u] for u in late), zone):%a %H:%M}.",
+            )
         for busy in held:
             if busy.table and plan.table and busy.table.id == plan.table.id and plan.at < busy.until:
                 problem(

@@ -7,4 +7,4 @@ class CompetitionsConfig(AppConfig):
 
     def ready(self):
         # The outbox worker finds its handlers by their being registered: that happens on import.
-        from . import official, publication  # noqa: F401
+        from . import official, order_of_play, publication  # noqa: F401

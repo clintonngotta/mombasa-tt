@@ -61,6 +61,7 @@ def test_new_organization_gets_role_templates_and_admin_holds_everything(admin, 
         "captain",
         "committee",
         "member",
+        "referee",
     ]
     client = logged_in(admin)
     mine = client.get(MEMBERSHIPS).json()["results"][0]
@@ -282,7 +283,7 @@ def test_members_list_shows_names_and_roles_only(admin, club):
     add_member(club, player, "captain")
     results = logged_in(admin).get(f"{ORGS}{club.id}/members/?search=player").json()["results"]
     assert len(results) == 1
-    assert set(results[0]) == {"id", "user", "display_name", "roles", "joined_at"}
+    assert set(results[0]) == {"id", "user", "display_name", "roles", "joined_at", "is_guest"}
     assert [r["key"] for r in results[0]["roles"]] == ["captain"]
 
 
@@ -306,7 +307,16 @@ def test_roles_are_listed_templates_first_then_custom_then_member(admin, club):
     client.post(roles_url(club), {"name": "Treasurer"}, format="json")
     client.post(roles_url(club), {"name": "coach"}, format="json")
     names = [r["name"] for r in client.get(roles_url(club)).json()]
-    assert names == ["Admin", "Captain", "Assistant captain", "Committee", "coach", "Treasurer", "Member"]
+    assert names == [
+        "Admin",
+        "Captain",
+        "Assistant captain",
+        "Committee",
+        "Referee",
+        "coach",
+        "Treasurer",
+        "Member",
+    ]
 
 
 def test_role_update_reports_its_real_member_count(admin, club):

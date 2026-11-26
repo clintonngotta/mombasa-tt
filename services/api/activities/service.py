@@ -10,7 +10,7 @@ from django.utils import timezone
 from competitions.models import Tournament
 from core.exceptions import ApiException
 from organizations.access import effective_permissions
-from organizations.models import Membership, Organization
+from organizations.models import Membership, Organization, Representative
 from organizations.permissions import Permission
 from training.models import ClubSession
 
@@ -29,27 +29,148 @@ def is_member(user, organization: Organization) -> bool:
     return Membership.objects.active().filter(user=user, organization=organization).exists()
 
 
+A = Activity.Audience
+MEMBER_AUDIENCES = (A.MEMBERS, A.SELECTED)
+
+
+def seats(user, organization=None):
+    """The user's places as an accepted representative still in term, at `organization` or anywhere."""
+    today = timezone.localdate()
+    held = Representative.objects.filter(user=user, status=Representative.Status.ACCEPTED).filter(
+        Q(term_end__isnull=True) | Q(term_end__gte=today)
+    )
+    return held.filter(body=organization) if organization is not None else held
+
+
+def represents(user, organization: Organization) -> set:
+    """The organizations the user represents at `organization`."""
+    return set(seats(user, organization).values_list("sender_id", flat=True))
+
+
+def invited(user, organization: Organization | None = None) -> Q:
+    """Activities whose audience includes the user beyond membership: they are named, they represent a
+    club the activity is for, or it is open to every player."""
+    reps = Q(pk__in=[])
+    for body_id, sender_id in seats(user, organization).values_list("body_id", "sender_id"):
+        reps |= Q(organization=body_id) & (Q(clubs__isnull=True) | Q(clubs=sender_id))
+    return Q(audience=A.OPEN) | Q(audience=A.NAMED, invitees=user) | (Q(audience=A.REPRESENTATIVES) & reps)
+
+
 def visible(user, organization: Organization):
     """Activities of `organization` the user may see. Staff see drafts too. Members see what is
-    published or cancelled for all members or for them; anyone signed in sees public ones."""
+    published or cancelled for all members or for them; whoever an event invites sees it; anyone
+    signed in sees public ones and those open to all players."""
     activities = organization.activities.all()
     if is_staff(user, organization):
         return activities
     # A visit for a welfare project the beneficiary had hidden goes from member views with it.
     activities = activities.exclude(welfare_project__hidden_at__isnull=False)
-    public = Q(public=True, status__in=SHOWN)
-    if not is_member(user, organization):
-        return activities.filter(public)
-    mine = Q(status__in=SHOWN) & (Q(audience=Activity.Audience.MEMBERS) | Q(invitees=user))
-    return activities.filter(mine | public).distinct()
+    shown = Q(public=True) | invited(user, organization)
+    if is_member(user, organization):
+        shown |= Q(audience=A.MEMBERS) | Q(audience=A.SELECTED, invitees=user)
+    return activities.filter(shown, status__in=SHOWN).distinct()
 
 
 def in_audience(user, activity: Activity) -> bool:
-    if not is_member(user, activity.organization):
-        return False
+    """Whether the activity is for the user: they may answer and check in."""
     if activity.welfare_project_id and activity.welfare_project.hidden_at:
         return False
-    return activity.audience == Activity.Audience.MEMBERS or activity.invitees.filter(pk=user.pk).exists()
+    if activity.audience == A.OPEN:
+        return True
+    if activity.audience == A.NAMED:
+        return activity.invitees.filter(pk=user.pk).exists()
+    if activity.audience == A.REPRESENTATIVES:
+        mine = represents(user, activity.organization)
+        chosen = set(activity.clubs.values_list("pk", flat=True))
+        return bool(mine & chosen) if chosen else bool(mine)
+    if not is_member(user, activity.organization):
+        return False
+    return activity.audience == A.MEMBERS or activity.invitees.filter(pk=user.pk).exists()
+
+
+def audience_ids(activity: Activity) -> set:
+    """Who is told about the activity. An event open to all players tells only those who answered."""
+    if activity.audience in (A.SELECTED, A.NAMED):
+        return set(activity.invitees.values_list("pk", flat=True))
+    if activity.audience == A.REPRESENTATIVES:
+        today = timezone.localdate()
+        seated = Representative.objects.filter(
+            body=activity.organization, status=Representative.Status.ACCEPTED
+        ).filter(Q(term_end__isnull=True) | Q(term_end__gte=today))
+        chosen = list(activity.clubs.values_list("pk", flat=True))
+        if chosen:
+            seated = seated.filter(sender__in=chosen)
+        return set(seated.values_list("user_id", flat=True))
+    if activity.audience == A.OPEN:
+        return set(activity.rsvps.exclude(answer=Rsvp.Answer.NOT_GOING).values_list("user_id", flat=True))
+    return set(
+        Membership.objects.active()
+        .filter(organization=activity.organization)
+        .values_list("user_id", flat=True)
+    )
+
+
+def events_for(user):
+    """Published events that invite the user beyond their own clubs' activities and haven't ended: they
+    are named, they represent a club it is for, or it is open to all players. Soonest first."""
+    return (
+        Activity.objects.filter(invited(user), status=Activity.Status.PUBLISHED, ends_at__gt=timezone.now())
+        .exclude(welfare_project__isnull=False)
+        .select_related("organization")
+        .prefetch_related("rsvps", "clubs")
+        .distinct()
+        .order_by("starts_at", "id")
+    )
+
+
+@transaction.atomic
+def check_in(activity: Activity, user) -> Rsvp:
+    """The user says they are there, while the activity runs. Someone who hadn't answered takes a place
+    if one is free."""
+    activity = Activity.objects.select_for_update().select_related("organization").get(pk=activity.pk)
+    if not in_audience(user, activity):
+        raise ApiException("not_invited", "This activity is for other people.", 403)
+    now = timezone.now()
+    if activity.status != Activity.Status.PUBLISHED or not (activity.starts_at <= now < activity.ends_at):
+        raise ApiException("not_in_progress", "You can check in only while it is running.", 409)
+    rsvp = Rsvp.objects.filter(activity=activity, user=user).first()
+    holding = rsvp is not None and rsvp.answer == Rsvp.Answer.GOING and not rsvp.waitlisted
+    if not holding and activity.capacity is not None and going_count(activity) >= activity.capacity:
+        raise ApiException("activity_full", "Every place is taken. Ask the organizers at the door.", 409)
+    if rsvp is None:
+        rsvp = Rsvp(activity=activity, user=user)
+    rsvp.answer, rsvp.waitlisted = Rsvp.Answer.GOING, False
+    if rsvp.checked_in_at is None:
+        rsvp.checked_in_at = now
+    if rsvp.attended is None:  # a mark staff made stands
+        rsvp.attended, rsvp.marked_at = True, now
+    rsvp.save()
+    return rsvp
+
+
+@transaction.atomic
+def mark(activity: Activity, actor, *, rsvp_id=None, user_id=None, attended: bool) -> Rsvp:
+    """Staff mark someone there or not, once the activity has started: someone who answered, or someone
+    in the audience who didn't (not for an event open to everyone, where anyone could be named)."""
+    activity = Activity.objects.select_for_update().select_related("organization").get(pk=activity.pk)
+    if activity.status != Activity.Status.PUBLISHED or activity.starts_at > timezone.now():
+        raise ApiException("not_started", "Attendance is taken once it has started.", 409)
+    rsvp = None
+    if rsvp_id is not None:
+        rsvp = Rsvp.objects.filter(activity=activity, pk=rsvp_id).first()
+    elif user_id is not None:
+        rsvp = Rsvp.objects.filter(activity=activity, user_id=user_id).first()
+        if rsvp is None and activity.audience != A.OPEN:
+            from django.contrib.auth import get_user_model
+
+            person = get_user_model().objects.filter(pk=user_id, is_active=True).first()
+            if person is not None and in_audience(person, activity):
+                rsvp = Rsvp(activity=activity, user=person, answer=Rsvp.Answer.GOING)
+    if rsvp is None:
+        raise ApiException("not_found", "That person isn't on this activity's list.", 404)
+    rsvp.attended, rsvp.marked_by, rsvp.marked_at = attended, actor, timezone.now()
+    rsvp.save()
+    return rsvp
 
 
 def going_count(activity: Activity) -> int:
@@ -219,6 +340,8 @@ def check_welfare_link(
         raise ApiException("project_closed", "That welfare project is closed.", 409)
     if public:
         raise ApiException("welfare_not_public", "A welfare visit can't be public.", 400)
+    if audience not in MEMBER_AUDIENCES:
+        raise ApiException("welfare_members_only", "A welfare visit is for the club's members.", 400)
     if project.audience == WelfareProject.Audience.SELECTED:
         allowed = set(project.audience_members.values_list("pk", flat=True)) | {project.beneficiary_id}
         if audience != Activity.Audience.SELECTED or not set(invitee_ids or ()) <= allowed:

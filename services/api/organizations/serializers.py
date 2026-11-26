@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from accounts.serializers import EmailField, PhoneField
 from core.geography import (
     CountryField,
     coordinate_field,
@@ -12,7 +13,7 @@ from core.timezones import validate_timezone
 
 from .access import membership_permissions
 from .member_fields import MAX_OPTIONS
-from .models import Invitation, JoinRequest, MemberField, Membership, Organization, Role
+from .models import BODY_KINDS, Invitation, JoinRequest, MemberField, Membership, Organization, Role
 from .permissions import Permission
 
 
@@ -36,13 +37,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields += ["description", "kind", "timezone"]
 
     def validate_kind(self, value):
-        """A regional body is set up by its region's official (POST /regional-bodies/), never by picking
-        the kind, and no organization changes into or out of one."""
-        body = Organization.Kind.REGIONAL_BODY
-        if value == body and not (self.instance and self.instance.is_body):
+        """A regional or national body is created by a platform super admin (POST /regional-bodies/),
+        never by picking the kind, and no organization changes into or out of one."""
+        current = self.instance.kind if self.instance else None
+        if value in BODY_KINDS and value != current:
             raise serializers.ValidationError("Choose club, facility or both.")
-        if self.instance and self.instance.is_body and value != body:
-            raise serializers.ValidationError("A regional body stays a regional body.")
+        if self.instance and self.instance.is_body and value != current:
+            raise serializers.ValidationError("A governing body stays what it is.")
         # A coach's organizing desk is made from their coach profile (POST /me/coach-profile/organizer/).
         coaching = Organization.Kind.COACHING
         if value == coaching and not (self.instance and self.instance.is_coaching):
@@ -57,8 +58,26 @@ class OrganizationSerializer(serializers.ModelSerializer):
         if self.instance and self.instance.is_body:
             for name in ("country", "region"):
                 if name in attrs and attrs[name] != getattr(self.instance, name):
-                    raise serializers.ValidationError({name: "A regional body's region doesn't change."})
+                    raise serializers.ValidationError({name: "A governing body's region doesn't change."})
         return attrs
+
+
+class NearbyOrganizationSerializer(OrganizationSerializer):
+    """A club found near a point, with how far away it is."""
+
+    distance_m = serializers.SerializerMethodField()
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = [*OrganizationSerializer.Meta.fields, "distance_m"]
+        read_only_fields = fields
+
+    def get_distance_m(self, organization) -> int:
+        return round(organization.distance_m)
+
+
+class NearbyOrganizationsSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    results = NearbyOrganizationSerializer(many=True)
 
 
 class OrganizationLocationSerializer(serializers.ModelSerializer):
@@ -120,6 +139,8 @@ class RoleSerializer(serializers.ModelSerializer):
 class PermissionInfoSerializer(serializers.Serializer):
     code = serializers.ChoiceField(choices=Permission.choices)
     label = serializers.CharField()
+    # Held only in regional and national bodies; the role editor hides it elsewhere.
+    body_only = serializers.BooleanField()
 
 
 class MembershipSerializer(serializers.ModelSerializer):
@@ -141,15 +162,44 @@ class MembershipSerializer(serializers.ModelSerializer):
 
 
 class MemberSerializer(serializers.ModelSerializer):
-    """Staff view of a member: display name and roles, never email or contact details."""
+    """Staff view of a member: display name and roles, never email or contact details. `is_guest` marks a
+    member staff added who hasn't joined from their link yet."""
 
     display_name = serializers.CharField(source="user.display_name", read_only=True)
     roles = RoleSummarySerializer(many=True, read_only=True)
+    is_guest = serializers.SerializerMethodField()
 
     class Meta:
         model = Membership
-        fields = ["id", "user", "display_name", "roles", "joined_at"]
+        fields = ["id", "user", "display_name", "roles", "joined_at", "is_guest"]
         read_only_fields = fields
+
+    def get_is_guest(self, membership) -> bool:
+        guest = getattr(membership.user, "guest", None)
+        return guest is not None and guest.claimed_by_id is None
+
+
+class MemberAddSerializer(serializers.Serializer):
+    """Someone staff add to the club directly: a name, and an email (we send the link), a phone (staff
+    share the link) or both."""
+
+    display_name = serializers.CharField(max_length=80, trim_whitespace=True)
+    email = EmailField(required=False, allow_blank=True)
+    phone = PhoneField(required=False, allow_blank=True, allow_null=True)
+
+    def validate(self, attrs):
+        if not attrs.get("email") and not attrs.get("phone"):
+            raise serializers.ValidationError({"email": "Give an email address or a phone number."})
+        return attrs
+
+
+class AddedMemberSerializer(MemberSerializer):
+    """A member just added, with the link to share. Shown this once: only its hash is kept."""
+
+    invite_link = serializers.CharField(read_only=True)
+
+    class Meta(MemberSerializer.Meta):
+        fields = [*MemberSerializer.Meta.fields, "invite_link"]
 
 
 class MemberRolesSerializer(serializers.Serializer):

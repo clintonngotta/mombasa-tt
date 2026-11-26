@@ -20,11 +20,19 @@ class Activity(models.Model):
         PRACTICE = "practice", "Practice night"
         OPEN_DAY = "open_day", "Open day"
         ANNIVERSARY = "anniversary", "Anniversary"
+        WORKSHOP = "workshop", "Workshop"
+        CLINIC = "clinic", "Coaching clinic"
+        AWARDS = "awards", "Award night"
         OTHER = "other", "Other"
 
     class Audience(models.TextChoices):
         MEMBERS = "members", "All members"
         SELECTED = "selected", "Selected members"
+        # Events beyond the membership (REQ-046): a body's seated representatives (of the chosen clubs,
+        # or all), people named one by one, or every signed-in player.
+        REPRESENTATIVES = "reps", "Invited representatives"
+        NAMED = "named", "Named people"
+        OPEN = "open", "Open to all players"
 
     class Status(models.TextChoices):
         DRAFT = "draft"
@@ -43,6 +51,8 @@ class Activity(models.Model):
     place = models.CharField(max_length=200, blank=True)
     audience = models.CharField(max_length=8, choices=Audience.choices, default=Audience.MEMBERS)
     invitees = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
+    # For the representatives audience: whose representatives are invited. Empty means every sender's.
+    clubs = models.ManyToManyField("organizations.Organization", blank=True, related_name="+")
     # Most people "going"; beyond it a "going" answer waits on the list. Empty means no limit.
     capacity = models.PositiveIntegerField(null=True, blank=True)
     rsvp_deadline = models.DateTimeField(null=True, blank=True)
@@ -97,6 +107,13 @@ class Rsvp(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="rsvps")
     answer = models.CharField(max_length=10, choices=Answer.choices)
     waitlisted = models.BooleanField(default=False)
+    # Attendance (REQ-046): checking in while it runs marks you there; staff mark the rest by hand.
+    checked_in_at = models.DateTimeField(null=True, blank=True)
+    attended = models.BooleanField(null=True, blank=True)
+    marked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    marked_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

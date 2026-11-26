@@ -84,6 +84,10 @@ class Tournament(models.Model):
     # A published match moved by more than this many minutes, or to another table, is news for its
     # players and umpire (REQ-043).
     schedule_notice_minutes = models.PositiveSmallIntegerField(default=15)
+    # When the published order of play becomes public (REQ-053): no earlier than three days before the
+    # first day's start. Set when the schedule is first published; until then only staff see times.
+    order_of_play_release_at = models.DateTimeField(null=True, blank=True)
+    order_of_play_announced_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -185,6 +189,8 @@ class Event(models.Model):
     capacity = models.PositiveSmallIntegerField(null=True, blank=True)  # entries; null = no limit
     best_of = models.PositiveSmallIntegerField(default=5)
     rest_minutes = models.PositiveSmallIntegerField(default=10)
+    # How long a called player has to report at the table before they are flagged (REQ-043).
+    call_grace_minutes = models.PositiveSmallIntegerField(default=10)
     registration_opens_at = models.DateTimeField(null=True, blank=True)
     registration_closes_at = models.DateTimeField(null=True, blank=True)
     admission = models.CharField(max_length=6, choices=Admission.choices, default=Admission.CLOSED)
@@ -430,6 +436,7 @@ class Match(models.Model):
         PLAYED = "played"  # finished at the table
         WALKOVER = "walkover"  # never started: the loser didn't play
         RETIRED = "retired"  # started but not finished: the loser couldn't go on
+        DISQUALIFIED = "disqualified"  # the referee disqualified the loser, before or during play
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     draw = models.ForeignKey(DrawVersion, on_delete=models.CASCADE, related_name="matches")
@@ -448,7 +455,7 @@ class Match(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
     # How a completed match ended, and the points of each game as [a, b] pairs in playing order.
-    outcome = models.CharField(max_length=10, choices=Outcome.choices, blank=True)
+    outcome = models.CharField(max_length=12, choices=Outcome.choices, blank=True)
     games = models.JSONField(default=list, blank=True)
     # Where and when it is expected to be played; both empty until the organizers schedule it. The time
     # is an estimate, never a promise (REQ-014).
@@ -526,7 +533,7 @@ class Rubber(models.Model):
     kind = models.CharField(max_length=10, choices=Kind.choices)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
-    outcome = models.CharField(max_length=10, choices=Match.Outcome.choices, blank=True)
+    outcome = models.CharField(max_length=12, choices=Match.Outcome.choices, blank=True)
     # Points of each game as [a, b] pairs, a being the tie's side a.
     games = models.JSONField(default=list, blank=True)
 
@@ -577,7 +584,7 @@ class OfficialResult(models.Model):
     )
     version = models.PositiveSmallIntegerField(default=1)
     winner = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name="+")
-    outcome = models.CharField(max_length=10, choices=Match.Outcome.choices)
+    outcome = models.CharField(max_length=12, choices=Match.Outcome.choices)
     games = models.JSONField(default=list, blank=True)
     source = models.CharField(max_length=12, choices=Source.choices)
     reason = models.CharField(max_length=300, blank=True)  # corrections only
@@ -679,10 +686,12 @@ class ScheduleVersion(models.Model):
     class Kind(models.TextChoices):
         PUBLISHED = "published"  # the organizers published their plan
         DELAY = "delay"  # a table started late or went out of service
+        MOVED = "moved"  # a match, or a player's matches, moved later
 
     class Reason(models.TextChoices):
         LATE_START = "late_start", "Late start"
         OUT_OF_SERVICE = "out_of_service", "Table out of service"
+        PLAYER_REQUEST = "player_request", "A player's request"
         OTHER = "other", "Other"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -714,6 +723,73 @@ class ScheduleVersion(models.Model):
 
     def __str__(self):
         return f"{self.tournament_id} v{self.number}"
+
+
+class StageOrder(models.Model):
+    """One place in a tournament's order of play (REQ-053): an event's group or knockout stage. Dispatch
+    and the recommended schedule take stages in this order, falling through to a later stage whose
+    players are free rather than leave a table idle."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="stage_order")
+    position = models.PositiveSmallIntegerField()
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="+")
+    stage = models.CharField(max_length=10, choices=Match.Stage.choices)
+
+    class Meta:
+        ordering = ["position"]
+        constraints = [
+            models.UniqueConstraint(fields=["tournament", "event", "stage"], name="one_place_per_stage")
+        ]
+
+    def __str__(self):
+        return f"{self.position}: {self.event_id} {self.stage}"
+
+
+class NotBefore(models.Model):
+    """A player who can't play before a time on a tournament day (REQ-053): their matches are planned
+    and sent no earlier, unless staff set it aside with a reason."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="not_before")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    at = models.DateTimeField()
+    note = models.CharField(max_length=200, blank=True)
+    set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    set_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["at", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["tournament", "user"], name="one_not_before_per_player")
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} not before {self.at}"
+
+
+class TournamentReview(models.Model):
+    """What the host learned from a tournament (REQ-055): what went well, what went wrong and what to do
+    next time. Written by the host's competition staff once it is over; read by them and by the officials
+    of its region and country. Never public."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.OneToOneField(Tournament, on_delete=models.CASCADE, related_name="review")
+    went_well = models.TextField(max_length=5000, blank=True)
+    went_wrong = models.TextField(max_length=5000, blank=True)
+    # What to do next time: a list of {"text": str, "owner": str, "due_on": date | null, "done": bool}.
+    # The owner is a name as staff wrote it: it may be someone without an account.
+    actions = models.JSONField(default=list, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Review of {self.tournament_id}"
 
 
 class Ceremony(models.Model):
@@ -837,3 +913,110 @@ class LiveStreamReport(models.Model):
 
     def __str__(self):
         return f"{self.reason} on {self.stream_id}"
+
+
+class MatchDayLog(models.Model):
+    """One staff action on match day (REQ-043): who did what, when and why. Calls, recalls, moves,
+    players reporting, check-ins, umpire assignments, tables blocked, results entered and corrected.
+    Entries are only ever added."""
+
+    class Action(models.TextChoices):
+        CALLED = "called", "Called to a table"
+        CALLED_AGAIN = "called_again", "Called again"
+        RECALLED = "recalled", "Taken off the table"
+        MOVED = "moved", "Moved to another table"
+        REPORTED = "reported", "Reported at the table"
+        REPORT_UNDONE = "report_undone", "Report undone"
+        CHECKED_IN = "checked_in", "Checked in"
+        CHECK_IN_UNDONE = "check_in_undone", "Check-in undone"
+        UMPIRE_ASSIGNED = "umpire_assigned", "Umpire assigned"
+        UMPIRE_REMOVED = "umpire_removed", "Umpire taken off"
+        TABLE_BLOCKED = "table_blocked", "Table blocked"
+        TABLE_UNBLOCKED = "table_unblocked", "Table back in use"
+        RESULT_ENTERED = "result_entered", "Result entered"
+        RESULT_CORRECTED = "result_corrected", "Result corrected"
+        CORRECTION_SETTLED = "correction_settled", "Later match settled after a correction"
+        AUTO_ON = "auto_on", "Automatic dispatch switched on"
+        AUTO_OFF = "auto_off", "Automatic dispatch switched off"
+        UMPIRE_LISTED = "umpire_listed", "Added to the umpires"
+        UMPIRE_UNLISTED = "umpire_unlisted", "Taken off the umpires"
+        TABLE_UMPIRE = "table_umpire", "Table umpire changed"
+        ORDER_CHANGED = "order_changed", "Order of play changed"
+        NOT_BEFORE = "not_before", "Player's start time set"
+        MATCH_MOVED = "match_moved", "Match moved later"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")
+    match = models.ForeignKey(Match, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    action = models.CharField(max_length=20, choices=Action.choices)
+    # What it was about, in words as it stood then: the match, the table, the player, the outcome.
+    summary = models.CharField(max_length=300)
+    reason = models.CharField(max_length=300, blank=True)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-at", "-id"]
+        indexes = [models.Index(fields=["tournament", "-at"], name="match_day_log_recent")]
+
+    def __str__(self):
+        return f"{self.action} at {self.at}"
+
+
+class Announcement(models.Model):
+    """A results announcement (REQ-043, TASK-085): text the generator drafts from official results for a
+    session, round, day, event or the whole tournament, edited by the organizers and published to the
+    tournament's news feed. A published one is frozen. A later correction to a result it covers marks it
+    outdated; an amendment is a new announcement that names the one it amends, which stays visible."""
+
+    class Scope(models.TextChoices):
+        SESSION = "session"
+        ROUND = "round"
+        DAY = "day"
+        EVENT = "event"
+        TOURNAMENT = "tournament"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft"
+        PUBLISHED = "published"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="announcements")
+    scope = models.CharField(max_length=10, choices=Scope.choices)
+    # What the scope is: the event (event and round), the round's stage and number, the day, the session.
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    stage = models.CharField(max_length=10, choices=Match.Stage.choices, blank=True)
+    round = models.PositiveSmallIntegerField(null=True, blank=True)
+    day = models.DateField(null=True, blank=True)
+    session = models.ForeignKey(
+        ScheduleSession, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    title = models.CharField(max_length=120)
+    body = models.TextField()
+    # The matches the text was drawn from: a correction to any of them outdates a published post.
+    covers = models.ManyToManyField(Match, related_name="announcements", blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    amends = models.ForeignKey(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="amendments"
+    )
+    outdated_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-published_at", "-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["tournament", "status", "-published_at"], name="announcement_feed"),
+        ]
+
+    def __str__(self):
+        return self.title

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react"
 import { api } from "@/lib/api"
+import { safeNext } from "@/lib/session"
 import type { Organization } from "@/lib/clubs"
 import type { Experience, Goal, Grip, Hand } from "@/lib/profile"
 
@@ -63,8 +64,32 @@ export function useOnboardingDraft() {
 export function clearOnboardingDraft() {
   try {
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(RETURN_KEY)
   } catch {
     // ignore
+  }
+}
+
+const RETURN_KEY = "coast-tt:onboarding-return"
+
+/**
+ * Where a new player was heading when they signed up, such as the event they wanted to enter (TASK-035).
+ * The verification link carries it; onboarding finishes by offering the way back.
+ */
+export function rememberReturn(path: string | null) {
+  try {
+    const safe = safeNext(path, null)
+    if (safe) localStorage.setItem(RETURN_KEY, safe)
+  } catch {
+    // Without storage the player finishes at Home, as before.
+  }
+}
+
+export function readReturn(): string | null {
+  try {
+    return safeNext(localStorage.getItem(RETURN_KEY), null)
+  } catch {
+    return null
   }
 }
 

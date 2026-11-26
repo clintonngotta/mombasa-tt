@@ -8,6 +8,7 @@ import {
   House,
   Map,
   MapPin,
+  Medal,
   Swords,
   Trophy,
   UserRound,
@@ -15,19 +16,21 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { BatIcon } from "@/components/brand/BatIcon"
-import { can, useActiveMembership, type Membership } from "@/lib/clubs"
+import { can, isBodyKind, useActiveMembership, type Membership } from "@/lib/clubs"
 import { coachingKeys, getMyCoachProfileOrNull } from "@/lib/coaching"
 import { useMe } from "@/lib/session"
 
-export type NavItem = { to: string; label: string; icon: LucideIcon }
+/** `also` lists other paths that light this entry up, when its pages don't all sit under `to`. */
+export type NavItem = { to: string; label: string; icon: LucideIcon; also?: string[] }
 
 /** Whose menu shows: a person's (their own play, training and record, plus any roles they hold), or a
  * facility's when the active organization is a facility the person works for. A facility isn't a person,
  * so its menu has no Play, Training or Rankings. */
 export type NavMode = "person" | "facility"
 
-/** The bottom bar holds this many entries; anything past it goes under More. */
-export const TAB_LIMIT = 6
+/** The bottom bar holds this many entries; anything past it goes under More. Five is what fits a small
+ * phone with every label, "Tournaments" included, readable in full. */
+export const TAB_LIMIT = 5
 
 export const MORE_PATH = "/more"
 
@@ -38,6 +41,11 @@ const RANKINGS: NavItem = { to: "/rankings", label: "Rankings", icon: Trophy }
 const CLUB: NavItem = { to: "/club", label: "Club", icon: Users }
 const COACHING: NavItem = { to: "/coaching", label: "Coaching", icon: GraduationCap }
 const REGIONAL: NavItem = { to: "/regional", label: "Regional", icon: Map }
+// Everyone's tournaments: find one, enter, follow the scores. The organizer's own list and dashboards
+// live under /club/tournaments and are reached from this tab, so they light it up too.
+const TOURNAMENTS: NavItem = { to: "/tournaments", label: "Tournaments", icon: Medal, also: ["/club/tournaments"] }
+// A facility isn't a player: its Tournaments entry is the organizer's list of the ones it hosts.
+const HOSTED: NavItem = { to: "/club/tournaments", label: "Tournaments", icon: Medal }
 const PROFILE: NavItem = { to: "/profile", label: "Profile", icon: UserRound }
 
 /** The facility is the active organization and the person works there, not a regional official looking in. */
@@ -46,15 +54,17 @@ export const actsAsFacility = (membership: Membership | undefined) =>
 
 /** Someone who oversees organizations as a regional, country or platform official, or belongs to a regional body. */
 export const isOfficial = (all: Membership[]) =>
-  all.some((m) => !!m.authority || (m.organization.kind === "regional_body" && !m.managedOnly))
+  all.some((m) => !!m.authority || (isBodyKind(m.organization.kind) && !m.managedOnly))
 
 function facilityItems(membership: Membership): NavItem[] {
   const facilities = can(membership, "facilities.manage")
   const finances = can(membership, "finances.view", "finances.manage")
   const people = can(membership, "members.manage", "roles.manage")
   const training = can(membership, "training.manage")
+  const competitions = can(membership, "competitions.manage")
   return [
     { to: "/facility", label: "Facility", icon: Building2 },
+    ...(competitions ? [HOSTED] : []),
     ...(facilities ? [{ to: "/club/venues", label: "Branches", icon: MapPin }] : []),
     ...(facilities ? [{ to: "/club/bookings", label: "Bookings", icon: CalendarCheck }] : []),
     ...(finances ? [{ to: "/club/takings", label: "Takings", icon: Banknote }] : []),
@@ -82,10 +92,10 @@ export function useNavigation() {
   const roles = [...(coach.data ? [COACHING] : []), ...(isOfficial(all) ? [REGIONAL] : [])]
   // Until the memberships arrive we can't tell a facility from a person, so show no menu rather than the wrong one.
   const loading = signedIn && memberships.isPending
-  const items = loading ? [] : facility && active ? facilityItems(active) : [HOME, PLAY, TRAINING, RANKINGS, ...roles, CLUB, PROFILE]
+  const items = loading ? [] : facility && active ? facilityItems(active) : [HOME, TOURNAMENTS, PLAY, TRAINING, RANKINGS, ...roles, CLUB, PROFILE]
 
-  // Keep the person's own record and their roles on the bar; the rest waits under More.
-  const order = facility || loading ? items : [HOME, PLAY, TRAINING, ...roles, PROFILE, RANKINGS, CLUB]
+  // What people come for stays on the bar: tournaments, play, their club and their roles. The rest waits under More.
+  const order = facility || loading ? items : [HOME, TOURNAMENTS, PLAY, CLUB, ...roles, TRAINING, PROFILE, RANKINGS]
   const fits = items.length <= TAB_LIMIT
   const tabs = fits ? items : order.slice(0, TAB_LIMIT - 1)
   const more = fits ? [] : items.filter((item) => !tabs.includes(item))

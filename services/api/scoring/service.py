@@ -19,6 +19,7 @@ from organizations.access import effective_permissions
 from organizations.permissions import Permission
 from realtime import broadcast
 
+from . import incidents, live
 from .engine import Scoring, ScoringError, initial_state
 from .models import ScoreAssignment, Scorecard, ScoreConflict, ScoreEvent, ScoringStatus
 
@@ -29,6 +30,8 @@ MAX_CONFLICT_EVENTS = 500
 # One person can't fill the organizers' page: this many reported events per sheet, then no more.
 MAX_REPORTED_PER_SHEET = 2000
 EVENT_TYPES = {"start", "point", "choose_server", "timeout", "undo"}
+# Events that change the incidents: every incident kind, and an undo that may take one back.
+INCIDENT_TYPES = set(incidents.KINDS) | {"undo"}
 
 
 def _conflict(code: str, message: str) -> ApiException:
@@ -39,14 +42,22 @@ def event_of(scorecard: Scorecard) -> Event:
     return scorecard.tie_or_match.draw.event
 
 
-def config_of(scorecard: Scorecard) -> dict:
+def config_of(scorecard: Scorecard, with_carry: bool = True) -> dict:
+    """The rules the sheet is scored under. A tie's later rubber also starts with what the earlier
+    rubbers carry into it: fixed once scoring has begun, worked out afresh until then."""
     event = event_of(scorecard)
     doubles = (
         scorecard.rubber.kind == Rubber.Kind.DOUBLES
         if scorecard.rubber_id
         else event.kind == Event.Kind.DOUBLES
     )
-    return {"best_of": event.best_of, "doubles": doubles}
+    config = {"best_of": event.best_of, "doubles": doubles}
+    if not with_carry:
+        return config
+    carry = scorecard.carry if scorecard.revision else incidents.carry_for(scorecard, players_of)
+    if carry is not None:
+        config["carry"] = carry
+    return config
 
 
 def players_of(scorecard: Scorecard) -> dict[str, list]:
@@ -88,13 +99,45 @@ def summary(match: Match, rubber: Rubber | None, viewer, staff: bool) -> dict:
     if scorecard and (umpire or scorecard.revision or scorecard.confirmed_at):
         status = scorecard.shown_status
     mine = scorecard is not None and viewer.is_authenticated and is_umpire_of(scorecard, viewer)
+    in_play = scorecard is not None and scorecard.revision > 0 and scorecard.confirmed_at is None
     return {
         "scorecard_id": scorecard.id if mine else None,
         "status": status,
         "umpire_name": umpire.display_name if umpire else "",
         "can_score": mine and scorable and not scorecard.confirmed_at,
         "can_assign": staff and scorable,
+        "incidents": incidents_of(scorecard) if scorecard else [],
+        # Being played: the score so far. Once confirmed it is a result, shown as one.
+        "live": live.score_of(scorecard, players_of(scorecard)) if in_play else None,
     }
+
+
+def incidents_of(scorecard: Scorecard, with_notes: bool = False) -> list[dict]:
+    """The sheet's incidents as IncidentSerializer shows them; the umpire's notes on the sheet only."""
+    rows = []
+    for incident in scorecard.incidents.select_related("player"):
+        row = {
+            "sequence": incident.sequence,
+            "kind": incident.kind,
+            "side": incident.side,
+            "player_name": incident.player.display_name if incident.player else "",
+            "card": incident.card,
+            "penalty_points": incident.penalty_points,
+            "reason": incident.reason,
+            "game_number": incident.game_number,
+            "score": incident.score,
+            "at": incident.at,
+        }
+        if with_notes:
+            row["note"] = incident.note
+        rows.append(row)
+    return rows
+
+
+def may_disqualify(scorecard: Scorecard, user) -> bool:
+    return Permission.RESULTS_REFEREE in effective_permissions(
+        user, event_of(scorecard).tournament.organization
+    )
 
 
 def ensure_scorable(match: Match, rubber: Rubber | None) -> None:
@@ -119,7 +162,13 @@ def ensure_scorable(match: Match, rubber: Rubber | None) -> None:
 
 
 def can_umpire(user, event: Event) -> bool:
-    return bool(effective_permissions(user, event.tournament.organization) & UMPIRE_PERMISSIONS)
+    """A member whose role lets them score, someone who runs competitions, or anyone staff put on the
+    tournament's umpires (a player umpiring between their own matches)."""
+    if effective_permissions(user, event.tournament.organization) & UMPIRE_PERMISSIONS:
+        return True
+    from reservations.models import TournamentUmpire  # reservations builds on scoring in turn
+
+    return TournamentUmpire.objects.filter(tournament_id=event.tournament_id, user=user).exists()
 
 
 def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
@@ -133,7 +182,8 @@ def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
         if not can_umpire(umpire, match.draw.event):
             raise _conflict(
                 "not_an_umpire",
-                "Only members whose role lets them score matches, or who run competitions, can umpire.",
+                "Only the tournament's umpires, members whose role lets them score, or those who run "
+                "competitions can umpire.",
             )
         playing = [user.id for users in players_of(scorecard).values() for user in users]
         if umpire.id in playing:
@@ -241,9 +291,9 @@ def _ensure_in_play(scorecard: Scorecard, assignment_id, device_id=None) -> None
             raise _conflict("rubber_out_of_turn", "An earlier rubber of this tie is played first.")
 
 
-def replayed(scorecard: Scorecard) -> Scoring:
+def replayed(scorecard: Scorecard, config: dict | None = None) -> Scoring:
     """The engine brought to where the accepted events leave it."""
-    scoring = Scoring(config_of(scorecard))
+    scoring = Scoring(config or config_of(scorecard))
     for payload in scorecard.events.values_list("payload", flat=True):
         scoring.push(payload)
     return scoring
@@ -257,9 +307,12 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
     if scorecard.device_id is None and device_id is not None and not scorecard.confirmed_at:
         take_device(scorecard, actor, device_id, "", take_over=False)
     _ensure_in_play(scorecard, assignment_id, device_id)
-    scoring = replayed(scorecard)
+    config = config_of(scorecard)
+    started = scorecard.revision == 0
+    scoring = replayed(scorecard, config)
     known = dict(scorecard.events.values_list("id", "sequence"))
     accepted, refused = 0, None
+    sent_types: set = set()
     seen = scorecard.revision  # what the server held when the batch arrived
     for sent in events:
         if known.get(sent["id"]) == sent["sequence"]:
@@ -273,6 +326,10 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
             break
         if sent["sequence"] != scorecard.revision + 1:
             refused = {"sequence": sent["sequence"], "code": "sequence_gap"}
+            break
+        refusal = _refused_for(scorecard, actor, sent["event"], scoring.state)
+        if refusal:
+            refused = {"sequence": sent["sequence"], "code": refusal}
             break
         try:
             scoring.push(sent["event"])
@@ -294,13 +351,38 @@ def submit(scorecard: Scorecard, actor, assignment_id, events: list[dict], devic
             break
         known[sent["id"]] = sent["sequence"]
         scorecard.revision = sent["sequence"]
+        sent_types.add(sent["event"].get("type"))
         accepted += 1
     if accepted:
-        scorecard.state = scoring.state if refused is None else replayed(scorecard).state
-        scorecard.save(update_fields=["revision", "state"])
+        scorecard.state = scoring.state if refused is None else replayed(scorecard, config).state
+        if started:
+            scorecard.carry = config.get("carry")
+        scorecard.save(update_fields=["revision", "state", "carry"])
+        if sent_types & INCIDENT_TYPES:  # points alone leave the incidents as they were
+            incidents.rebuild(scorecard, config, players_of(scorecard))
         event = event_of(scorecard)
-        broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id)
+        # Said per match, so a page showing other matches has nothing to fetch again (TASK-084).
+        match_id = scorecard.rubber.match_id if scorecard.rubber_id else scorecard.match_id
+        live.forget(event.tournament_id)
+        broadcast.tournament_changed(event.tournament_id, "scores", event_id=event.id, match_id=match_id)
     return {"accepted": accepted, "refused": refused}
+
+
+def _refused_for(scorecard: Scorecard, actor, event, state: dict) -> str | None:
+    """What the server refuses beyond the engine: a note too long to keep, a disqualification from
+    anybody but the referee (decision D5), and a time-out before a game's first rally (3.4.4.2.3). The
+    engine accepted that time-out until TASK-083, so it is refused here, when an event arrives, and a
+    sheet recorded before still replays."""
+    if not isinstance(event, dict):
+        return None
+    note = event.get("note")
+    if note is not None and (not isinstance(note, str) or len(note) > incidents.MAX_NOTE):
+        return "invalid_note"
+    if event.get("type") == "disqualify" and not may_disqualify(scorecard, actor):
+        return "referee_only"
+    if event.get("type") == "timeout" and state["status"] == "in_progress" and not sum(state["points"]):
+        return "not_between_rallies"
+    return None
 
 
 def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id=None) -> None:
@@ -319,15 +401,22 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
         raise _conflict("match_not_finished", "The match isn't finished, so there is no result to confirm.")
     match = scorecard.tie_or_match
     winner = match.entry_a if state["winner"] == "a" else match.entry_b
+    # A retirement or disqualification keeps the points played, the unfinished game included; nothing
+    # is made up (REQ-043).
+    outcome = state.get("outcome") or Match.Outcome.PLAYED
+    games = [list(game) for game in state["games"]]
+    if outcome != Match.Outcome.PLAYED and sum(state["points"]):
+        games.append(list(state["points"]))
     if scorecard.rubber_id:
-        ties.record_rubber(scorecard.rubber, winner, games=state["games"], actor=actor)
+        ties.record_rubber(scorecard.rubber, winner, outcome=outcome, games=games, actor=actor)
     else:
-        drawing.record_result(match, winner, games=state["games"], actor=actor)
+        drawing.record_result(match, winner, outcome=outcome, games=games, actor=actor)
     scorecard.state = state
     scorecard.confirmed_at = timezone.now()
     scorecard.confirmed_by = actor
     scorecard.save(update_fields=["state", "confirmed_at", "confirmed_by"])
     event = event_of(scorecard)
+    live.forget(event.tournament_id)
     broadcast.tournament_changed(event.tournament_id, "results", event_id=event.id)
 
 
@@ -367,7 +456,9 @@ def strike_out(match: Match, actor=None) -> list[dict]:
         _log(scorecard, ScoreAssignment.Kind.RESET, actor)  # who held it and how far it had got
         scorecard.events.all().delete()
         scorecard.revision = 0
-        scorecard.state = initial_state()
+        scorecard.state = initial_state(config_of(scorecard))
+        scorecard.incidents.all().delete()
+        scorecard.carry = None
         scorecard.confirmed_at = scorecard.confirmed_by = None
         scorecard.assignment_id = uuid.uuid4()
         scorecard.device_id, scorecard.device_label, scorecard.device_since = None, "", None
