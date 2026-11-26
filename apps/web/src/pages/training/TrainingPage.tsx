@@ -15,6 +15,7 @@ import { formatDayRange, formatInstant } from "@/lib/dates"
 import { ROW } from "@/lib/clubAdmin"
 import { can, useActiveMembership, type Membership } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
+import { BOOKING_STATUS_LABEL, coachingKeys, listBookings } from "@/lib/coaching"
 import {
   CATEGORY_LABEL,
   createClubPlan,
@@ -95,25 +96,46 @@ export function TrainingPage() {
 
 function Upcoming() {
   const sessions = useQuery({ queryKey: trainingKeys.upcoming, queryFn: listUpcomingSessions })
+  // Sessions booked with a coach sit in the same list as the plan's own sessions, in time order.
+  const bookings = useQuery({ queryKey: coachingKeys.bookings, queryFn: listBookings })
+  const booked = (bookings.data ?? []).filter((b) => b.role === "trainee" && (b.status === "requested" || b.status === "confirmed"))
+  const rows = [
+    ...(sessions.data ?? []).map((session) => ({
+      key: `plan-${session.id}`,
+      at: session.starts_at ?? "",
+      to: `/training/plans/${session.plan}`,
+      title: session.title,
+      detail: `${session.plan_title}${session.completed_at ? " · done" : ""}`,
+    })),
+    ...booked.map((b) => ({
+      key: `booking-${b.id}`,
+      at: b.starts_at,
+      to: `/coaches/${b.coach.id}`,
+      title: `Coaching session with ${b.coach.display_name}`,
+      detail: `${BOOKING_STATUS_LABEL[b.status]}${b.venue ? ` · ${b.venue}` : ""}`,
+    })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
+  const failed = sessions.error ?? bookings.error
   return (
     <section aria-labelledby="upcoming-heading" className="flex flex-col gap-3">
       <h2 id="upcoming-heading" className="text-xl font-bold">
         Coming up
       </h2>
-      {sessions.isError && <FormAlert>{errorMessage(sessions.error, "We couldn't load your sessions.")}</FormAlert>}
-      {sessions.isSuccess && sessions.data.length === 0 && <p className="text-muted-foreground">No sessions booked. Add one to a plan.</p>}
-      {sessions.data && sessions.data.length > 0 && (
+      {failed && <FormAlert>{errorMessage(failed, "We couldn't load your sessions.")}</FormAlert>}
+      {sessions.isSuccess && bookings.isSuccess && rows.length === 0 && (
+        <p className="text-muted-foreground">No sessions booked. Add one to a plan, or book one with a coach.</p>
+      )}
+      {rows.length > 0 && (
         <ul className="flex flex-col gap-2">
-          {sessions.data.map((session) => (
-            <li key={session.id}>
-              <Link to={`/training/plans/${session.plan}`} className={cn(ROW, "outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
+          {rows.map((row) => (
+            <li key={row.key}>
+              <Link to={row.to} className={cn(ROW, "outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
                 <CalendarClock aria-hidden className="size-5 text-brand-blue" />
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate font-semibold">{session.title}</span>
+                  <span className="truncate font-semibold">{row.title}</span>
                   <span className="text-sm text-muted-foreground">
-                    {session.starts_at && `${formatInstant(session.starts_at, LOCAL_TIME_ZONE)} · `}
-                    {session.plan_title}
-                    {session.completed_at && " · done"}
+                    {row.at && `${formatInstant(row.at, LOCAL_TIME_ZONE)} · `}
+                    {row.detail}
                   </span>
                 </span>
                 <ChevronRight aria-hidden className="size-5 text-muted-foreground" />

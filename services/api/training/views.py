@@ -67,7 +67,9 @@ class DrillLibraryViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Drill.objects.none()
-        drills = service.usable_drills(self.request.user).select_related("organization")
+        # Opening one drill also reaches those a coach put in the player's plan; the list is what they use.
+        visible = service.readable_drills if self.action == "retrieve" else service.usable_drills
+        drills = visible(self.request.user).select_related("organization")
         params = self.request.query_params
         for name in ("category", "level"):
             if params.get(name):
@@ -328,7 +330,7 @@ class PlanItemsBase(viewsets.GenericViewSet):
                 data["title"] = data["drill"].title
             owner = self.calendar_owner()
             if owner is not None and data["kind"] == PlanItem.Kind.SESSION:
-                service.ensure_free(owner, data["starts_at"], data["ends_at"])
+                service.ensure_free(owner, data["starts_at"], data["ends_at"], with_coach=plan.coach)
             last = plan.items.aggregate(last=Max("order"))["last"]
             PlanItem.objects.create(
                 plan=plan,
@@ -363,7 +365,7 @@ class PlanItemsBase(viewsets.GenericViewSet):
                 and item.kind == PlanItem.Kind.SESSION
                 and ({"starts_at", "ends_at"} & set(data))
             ):
-                service.ensure_free(owner, item.starts_at, item.ends_at, exclude=item)
+                service.ensure_free(owner, item.starts_at, item.ends_at, exclude=item, with_coach=plan.coach)
             item.save()
         return self._reply(plan)
 

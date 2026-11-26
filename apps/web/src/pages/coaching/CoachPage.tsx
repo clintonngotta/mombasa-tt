@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Check } from "lucide-react"
+import { CoachStars, StarPicker } from "@/components/coaching/CoachStars"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
@@ -16,6 +17,7 @@ import {
   getCoach,
   listCoachings,
   listSlots,
+  rateCoach,
   WEEKDAYS,
   type CoachProfile,
   type Slot,
@@ -57,6 +59,8 @@ function CoachView({ coach }: { coach: CoachProfile }) {
         <h1 className="text-[32px] leading-9 font-bold">{coach.user.display_name}</h1>
         <p className="text-lg">{coach.headline}</p>
         {facts.length > 0 && <p className="text-muted-foreground">{facts.join(" · ")}</p>}
+        <CoachStars average={coach.rating_average} count={coach.rating_count} className="text-base" />
+        {!coach.rating_count && <p className="text-sm text-muted-foreground">No ratings yet.</p>}
       </div>
       {coach.bio && <p className="whitespace-pre-line">{coach.bio}</p>}
       <dl className="grid gap-4 sm:grid-cols-2">
@@ -100,11 +104,40 @@ function CoachView({ coach }: { coach: CoachProfile }) {
         </Link>
       ) : (
         <>
+          {coach.can_rate && <RateCoach coach={coach} />}
           <AskToCoach coach={coach} />
           <BookSession coach={coach} />
         </>
       )}
     </>
+  )
+}
+
+function RateCoach({ coach }: { coach: CoachProfile }) {
+  const queryClient = useQueryClient()
+  const rate = useMutation({
+    mutationFn: (stars: number | null) => rateCoach(coach.user.id, stars),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(coachingKeys.coach(coach.user.id), updated)
+      return queryClient.invalidateQueries({ queryKey: coachingKeys.all })
+    },
+  })
+  return (
+    <section aria-labelledby="rate-heading" className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+      <h2 id="rate-heading" className="text-xl font-bold">
+        {coach.my_rating ? "Your rating" : `Rate ${coach.user.display_name}`}
+      </h2>
+      <p className="text-sm text-muted-foreground">Other players see the average, not who gave which rating.</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <StarPicker value={coach.my_rating ?? null} disabled={rate.isPending} onChange={(stars) => rate.mutate(stars)} />
+        {coach.my_rating != null && (
+          <Button variant="outline" disabled={rate.isPending} onClick={() => rate.mutate(null)}>
+            Remove my rating
+          </Button>
+        )}
+      </div>
+      {rate.isError && <FormAlert>{errorMessage(rate.error, "We couldn't save your rating.")}</FormAlert>}
+    </section>
   )
 }
 

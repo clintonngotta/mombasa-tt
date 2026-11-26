@@ -8,6 +8,7 @@ import { errorMessage } from "@/lib/api"
 import { ROW } from "@/lib/clubAdmin"
 import { coachingKeys, formatMoney, listCoaches } from "@/lib/coaching"
 import { LEVEL_LABEL, SKILL_LABEL, type Skill } from "@/lib/training"
+import { CoachStars } from "@/components/coaching/CoachStars"
 import { cn } from "@/lib/utils"
 
 /** Find a coach (REQ-047): coaches taking players, by name, headline or town. */
@@ -34,7 +35,10 @@ export function CoachesPage() {
             <Link to={`/coaches/${coach.user.id}`} className={cn(ROW, "flex-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50")}>
               <GraduationCap aria-hidden className="size-6 shrink-0 text-brand-blue" />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="font-semibold">{coach.user.display_name}</span>
+                <span className="flex flex-wrap items-center gap-x-3">
+                  <span className="font-semibold">{coach.user.display_name}</span>
+                  <CoachStars average={coach.rating_average} count={coach.rating_count} />
+                </span>
                 <span className="text-sm">{coach.headline}</span>
                 <span className="text-sm text-muted-foreground">
                   {[

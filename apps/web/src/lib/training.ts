@@ -63,7 +63,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
 }
 export const PHASES = Object.keys(PHASE_LABEL) as Phase[]
 
-export const LIBRARY_LABEL: Record<Library, string> = { standard: "Standard", personal: "Mine", club: "Club" }
+export const LIBRARY_LABEL: Record<Library, string> = { standard: "Standard", personal: "Mine", club: "Club", coach: "Coach's" }
 
 export const PERIOD_LABEL: Record<Period, string> = { day: "Day", week: "Week", month: "Month", custom: "Custom dates" }
 

@@ -308,6 +308,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/coaches/{id}/rating/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description PUT /coaches/{user id}/rating/: the caller's star rating of a coach they trained with, set or
+         *     changed; DELETE removes it. The answer is the coach's profile with the new average.
+         */
+        put: operations["coaches_rating_update"];
+        post?: never;
+        /**
+         * @description PUT /coaches/{user id}/rating/: the caller's star rating of a coach they trained with, set or
+         *     changed; DELETE removes it. The answer is the coach's profile with the new average.
+         */
+        delete: operations["coaches_rating_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/coaches/{id}/slots/": {
         parameters: {
             query?: never;
@@ -789,10 +813,32 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-         *     person cancels a booking that hasn't started.
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
          */
         post: operations["me_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/bookings/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
+         */
+        post: operations["me_bookings_complete_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -809,8 +855,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-         *     person cancels a booking that hasn't started.
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
          */
         post: operations["me_bookings_confirm_create"];
         delete?: never;
@@ -829,8 +876,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-         *     person cancels a booking that hasn't started.
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
          */
         post: operations["me_bookings_decline_create"];
         delete?: never;
@@ -8991,9 +9039,10 @@ export interface components {
          *     * `confirmed` - Confirmed
          *     * `declined` - Declined
          *     * `cancelled` - Cancelled
+         *     * `completed` - Completed
          * @enum {string}
          */
-        BookingStatusEnum: "requested" | "confirmed" | "declined" | "cancelled";
+        BookingStatusEnum: "requested" | "confirmed" | "declined" | "cancelled" | "completed";
         BranchScheduleItem: {
             kind: components["schemas"]["ScheduleKindEnum"];
             /** Format: uuid */
@@ -9579,6 +9628,20 @@ export interface components {
              */
             readonly organizer_id: string | null;
             readonly availability: components["schemas"]["Availability"][];
+            /**
+             * Format: double
+             * @description Average star rating from players who trained with the coach, 1 to 5; null with none.
+             */
+            readonly rating_average: number | null;
+            /** @default 0 */
+            readonly rating_count: number;
+            /** @description The caller's own rating, if they gave one. */
+            readonly my_rating: number | null;
+            /**
+             * @description Whether the caller trained with the coach and may rate.
+             * @default false
+             */
+            readonly can_rate: boolean;
         };
         /** @description A coach as players see them. `organizations` are the clubs where they coach. */
         CoachProfileRequest: {
@@ -9595,6 +9658,9 @@ export interface components {
             accepting?: boolean;
             /** @description The company, firm or academy the coach works through. */
             firm_name?: string;
+        };
+        CoachRatingRequest: {
+            stars: number;
         };
         /** @description A coaching from the caller's side: `role` is "coach" when they coach the other person. */
         Coaching: {
@@ -10954,9 +11020,10 @@ export interface components {
          * @description * `standard` - standard
          *     * `personal` - personal
          *     * `club` - club
+         *     * `coach` - coach
          * @enum {string}
          */
-        LibraryEnum: "standard" | "personal" | "club";
+        LibraryEnum: "standard" | "personal" | "club" | "coach";
         LifecycleEntry: {
             /** Format: uuid */
             readonly id: string;
@@ -16853,6 +16920,70 @@ export interface operations {
             };
         };
     };
+    coaches_rating_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoachRatingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    coaches_rating_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachProfile"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     coaches_slots_list: {
         parameters: {
             query?: {
@@ -17788,6 +17919,40 @@ export interface operations {
         };
     };
     me_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_bookings_complete_create: {
         parameters: {
             query?: never;
             header?: never;
