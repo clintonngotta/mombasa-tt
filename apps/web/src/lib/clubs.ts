@@ -34,6 +34,8 @@ export type CommitteeFieldInput = Schemas["PatchedCommitteeFieldRequest"]
 export type PositionInput = Schemas["PatchedPositionInputRequest"]
 export type PastHolder = Schemas["PastHolder"]
 export type ClubProfile = Schemas["ClubProfile"]
+export type OrganizationImages = Schemas["OrganizationImages"]
+export type OrganizationImage = Schemas["OrganizationImage"]
 export type TrainingHour = Schemas["TrainingHour"]
 export type TrainingHourInput = Schemas["TrainingHourRequest"]
 /** Filters for finding clubs: a name and/or an area. Empty strings mean "any". */
@@ -87,6 +89,7 @@ export const clubKeys = {
   search: (term: string) => ["clubs", "search", term] as const,
   find: (side: Side, filters: ClubSearch) => ["clubs", "find", side, filters] as const,
   profile: (orgId: string) => ["clubs", orgId, "profile"] as const,
+  images: (orgId: string) => ["clubs", orgId, "images"] as const,
   trainingHours: (orgId: string) => ["clubs", orgId, "training-hours"] as const,
   memberships: ["clubs", "memberships"] as const,
   management: ["clubs", "management"] as const,
@@ -125,6 +128,17 @@ export const findOrganizations = (side: Side, { name, country, region, city }: C
 }
 /** What any signed-in player sees of a club before joining. */
 export const getClubProfile = (orgId: string) => api<ClubProfile>(`${orgPath(orgId)}/profile/`)
+// Pictures an organization shows of itself (REQ-058). Any signed-in player sees them; holders of
+// roles.manage add and remove them. Each change answers with the whole gallery.
+export const listOrganizationImages = (orgId: string) => api<OrganizationImages>(`${orgPath(orgId)}/images/`)
+export function addOrganizationImage(orgId: string, file: File, caption: string) {
+  const body = new FormData()
+  body.append("file", file)
+  if (caption) body.append("caption", caption)
+  return api<OrganizationImages>(`${orgPath(orgId)}/images/`, { body })
+}
+export const removeOrganizationImage = (orgId: string, imageId: string) =>
+  api<OrganizationImages>(`${orgPath(orgId)}/images/${imageId}/`, { method: "DELETE" })
 export const listTrainingHours = (orgId: string) => api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`)
 export const saveTrainingHours = (orgId: string, hours: TrainingHourInput[]) =>
   api<TrainingHour[]>(`${orgPath(orgId)}/training-hours/`, { method: "PUT", body: { hours } })

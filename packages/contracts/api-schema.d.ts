@@ -4409,6 +4409,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organization_pk}/images/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+         *     holders of roles.manage.
+         */
+        get: operations["organizations_images_retrieve"];
+        put?: never;
+        /**
+         * @description GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+         *     holders of roles.manage.
+         */
+        post: operations["organizations_images_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/images/{image_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description DELETE /organizations/{id}/images/{image}/ removes a picture and its file: roles.manage. */
+        delete: operations["organizations_images_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{organization_pk}/invitations/": {
         parameters: {
             query?: never;
@@ -12563,6 +12604,27 @@ export interface components {
             pending: components["schemas"]["AdminHandover"] | null;
             nominations: components["schemas"]["AdminHandover"][];
             history: components["schemas"]["AdminHandover"][] | null;
+        };
+        OrganizationImage: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly caption: string;
+            readonly file: components["schemas"]["AttachmentLink"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        OrganizationImageUploadRequest: {
+            /**
+             * Format: binary
+             * @description A JPEG, PNG or WebP image under 5 MB.
+             */
+            file: string;
+            caption?: string;
+        };
+        OrganizationImages: {
+            /** @description The most pictures an organization may show. */
+            limit: number;
+            images: components["schemas"]["OrganizationImage"][];
         };
         OrganizationRef: {
             /** Format: uuid */
@@ -26488,6 +26550,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_images_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationImages"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_images_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["OrganizationImageUploadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationImages"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_images_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                image_pk: string;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationImages"];
                 };
             };
             /** @description Error envelope */

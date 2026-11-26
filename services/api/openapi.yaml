@@ -10184,6 +10184,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/images/:
+    get:
+      operationId: organizations_images_retrieve
+      description: |-
+        GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+        holders of roles.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationImages'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      operationId: organizations_images_create
+      description: |-
+        GET /organizations/{id}/images/: any signed-in player, as the profile is. POST adds a picture:
+        holders of roles.manage.
+      parameters:
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrganizationImageUploadRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationImages'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/images/{image_pk}/:
+    delete:
+      operationId: organizations_images_destroy
+      description: 'DELETE /organizations/{id}/images/{image}/ removes a picture and
+        its file: roles.manage.'
+      parameters:
+      - in: path
+        name: image_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationImages'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/invitations/:
     get:
       operationId: organizations_invitations_list
@@ -30157,6 +30257,54 @@ components:
       - limit
       - nominations
       - pending
+    OrganizationImage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        caption:
+          type: string
+          readOnly: true
+        file:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentLink'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - caption
+      - created_at
+      - file
+      - id
+    OrganizationImageUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: A JPEG, PNG or WebP image under 5 MB.
+        caption:
+          type: string
+          maxLength: 120
+      required:
+      - file
+    OrganizationImages:
+      type: object
+      properties:
+        limit:
+          type: integer
+          description: The most pictures an organization may show.
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationImage'
+      required:
+      - images
+      - limit
     OrganizationRef:
       type: object
       properties:

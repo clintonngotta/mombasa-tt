@@ -64,6 +64,8 @@ The PWA uses secure HttpOnly session cookies with CSRF protection. Revoke sessio
 
 **Governance — Phase 1.** Editable admin/captain/assistant captain/committee/referee/member templates plus custom role names and permission bundles. Permission domains: members, roles, competitions, results, assigned scoring, facilities, finances, announcements, training, welfare projects, club activities, and later media/billing. Users may hold multiple roles; effective grants are the union within that organization. Granting authority cannot exceed the acting user's delegable permissions. Keep one active admin. Enforce checks on API reads/writes, live events, files, and UI actions.
 
+*Secretary and treasurer (user request, 2026-11-26).* Clubs and teams (kinds `club`, `team`, `club_facility`) also start with two more editable templates. **Secretary** holds `minutes.manage`: at every meeting of the organization that has been called, its holder writes the minutes, takes attendance and issues the meeting's penalties, as the secretary named on one meeting does at that meeting (REQ-046). Calling, changing and approving meetings and minutes stay with `governance.manage`, and drafts of meetings stay with governance staff. **Treasurer** holds `finances.view` and `finances.manage`. Existing clubs and teams received both roles; where a club had already made a role under one of the names, that role became the template and kept the permissions the club chose. Either role can be granted through a committee position (REQ-045). Facilities, governing bodies and coaching desks don't get them, and can make their own.
+
 Custom member fields: text, number, date, boolean, single selection; required/optional; member-visible or staff-only. Field definitions belong to an organization, values to its membership. Field access does not override other privacy rules. Preserve historical values when retiring a field.
 
 ### REQ-006
@@ -411,6 +413,12 @@ Every change is written to the server log with who made it and the ids involved,
 - *Governance.* A team sends no representatives to a regional body; its region's and country's officials oversee it as they do a club.
 
 Signing up offers **Team** beside Player, Coach, Club and Facility, which leads to forming one. A team that gets a place registers a club; an organization's kind does not change in the app.
+
+### REQ-058
+
+**Pictures of a club, team or facility — Phase 1 (user request, 2026-11-26).** An organization shows up to 12 pictures of itself: its hall, its players, a trophy. Holders of `roles.manage` add a picture, with an optional caption of up to 120 characters, and remove one (`POST /organizations/{id}/images/`, `DELETE /organizations/{id}/images/{image}/`), on the profile page where the description is edited. Any signed-in player sees them with the organization's profile and, for a facility, on its branch pages (`GET /organizations/{id}/images/`); signed out, nobody does. They are shown oldest first as tiles that open at full size.
+
+Uploads follow the rules for every image (REQ-032): JPEG, PNG or WebP up to 5 MB, decoded and re-encoded as WebP with the longer side at most 1600 px and no metadata, stored privately under a name the server chooses, and served through short-lived signed links. Uploads are rate-limited per person (`THROTTLE_UPLOADS`). The limit of 12 is checked under the organization's lock. A removed picture's file is deleted, and its link stops working for everyone, the uploader included.
 
 ## Competition rules: version `ITTF-2026-ch3`
 

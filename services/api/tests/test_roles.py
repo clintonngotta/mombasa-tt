@@ -87,7 +87,9 @@ def test_clubs_and_teams_start_with_a_secretary_and_a_treasurer(admin, club):
         roles = {r["key"]: r for r in client.get(f"{ORGS}{response.json()['id']}/roles/").json()}
         assert ("secretary" in roles, "treasurer" in roles) == ((kind != "facility"),) * 2, kind
     roles = {r["key"]: r for r in client.get(roles_url(club)).json()}
-    assert roles["secretary"]["name"] == "Secretary" and roles["secretary"]["permissions"] == ["minutes.manage"]
+    assert roles["secretary"]["name"] == "Secretary" and roles["secretary"]["permissions"] == [
+        "minutes.manage"
+    ]
     assert roles["treasurer"]["name"] == "Treasurer"
     assert roles["treasurer"]["permissions"] == ["finances.manage", "finances.view"]
 

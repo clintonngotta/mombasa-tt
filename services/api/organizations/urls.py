@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from . import committee, handover, profile, representatives, views
+from . import committee, handover, images, profile, representatives, views
 
 router = SimpleRouter()
 router.register("", views.OrganizationViewSet, basename="organization")
@@ -9,6 +9,14 @@ router.register("", views.OrganizationViewSet, basename="organization")
 join_request_views = views.JoinRequestViewSet
 urlpatterns = [
     path("<uuid:pk>/profile/", profile.ClubProfileView.as_view(), name="organization-profile"),
+    path(
+        "<uuid:organization_pk>/images/", images.OrganizationImagesView.as_view(), name="organization-images"
+    ),
+    path(
+        "<uuid:organization_pk>/images/<uuid:image_pk>/",
+        images.OrganizationImageView.as_view(),
+        name="organization-image",
+    ),
     path(
         "<uuid:organization_pk>/join-requests/",
         join_request_views.as_view({"get": "list", "post": "create"}),

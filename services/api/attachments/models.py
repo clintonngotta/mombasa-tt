@@ -54,6 +54,8 @@ class Attachment(models.Model):
         TOURNAMENT_DOCUMENT = "tournament_document"
         # A document of a meeting (REQ-046): its invitees and the host's governance staff.
         MEETING_DOCUMENT = "meeting_document"
+        # A picture a club, team or facility shows of itself (REQ-058): any signed-in player.
+        ORGANIZATION_IMAGE = "organization_image"
 
     EXTENSIONS = {"image/webp": ".webp", "application/pdf": ".pdf"}
 

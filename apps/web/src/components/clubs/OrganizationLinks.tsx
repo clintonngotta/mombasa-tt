@@ -66,7 +66,7 @@ function organizationGroups(membership: Membership, variant: Variant): Group[] {
   const programme: Group = {
     title: "Programme",
     links: pick(
-      (manageRoles || training) && { to: "/club/profile", label: `${Word} profile and training hours`, icon: Store },
+      (manageRoles || training) && { to: "/club/profile", label: `${Word} profile, pictures and training hours`, icon: Store },
       training && { to: "/club/sessions", label: "Training sessions: invitations and attendance", icon: CalendarClock },
       competitions && { to: "/club/tournaments", label: "Tournaments and their dashboards", icon: Trophy },
       competitions && { to: "/club/squads", label: "Squads: who represents us away", icon: Shield },

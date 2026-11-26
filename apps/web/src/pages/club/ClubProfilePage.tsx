@@ -6,6 +6,7 @@ import { BackLink } from "@/components/layout/BackLink"
 import { FormAlert } from "@/components/forms/Field"
 import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { JoinStatus } from "@/components/clubs/JoinStatus"
+import { OrganizationGallery } from "@/components/clubs/OrganizationGallery"
 import { buttonVariants } from "@/components/ui/button"
 import { errorMessage } from "@/lib/api"
 import { KIND_LABEL, SIDE, clubKeys, getClubProfile, requestToJoin, sideOf, useJoinState, type Side, type TrainingHour } from "@/lib/clubs"
@@ -75,6 +76,7 @@ export function ClubProfilePage({ side: from = "club" }: { side?: Side }) {
       {membership === "pending" && <p className="text-sm text-muted-foreground">The {noun}'s staff will approve or decline your request.</p>}
 
       {club.description && <p className="whitespace-pre-line">{club.description}</p>}
+      <OrganizationGallery orgId={club.id} />
 
       <Section title={side === "team" ? "Where it's based" : "Where it plays"} icon={<MapPin aria-hidden className="size-5 text-brand-blue" />}>
         <PlaceDirections place={club} />

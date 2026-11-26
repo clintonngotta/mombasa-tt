@@ -639,3 +639,28 @@ class CommitteeFieldValue(models.Model):
 
     def __str__(self):
         return f"{self.field_id} for {self.position_id or self.holder_id}"
+
+
+# How many pictures an organization shows of itself (REQ-058).
+MAX_IMAGES = 12
+
+
+class OrganizationImage(models.Model):
+    """A picture a club, team or facility shows of itself (REQ-058): its hall, its players, a trophy.
+    Uploaded by holders of roles.manage, shown with the organization's profile to any signed-in player,
+    oldest first."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="images")
+    file = models.OneToOneField(
+        "attachments.Attachment", on_delete=models.CASCADE, related_name="organization_image"
+    )
+    caption = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["organization", "created_at"], name="organization_image_order")]
+
+    def __str__(self):
+        return f"{self.organization_id} {self.caption or self.id}"
