@@ -38,3 +38,16 @@ test("the welcome page links to help and to tournaments without an account", asy
   await expect(page.getByRole("heading", { level: 1, name: "Tournaments" })).toBeVisible()
   await expect(page.getByRole("heading", { name: "Find a tournament" })).toBeVisible()
 })
+
+test("signed out, Home has no sidebar and leads to the rankings", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto("/home")
+  await expect(page.getByRole("heading", { level: 1, name: "Welcome" })).toBeVisible()
+  await expect(page.getByRole("complementary")).toHaveCount(0)
+  await expect(page.getByRole("banner").getByRole("link", { name: "Log in" })).toBeVisible()
+  await page.getByRole("navigation", { name: "Shortcuts" }).getByRole("link", { name: /Rankings/ }).click()
+  await expect(page).toHaveURL(/\/rankings$/)
+  await expect(page.getByRole("complementary")).toHaveCount(0)
+  await page.getByRole("link", { name: "Coast Loopas home" }).click()
+  await expect(page).toHaveURL(/\/home$/)
+})

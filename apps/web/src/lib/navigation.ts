@@ -79,6 +79,8 @@ function facilityItems(membership: Membership): NavItem[] {
 export function useNavigation() {
   const me = useMe()
   const signedIn = me.isSuccess
+  // Known to be signed out, not merely still asking: the sidebar is for people with an account.
+  const guest = me.isError
   const { memberships, all, active } = useActiveMembership()
   const facility = actsAsFacility(active)
   const coach = useQuery({
@@ -99,5 +101,5 @@ export function useNavigation() {
   const fits = items.length <= TAB_LIMIT
   const tabs = fits ? items : order.slice(0, TAB_LIMIT - 1)
   const more = fits ? [] : items.filter((item) => !tabs.includes(item))
-  return { signedIn, mode, active, items, tabs, more }
+  return { signedIn, guest, mode, active, items, tabs, more }
 }

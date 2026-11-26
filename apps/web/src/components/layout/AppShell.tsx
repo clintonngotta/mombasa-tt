@@ -16,7 +16,7 @@ const HELP: NavItem = { to: "/help", label: "Help", icon: CircleHelp }
 // REQ-002: mobile tabs and the web sidebar share the same domain names. Which names show depends on who
 // is signed in and the organization they act for (lib/navigation).
 export function AppShell() {
-  const { signedIn, mode, active, items, tabs, more } = useNavigation()
+  const { signedIn, guest, mode, active, items, tabs, more } = useNavigation()
   const facility = mode === "facility"
   const bar = more.length ? [...tabs, MORE] : tabs
   const location = useLocation()
@@ -30,9 +30,10 @@ export function AppShell() {
   )
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[240px_1fr]">
-      {/* Fixed beside the page: only the menu scrolls when it outgrows the screen. */}
-      <aside
+    <div className={cn("min-h-dvh", !guest && "lg:grid lg:grid-cols-[240px_1fr]")}>
+      {/* Fixed beside the page: only the menu scrolls when it outgrows the screen. Signed-out visitors get
+          no sidebar: the top bar (name and Log in) stays at every width and Home lists where they can go. */}
+      {!guest && <aside
         className={cn(
           "hidden border-r lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-4 lg:p-4",
           facility ? "border-brand-navy bg-brand-navy text-white" : "bg-card",
@@ -52,17 +53,23 @@ export function AppShell() {
           ))}
         </nav>
         <SidebarLink item={HELP} facility={facility} selected={current === HELP.to} />
-        {!signedIn && <div className="flex flex-col">{logIn}</div>}
-      </aside>
+      </aside>}
 
       <div className="flex min-h-dvh min-w-0 flex-col">
         <header
           className={cn(
-            "sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b px-4 backdrop-blur lg:hidden",
+            "sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b px-4 backdrop-blur",
+            guest ? "lg:px-8" : "lg:hidden",
             facility ? "border-brand-navy bg-brand-navy text-white" : "bg-card/95",
           )}
         >
-          <Wordmark className={cn(facility && "text-white [&>span]:text-brand-cyan")} />
+          {guest ? (
+            <Link to="/home" aria-label="Coast Loopas home" className="rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+              <Wordmark />
+            </Link>
+          ) : (
+            <Wordmark className={cn(facility && "text-white [&>span]:text-brand-cyan")} />
+          )}
           <div className="flex min-w-0 items-center gap-1">
             <OrganizationSwitcher className={cn("max-w-[55vw]", facility && "text-white")} />
             {signedIn ? <NotificationBell /> : logIn}
