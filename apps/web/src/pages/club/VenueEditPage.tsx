@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -60,10 +62,11 @@ function useVenueSaved(orgId: string) {
 function VenueForm({ orgId, venue }: { orgId: string; venue?: Venue }) {
   const navigate = useNavigate()
   const saved = useVenueSaved(orgId)
-  const [name, setName] = useState(venue?.name ?? "")
-  const [town, setTown] = useState(venue?.town ?? "")
-  const [address, setAddress] = useState(venue?.address ?? "")
-  const [finder, setFinder] = useState(() => placeFinderFrom(venue))
+  const draft = useDraft(`venue:${venue?.id ?? "new"}`)
+  const [name, setName] = useDraftState(draft, "name", venue?.name ?? "")
+  const [town, setTown] = useDraftState(draft, "town", venue?.town ?? "")
+  const [address, setAddress] = useDraftState(draft, "address", venue?.address ?? "")
+  const [finder, setFinder] = useDraftState(draft, "finder", () => placeFinderFrom(venue))
   const [submitted, setSubmitted] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
 
@@ -73,6 +76,7 @@ function VenueForm({ orgId, venue }: { orgId: string; venue?: Venue }) {
       return venue ? updateVenue(orgId, venue.id, body) : createVenue(orgId, body)
     },
     onSuccess: (fresh) => {
+      draft.clear()
       saved(fresh)
       if (venue) setJustSaved(true)
       else navigate(`/club/venues/${fresh.id}`, { replace: true })
@@ -111,6 +115,7 @@ function VenueForm({ orgId, venue }: { orgId: string; venue?: Venue }) {
       <PlaceFinderFields value={finder} onChange={setFinder} errors={errors} place="venue" />
       {save.isError && Object.keys(serverErrors).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
       {setActive.isError && <FormAlert>{errorMessage(setActive.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="lg" disabled={save.isPending}>
           {save.isPending ? "Saving…" : venue ? "Save venue" : "Add venue"}

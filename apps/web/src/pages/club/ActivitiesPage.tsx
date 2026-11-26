@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useDeferredValue, useState, type FormEvent } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -106,25 +108,26 @@ export function ActivitiesPage() {
 function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, body, regional, onClose }: { orgId: string; timeZone: string; welfareId: string; canLinkWelfare: boolean; body: boolean; regional: boolean; onClose: () => void }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [title, setTitle] = useState("")
-  const [kind, setKind] = useState<Activity["kind"]>(welfareId ? "visit" : "social")
-  const [project, setProject] = useState(canLinkWelfare ? welfareId : "")
+  const draft = useDraft(`activity-new:${orgId}`)
+  const [title, setTitle] = useDraftState(draft, "title", "")
+  const [kind, setKind] = useDraftState<Activity["kind"]>(draft, "kind", welfareId ? "visit" : "social")
+  const [project, setProject] = useDraftState(draft, "project", canLinkWelfare ? welfareId : "")
   const projects = useQuery({ queryKey: welfareKeys(orgId), queryFn: () => listWelfare(orgId), enabled: canLinkWelfare })
   const openProjects = (projects.data ?? []).filter((p) => !p.closed)
-  const [starts, setStarts] = useState("")
-  const [ends, setEnds] = useState("")
-  const [place, setPlace] = useState("")
-  const [description, setDescription] = useState("")
-  const [audience, setAudience] = useState<Audience>("members")
-  const [invitees, setInvitees] = useState<string[]>([])
+  const [starts, setStarts] = useDraftState(draft, "starts", "")
+  const [ends, setEnds] = useDraftState(draft, "ends", "")
+  const [place, setPlace] = useDraftState(draft, "place", "")
+  const [description, setDescription] = useDraftState(draft, "description", "")
+  const [audience, setAudience] = useDraftState<Audience>(draft, "audience", "members")
+  const [invitees, setInvitees] = useDraftState<string[]>(draft, "invitees", [])
   // Named people can be players outside the club: keep their names as they are picked.
-  const [named, setNamed] = useState<{ id: string; name: string }[]>([])
-  const [clubs, setClubs] = useState<string[]>([])
-  const [capacity, setCapacity] = useState("")
-  const [deadline, setDeadline] = useState("")
-  const [isPublic, setPublic] = useState(false)
-  const [cost, setCost] = useState("")
-  const [term, setTerm] = useState("")
+  const [named, setNamed] = useDraftState<{ id: string; name: string }[]>(draft, "named", [])
+  const [clubs, setClubs] = useDraftState<string[]>(draft, "clubs", [])
+  const [capacity, setCapacity] = useDraftState(draft, "capacity", "")
+  const [deadline, setDeadline] = useDraftState(draft, "deadline", "")
+  const [isPublic, setPublic] = useDraftState(draft, "isPublic", false)
+  const [cost, setCost] = useDraftState(draft, "cost", "")
+  const [term, setTerm] = useDraftState(draft, "term", "")
   const search = useDeferredValue(term.trim())
   const members = useQuery({ queryKey: ["clubs", orgId, "members", search], queryFn: () => listMembers(orgId, search), enabled: audience === "selected" })
   const players = useQuery({ queryKey: ["players", "search", search], queryFn: () => searchPlayers(search), enabled: audience === "named" && search.length >= MIN_SEARCH_LENGTH })
@@ -150,6 +153,7 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, body, regiona
         welfare_project_id: membersOnly ? project || null : null,
       }),
     onSuccess: (made) => {
+      draft.clear()
       void queryClient.invalidateQueries({ queryKey: activityKeys.all })
       navigate(`/activities/${orgId}/${made.id}`)
     },
@@ -252,6 +256,7 @@ function NewActivity({ orgId, timeZone, welfareId, canLinkWelfare, body, regiona
         </label>
       )}
       {save.isError && !Object.keys(errors).length && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} label="Finish later" />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={save.isPending || !title.trim() || !starts || !ends}>
           {save.isPending ? "Saving…" : "Save draft"}

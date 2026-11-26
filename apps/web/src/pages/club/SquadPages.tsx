@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -44,10 +46,11 @@ export function SquadsPage() {
   const squads = useQuery({ queryKey: squadKeys.list(orgId), queryFn: () => listSquads(orgId), enabled: allowed, staleTime: 0 })
   const history = useQuery({ queryKey: squadKeys.history(orgId), queryFn: () => getSquadHistory(orgId), enabled: allowed })
   const [adding, setAdding] = useState(false)
-  const [title, setTitle] = useState("")
-  const [starts, setStarts] = useState("")
-  const [ends, setEnds] = useState("")
-  const [slots, setSlots] = useState<SlotDraft[]>([{ label: "", places: "4" }])
+  const draft = useDraft(`squad-new:${orgId}`)
+  const [title, setTitle] = useDraftState(draft, "title", "")
+  const [starts, setStarts] = useDraftState(draft, "starts", "")
+  const [ends, setEnds] = useDraftState(draft, "ends", "")
+  const [slots, setSlots] = useDraftState<SlotDraft[]>(draft, "slots", [{ label: "", places: "4" }])
   const create = useMutation({
     mutationFn: () =>
       createSquad(orgId, {
@@ -57,6 +60,7 @@ export function SquadsPage() {
         slots: slots.filter((slot) => slot.label.trim()).map((slot) => ({ label: slot.label.trim(), places: Number(slot.places) || 1 })),
       }),
     onSuccess: async (squad) => {
+      draft.clear()
       await queryClient.invalidateQueries({ queryKey: squadKeys.all })
       navigate(`/club/squads/${squad.id}`)
     },
@@ -130,6 +134,7 @@ export function SquadsPage() {
                 </Button>
               </fieldset>
               <p className="text-sm text-muted-foreground">It's a draft: nobody is told until you publish it.</p>
+              <DraftBar draft={draft} label="Finish later" />
               <div className="flex gap-2">
                 <Button type="submit" disabled={!title.trim() || !starts || !slots.some((slot) => slot.label.trim()) || create.isPending}>
                   {create.isPending ? "Saving…" : "Save draft"}

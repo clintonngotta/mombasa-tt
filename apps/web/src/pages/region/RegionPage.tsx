@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -185,12 +187,13 @@ function Agenda({ membership }: { membership: Membership }) {
 
 function NewAgendaItem({ orgId, region }: { orgId: string; region: string }) {
   const queryClient = useQueryClient()
-  const [kind, setKind] = useState<AgendaKind>("tournament")
-  const [title, setTitle] = useState("")
-  const [startsOn, setStartsOn] = useState("")
-  const [endsOn, setEndsOn] = useState("")
-  const [description, setDescription] = useState("")
-  const [tournament, setTournament] = useState("")
+  const agendaDraft = useDraft(`agenda-new:${orgId}`)
+  const [kind, setKind] = useDraftState<AgendaKind>(agendaDraft, "kind", "tournament")
+  const [title, setTitle] = useDraftState(agendaDraft, "title", "")
+  const [startsOn, setStartsOn] = useDraftState(agendaDraft, "startsOn", "")
+  const [endsOn, setEndsOn] = useDraftState(agendaDraft, "endsOn", "")
+  const [description, setDescription] = useDraftState(agendaDraft, "description", "")
+  const [tournament, setTournament] = useDraftState(agendaDraft, "tournament", "")
   const cups = useQuery({ queryKey: ["region", "cups"], queryFn: () => listTournaments("upcoming", "", "") })
   const regional = (cups.data?.results ?? []).filter((t: Tournament) => t.organization.region?.toLowerCase() === region.toLowerCase())
   const add = useMutation({
@@ -204,6 +207,7 @@ function NewAgendaItem({ orgId, region }: { orgId: string; region: string }) {
         ...(tournament ? { tournament_id: tournament } : {}),
       }),
     onSuccess: async () => {
+      agendaDraft.clear()
       setTitle("")
       setStartsOn("")
       setEndsOn("")
@@ -240,6 +244,7 @@ function NewAgendaItem({ orgId, region }: { orgId: string; region: string }) {
         />
       )}
       <TextAreaField label="Notes" optional rows={2} maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)} />
+      <DraftBar draft={agendaDraft} />
       <Button type="submit" className="self-start" disabled={add.isPending || !title.trim() || !startsOn}>
         <Plus aria-hidden className="size-4" /> Add
       </Button>
@@ -285,14 +290,16 @@ function Articles({ membership }: { membership: Membership }) {
 function NewArticle({ orgId }: { orgId: string }) {
   const queryClient = useQueryClient()
   const clubs = useQuery({ queryKey: regionKeys.clubs(orgId), queryFn: () => listRegionClubs(orgId) })
-  const [title, setTitle] = useState("")
-  const [summary, setSummary] = useState("")
-  const [body, setBody] = useState("")
-  const [audience, setAudience] = useState<"region" | "chosen">("region")
-  const [chosen, setChosen] = useState<string[]>([])
+  const articleDraft = useDraft(`article-new:${orgId}`)
+  const [title, setTitle] = useDraftState(articleDraft, "title", "")
+  const [summary, setSummary] = useDraftState(articleDraft, "summary", "")
+  const [body, setBody] = useDraftState(articleDraft, "body", "")
+  const [audience, setAudience] = useDraftState<"region" | "chosen">(articleDraft, "audience", "region")
+  const [chosen, setChosen] = useDraftState<string[]>(articleDraft, "chosen", [])
   const save = useMutation({
     mutationFn: () => createArticle(orgId, { title: title.trim(), summary: summary.trim(), body: body.trim(), audience, club_ids: audience === "chosen" ? chosen : [] }),
     onSuccess: async () => {
+      articleDraft.clear()
       setTitle("")
       setSummary("")
       setBody("")
@@ -328,6 +335,7 @@ function NewArticle({ orgId }: { orgId: string }) {
         <ChoiceGroup multiple legend="Clubs" options={(clubs.data ?? []).map((c) => ({ value: c.id, label: c.name }))} value={chosen} onChange={setChosen} error={fields.club_ids} />
       )}
       <p className="text-sm text-muted-foreground">Saved as a draft. Publish it from the list to send it.</p>
+      <DraftBar draft={articleDraft} />
       <Button type="submit" className="self-start" disabled={save.isPending || !title.trim() || !body.trim() || (audience === "chosen" && chosen.length === 0)}>
         Save draft
       </Button>
@@ -402,10 +410,11 @@ function Sponsorships({ membership }: { membership: Membership }) {
 function OfferSponsorship({ orgId }: { orgId: string }) {
   const queryClient = useQueryClient()
   const cups = useQuery({ queryKey: ["region", "cups"], queryFn: () => listTournaments("upcoming", "", "") })
-  const [tournament, setTournament] = useState("")
-  const [amount, setAmount] = useState("")
-  const [goods, setGoods] = useState<{ item: string; quantity: string }[]>([])
-  const [conditions, setConditions] = useState("")
+  const sponsorDraft = useDraft(`sponsorship-new:${orgId}`)
+  const [tournament, setTournament] = useDraftState(sponsorDraft, "tournament", "")
+  const [amount, setAmount] = useDraftState(sponsorDraft, "amount", "")
+  const [goods, setGoods] = useDraftState<{ item: string; quantity: string }[]>(sponsorDraft, "goods", [])
+  const [conditions, setConditions] = useDraftState(sponsorDraft, "conditions", "")
   const offer = useMutation({
     mutationFn: () =>
       offerSponsorship(orgId, {
@@ -415,6 +424,7 @@ function OfferSponsorship({ orgId }: { orgId: string }) {
         conditions: conditions.trim(),
       }),
     onSuccess: async () => {
+      sponsorDraft.clear()
       setTournament("")
       setAmount("")
       setGoods([])
@@ -455,6 +465,7 @@ function OfferSponsorship({ orgId }: { orgId: string }) {
         </Button>
       </fieldset>
       <TextAreaField label="Conditions" optional rows={2} maxLength={1000} value={conditions} onChange={(e) => setConditions(e.target.value)} placeholder="e.g. Our banner at the venue; a regional official presents the trophies" />
+      <DraftBar draft={sponsorDraft} />
       <Button type="submit" className="self-start" disabled={offer.isPending || !tournament || (!amount.trim() && !goods.some((g) => g.item.trim()))}>
         Send offer
       </Button>

@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from "react"
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
+import { type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { DoorOpen } from "lucide-react"
@@ -63,12 +65,13 @@ export function Prices({ orgId, venue }: { orgId: string; venue: Venue }) {
 }
 
 function NewPrice({ orgId, venueId, onSaved }: { orgId: string; venueId: string; onSaved: () => void }) {
-  const [name, setName] = useState("")
-  const [kind, setKind] = useState<Price["kind"]>("day")
-  const [amount, setAmount] = useState("")
-  const [sessions, setSessions] = useState("")
-  const [days, setDays] = useState("")
-  const [benefits, setBenefits] = useState("")
+  const draft = useDraft(`price-new:${venueId}`)
+  const [name, setName] = useDraftState(draft, "name", "")
+  const [kind, setKind] = useDraftState<Price["kind"]>(draft, "kind", "day")
+  const [amount, setAmount] = useDraftState(draft, "amount", "")
+  const [sessions, setSessions] = useDraftState(draft, "sessions", "")
+  const [days, setDays] = useDraftState(draft, "days", "")
+  const [benefits, setBenefits] = useDraftState(draft, "benefits", "")
   const save = useMutation({
     mutationFn: () =>
       createPrice(orgId, venueId, {
@@ -84,6 +87,7 @@ function NewPrice({ orgId, venueId, onSaved }: { orgId: string; venueId: string;
           .filter(Boolean),
       }),
     onSuccess: () => {
+      draft.clear()
       setName("")
       setAmount("")
       setSessions("")
@@ -113,6 +117,7 @@ function NewPrice({ orgId, venueId, onSaved }: { orgId: string; venueId: string;
       )}
       <TextAreaField label="What it includes" optional rows={3} value={benefits} onChange={(e) => setBenefits(e.target.value)} hint="One per line, for example Table time, Ball hire." error={errors.benefits} />
       {save.isError && !Object.keys(errors).length && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <Button type="submit" className="self-start" disabled={save.isPending || amount === "" || Number(amount) < 0}>
         {save.isPending ? "Saving…" : "Add price"}
       </Button>

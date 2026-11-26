@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CupSoda, Plus } from "lucide-react"
@@ -89,17 +91,18 @@ export function SodaGamesPage() {
 
 function NewChallenge({ stakes, onClose }: { stakes: boolean; onClose: () => void }) {
   const queryClient = useQueryClient()
-  const [opponent, setOpponent] = useState<Picked[]>([])
-  const [format, setFormat] = useState<"singles" | "doubles">("singles")
-  const [bestOf, setBestOf] = useState<"3" | "5">("3")
-  const [playAt, setPlayAt] = useState("")
-  const [place, setPlace] = useState("")
-  const [message, setMessage] = useState("")
-  const [myPartner, setMyPartner] = useState("")
-  const [theirPartner, setTheirPartner] = useState("")
-  const [stakeKind, setStakeKind] = useState<"none" | "money" | "thing">("none")
-  const [amount, setAmount] = useState("")
-  const [thing, setThing] = useState("")
+  const draft = useDraft("challenge-new")
+  const [opponent, setOpponent] = useDraftState<Picked[]>(draft, "opponent", [])
+  const [format, setFormat] = useDraftState<"singles" | "doubles">(draft, "format", "singles")
+  const [bestOf, setBestOf] = useDraftState<"3" | "5">(draft, "bestOf", "3")
+  const [playAt, setPlayAt] = useDraftState(draft, "playAt", "")
+  const [place, setPlace] = useDraftState(draft, "place", "")
+  const [message, setMessage] = useDraftState(draft, "message", "")
+  const [myPartner, setMyPartner] = useDraftState(draft, "myPartner", "")
+  const [theirPartner, setTheirPartner] = useDraftState(draft, "theirPartner", "")
+  const [stakeKind, setStakeKind] = useDraftState<"none" | "money" | "thing">(draft, "stakeKind", "none")
+  const [amount, setAmount] = useDraftState(draft, "amount", "")
+  const [thing, setThing] = useDraftState(draft, "thing", "")
   const save = useMutation({
     mutationFn: () =>
       createChallenge({
@@ -115,6 +118,7 @@ function NewChallenge({ stakes, onClose }: { stakes: boolean; onClose: () => voi
         ...(stakes && stakeKind === "thing" ? { stake_note: thing.trim() } : {}),
       }),
     onSuccess: () => {
+      draft.clear()
       void queryClient.invalidateQueries({ queryKey: sodaKeys.all })
       onClose()
     },
@@ -158,6 +162,7 @@ function NewChallenge({ stakes, onClose }: { stakes: boolean; onClose: () => voi
         </>
       )}
       {save.isError && !Object.keys(errors).length && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <div className="flex gap-2">
         <Button type="submit" disabled={!opponent.length || save.isPending}>
           {save.isPending ? "Sending…" : "Send challenge"}

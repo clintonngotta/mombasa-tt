@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus } from "lucide-react"
@@ -94,12 +96,14 @@ function Submission({ orgId, event }: { orgId: string; event: ExternalEvent }) {
 
 function SubmitForm({ orgId, onClose }: { orgId: string; onClose: () => void }) {
   const queryClient = useQueryClient()
-  const [form, setForm] = useState({ name: "", organizer: "", starts_on: "", ends_on: "", venue: "", town: "", entry_info: "", info_url: "", live_url: "" })
-  const [categories, setCategories] = useState<string[]>([])
+  const draft = useDraft(`external-event:${orgId}`)
+  const [form, setForm] = useDraftState(draft, "form", { name: "", organizer: "", starts_on: "", ends_on: "", venue: "", town: "", entry_info: "", info_url: "", live_url: "" })
+  const [categories, setCategories] = useDraftState<string[]>(draft, "categories", [])
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [key]: e.target.value })
   const save = useMutation({
     mutationFn: () => submitEvent(orgId, { ...form, ends_on: form.ends_on || form.starts_on, categories: categories as never }),
     onSuccess: () => {
+      draft.clear()
       void queryClient.invalidateQueries({ queryKey: eventKeys.all })
       onClose()
     },
@@ -127,6 +131,7 @@ function SubmitForm({ orgId, onClose }: { orgId: string; onClose: () => void }) 
       <Field label="Official information link" optional type="url" maxLength={500} value={form.info_url} onChange={set("info_url")} placeholder="https://" error={errors.info_url} />
       <Field label="Live stream link" optional type="url" maxLength={500} value={form.live_url} onChange={set("live_url")} placeholder="https://" hint="Shown while the event is on." error={errors.live_url} />
       {save.isError && !Object.keys(errors).length && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <div className="flex gap-2">
         <Button type="submit" disabled={save.isPending || !form.name.trim() || !form.starts_on || !form.town.trim()}>
           {save.isPending ? "Sending…" : "Send for review"}

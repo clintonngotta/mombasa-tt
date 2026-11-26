@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus } from "lucide-react"
@@ -107,16 +109,18 @@ export function ExternalIncomePage() {
 }
 
 function Record({ orgId, sources, onDone }: { orgId: string; sources: ExternalSource[]; onDone: () => void }) {
-  const [source, setSource] = useState("")
-  const [amount, setAmount] = useState("")
-  const [on, setOn] = useState(today)
-  const [description, setDescription] = useState("")
-  const [reference, setReference] = useState("")
+  const draft = useDraft(`external-income:${orgId}`)
+  const [source, setSource] = useDraftState(draft, "source", "")
+  const [amount, setAmount] = useDraftState(draft, "amount", "")
+  const [on, setOn] = useDraftState(draft, "on", today)
+  const [description, setDescription] = useDraftState(draft, "description", "")
+  const [reference, setReference] = useDraftState(draft, "reference", "")
   // One key per form fill: pressing Save twice records the money once.
   const [key, setKey] = useState(() => crypto.randomUUID())
   const save = useMutation({
     mutationFn: () => recordExternalIncome(orgId, { source_id: source, amount_minor: toMinor(amount) ?? 0, currency: "KES", received_on: on, description: description.trim(), reference: reference.trim(), request_key: key }),
     onSuccess: () => {
+      draft.clear()
       setAmount("")
       setDescription("")
       setReference("")
@@ -146,6 +150,7 @@ function Record({ orgId, sources, onDone }: { orgId: string; sources: ExternalSo
           <Field label="What for" optional maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} />
           <Field label="Reference" optional maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} hint="A receipt, cheque or M-Pesa reference, to match it later." />
           {save.isError && !Object.keys(fields).length && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+          <DraftBar draft={draft} />
           <Button type="submit" className="self-start" disabled={!source || toMinor(amount) == null || !on || save.isPending}>
             {save.isPending ? "Saving…" : "Record income"}
           </Button>

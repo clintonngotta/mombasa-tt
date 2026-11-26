@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from "react"
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
+import { type FormEvent } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
@@ -14,9 +16,10 @@ export function AnnouncePage() {
   const { memberships, active } = useActiveMembership()
   const orgId = active?.organization.id ?? ""
   const allowed = can(active, "announcements.manage")
-  const [title, setTitle] = useState("")
-  const [body, setBody] = useState("")
-  const send = useMutation({ mutationFn: () => sendAnnouncement(orgId, { title: title.trim(), body: body.trim(), audience: "members" }) })
+  const draft = useDraft(`club-announce:${orgId}`)
+  const [title, setTitle] = useDraftState(draft, "title", "")
+  const [body, setBody] = useDraftState(draft, "body", "")
+  const send = useMutation({ mutationFn: () => sendAnnouncement(orgId, { title: title.trim(), body: body.trim(), audience: "members" }), onSuccess: () => draft.clear() })
   const submit = (e: FormEvent) => {
     e.preventDefault()
     send.mutate()
@@ -36,6 +39,7 @@ export function AnnouncePage() {
               Sent to {send.data.sent} {send.data.sent === 1 ? "member" : "members"}.
             </p>
           )}
+          <DraftBar draft={draft} />
           <Button type="submit" className="self-start" disabled={!title.trim() || send.isPending}>
             {send.isPending ? "Sending…" : "Send to all members"}
           </Button>

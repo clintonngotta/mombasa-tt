@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Gavel, Search } from "lucide-react"
@@ -181,7 +183,8 @@ function Appeal({ orgId, penalty }: { orgId: string; penalty: AbsencePenalty }) 
 
 function Rules({ orgId, rules, canFine }: { orgId: string; rules: AbsenceRule[]; canFine: boolean }) {
   const queryClient = useQueryClient()
-  const [drafts, setDrafts] = useState<Record<Absence, RuleDraft>>(() => Object.fromEntries(ABSENCES.map((kind) => [kind, fromRule(rules.find((rule) => rule.applies_to === kind))])) as Record<Absence, RuleDraft>)
+  const draft = useDraft(`absence-rules:${orgId}`)
+  const [drafts, setDrafts] = useDraftState<Record<Absence, RuleDraft>>(draft, "drafts", () => Object.fromEntries(ABSENCES.map((kind) => [kind, fromRule(rules.find((rule) => rule.applies_to === kind))])) as Record<Absence, RuleDraft>)
   const [saved, setSaved] = useState(false)
   const save = useMutation({
     mutationFn: () =>
@@ -193,6 +196,7 @@ function Rules({ orgId, rules, canFine }: { orgId: string; rules: AbsenceRule[];
         })
       ),
     onSuccess: (fresh) => {
+      draft.clear()
       queryClient.setQueryData(penaltyKeys.rules(orgId), fresh)
       setSaved(true)
     },
@@ -240,6 +244,7 @@ function Rules({ orgId, rules, canFine }: { orgId: string; rules: AbsenceRule[];
         )
       })}
       {save.isError && <FormAlert>{fields.rules ?? errorMessage(save.error, "We couldn't save the rules.")}</FormAlert>}
+      <DraftBar draft={draft} />
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={save.isPending}>
           {save.isPending ? "Saving…" : "Save rules"}

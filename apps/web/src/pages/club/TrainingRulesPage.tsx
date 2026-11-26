@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Clock, MapPin, Plus, Trash2 } from "lucide-react"
@@ -93,15 +95,16 @@ type Place = "none" | "venue" | "point"
 function RulesForm({ orgId, rules, onDone }: { orgId: string; rules: TrainingRules; onDone: () => void }) {
   const queryClient = useQueryClient()
   const venues = useQuery({ queryKey: venueKeys.list(orgId), queryFn: () => listVenues(orgId) })
-  const [slots, setSlots] = useState<TrainingSlot[]>(() => rules.slots.map((slot) => ({ ...slot })))
+  const draft = useDraft(`training-rules:${orgId}`)
+  const [slots, setSlots] = useDraftState<TrainingSlot[]>(draft, "slots", () => rules.slots.map((slot) => ({ ...slot })))
   const [place, setPlace] = useState<Place>(rules.venue ? "venue" : rules.latitude ? "point" : "none")
   const [venue, setVenue] = useState(rules.venue?.id ?? "")
   const [point, setPoint] = useState<{ latitude: number; longitude: number } | null>(rules.latitude && rules.longitude ? { latitude: Number(rules.latitude), longitude: Number(rules.longitude) } : null)
-  const [label, setLabel] = useState(rules.location_label)
-  const [radius, setRadius] = useState(String(rules.radius_m))
-  const [before, setBefore] = useState(String(rules.opens_before_minutes))
-  const [after, setAfter] = useState(String(rules.closes_after_minutes))
-  const [late, setLate] = useState(String(rules.late_after_minutes))
+  const [label, setLabel] = useDraftState(draft, "label", rules.location_label)
+  const [radius, setRadius] = useDraftState(draft, "radius", String(rules.radius_m))
+  const [before, setBefore] = useDraftState(draft, "before", String(rules.opens_before_minutes))
+  const [after, setAfter] = useDraftState(draft, "after", String(rules.closes_after_minutes))
+  const [late, setLate] = useDraftState(draft, "late", String(rules.late_after_minutes))
   const here = useMutation({ mutationFn: () => locate({ fresh: true }), onSuccess: (found) => setPoint({ latitude: Number(found.latitude.toFixed(6)), longitude: Number(found.longitude.toFixed(6)) }) })
   const save = useMutation({
     mutationFn: () =>
@@ -117,6 +120,7 @@ function RulesForm({ orgId, rules, onDone }: { orgId: string; rules: TrainingRul
         late_after_minutes: Number(late),
       }),
     onSuccess: (fresh) => {
+      draft.clear()
       queryClient.setQueryData(rulesKey(orgId), fresh)
       onDone()
     },
@@ -190,6 +194,7 @@ function RulesForm({ orgId, rules, onDone }: { orgId: string; rules: TrainingRul
       </fieldset>
 
       {save.isError && !Object.keys(fields).length && <FormAlert>{errorMessage(save.error, "We couldn't save the rules.")}</FormAlert>}
+      <DraftBar draft={draft} />
       <div className="flex gap-2">
         <Button type="submit" disabled={save.isPending || (place === "point" && !point)}>
           {save.isPending ? "Saving…" : "Save rules"}
