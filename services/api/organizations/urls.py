@@ -47,7 +47,7 @@ urlpatterns = [
     ),
     path(
         "<uuid:organization_pk>/members/",
-        views.MemberViewSet.as_view({"get": "list"}),
+        views.MemberViewSet.as_view({"get": "list", "post": "add"}),
         name="organization-members",
     ),
     path(

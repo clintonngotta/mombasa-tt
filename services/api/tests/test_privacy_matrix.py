@@ -511,7 +511,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-committee-field": {"patch": STAFF},
     "organization-committee-field-retire": {"post": STAFF},
     "organization-committee-field-restore": {"post": STAFF},
-    "organization-members": {"get": STAFF},
+    "organization-members": {"get": STAFF, "post": STAFF},
     "organization-member-roles": {"put": STAFF},
     "organization-member-remove": {"post": STAFF},
     "organization-member-fields": {"get": STAFF, "patch": STAFF},
@@ -746,6 +746,7 @@ BODIES = {
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
     ("organization-role", "patch"): {"name": "Renamed"},
     ("organization-member-roles", "put"): {"roles": []},
+    ("organization-members", "post"): {"display_name": "Added", "email": "added@example.com"},
     ("organization-admin-nominate", "post"): {"membership_id": FAITH_MEMBERSHIP},
     ("organization-admin-appoint", "post"): {"membership_id": FAITH_MEMBERSHIP, "reason": "Test"},
     ("organization-representatives", "post"): {"membership_id": FAITH_MEMBERSHIP},
@@ -2875,7 +2876,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
     staff = logged_in(world.amina)
     base = f"/api/v1/organizations/{world.coast.id}"
     member = staff.get(f"{base}/members/").json()["results"][0]
-    assert set(member) == {"id", "user", "display_name", "roles", "joined_at"}
+    assert set(member) == {"id", "user", "display_name", "roles", "joined_at", "is_guest"}
     request = staff.get(f"{base}/join-requests/").json()["results"][0]
     assert set(request) == {"id", "user", "display_name", "status", "created_at", "decided_at"}
 

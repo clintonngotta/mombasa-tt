@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from accounts.serializers import EmailField, PhoneField
 from core.geography import (
     CountryField,
     coordinate_field,
@@ -161,15 +162,44 @@ class MembershipSerializer(serializers.ModelSerializer):
 
 
 class MemberSerializer(serializers.ModelSerializer):
-    """Staff view of a member: display name and roles, never email or contact details."""
+    """Staff view of a member: display name and roles, never email or contact details. `is_guest` marks a
+    member staff added who hasn't joined from their link yet."""
 
     display_name = serializers.CharField(source="user.display_name", read_only=True)
     roles = RoleSummarySerializer(many=True, read_only=True)
+    is_guest = serializers.SerializerMethodField()
 
     class Meta:
         model = Membership
-        fields = ["id", "user", "display_name", "roles", "joined_at"]
+        fields = ["id", "user", "display_name", "roles", "joined_at", "is_guest"]
         read_only_fields = fields
+
+    def get_is_guest(self, membership) -> bool:
+        guest = getattr(membership.user, "guest", None)
+        return guest is not None and guest.claimed_by_id is None
+
+
+class MemberAddSerializer(serializers.Serializer):
+    """Someone staff add to the club directly: a name, and an email (we send the link), a phone (staff
+    share the link) or both."""
+
+    display_name = serializers.CharField(max_length=80, trim_whitespace=True)
+    email = EmailField(required=False, allow_blank=True)
+    phone = PhoneField(required=False, allow_blank=True, allow_null=True)
+
+    def validate(self, attrs):
+        if not attrs.get("email") and not attrs.get("phone"):
+            raise serializers.ValidationError({"email": "Give an email address or a phone number."})
+        return attrs
+
+
+class AddedMemberSerializer(MemberSerializer):
+    """A member just added, with the link to share. Shown this once: only its hash is kept."""
+
+    invite_link = serializers.CharField(read_only=True)
+
+    class Meta(MemberSerializer.Meta):
+        fields = [*MemberSerializer.Meta.fields, "invite_link"]
 
 
 class MemberRolesSerializer(serializers.Serializer):

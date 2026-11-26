@@ -164,6 +164,10 @@ export const listMembers = (orgId: string, term: string) =>
   api<Schemas["PaginatedMemberList"]>(`${orgPath(orgId)}/members/?search=${encodeURIComponent(term)}`)
 export const setMemberRoles = (orgId: string, membershipId: string, roles: string[]) =>
   api<Member>(`${orgPath(orgId)}/members/${membershipId}/roles/`, { method: "PUT", body: { roles } })
+/** Add someone to the club directly (REQ-004). They get a link to set a password and sign in; `invite_link`
+ * is shown to staff once, to share by WhatsApp or SMS. */
+export const addMember = (orgId: string, body: Schemas["MemberAddRequest"]) =>
+  api<Schemas["AddedMember"]>(`${orgPath(orgId)}/members/`, { body })
 export const removeMember = (orgId: string, membershipId: string) =>
   api<void>(`${orgPath(orgId)}/members/${membershipId}/remove/`, { body: {} })
 

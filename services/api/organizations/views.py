@@ -15,6 +15,7 @@ from core.exceptions import ApiException
 from core.nearby import MAX_RESULTS, NearbySearchSerializer, within
 from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
+from guests import service as guest_service
 
 from . import representatives
 from .access import (
@@ -45,10 +46,12 @@ from .models import (
 )
 from .permissions import ALL_PERMISSIONS, BODY_ONLY, ROLE_TEMPLATES, Permission, RoleKey
 from .serializers import (
+    AddedMemberSerializer,
     InvitationCreateSerializer,
     InvitationSerializer,
     JoinRequestSerializer,
     ManagementOrganizationSerializer,
+    MemberAddSerializer,
     MemberFieldEntrySerializer,
     MemberFieldSerializer,
     MemberFieldValuesSerializer,
@@ -591,6 +594,11 @@ class MemberViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardPagination
 
+    @property
+    def throttle_scope(self):
+        # Adding someone sends them an email, so it shares the invitation allowance.
+        return "invitations" if self.action == "add" else None
+
     def get_organization(self) -> Organization:
         return get_object_or_404(Organization, pk=self.kwargs["organization_pk"])
 
@@ -598,7 +606,7 @@ class MemberViewSet(viewsets.GenericViewSet):
         return get_object_or_404(
             Membership.objects.active()
             .select_for_update(of=("self",))
-            .select_related("organization", "user")
+            .select_related("organization", "user", "user__guest")
             .prefetch_related("roles", "organization__roles"),
             pk=pk,
             organization=organization,
@@ -613,7 +621,7 @@ class MemberViewSet(viewsets.GenericViewSet):
         require_permission(request.user, organization, MANAGE_MEMBERS, MANAGE_ROLES)
         members = (
             organization.memberships.active()
-            .select_related("user")
+            .select_related("user", "user__guest")
             .prefetch_related("roles")
             .order_by("user__display_name", "joined_at")
         )
@@ -622,6 +630,34 @@ class MemberViewSet(viewsets.GenericViewSet):
             members = members.filter(user__display_name__icontains=term)
         page = self.paginate_queryset(members)
         return self.get_paginated_response(MemberSerializer(page, many=True).data)
+
+    @extend_schema(request=MemberAddSerializer, responses={201: AddedMemberSerializer})
+    def add(self, request, organization_pk):
+        """Add someone to the club directly. They become a member at once and get a link (by email, or
+        `invite_link` for staff to share by phone, shown this once) to set a password and sign in. If they
+        already have an account, the same link signs them in and moves the membership to it. The reply is
+        the same either way, so adding never reveals who is registered."""
+        organization = self.get_organization()
+        require_permission(request.user, organization, MANAGE_MEMBERS)  # before saying what's wrong
+        body = MemberAddSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+        with transaction.atomic():
+            lock_organization(organization)
+            require_permission(request.user, organization, MANAGE_MEMBERS)
+            guest = guest_service.create(organization, data["display_name"], request.user)
+            membership = join(organization, guest.user)
+            _, token = guest_service.invite(
+                guest,
+                data.get("email"),
+                request.user,
+                data.get("phone") or "",
+                purpose=guest_service.MEMBER,
+            )
+            member = self.get_member(organization, membership.pk)
+        reply = AddedMemberSerializer(member).data
+        reply["invite_link"] = guest_service.join_link(token)
+        return Response(reply, status=status.HTTP_201_CREATED)
 
     @extend_schema(request=MemberRolesSerializer, responses={200: MemberSerializer})
     def set_roles(self, request, organization_pk, pk):
