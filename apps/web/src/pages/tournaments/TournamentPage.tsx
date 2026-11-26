@@ -10,7 +10,8 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { PlaceDirections } from "@/components/forms/PlaceFinderFields"
 import { EventStatusChip, TournamentStatusChip } from "@/components/tournaments/StatusChip"
-import { TournamentCover, TournamentDocuments, TournamentMediaManager } from "@/components/tournaments/TournamentMedia"
+import { cn } from "@/lib/utils"
+import { CoverBackdrop, TournamentDocuments, TournamentMediaManager } from "@/components/tournaments/TournamentMedia"
 import { useLiveTournament } from "@/lib/live"
 import { ScoreStrip } from "@/components/tournaments/LiveScore"
 import { NewsFeed } from "@/components/news/NewsFeed"
@@ -88,11 +89,17 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
   const soon = countdown(t)
   return (
     <header className="flex flex-col gap-3">
-      <TournamentCover cover={t.cover} />
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="min-w-0 text-[32px] leading-9 font-bold break-words">{t.name}</h1>
-        <TournamentStatusChip status={t.status} />
-      </div>
+      <CoverBackdrop cover={t.cover} fit coverClassName="rounded-xl">
+        {(onCover) => (
+          <div className={cn("flex flex-wrap items-start justify-between gap-3", onCover && "items-end p-4 sm:p-6")}>
+            <h1 className={cn("min-w-0 text-[32px] leading-9 font-bold break-words", onCover && "[text-shadow:0_1px_3px_rgb(0_0_0/0.6)]")}>{t.name}</h1>
+            {/* The chips are tinted, so over a photo they sit on a solid pill. */}
+            <span className={cn("inline-flex shrink-0 rounded-full", onCover && "bg-card")}>
+              <TournamentStatusChip status={t.status} />
+            </span>
+          </div>
+        )}
+      </CoverBackdrop>
       <dl className="flex flex-col gap-2">
         <Fact icon={<CalendarDays aria-hidden className="size-5" />} label="Dates">
           {formatDayRange(t.starts_on, t.ends_on)}
