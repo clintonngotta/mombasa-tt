@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,16 @@ const KIND_OPTIONS = (Object.keys(KIND_LABEL) as OrganizationKind[]).filter((val
 export function RegisterOrganizationPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [form, setForm] = useState<Omit<OrganizationInput, "directions" | "latitude" | "longitude">>({ name: "", town: "", country: "", region: "", description: "", kind: "club" })
+  // Someone who signed up as a club or a facility arrives with that kind chosen.
+  const asked = useSearchParams()[0].get("kind")
+  const [form, setForm] = useState<Omit<OrganizationInput, "directions" | "latitude" | "longitude">>({
+    name: "",
+    town: "",
+    country: "",
+    region: "",
+    description: "",
+    kind: KIND_OPTIONS.find((option) => option.value === asked)?.value ?? "club",
+  })
   const [finder, setFinder] = useState(placeFinderFrom())
   const [submitted, setSubmitted] = useState(false)
   const location = { country: form.country, region: form.region, city: form.town }
