@@ -31,4 +31,6 @@ USER app
 
 EXPOSE 8000
 # Only the proxy reaches this port, so the forwarded client address it sets is trusted (throttling and logs).
-CMD ["daphne", "--bind", "0.0.0.0", "--port", "8000", "--proxy-headers", "config.asgi:application"]
+# The owner account is checked first (ensure_owner: nothing unless OWNER_EMAIL is set; a bad value stops
+# the start). The worker and beat replace this command, so only the API does it.
+CMD ["sh", "-c", "python manage.py ensure_owner && exec daphne --bind 0.0.0.0 --port 8000 --proxy-headers config.asgi:application"]
