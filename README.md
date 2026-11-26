@@ -20,7 +20,7 @@ Then open <http://localhost:8080>. The first start builds the images, runs migra
 | OpenAPI schema | <http://localhost:8020/api/v1/schema/> |
 | Emails (verification, password reset links) | `docker compose logs -f api` |
 
-Test logins (also shown as one-tap buttons on the login page):
+Test logins (type them in: the login page no longer lists them):
 
 | Email | Password |
 |---|---|
@@ -28,11 +28,17 @@ Test logins (also shown as one-tap buttons on the login page):
 | `umpire@mombasa-tt.test` | `mombasa-tt-dev` |
 | `admin@mombasa-tt.test` | `mombasa-tt-dev` |
 
+For a super admin (everything, and Django admin at <http://localhost:8020/admin/>), put these in a `.env` file beside `compose.yml` (git-ignored) and restart the API. The account is made at start, the same way as in production; the password needs 10 characters or more and is only used to create the account:
+
+```sh
+OWNER_EMAIL=you@example.com
+OWNER_PASSWORD=a-long-local-passphrase
+```
+
 Useful commands:
 
 ```sh
 docker compose up --build -d          # in the background
-docker compose exec api python manage.py createsuperuser   # Django admin at http://localhost:8020/admin/
 docker compose exec api pytest       # API tests against the compose database
 (cd apps/web && pnpm test:e2e)        # browser tests (Playwright) against the running stack: apps/web/e2e/README.md
 docker compose up --build -V          # after web dependencies change (fresh node_modules volume)

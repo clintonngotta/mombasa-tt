@@ -35,6 +35,11 @@ services:
       SCORING_FIXTURES: /scoring-fixtures
       # Browser push (TASK-034) is off unless a key is given: `manage.py push_keys` makes one.
       WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+      # The platform owner (a super admin), made at start as in production (deployment.md). Put OWNER_EMAIL
+      # and OWNER_PASSWORD in a .env file beside this one (git-ignored); empty = no account is made.
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-}
+      OWNER_NAME: ${OWNER_NAME:-}
       # Emails (verification, password reset) print to `docker compose logs -f api`.
     ports:
       - "127.0.0.1:${API_PORT:-8020}:8000"
