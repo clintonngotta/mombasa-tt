@@ -32,14 +32,13 @@ def active_coaching(coach, coaching_id) -> Coaching:
 
 def trained_with(player, coach_ref="user"):
     """Whether `player` trained with the coach named by `coach_ref` (an outer reference from a coach
-    profile): the coach accepted them as a trainee at some point, or a confirmed session has ended.
-    Only then may they rate the coach."""
+    profile): the coach accepted them as a trainee at some point, or a session was held (marked done,
+    or confirmed and over). Only then may they rate the coach."""
     coached = Coaching.objects.filter(coach=OuterRef(coach_ref), trainee=player, started_at__isnull=False)
     sat = Booking.objects.filter(
+        Q(status=Booking.Status.COMPLETED) | Q(status=Booking.Status.CONFIRMED, ends_at__lte=timezone.now()),
         coach=OuterRef(coach_ref),
         trainee=player,
-        status=Booking.Status.CONFIRMED,
-        ends_at__lte=timezone.now(),
     )
     return Exists(coached) | Exists(sat)
 

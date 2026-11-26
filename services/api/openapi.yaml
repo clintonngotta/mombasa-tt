@@ -1529,8 +1529,45 @@ paths:
     post:
       operationId: me_bookings_cancel_create
       description: |-
-        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-        person cancels a booking that hasn't started.
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/bookings/{id}/complete/:
+    post:
+      operationId: me_bookings_complete_create
+      description: |-
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
       parameters:
       - in: path
         name: id
@@ -1564,8 +1601,9 @@ paths:
     post:
       operationId: me_bookings_confirm_create
       description: |-
-        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-        person cancels a booking that hasn't started.
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
       parameters:
       - in: path
         name: id
@@ -1599,8 +1637,9 @@ paths:
     post:
       operationId: me_bookings_decline_create
       description: |-
-        POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-        person cancels a booking that hasn't started.
+        POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+        either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+        has started.
       parameters:
       - in: path
         name: id
@@ -21027,12 +21066,14 @@ components:
       - confirmed
       - declined
       - cancelled
+      - completed
       type: string
       description: |-
         * `requested` - Requested
         * `confirmed` - Confirmed
         * `declined` - Declined
         * `cancelled` - Cancelled
+        * `completed` - Completed
     BranchScheduleItem:
       type: object
       properties:

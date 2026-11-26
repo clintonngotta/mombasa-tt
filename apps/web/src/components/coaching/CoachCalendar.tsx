@@ -106,6 +106,7 @@ export function CoachCalendar({ profile }: { profile: CoachProfile }) {
     byDay.set(first, [...(byDay.get(first) ?? []), entry])
   }
   const days = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))
+  const [today] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date()))
   const total = calendar.data?.length ?? 0
   const filtering = term !== "" || hidden.size > 0
 
@@ -221,7 +222,10 @@ export function CoachCalendar({ profile }: { profile: CoachProfile }) {
         <ol className="flex flex-col gap-4">
           {days.map(([day, list]) => (
             <li key={day} className="flex flex-col gap-2">
-              <h3 className="font-semibold">{formatDay(day)}</h3>
+              <h3 className="flex items-center gap-2 font-semibold">
+                {formatDay(day)}
+                {day === today && <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">Today</span>}
+              </h3>
               <ul className="flex flex-col gap-2">
                 {list.map((entry) => (
                   <li key={`${entry.kind}-${entry.id}`}>
@@ -252,6 +256,7 @@ function Entry({ entry, day, timeZone }: { entry: CalendarEntry; day: string; ti
         <span className="text-sm text-muted-foreground">
           {KIND[entry.kind].label}
           {waiting && " · waiting for you"}
+          {entry.kind === "booking" && entry.status === "completed" && " · done"}
           {entry.detail && ` · ${entry.detail}`}
         </span>
       </span>

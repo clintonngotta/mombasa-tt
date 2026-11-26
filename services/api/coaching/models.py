@@ -124,15 +124,20 @@ class Availability(models.Model):
 
 class Booking(models.Model):
     """A session asked for with a coach. The player asks for a time inside the coach's availability; the
-    coach confirms or declines. Requested and confirmed bookings hold the time of both people."""
+    coach confirms or declines, and marks it done once it has been held. Requested and confirmed bookings
+    hold the time of both people."""
 
     class Status(models.TextChoices):
         REQUESTED = "requested"
         CONFIRMED = "confirmed"
         DECLINED = "declined"
         CANCELLED = "cancelled"
+        # The coach marked the session as held, once it had started.
+        COMPLETED = "completed"
 
     HOLDING = (Status.REQUESTED, Status.CONFIRMED)
+    # What a calendar shows: what holds time, and sessions that were held.
+    SHOWN = (*HOLDING, Status.COMPLETED)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     coach = models.ForeignKey(

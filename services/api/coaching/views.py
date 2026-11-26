@@ -366,7 +366,7 @@ def comments_for(coach, trainee):
             if comment.personal_match_id
             else ("official", comment.match_id)
         )
-        found.setdefault(key, []).append(CommentSerializer(comment).data)
+        found.setdefault(key, []).append(comment)
     return found
 
 
@@ -674,8 +674,9 @@ class MyBookingsView(APIView):
 
 
 class BookingActionView(APIView):
-    """POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-    person cancels a booking that hasn't started."""
+    """POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+    either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+    has started."""
 
     permission_classes = [IsAuthenticated]
     action = ""
@@ -695,6 +696,14 @@ class BookingActionView(APIView):
                 booking.status = (
                     Booking.Status.CONFIRMED if self.action == "confirm" else Booking.Status.DECLINED
                 )
+            elif self.action == "complete":
+                if not is_coach:
+                    raise ApiException("not_found", "Not found.", status.HTTP_404_NOT_FOUND)
+                if booking.status != Booking.Status.CONFIRMED:
+                    raise ApiException("not_confirmed", "Only a confirmed session can be marked done.", 409)
+                if booking.starts_at > timezone.now():
+                    raise ApiException("not_started", "This session hasn't started yet.", 409)
+                booking.status = Booking.Status.COMPLETED
             else:
                 if booking.status not in Booking.HOLDING:
                     raise ApiException("not_booked", "This session isn't booked.", 409)
@@ -771,7 +780,7 @@ class CoachCalendarView(APIView):
         ends = datetime.combine(last + timedelta(days=1), datetime.min.time(), tz)
         overlapping = {"starts_at__lt": ends, "ends_at__gt": starts}
         entries = []
-        for booking in my_bookings(request.user).filter(status__in=Booking.HOLDING, **overlapping):
+        for booking in my_bookings(request.user).filter(status__in=Booking.SHOWN, **overlapping):
             coaching = booking.coach_id == request.user.pk
             other = booking.trainee if coaching else booking.coach
             entries.append(

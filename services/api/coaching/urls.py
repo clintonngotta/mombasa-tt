@@ -46,7 +46,7 @@ me_urlpatterns = [
             views.BookingActionView.as_view(action=action),
             name=f"my-booking-{action}",
         )
-        for action in ("confirm", "decline", "cancel")
+        for action in ("confirm", "decline", "cancel", "complete")
     ],
 ]
 
