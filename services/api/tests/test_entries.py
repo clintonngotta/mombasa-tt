@@ -451,7 +451,8 @@ def test_a_mail_fault_after_the_change_is_saved_is_not_an_error(staff, cup, sing
 
 def test_entering_is_rate_limited_per_caller(staff, cup, singles, settings):
     ama = logged_in(player("Ama"))
-    for _ in range(30):
+    allowance = int(settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["entries"].split("/")[0])
+    for _ in range(allowance):
         ama.post(entries_url(cup, singles), {"player_ids": []}, format="json")
     assert ama.post(entries_url(cup, singles), {}, format="json").status_code == 429
     assert listed(ama, cup, singles) == []  # reading is not limited

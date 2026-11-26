@@ -182,6 +182,8 @@ if os.environ.get("SMTP_HOST"):
     EMAIL_HOST_USER = os.environ.get("SMTP_USER", "")
     EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
     EMAIL_USE_TLS = env_bool("SMTP_USE_TLS", True)
+    # Emails are sent inside the request, so a silent SMTP server must not hold it open.
+    EMAIL_TIMEOUT = int(os.environ.get("SMTP_TIMEOUT", "10"))
 else:
     # Local development prints emails (verification/reset links) to the runserver console.
     EMAIL_BACKEND = "core.email.EmailBackend"
@@ -204,9 +206,9 @@ REST_FRAMEWORK = {
         "auth_login": os.environ.get("THROTTLE_AUTH_LOGIN", "10/min"),
         "auth_email": os.environ.get("THROTTLE_AUTH_EMAIL", "5/min"),
         "invitations": os.environ.get("THROTTLE_INVITATIONS", "30/hour"),
-        "uploads": os.environ.get("THROTTLE_UPLOADS", "30/hour"),
-        "entries": os.environ.get("THROTTLE_ENTRIES", "30/hour"),
-        "public_reads": os.environ.get("THROTTLE_PUBLIC_READS", "120/min"),
+        "uploads": os.environ.get("THROTTLE_UPLOADS", "100/hour"),
+        "entries": os.environ.get("THROTTLE_ENTRIES", "100/hour"),
+        "public_reads": os.environ.get("THROTTLE_PUBLIC_READS", "200/min"),
         "live_reads": os.environ.get("THROTTLE_LIVE_READS", "1800/min"),
         "nearby": os.environ.get("THROTTLE_NEARBY", "30/min"),
     },
