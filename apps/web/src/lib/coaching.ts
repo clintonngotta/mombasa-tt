@@ -22,6 +22,7 @@ export const BOOKING_STATUS_LABEL: Record<Booking["status"], string> = {
   confirmed: "Confirmed",
   declined: "Declined",
   cancelled: "Cancelled",
+  completed: "Done",
 }
 
 export const coachingKeys = {
@@ -32,6 +33,7 @@ export const coachingKeys = {
   slots: (id: string, minutes: number) => ["coaching", "slots", id, minutes] as const,
   coachings: ["coaching", "coachings"] as const,
   bookings: ["coaching", "bookings"] as const,
+  pastBookings: ["coaching", "bookings", "past"] as const,
   trainee: (id: string) => ["coaching", "trainee", id] as const,
   traineePlan: (coachingId: string, planId: string) => ["coaching", "trainee", coachingId, "plan", planId] as const,
   calendar: (from: string, to: string) => ["coaching", "calendar", from, to] as const,
@@ -63,8 +65,10 @@ export const answerCoaching = (id: string, action: "accept" | "decline" | "end")
   api<Coaching>(`/me/coachings/${id}/${action}/`, { method: "POST" })
 
 export const listBookings = () => api<Booking[]>("/me/bookings/")
+/** Sessions that have ended, newest first. */
+export const listPastBookings = () => api<Booking[]>("/me/bookings/?past=1")
 export const bookSession = (body: Schemas["BookingRequestRequest"]) => api<Booking>("/me/bookings/", { body })
-export const answerBooking = (id: string, action: "confirm" | "decline" | "cancel", reason = "") =>
+export const answerBooking = (id: string, action: "confirm" | "decline" | "cancel" | "complete", reason = "") =>
   api<Booking>(`/me/bookings/${id}/${action}/`, { body: { reason } })
 
 export const getTrainee = (id: string) => api<Trainee>(`/me/trainees/${id}/`)

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from django.utils import timezone
 
-from coaching.models import CoachRating, MatchComment
+from coaching.models import Booking, CoachRating, MatchComment
 
 from .helpers import logged_in, make_official, make_user
 from .test_reservations import started
@@ -361,6 +361,37 @@ def test_a_coachs_plan_session_shares_the_hour_of_their_booked_session(people):
     assert clash.status_code == 409 and clash.json()["code"] == "calendar_conflict"
 
 
+def test_the_coach_marks_a_held_session_done(people):
+    coach, trainee, coach_client, trainee_client = people
+    day = day_ahead()
+    body = {
+        "coach_id": str(coach.id),
+        "starts_at": at(day, 10).isoformat(),
+        "ends_at": at(day, 11).isoformat(),
+    }
+    booking = trainee_client.post(f"{ME}bookings/", body, format="json").json()
+    done = f"{ME}bookings/{booking['id']}/complete/"
+
+    # Not before the coach confirmed it, and not before it starts.
+    assert coach_client.post(done, format="json").json()["code"] == "not_confirmed"
+    coach_client.post(f"{ME}bookings/{booking['id']}/confirm/", format="json")
+    assert coach_client.post(done, format="json").json()["code"] == "not_started"
+    Booking.objects.filter(pk=booking["id"]).update(
+        starts_at=timezone.now() - timedelta(hours=2), ends_at=timezone.now() - timedelta(hours=1)
+    )
+    # Only the coach marks it; the trainee and a stranger get 404.
+    assert trainee_client.post(done, format="json").status_code == 404
+    assert logged_in(make_user("stranger@example.com")).post(done, format="json").status_code == 404
+    held = coach_client.post(done, format="json")
+    assert held.status_code == 200 and held.json()["status"] == "completed"
+    assert coach_client.post(done, format="json").status_code == 409
+
+    # Both sides see it as done among their past sessions, and the trainee may now rate the coach.
+    for client in (coach_client, trainee_client):
+        assert [b["status"] for b in client.get(f"{ME}bookings/", {"past": "1"}).json()] == ["completed"]
+    assert trainee_client.get(f"/api/v1/coaches/{coach.id}/").json()["can_rate"] is True
+
+
 def test_coach_notes_are_read_by_the_trainee_alone(people, staff, club):
     coach, trainee, coach_client, trainee_client = people
     coaching_id = coaching_between(coach_client, trainee_client, coach)
@@ -393,6 +424,13 @@ def test_coach_notes_are_read_by_the_trainee_alone(people, staff, club):
         path, {"match": str(game["match"].id), "body": "Watch his backhand."}, format="json"
     )
     assert official.status_code == 201, official.json()
+    # The coach's page for the trainee still loads, with each note under its match.
+    again = coach_client.get(f"{ME}trainees/{coaching_id}/")
+    assert again.status_code == 200, again.content
+    assert sorted(c["body"] for m in again.json()["matches"] for c in m["comments"]) == [
+        "Great first serve.",
+        "Watch his backhand.",
+    ]
     # Someone else's match can't be commented on.
     rival_log = (
         logged_in(make_user("rival2@example.com"))

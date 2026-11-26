@@ -237,6 +237,7 @@ export const CalendarBody = ({ features, children }: CalendarBodyProps) => {
   }, [features, daysInMonth, year, month]);
 
   const days: ReactNode[] = [];
+  const [today] = useState(() => new Date());
 
   for (let i = 0; i < firstDay; i++) {
     const day =
@@ -257,7 +258,17 @@ export const CalendarBody = ({ features, children }: CalendarBodyProps) => {
         className="relative flex h-full w-full flex-col gap-1 p-1 text-muted-foreground text-xs"
         key={day}
       >
-        {day}
+        {isSameDay(new Date(year, month, day), today) ? (
+          <span
+            aria-current="date"
+            className="flex size-6 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground"
+          >
+            {day}
+            <span className="sr-only"> (today)</span>
+          </span>
+        ) : (
+          day
+        )}
         <div>
           {featuresForDay.slice(0, 3).map((feature) => children({ feature }))}
         </div>
@@ -439,7 +450,7 @@ export const CalendarHeader = ({ className }: CalendarHeaderProps) => {
   return (
     <div className={cn("grid flex-grow grid-cols-7", className)}>
       {daysData.map((day) => (
-        <div className="p-3 text-right text-muted-foreground text-xs" key={day}>
+        <div className="px-1 py-3 text-left text-muted-foreground text-xs" key={day}>
           {day}
         </div>
       ))}

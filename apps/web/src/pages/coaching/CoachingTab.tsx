@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CalendarDays, ChevronRight, GraduationCap, Search, UserRound } from "lucide-react"
@@ -12,12 +13,14 @@ import {
   coachingKeys,
   getMyCoachProfileOrNull,
   listBookings,
+  listPastBookings,
   listCoachings,
   type Booking,
   type Coaching,
 } from "@/lib/coaching"
 import { formatInstant } from "@/lib/dates"
 import { LOCAL_TIME_ZONE } from "@/lib/training"
+import { canMarkDone, MarkDoneButton } from "@/components/coaching/MarkDoneButton"
 import { CoachStars } from "@/components/coaching/CoachStars"
 import { cn } from "@/lib/utils"
 import { CoachCalendar } from "@/components/coaching/CoachCalendar"
@@ -33,6 +36,10 @@ export function CoachingTab() {
   })
   const coachings = useQuery({ queryKey: coachingKeys.coachings, queryFn: listCoachings })
   const bookings = useQuery({ queryKey: coachingKeys.bookings, queryFn: listBookings })
+  const past = useQuery({ queryKey: coachingKeys.pastBookings, queryFn: listPastBookings, enabled: !!profile.data })
+  const [now] = useState(() => Date.now())
+  // Confirmed sessions that have started, under way or over, still waiting for the coach to mark them done.
+  const held = [...(bookings.data ?? []), ...(past.data ?? [])].filter((b) => canMarkDone(b, now))
   const all = coachings.data ?? []
   const waiting = all.filter((c) => c.awaiting_me)
   const trainees = all.filter((c) => c.role === "coach" && c.status === "active")
@@ -51,6 +58,7 @@ export function CoachingTab() {
         <>
           <Trainees coachings={trainees} />
           <SessionRequests bookings={asCoach.filter((b) => b.status === "requested")} />
+          <HeldSessions bookings={held} />
           <TraineeTaskBoard coachings={trainees} />
           <CoachCalendar profile={profile.data} />
         </>
@@ -168,6 +176,31 @@ function Trainees({ coachings }: { coachings: Coaching[] }) {
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+function HeldSessions({ bookings }: { bookings: Booking[] }) {
+  if (bookings.length === 0) return null
+  return (
+    <section aria-labelledby="held-heading" className="flex flex-col gap-3">
+      <h2 id="held-heading" className="text-xl font-bold">
+        Sessions to mark done
+      </h2>
+      <ul className="flex flex-col gap-2">
+        {bookings.map((b) => (
+          <li key={b.id} className={ROW}>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-semibold">{b.trainee.display_name}</span>
+              <span className="text-sm text-muted-foreground">
+                {formatInstant(b.starts_at, LOCAL_TIME_ZONE)}–{formatInstant(b.ends_at, LOCAL_TIME_ZONE).slice(-5)}
+                {b.venue && ` · ${b.venue}`}
+              </span>
+            </span>
+            <MarkDoneButton booking={b} />
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

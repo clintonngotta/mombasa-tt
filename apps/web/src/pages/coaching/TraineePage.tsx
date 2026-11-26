@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ChevronRight, ListChecks, Lock, MessageSquare, Trash2 } from "lucide-react"
+import { canMarkDone, MarkDoneButton } from "@/components/coaching/MarkDoneButton"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
@@ -45,6 +46,7 @@ function TraineeView({ coachingId, data }: { coachingId: string; data: Trainee }
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [confirmEnd, setConfirmEnd] = useState(false)
+  const [now] = useState(() => Date.now())
   const end = useMutation({
     mutationFn: () => answerCoaching(coachingId, "end"),
     onSuccess: async () => {
@@ -104,10 +106,11 @@ function TraineeView({ coachingId, data }: { coachingId: string; data: Trainee }
             {data.bookings.map((b) => (
               <li key={b.id} className={ROW}>
                 <span className="font-semibold">{formatInstant(b.starts_at, LOCAL_TIME_ZONE)}</span>
-                <span className="text-sm text-muted-foreground">
+                <span className="flex-1 text-sm text-muted-foreground">
                   {BOOKING_STATUS_LABEL[b.status]}
                   {b.venue && ` · ${b.venue}`}
                 </span>
+                {canMarkDone(b, now) && <MarkDoneButton booking={b} />}
               </li>
             ))}
           </ul>

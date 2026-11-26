@@ -813,10 +813,32 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-         *     person cancels a booking that hasn't started.
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
          */
         post: operations["me_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/bookings/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
+         */
+        post: operations["me_bookings_complete_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -833,8 +855,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-         *     person cancels a booking that hasn't started.
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
          */
         post: operations["me_bookings_confirm_create"];
         delete?: never;
@@ -853,8 +876,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-         *     person cancels a booking that hasn't started.
+         * @description POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+         *     either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+         *     has started.
          */
         post: operations["me_bookings_decline_create"];
         delete?: never;
@@ -9015,9 +9039,10 @@ export interface components {
          *     * `confirmed` - Confirmed
          *     * `declined` - Declined
          *     * `cancelled` - Cancelled
+         *     * `completed` - Completed
          * @enum {string}
          */
-        BookingStatusEnum: "requested" | "confirmed" | "declined" | "cancelled";
+        BookingStatusEnum: "requested" | "confirmed" | "declined" | "cancelled" | "completed";
         BranchScheduleItem: {
             kind: components["schemas"]["ScheduleKindEnum"];
             /** Format: uuid */
@@ -17894,6 +17919,40 @@ export interface operations {
         };
     };
     me_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BookingReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Booking"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    me_bookings_complete_create: {
         parameters: {
             query?: never;
             header?: never;

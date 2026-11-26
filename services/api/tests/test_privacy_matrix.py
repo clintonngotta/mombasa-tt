@@ -377,6 +377,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "my-booking-confirm": {"post": OWNER},
     "my-booking-decline": {"post": OWNER},
     "my-booking-cancel": {"post": OWNER},
+    "my-booking-complete": {"post": OWNER},
     "organization-drills": {"get": MEMBER, "post": STAFF},
     "organization-drill": {"patch": STAFF, "delete": STAFF},
     # The drill library: the standard drills, your own and your clubs'. Another club's drill is a 404.
@@ -1954,6 +1955,7 @@ class World:
             "my-booking-confirm": self.booking.id,
             "my-booking-decline": self.booking.id,
             "my-booking-cancel": self.booking.id,
+            "my-booking-complete": self.booking.id,
             "organization-drill": self.club_drill.id,
             "drill-library-detail": self.club_drill.id,
             "training-plan-recommendations": self.baraka_plan.id,
