@@ -46,7 +46,7 @@ me_urlpatterns = [
             views.BookingActionView.as_view(action=action),
             name=f"my-booking-{action}",
         )
-        for action in ("confirm", "decline", "cancel")
+        for action in ("confirm", "decline", "cancel", "complete")
     ],
 ]
 
@@ -54,4 +54,5 @@ coach_urlpatterns = [
     path("", views.CoachListView.as_view(), name="coaches"),
     path("<uuid:pk>/", views.CoachDetailView.as_view(), name="coach"),
     path("<uuid:pk>/slots/", views.CoachSlotsView.as_view(), name="coach-slots"),
+    path("<uuid:pk>/rating/", views.CoachRatingView.as_view(), name="coach-rating"),
 ]

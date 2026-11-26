@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { ChevronRight, CircleCheckBig, Clock, Trophy, Users, UserRound, type LucideIcon } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { Wordmark } from "@/components/brand/Wordmark"
-import { clearOnboardingDraft, readReturn, useOnboardingDraft } from "@/lib/onboarding"
+import { clearOnboardingDraft, readReturn, SIGN_UP_AS, useOnboardingDraft } from "@/lib/onboarding"
 import type { Goal } from "@/lib/profile"
 import { cn } from "@/lib/utils"
 
@@ -82,7 +82,7 @@ export function CompletionPage() {
         </section>
 
         <Link to={returnTo ?? "/home"} className={cn(buttonVariants({ size: "lg" }), "mt-auto")}>
-          {returnTo ? "Continue where you left off" : "Go to Home"}
+          {returnTo ? (SIGN_UP_AS.find((option) => option.next === returnTo)?.action ?? "Continue where you left off") : "Go to Home"}
         </Link>
       </main>
     </div>

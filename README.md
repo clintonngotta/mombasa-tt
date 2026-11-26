@@ -20,7 +20,7 @@ Then open <http://localhost:8080>. The first start builds the images, runs migra
 | OpenAPI schema | <http://localhost:8020/api/v1/schema/> |
 | Emails (verification, password reset links) | `docker compose logs -f api` |
 
-Test logins (also shown as one-tap buttons on the login page):
+Test logins (type them in: the login page no longer lists them):
 
 | Email | Password |
 |---|---|
@@ -28,11 +28,17 @@ Test logins (also shown as one-tap buttons on the login page):
 | `umpire@mombasa-tt.test` | `mombasa-tt-dev` |
 | `admin@mombasa-tt.test` | `mombasa-tt-dev` |
 
+For the platform owner (a super admin, who logs in and opens the back office at <http://localhost:8080/admin>: accounts, organizations and the place catalogue), put these in `services/api/.env` (git-ignored; copy `services/api/.env.example` if you have none) and restart the API with `docker compose up -d api`. The account is made at start, the same way as in production; the password needs 10 characters or more and is only used to create the account:
+
+```sh
+OWNER_EMAIL=you@example.com
+OWNER_PASSWORD=a-long-local-passphrase
+```
+
 Useful commands:
 
 ```sh
 docker compose up --build -d          # in the background
-docker compose exec api python manage.py createsuperuser   # Django admin at http://localhost:8020/admin/
 docker compose exec api pytest       # API tests against the compose database
 (cd apps/web && pnpm test:e2e)        # browser tests (Playwright) against the running stack: apps/web/e2e/README.md
 docker compose up --build -V          # after web dependencies change (fresh node_modules volume)
@@ -45,7 +51,7 @@ This setup is for local development only (debug on, dev-only password, seeded lo
 ### Production images
 
 `infra/compose.production.yml` runs the production images: Caddy (HTTPS, the PWA build, Django's static files,
-proxying `/api/` with WebSockets, `/admin/` and `/health/`), the API under Daphne, the Celery worker and beat,
+proxying `/api/` with WebSockets and `/health/`), the API under Daphne, the Celery worker and beat,
 PostgreSQL and Redis. Only Caddy publishes ports. Copy `infra/production.env.example` to `.env.production`, fill
 it in, then:
 

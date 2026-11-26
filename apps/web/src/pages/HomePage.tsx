@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { ChevronRight, CircleHelp, Medal, Plus, Users, Warehouse, type LucideIcon } from "lucide-react"
+import { ChevronRight, CircleHelp, Medal, Plus, Trophy, Users, Warehouse, type LucideIcon } from "lucide-react"
 import { LiveNow, MyEntries } from "@/components/tournaments/TournamentLists"
 import { can, useActiveMembership } from "@/lib/clubs"
 import { AddEmailPrompt } from "@/components/profile/AddEmailPrompt"
@@ -19,6 +19,8 @@ export function HomePage() {
 
   const actions: Action[] = [
     { to: "/tournaments", icon: Medal, title: "Tournaments", description: "Enter one, or follow the live scores and results" },
+    // Signed out there is no sidebar, so rankings (public, REQ-020) are reached from here.
+    ...(me.isError ? [{ to: "/rankings", icon: Trophy, title: "Rankings", description: "Who leads in your city, region and country" }] : []),
     // Until the memberships arrive (or signed out, when they never do) the tile doesn't guess.
     inAClub || (me.isSuccess && memberships.isPending)
       ? { to: "/club", icon: Users, title: "Your club", description: "Sessions, members and news" }

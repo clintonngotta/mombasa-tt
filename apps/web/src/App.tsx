@@ -3,6 +3,11 @@ import { queryClient } from "@/lib/queryClient"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
 import { GalleryPage } from "@/pages/dev/GalleryPage"
+import { BackOffice } from "@/pages/admin/BackOffice"
+import { AdminOverviewPage } from "@/pages/admin/AdminOverviewPage"
+import { AdminAccountsPage } from "@/pages/admin/AdminAccountsPage"
+import { AdminOrganizationsPage } from "@/pages/admin/AdminOrganizationsPage"
+import { AdminPlacesPage } from "@/pages/admin/AdminPlacesPage"
 import { WelcomePage } from "@/pages/auth/WelcomePage"
 import { SignUpPage } from "@/pages/auth/SignUpPage"
 import { CheckEmailPage } from "@/pages/auth/CheckEmailPage"
@@ -189,6 +194,13 @@ function App() {
                 <Route path="/matches/:id" element={<MatchDetailPage />} />
                 <Route path="/matches/:id/edit" element={<MatchFormPage />} />
                 <Route path="/coaching" element={<CoachingPage />} />
+              </Route>
+              {/* The platform's back office (REQ-056): super admins only, checked again by every API call. */}
+              <Route path="/admin" element={<BackOffice />}>
+                <Route index element={<AdminOverviewPage />} />
+                <Route path="accounts" element={<AdminAccountsPage />} />
+                <Route path="organizations" element={<AdminOrganizationsPage />} />
+                <Route path="places" element={<AdminPlacesPage />} />
               </Route>
               <Route path="/facility" element={<FacilityHomePage />} />
               <Route path="/regional" element={<RegionalPage />} />

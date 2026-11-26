@@ -35,6 +35,21 @@ def test_the_owner_is_created_as_a_verified_super_admin_who_can_log_in(monkeypat
     assert response.status_code == 200
 
 
+def test_the_owner_reaches_the_back_office(monkeypatch, client):
+    run(monkeypatch)
+    signed_in = client.post(
+        "/api/v1/auth/login/", {"login": EMAIL, "password": PASSWORD}, content_type="application/json"
+    )
+    assert signed_in.json()["is_platform_admin"] is True
+    assert client.get("/api/v1/platform/overview/").status_code == 200
+
+
+def test_admin_is_the_apps_own_page_not_django(client):
+    assert client.get("/admin").status_code == 404  # the proxy serves the app there, never the API
+    assert client.get("/admin/").status_code == 404
+    assert client.get("/admin/login/").status_code == 404
+
+
 def test_nothing_happens_without_the_settings(monkeypatch):
     run(monkeypatch, None, None)
     assert not User.objects.filter(is_superuser=True).exists()

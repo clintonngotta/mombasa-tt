@@ -20,6 +20,12 @@ services:
 
   api:
     build: ./services/api
+    # The API's own local settings (git-ignored; copy services/api/.env.example). OWNER_EMAIL and
+    # OWNER_PASSWORD there make the platform owner (a super admin) at start, as in production
+    # (deployment.md). The values under `environment` below win over the file's.
+    env_file:
+      - path: ./services/api/.env
+        required: false
     environment:
       DJANGO_DEBUG: "true"
       DATABASE_URL: postgres://mombasa:mombasa-dev-only@db:5432/mombasa_tt

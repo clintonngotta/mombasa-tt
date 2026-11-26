@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Avg, BooleanField, Count, ExpressionWrapper, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -34,7 +34,7 @@ from training.serializers import DrillRecommendationSerializer, TrainingPlanSeri
 from training.views import PlanItemsBase, recommendations_for, with_items
 
 from . import service
-from .models import Availability, Booking, Coaching, CoachProfile, MatchComment
+from .models import Availability, Booking, Coaching, CoachProfile, CoachRating, MatchComment
 from .serializers import (
     AssignPlanSerializer,
     AvailabilityListSerializer,
@@ -48,6 +48,7 @@ from .serializers import (
     CoachOrganizerRequestSerializer,
     CoachOrganizerSerializer,
     CoachProfileSerializer,
+    CoachRatingSerializer,
     CommentInputSerializer,
     CommentSerializer,
     SlotSerializer,
@@ -60,9 +61,18 @@ User = get_user_model()
 RECENT_MATCHES = 15
 
 
-def profiles():
-    return CoachProfile.objects.select_related("user").prefetch_related(
-        "organizations", "user__coach_availability"
+def profiles(viewer):
+    """Coach profiles with their star rating, the viewer's own rating and whether the viewer may rate."""
+    mine = CoachRating.objects.filter(coach=OuterRef("user"), player=viewer).values("stars")[:1]
+    return (
+        CoachProfile.objects.select_related("user")
+        .prefetch_related("organizations", "user__coach_availability")
+        .annotate(
+            rating_average=Avg("user__coach_ratings__stars"),
+            rating_count=Count("user__coach_ratings"),
+            my_rating=Subquery(mine),
+            can_rate=ExpressionWrapper(service.trained_with(viewer), output_field=BooleanField()),
+        )
     )
 
 
@@ -88,7 +98,7 @@ class CoachListView(ListAPIView):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        found = profiles().filter(accepting=True, user__is_active=True)
+        found = profiles(self.request.user).filter(accepting=True, user__is_active=True)
         params = self.request.query_params
         if params.get("search"):
             term = params["search"].strip()[:80]
@@ -112,7 +122,7 @@ class CoachDetailView(APIView):
 
     @extend_schema(responses={200: CoachProfileSerializer})
     def get(self, request, pk):
-        profile = get_object_or_404(profiles(), user_id=pk)
+        profile = get_object_or_404(profiles(request.user), user_id=pk)
         if not profile.accepting and profile.user_id != request.user.pk:
             if (
                 not Coaching.objects.filter(coach_id=pk, trainee=request.user)
@@ -152,6 +162,46 @@ class CoachSlotsView(APIView):
         return Response(SlotSerializer(slots, many=True).data)
 
 
+class CoachRatingView(APIView):
+    """PUT /coaches/{user id}/rating/: the caller's star rating of a coach they trained with, set or
+    changed; DELETE removes it. The answer is the coach's profile with the new average."""
+
+    permission_classes = [IsAuthenticated]
+
+    def coach(self, request, pk) -> CoachProfile:
+        profile = get_object_or_404(profiles(request.user).filter(user__is_active=True), user_id=pk)
+        if not profile.can_rate:
+            # A coach who isn't listed is hidden from people they never trained.
+            if not profile.accepting:
+                raise ApiException("not_found", "Not found.", status.HTTP_404_NOT_FOUND)
+            raise ApiException(
+                "cannot_rate",
+                "You can rate a coach once you have trained with them.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        return profile
+
+    def answer(self, request, pk):
+        profile = get_object_or_404(profiles(request.user), user_id=pk)
+        return Response(CoachProfileSerializer(profile, context={"request": request}).data)
+
+    @extend_schema(request=CoachRatingSerializer, responses={200: CoachProfileSerializer})
+    def put(self, request, pk):
+        serializer = CoachRatingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.coach(request, pk)
+        CoachRating.objects.update_or_create(
+            coach_id=pk, player=request.user, defaults={"stars": serializer.validated_data["stars"]}
+        )
+        return self.answer(request, pk)
+
+    @extend_schema(request=None, responses={200: CoachProfileSerializer})
+    def delete(self, request, pk):
+        self.coach(request, pk)
+        CoachRating.objects.filter(coach_id=pk, player=request.user).delete()
+        return self.answer(request, pk)
+
+
 class MyCoachProfileView(APIView):
     """GET/PUT /me/coach-profile/: the caller's coach profile; PUT switches it on or changes it."""
 
@@ -159,7 +209,7 @@ class MyCoachProfileView(APIView):
 
     @extend_schema(responses={200: CoachProfileSerializer})
     def get(self, request):
-        profile = get_object_or_404(profiles(), user=request.user)
+        profile = get_object_or_404(profiles(request.user), user=request.user)
         return Response(CoachProfileSerializer(profile, context={"request": request}).data)
 
     @extend_schema(request=CoachProfileSerializer, responses={200: CoachProfileSerializer})
@@ -172,7 +222,7 @@ class MyCoachProfileView(APIView):
         profile = serializer.save(user=request.user)
         return Response(
             CoachProfileSerializer(
-                get_object_or_404(profiles(), pk=profile.pk), context={"request": request}
+                get_object_or_404(profiles(request.user), pk=profile.pk), context={"request": request}
             ).data
         )
 
@@ -316,7 +366,7 @@ def comments_for(coach, trainee):
             if comment.personal_match_id
             else ("official", comment.match_id)
         )
-        found.setdefault(key, []).append(CommentSerializer(comment).data)
+        found.setdefault(key, []).append(comment)
     return found
 
 
@@ -607,7 +657,7 @@ class MyBookingsView(APIView):
         service.check_booking(profile, request.user, starts, ends)
         with transaction.atomic():
             service.lock_people(profile.user, request.user)
-            training.ensure_free(request.user, starts, ends)
+            training.ensure_free(request.user, starts, ends, with_coach=profile.user)
             training.ensure_free(profile.user, starts, ends, message="The coach isn't free at that time.")
             booking = Booking.objects.create(
                 coach=profile.user,
@@ -624,8 +674,9 @@ class MyBookingsView(APIView):
 
 
 class BookingActionView(APIView):
-    """POST /me/bookings/{id}/{confirm|decline|cancel}/. The coach confirms or declines a request; either
-    person cancels a booking that hasn't started."""
+    """POST /me/bookings/{id}/{confirm|decline|cancel|complete}/. The coach confirms or declines a request;
+    either person cancels a booking that hasn't started; the coach marks a confirmed session done once it
+    has started."""
 
     permission_classes = [IsAuthenticated]
     action = ""
@@ -645,6 +696,14 @@ class BookingActionView(APIView):
                 booking.status = (
                     Booking.Status.CONFIRMED if self.action == "confirm" else Booking.Status.DECLINED
                 )
+            elif self.action == "complete":
+                if not is_coach:
+                    raise ApiException("not_found", "Not found.", status.HTTP_404_NOT_FOUND)
+                if booking.status != Booking.Status.CONFIRMED:
+                    raise ApiException("not_confirmed", "Only a confirmed session can be marked done.", 409)
+                if booking.starts_at > timezone.now():
+                    raise ApiException("not_started", "This session hasn't started yet.", 409)
+                booking.status = Booking.Status.COMPLETED
             else:
                 if booking.status not in Booking.HOLDING:
                     raise ApiException("not_booked", "This session isn't booked.", 409)
@@ -721,7 +780,7 @@ class CoachCalendarView(APIView):
         ends = datetime.combine(last + timedelta(days=1), datetime.min.time(), tz)
         overlapping = {"starts_at__lt": ends, "ends_at__gt": starts}
         entries = []
-        for booking in my_bookings(request.user).filter(status__in=Booking.HOLDING, **overlapping):
+        for booking in my_bookings(request.user).filter(status__in=Booking.SHOWN, **overlapping):
             coaching = booking.coach_id == request.user.pk
             other = booking.trainee if coaching else booking.coach
             entries.append(

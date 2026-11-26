@@ -1,6 +1,6 @@
 # Production proxy image (TASK-058, deployment.md): Caddy with the PWA build and Django's static files.
-# It terminates HTTPS, serves the app, and passes /api/ (WebSockets included), /admin/ and /health/ to the
-# API. Build context is the repository root; the "api" context is the API production image, from which it
+# It terminates HTTPS, serves the app, and passes /api/ (WebSockets included) and /health/ to the API
+# (/admin is the app's own back office). Build context is the repository root; the "api" context is the API production image, from which it
 # takes the collected static files (compose wires it up; with plain buildx pass
 # --build-context api=docker-image://<api image>). The development image is ./Dockerfile.
 
