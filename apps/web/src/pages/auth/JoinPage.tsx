@@ -22,17 +22,27 @@ export function JoinPage() {
   const me = useMe()
   const invitation = useQuery({ queryKey: invitationKeys.detail(token), queryFn: () => getInvitation(token), retry: false })
   const next = `/join/${encodeURIComponent(token)}`
+  const member = !!invitation.data?.is_member
 
   return (
     <AuthLayout
-      title="You've been entered"
-      description={invitation.data ? `${invitation.data.organization_name} added you to Coast TT. Join to see your entries and check your details.` : undefined}
+      title={
+        !invitation.data ? "Your invitation" : member ? `Welcome to ${invitation.data.organization_name}` : "You've been entered"
+      }
+      description={
+        invitation.data
+          ? member
+            ? `${invitation.data.organization_name} added you as a member. Set your password to sign in.`
+            : `${invitation.data.organization_name} added you to Coast TT. Join to see your entries and check your details.`
+          : undefined
+      }
       footer={
-        !me.data && (
+        !me.data &&
+        invitation.data && (
           <>
             Already on Coast TT?{" "}
             <Link to={`/login?next=${encodeURIComponent(next)}`} className="font-semibold text-brand-blue underline-offset-4 hover:underline">
-              Log in to add these to your account
+              {member ? "Log in to add the membership to your account" : "Log in to add these to your account"}
             </Link>
           </>
         )
@@ -49,7 +59,7 @@ export function JoinPage() {
       {invitation.data && (
         <>
           <Entered invitation={invitation.data} />
-          {me.data ? <ClaimForAccount token={token} name={me.data.display_name} /> : <JoinForm token={token} invitation={invitation.data} />}
+          {me.data ? <ClaimForAccount token={token} name={me.data.display_name} member={member} /> : <JoinForm token={token} invitation={invitation.data} />}
         </>
       )}
     </AuthLayout>
@@ -58,9 +68,10 @@ export function JoinPage() {
 
 function Entered({ invitation }: { invitation: InvitationDetail }) {
   return (
-    <section aria-label="Your entries" className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+    <section aria-label={invitation.is_member ? "Your invitation" : "Your entries"} className="flex flex-col gap-2 rounded-xl border bg-card p-4">
       <p>
-        {invitation.invited_by_name ?? "The organizer"} entered you as <strong>{invitation.guest_name}</strong>.
+        {invitation.invited_by_name ?? "The organizer"} {invitation.is_member ? `added you to ${invitation.organization_name} as` : "entered you as"}{" "}
+        <strong>{invitation.guest_name}</strong>.
       </p>
       {invitation.entries.length > 0 ? (
         <ul className="flex flex-col gap-2">
@@ -79,7 +90,7 @@ function Entered({ invitation }: { invitation: InvitationDetail }) {
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">No tournament entries yet.</p>
+        !invitation.is_member && <p className="text-sm text-muted-foreground">No tournament entries yet.</p>
       )}
     </section>
   )
@@ -153,7 +164,7 @@ function JoinForm({ token, invitation }: { token: string; invitation: Invitation
         value={form.email}
         onChange={set("email")}
         error={errors.email}
-        hint={changedEmail ? "We'll send a link to confirm this address before you can log in." : undefined}
+        hint={changedEmail ? "We'll send a link to confirm this address before you can log in." : "Add it to get match calls, schedule changes and results by email."}
       />
       <Field
         label="Phone number"
@@ -168,19 +179,19 @@ function JoinForm({ token, invitation }: { token: string; invitation: Invitation
       />
       <PasswordField label="Choose a password" autoComplete="new-password" value={form.password} onChange={set("password")} error={errors.password} hint={`At least ${MIN_PASSWORD_LENGTH} characters.`} />
       <Button type="submit" size="lg" disabled={join.isPending}>
-        {join.isPending ? "Joining…" : "Join and see my entries"}
+        {join.isPending ? "Joining…" : invitation.is_member ? "Set password and sign in" : "Join and see my entries"}
       </Button>
     </form>
   )
 }
 
-function ClaimForAccount({ token, name }: { token: string; name: string }) {
+function ClaimForAccount({ token, name, member }: { token: string; name: string; member: boolean }) {
   const navigate = useNavigate()
   const claim = useMutation({ mutationFn: () => claimByLink(token) })
   if (claim.data) {
     return claim.data.status === "merged" ? (
       <div role="status" className="flex flex-col gap-3">
-        <p className="font-semibold text-success">Done: these entries are on your account now.</p>
+        <p className="font-semibold text-success">Done: {member ? "the membership and any entries are" : "these entries are"} on your account now.</p>
         <Button size="lg" onClick={() => navigate("/play")}>
           See my tournaments
         </Button>
@@ -194,7 +205,7 @@ function ClaimForAccount({ token, name }: { token: string; name: string }) {
   return (
     <div className="flex flex-col gap-3">
       <p>
-        You're logged in as <strong>{name}</strong>. Add these entries and any results to your account?
+        You're logged in as <strong>{name}</strong>. {member ? "Add the membership, and any entries and results, to your account?" : "Add these entries and any results to your account?"}
       </p>
       {claim.isError && <FormAlert>{errorMessage(claim.error)}</FormAlert>}
       <Button size="lg" disabled={claim.isPending} onClick={() => claim.mutate()}>

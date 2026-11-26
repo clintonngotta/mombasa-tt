@@ -1,0 +1,142 @@
+{
+  "name": "F-SC13: penalty points are points: they end a game, carry into the next, and end the match",
+  "rules": "3.5.2.3, 2.11.1",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "points": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "points": "bbbbbbbbb",
+      "expect": {
+        "points": [
+          0,
+          10
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "games": [
+          [
+            0,
+            11
+          ]
+        ],
+        "games_won": [
+          0,
+          1
+        ],
+        "game_number": 2,
+        "points": [
+          0,
+          1
+        ],
+        "server": "b1",
+        "receiver": "a1",
+        "a_end": "right",
+        "status": "in_progress"
+      }
+    },
+    {
+      "points": "bbbbbbbbb",
+      "expect": {
+        "points": [
+          0,
+          10
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "b1",
+        "reason": "bad_behaviour"
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "b1",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "points": [
+          1,
+          10
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "b1",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "points": [
+          3,
+          10
+        ]
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "status": "completed",
+        "winner": "b",
+        "outcome": "played",
+        "games": [
+          [
+            0,
+            11
+          ],
+          [
+            3,
+            11
+          ]
+        ],
+        "games_won": [
+          0,
+          2
+        ],
+        "points": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

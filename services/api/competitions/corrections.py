@@ -30,7 +30,9 @@ def _ensure_open(match: Match) -> None:
         raise _conflict("event_closed", "This event is over, so its results can't change here.")
 
 
-def enter(match: Match, rubber: Rubber | None, winner: Entry, outcome: str, games, actor) -> None:
+def enter(
+    match: Match, rubber: Rubber | None, winner: Entry, outcome: str, games, actor, reason: str = ""
+) -> None:
     """The organizers record a result themselves: a walkover, a retirement or a paper score sheet. It
     is official at once, like a result confirmed on the scoring deck."""
     _ensure_open(match)
@@ -48,9 +50,13 @@ def enter(match: Match, rubber: Rubber | None, winner: Entry, outcome: str, game
     if same and standing.source == Source.STAFF and standing.recorded_by_id == actor.id:
         return  # the same entry sent again (its first answer was lost): nothing changes
     if rubber is not None:
-        ties.record_rubber(rubber, winner, outcome=outcome, games=games, actor=actor, source=Source.STAFF)
+        ties.record_rubber(
+            rubber, winner, outcome=outcome, games=games, actor=actor, source=Source.STAFF, reason=reason
+        )
     else:
-        drawing.record_result(match, winner, outcome=outcome, games=games, actor=actor, source=Source.STAFF)
+        drawing.record_result(
+            match, winner, outcome=outcome, games=games, actor=actor, source=Source.STAFF, reason=reason
+        )
 
 
 def started(match: Match) -> bool:

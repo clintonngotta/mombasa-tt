@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, ArrowLeftRight, CircleCheck, CloudOff, LoaderCircle, Undo2, WifiOff } from "lucide-react"
 import { gamesNeeded, partnerOf, sideOf, type End, type Player, type Side, type State } from "@scoring"
 import { errorMessage } from "@/lib/api"
@@ -10,7 +10,9 @@ import { drawKeys } from "@/lib/draws"
 import { configOf, confirmScorecard, namesOf, scoringKeys, winnersGames, winnersScore, type Names, type Scorecard } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 import { UpdateBanner } from "@/components/layout/UpdateBanner"
+import { CardBadges, ExpediteBar, IncidentMenu, SuspensionBanner, TimeoutBanner } from "@/components/scoring/Incidents"
 import { useAppUpdate } from "@/lib/pwa"
+import { getNextOnTable, umpireKeys } from "@/lib/reservations"
 
 const deckButton =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-4 text-base font-semibold text-white outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-brand-cyan disabled:opacity-40"
@@ -244,6 +246,7 @@ function Setup({ card, onStart }: { card: Scorecard; onStart: (event: { type: "s
 }
 
 function Panel({ side, state, names, card, onPoint, live }: { side: Side; state: State; names: Names; card: Scorecard; onPoint: () => void; live: boolean }) {
+  const players = [...card.a.players, ...card.b.players].map((player) => player.slot as Player)
   const index = side === "a" ? 0 : 1
   const serving = state.server !== null && sideOf(state.server) === side
   const receiving = state.receiver !== null && sideOf(state.receiver) === side
@@ -265,6 +268,7 @@ function Panel({ side, state, names, card, onPoint, live }: { side: Side; state:
         )}
         {doubles && receiving && state.receiver && <span className="rounded border border-white/40 px-2 text-sm">Receiving: {names[state.receiver]}</span>}
       </span>
+      <CardBadges state={state} side={side} players={players} />
       <span aria-hidden className="font-display text-[clamp(80px,24vw,144px)] leading-none font-bold tabular-nums">
         {state.points[index]}
       </span>
@@ -287,6 +291,9 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
   const deciding = !finished && state.game_number === config.best_of
   const choosing = config.doubles && !finished && state.game_number > 1 && state.points[0] + state.points[1] === 0 && state.server
   const column = (side: Side) => (side === "a" ? 0 : 1)
+  const players = [...card.a.players, ...card.b.players].map((player) => player.slot as Player)
+  // Play is stopped while a player is suspended: the panels give no point until it resumes.
+  const playing = !finished && state.suspended === null
 
   return (
     <>
@@ -297,7 +304,7 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
         </p>
         <div className="grid grid-cols-2 divide-x divide-white/20">
           {order.map((side) => (
-            <Panel key={side} side={side} state={state} names={names} card={card} live={!finished} onPoint={() => deck.act({ type: "point", side })} />
+            <Panel key={side} side={side} state={state} names={names} card={card} live={playing} onPoint={() => deck.act({ type: "point", side })} />
           ))}
         </div>
         {state.games.length > 0 && (
@@ -312,6 +319,10 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
           </ol>
         )}
       </section>
+
+      {!finished && state.timeout_running.some(Boolean) && <TimeoutBanner key={state.timeouts.join()} state={state} names={names} act={deck.act} />}
+      {!finished && state.suspended && <SuspensionBanner key={state.suspended} side={state.suspended} names={names} act={deck.act} />}
+      {!finished && state.expedite && <ExpediteBar state={state} names={names} act={deck.act} />}
 
       {choosing && state.server && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/20 bg-white/5 p-3">
@@ -328,14 +339,14 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
         <Finish card={card} state={state} deck={deck} />
       ) : (
         <div className="grid grid-cols-3 gap-2">
-          <button type="button" className={deckButton} disabled={state.timeouts[column(order[0])]} onClick={() => deck.act({ type: "timeout", side: order[0] })}>
+          <button type="button" className={deckButton} disabled={state.timeouts[column(order[0])] || state.points[0] + state.points[1] === 0} onClick={() => deck.act({ type: "timeout", side: order[0] })}>
             Time-out
             <span className="sr-only"> for {names[order[0]]}</span>
           </button>
           <button type="button" className={deckButton} disabled={deck.undoable === 0} onClick={() => deck.act({ type: "undo" })}>
             <Undo2 aria-hidden className="size-5" /> Undo
           </button>
-          <button type="button" className={deckButton} disabled={state.timeouts[column(order[1])]} onClick={() => deck.act({ type: "timeout", side: order[1] })}>
+          <button type="button" className={deckButton} disabled={state.timeouts[column(order[1])] || state.points[0] + state.points[1] === 0} onClick={() => deck.act({ type: "timeout", side: order[1] })}>
             Time-out
             <span className="sr-only"> for {names[order[1]]}</span>
           </button>
@@ -345,6 +356,9 @@ function Play({ card, state, deck }: { card: Scorecard; state: State; deck: Retu
           <p className="col-span-3 text-center text-sm text-white/70">
             Tap a side to give it the point. Each side has one time-out{state.timeouts.some(Boolean) ? `; used: ${order.filter((side) => state.timeouts[column(side)]).map((side) => names[side]).join(", ")}` : ""}.
           </p>
+          <div className="col-span-3">
+            <IncidentMenu state={state} names={names} players={players} canDisqualify={card.can_disqualify} act={deck.act} />
+          </div>
         </div>
       )}
     </>
@@ -369,7 +383,7 @@ function Finish({ card, state, deck }: { card: Scorecard; state: State; deck: Re
   return (
     <section aria-labelledby="finish-heading" className="flex flex-col gap-3 rounded-xl border border-brand-gold/60 bg-brand-gold/10 p-4">
       <h1 id="finish-heading" className="text-2xl font-bold">
-        {state.winner ? names[state.winner] : "Nobody"} won {winnersScore(state)}
+        {state.winner ? names[state.winner] : "Nobody"} won {endedHow(state, names)}
       </h1>
       <p className="text-white/80">Check the games above with both sides. Confirming makes the result official; after that only the organizers can correct it.</p>
       {confirm.isError && <p role="alert" className="text-brand-gold">{errorMessage(confirm.error)}</p>}
@@ -386,6 +400,14 @@ function Finish({ card, state, deck }: { card: Scorecard; state: State; deck: Re
   )
 }
 
+/** "3–1", or for an early end "by retirement: Brian couldn't go on, 1–0 in games". */
+function endedHow(state: State, names: Names) {
+  const loser = state.winner === "a" ? "b" : "a"
+  if (state.outcome === "retired") return `by retirement: ${names[loser]} retired at ${winnersScore(state)} in games`
+  if (state.outcome === "disqualified") return `by disqualification of ${names[loser]}, at ${winnersScore(state)} in games`
+  return winnersScore(state)
+}
+
 function Confirmed({ card, state, back }: { card: Scorecard; state: State; back: string }) {
   const names = namesOf(card)
   return (
@@ -394,12 +416,39 @@ function Confirmed({ card, state, back }: { card: Scorecard; state: State; back:
         <CircleCheck aria-hidden className="size-6 text-brand-cyan" /> Result confirmed
       </h1>
       <p>
-        {state.winner ? names[state.winner] : ""} won {winnersScore(state)} ({winnersGames(state)}).
+        {state.winner ? names[state.winner] : ""} won {endedHow(state, names)}
+        {state.games.length > 0 && ` (${winnersGames(state)})`}.
       </p>
-      <Link to={back} className={cn(primaryButton, "self-start")}>
+      <NextOnTable scorecardId={card.id} />
+      <Link to={back} className={cn(deckButton, "self-start")}>
         Back to the match
       </Link>
     </section>
+  )
+}
+
+/** What takes this table next (REQ-053): the match already sent here, or the one recommended. */
+function NextOnTable({ scorecardId }: { scorecardId: string }) {
+  // Asked again now and then: automatic dispatch may send the next match a moment after the result.
+  const next = useQuery({ queryKey: umpireKeys.next(scorecardId), queryFn: () => getNextOnTable(scorecardId), refetchInterval: 15_000, staleTime: 0 })
+  const shown = next.data?.next
+  if (!shown) return null
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-brand-cyan/40 bg-white/5 p-3">
+      <p className="text-sm font-semibold text-brand-cyan">
+        {next.data?.on_table ? `Next on ${shown.table}` : `Recommended next on ${shown.table}`} · {shown.event_name}
+      </p>
+      <p className="text-lg font-bold">
+        {shown.a} v {shown.b}
+      </p>
+      {next.data?.scorecard_id ? (
+        <Link to={`/score/${next.data.scorecard_id}`} className={cn(primaryButton, "self-start")}>
+          Score the next match
+        </Link>
+      ) : (
+        <p className="text-sm text-white/70">{next.data?.on_table ? "The organizers will give it an umpire." : "The organizers send it to the table: nothing is sent yet."}</p>
+      )}
+    </div>
   )
 }
 

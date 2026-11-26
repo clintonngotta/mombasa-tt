@@ -24,8 +24,9 @@ def can_watch(user, tournament_id) -> bool:
 
 
 class TournamentConsumer(AsyncJsonWebsocketConsumer):
-    """/api/v1/ws/tournaments/{id}/: pushes {"type": "changed", "topic", "event"} when the tournament's
-    scores or results change. The browser only listens; anything it sends is ignored."""
+    """/api/v1/ws/tournaments/{id}/: pushes {"type": "changed", "topic", "event", "match"} when the
+    tournament's scores, results or board change; a score names its match. The browser only listens;
+    anything it sends is ignored."""
 
     group = None
 
@@ -47,4 +48,11 @@ class TournamentConsumer(AsyncJsonWebsocketConsumer):
         return
 
     async def changed(self, message):
-        await self.send_json({"type": "changed", "topic": message["topic"], "event": message["event"]})
+        await self.send_json(
+            {
+                "type": "changed",
+                "topic": message["topic"],
+                "event": message["event"],
+                "match": message.get("match"),
+            }
+        )

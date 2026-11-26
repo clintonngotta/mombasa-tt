@@ -49,7 +49,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - Organizer dashboard: one page per hosted tournament that links entries, draw, schedule, dispatch, scoring overview, corrections and ceremony, with counts. Replaces `HostedTournamentsPage`.
 - Tests: add every new route to `tests/test_privacy_matrix.py` with negative assertions (unpublished, private fields). Browser run of the signed-out journey and the admin journey.
 
-**TASK-082: match-day control centre (L)** `feat/control-centre`, after 2.0
+**TASK-082: match-day control centre (L)** `feat/control-centre`, after 2.0. Done 2026-11-22 (see tasks.md); walkovers are now the referee's alone.Choosing the umpire stays on the match page.
 - Table board states: free, called, warming up, in play, blocked with a reason. Built from reservations, scoring and delays.
 - Check-in desk view for the existing entry check-in and undo.
 - Call timestamps (a `MatchCall` model or fields), a grace period per event, and an automatic no-show flag. Only the referee then decides the walkover.
@@ -57,7 +57,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - One match-day audit log covering calls, recalls, moves, assignments, outcomes and corrections.
 - Tests: referee permission matrix. Screenshots at desktop and tablet sizes.
 
-**TASK-083: scoring incidents (L)** `feat/scoring-incidents`, after D1 and 2.0
+**TASK-083: scoring incidents (L)** `feat/scoring-incidents`, after D1 and 2.0. Done 2026-11-22 (see tasks.md); the owner approved the incident clauses and the house reading (a second penalty point carrying into the next game) the same day.
 - Add incident events to both engines (`packages/scoring/src`, `services/api/scoring/engine.py`):
   - timeout start and end with a countdown
   - player cards: the ladder, penalty points scored as normal points (including game-ending ones), and carry-over across a team tie's rubbers
@@ -69,13 +69,13 @@ Order: shared groundwork first, then the features in parallel tracks.
 - Shared incident fixtures run in both languages. Regenerate the parity file (`pnpm gen:parity`).
 - Umpire deck controls for each incident, at 390 px and on tablet.
 
-**TASK-084: live score channel (M)** `feat/live-scores`, after 035 (and 083 for incident display)
+**TASK-084: live score channel (M)** `feat/live-scores`, after 035 (and 083 for incident display). Done 2026-11-22 (see tasks.md); local trace p95 666 ms.
 - A per-match topic. The payload stays data-free; clients refetch, as now.
 - Score strip component. Live match detail showing server, games, timeouts, cards and status. Public and member live views, with polling as the fallback.
 - A test that live views never render umpire controls.
 - A latency trace script: p95 under 2 s from umpire event to viewer render. Reused by TASK-061.
 
-**TASK-085: results announcements (M–L)** `feat/results-announcements`, after 2.0 (DQ) and 035
+**TASK-085: results announcements (M–L)** `feat/results-announcements`, after 2.0 (DQ) and 035. Done 2026-11-22 (see tasks.md).
 - Generator scoped to a session, round, day, event or tournament, built only from official results. It marks W/O, ret., DQ and pending matches and includes no private fields.
 - Draft editor with plain-text and image-card previews (reuse the `recap.py` card).
 - A tournament news feed: a new model shown on the public tournament page. Publishing notifies and offers a share link.
@@ -92,14 +92,14 @@ Order: shared groundwork first, then the features in parallel tracks.
 
 ## 3. Governance (code)
 
-**TASK-107: regional and national bodies (M–L)** `feat/governance-bodies`, after D4 and 0.2
+**TASK-107: regional and national bodies (M–L)** `feat/governance-bodies`, after D4 and 0.2. Done 2026-11-22 (see tasks.md): bodies are created by platform super admins through `POST /regional-bodies/` (not the Django admin), and the approval permission is held through the bodies' Official role.
 - Add `Organization.Kind.NATIONAL_BODY`, one per country. Serializer guards.
 - Super admins create a body and name its first admin. Same positions, fields and roles as clubs (`organizations/committee.py`).
 - Approval permission (D4). Rewrite `access.official_for` and `managed_organizations` to read body membership plus that permission, not `OfficialAppointment`. Keep the rule that officials hold no club permission.
 - Data migration: each appointment becomes a membership of the matching body, creating the body if it is missing. Cover country appointments and users with several appointments.
 - Rebuild the fixtures in `test_authority.py` and `test_regions.py` on bodies. The TASK-094 approval tests must pass.
 
-**TASK-108: representatives (M)** `feat/representatives`, after 107
+**TASK-108: representatives (M)** `feat/representatives`, after 107. Done 2026-11-25 (see tasks.md): the cap is checked under the body's lock at nomination and again at acceptance; a representative is not a member of the body.
 - Representative model: nominating organization, receiving body, member, term, and a status of pending, accepted, declined or ended.
 - Per-club cap, enforced under the organization lock. Accept and decline. Replacement.
 - End the term when the representative leaves the club (hook where leaving ends positions).
@@ -107,7 +107,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - Others see only display name and club.
 - Tests for the cap, removal and privacy. Screens.
 
-**TASK-109: meetings, agendas and minutes (L)** `feat/meeting-minutes`. The parts that don't need representatives can start after 0.1.
+**TASK-109: meetings, agendas and minutes (L)** `feat/meetings`. Done 2026-11-25 (see tasks.md); the agenda stayed JSON with an id per item rather than moving to rows. The parts that don't need representatives can start after 0.1.
 - Move the JSON agenda into agenda items with attachments (a new `Attachment.Purpose` and access rule). Revise after publishing, with notices.
 - Add a `MEETING` notification category. Invitees are notified of publish, change and cancel only.
 - Secretary records present, late, apologies or absent, with times. Check-in stays limited to the meeting window.
@@ -115,7 +115,7 @@ Order: shared groundwork first, then the features in parallel tracks.
 - "My action items" across bodies. A representatives audience once TASK-108 lands.
 - Tests: check-in window, minutes immutability, visibility. Browser check.
 
-**TASK-110: non-competition events (M)** `feat/body-events`, after 108
+**TASK-110: non-competition events (M)** `feat/community-events`, after 108. Done 2026-11-25 (see tasks.md)
 - Activities hosted by bodies as well as clubs. New kinds: workshop, clinic, award night.
 - Audiences: members, invited representatives, named people, all signed-in players, plus optional public.
 - Check-in and attendance with times (reuse the TASK-109 approach).

@@ -68,7 +68,7 @@ def test_a_signed_in_viewer_hears_that_a_tournament_changed_but_not_what(
 
         def change():
             with django_capture_on_commit_callbacks(execute=True):
-                broadcast.tournament_changed(tournament["id"], "scores", event_id="e1")
+                broadcast.tournament_changed(tournament["id"], "scores", event_id="e1", match_id="m1")
 
         await sync_to_async(change)()
         heard = await socket.receive_json_from(timeout=2)
@@ -77,7 +77,7 @@ def test_a_signed_in_viewer_hears_that_a_tournament_changed_but_not_what(
         await socket.disconnect()
         return heard
 
-    assert async_to_sync(scenario)() == {"type": "changed", "topic": "scores", "event": "e1"}
+    assert async_to_sync(scenario)() == {"type": "changed", "topic": "scores", "event": "e1", "match": "m1"}
 
 
 @pytest.mark.django_db(transaction=True)
@@ -107,8 +107,11 @@ def test_a_result_tells_the_tournament_once_committed(
     with django_capture_on_commit_callbacks(execute=True):
         outbox.work()
     group = f"tournament.{game['cup']['id']}"
-    assert sent and all(g == group and m["topic"] == "results" for g, m in sent)
-    assert {m["event"] for _, m in sent} == {game["event"]["id"]}
+    results = [m for g, m in sent if m["topic"] == "results"]
+    # The results desk also writes the match-day log, which tells the control centre ("board").
+    assert results and {m["topic"] for _, m in sent} == {"results", "board"}
+    assert all(g == group for g, _ in sent)
+    assert {m["event"] for m in results} == {game["event"]["id"]}
 
 
 def test_a_broadcast_with_redis_down_does_not_fail_the_change(monkeypatch, caplog):

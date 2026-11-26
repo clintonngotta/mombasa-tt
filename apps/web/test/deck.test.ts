@@ -344,8 +344,8 @@ test("the server holding another event at that place is a conflict: kept, shown,
   await deck.act(START)
   await deck.flush()
   server.online = false
-  await deck.act({ type: "timeout", side: "a" })
   await deck.act(point("a"))
+  await deck.act({ type: "timeout", side: "a" })
   // Scored from somewhere else meanwhile, under the same assignment.
   server.events.push({ id: "theirs", sequence: 2, event: point("b") })
   server.online = true

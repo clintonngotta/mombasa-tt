@@ -15,6 +15,7 @@ export type DelayReason = Schemas["DelayReasonEnum"]
 export const DELAY_REASON_LABEL: Record<DelayReason, string> = {
   late_start: "Late start",
   out_of_service: "Table out of service",
+  player_request: "A player's request",
   other: "Other",
 }
 

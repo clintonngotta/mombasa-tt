@@ -602,6 +602,7 @@ dependencies = [
     { name = "drf-spectacular" },
     { name = "pillow" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "redis" },
 ]
 
 [package.dev-dependencies]
@@ -624,6 +625,7 @@ requires-dist = [
     { name = "drf-spectacular", specifier = ">=0.30.0" },
     { name = "pillow", specifier = ">=11" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
+    { name = "redis", specifier = ">=5.2" },
 ]
 
 [package.metadata.requires-dev]

@@ -7,6 +7,7 @@ import { SearchSelect } from "@/components/forms/SelectField"
 import { errorMessage } from "@/lib/api"
 import { drawKeys, type MatchDetail } from "@/lib/draws"
 import { assignUmpire, listUmpires, SCORING_STATUS_LABEL, scoringKeys, type ScoringSummary } from "@/lib/scoring"
+import { reservationKeys } from "@/lib/reservations"
 
 type Ids = { tournamentId: string; eventId: string; matchId: string }
 
@@ -26,6 +27,8 @@ export function UmpireControl({ scoring, ids, rubberId, what }: { scoring: Scori
     onSuccess: (fresh: MatchDetail) => {
       queryClient.setQueryData(drawKeys.match(ids.matchId), fresh)
       void queryClient.invalidateQueries({ queryKey: scoringKeys.mine })
+      // The control centre shows the umpire on each table: read it again.
+      void queryClient.invalidateQueries({ queryKey: reservationKeys.board(ids.tournamentId) })
       setChoosing(false)
     },
   })
@@ -62,7 +65,7 @@ export function UmpireControl({ scoring, ids, rubberId, what }: { scoring: Scori
               ...(umpires.data ?? []).map((umpire) => ({ value: umpire.id, label: umpire.display_name })),
             ]}
           />
-          <p className="text-muted-foreground">Members whose role lets them score matches, and those who run competitions. A player can't umpire their own match.</p>
+          <p className="text-muted-foreground">The tournament's umpires, members whose role lets them score, and those who run competitions. A player can't umpire their own match.</p>
           {assign.isError && <FormAlert>{errorMessage(assign.error)}</FormAlert>}
           <div className="flex flex-wrap gap-2">
             <Button disabled={!chosen || assign.isPending} onClick={() => assign.mutate(chosen)}>

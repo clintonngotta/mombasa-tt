@@ -1,0 +1,159 @@
+{
+  "name": "F-SC12: the player card ladder: yellow, yellow-red 1 point, yellow-red 2 points, then the referee",
+  "rules": "3.5.2.2-3.5.2.4",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      },
+      "error": "not_in_progress"
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "offences": {
+          "a1": 1,
+          "a2": 0,
+          "b1": 0,
+          "b2": 0
+        },
+        "points": [
+          0,
+          0
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "rudeness"
+      },
+      "error": "invalid_card"
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "b2",
+        "reason": "bad_behaviour"
+      },
+      "error": "unknown_event"
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "racket_abuse"
+      },
+      "expect": {
+        "offences": {
+          "a1": 2,
+          "a2": 0,
+          "b1": 0,
+          "b2": 0
+        },
+        "points": [
+          0,
+          1
+        ],
+        "server": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "delay"
+      },
+      "expect": {
+        "offences": {
+          "a1": 3,
+          "a2": 0,
+          "b1": 0,
+          "b2": 0
+        },
+        "points": [
+          0,
+          3
+        ],
+        "server": "b1",
+        "receiver": "a1"
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      },
+      "error": "refer_to_referee"
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "b1",
+        "reason": "illegal_advice"
+      },
+      "expect": {
+        "offences": {
+          "a1": 3,
+          "a2": 0,
+          "b1": 1,
+          "b2": 0
+        },
+        "points": [
+          0,
+          3
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "offences": {
+          "a1": 3,
+          "a2": 0,
+          "b1": 0,
+          "b2": 0
+        }
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "offences": {
+          "a1": 2,
+          "a2": 0,
+          "b1": 0,
+          "b2": 0
+        },
+        "points": [
+          0,
+          1
+        ]
+      }
+    }
+  ]
+}

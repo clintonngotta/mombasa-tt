@@ -1,0 +1,110 @@
+{
+  "name": "F-SC11: a time-out runs until play resumes; both sides may claim one at once",
+  "rules": "3.4.4.2",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "b",
+      "expect": {
+        "points": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
+      "expect": {
+        "timeouts": [
+          true,
+          false
+        ],
+        "timeout_running": [
+          true,
+          false
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "timeout_end"
+      },
+      "expect": {
+        "timeout_running": [
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "timeout_end"
+      },
+      "error": "no_timeout"
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "a"
+      },
+      "error": "timeout_used"
+    },
+    {
+      "event": {
+        "type": "timeout",
+        "side": "b"
+      },
+      "expect": {
+        "timeouts": [
+          true,
+          true
+        ],
+        "timeout_running": [
+          false,
+          true
+        ]
+      }
+    },
+    {
+      "points": "a",
+      "expect": {
+        "points": [
+          1,
+          1
+        ],
+        "timeout_running": [
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "points": [
+          0,
+          1
+        ],
+        "timeout_running": [
+          false,
+          true
+        ]
+      }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { Scoring, type ScoreEvent, type State } from "@scoring"
 import { ApiError } from "@/lib/api"
 import { Journal } from "@/lib/deck/journal"
 import { DeckStore, HEARTBEAT_MS, type DeckView, type Transport } from "@/lib/deck/store"
-import { configOf, getScorecard, REFUSAL, reportConflict, sendEvents, takeDevice, type Names, type Scorecard } from "@/lib/scoring"
+import { CARD_REASON_LABEL, configOf, getScorecard, REFUSAL, reportConflict, sendEvents, takeDevice, type Names, type Scorecard } from "@/lib/scoring"
 
 export type { Sync } from "@/lib/deck/store"
 
@@ -46,6 +46,28 @@ function describe(event: ScoreEvent, before: State, after: State, names: Names):
       return after === before ? `${names[event.player]} already serves first.` : `${names[event.player]} serves first in game ${after.game_number}.`
     case "timeout":
       return `Time-out: ${names[event.side]}.`
+    case "timeout_end":
+      return "Time-out over: play resumes."
+    case "card": {
+      const given = after.offences[event.player] // one up the ladder from the player's or the pair's count
+      const points = given - 1
+      const shown = given === 1 ? "Yellow card" : `Yellow and red card, ${points} penalty point${points === 1 ? "" : "s"}`
+      return `${shown}: ${names[event.player]} (${(CARD_REASON_LABEL[event.reason] ?? event.reason).toLowerCase()}).${event.note ? ` ${event.note}` : ""}`
+    }
+    case "adviser_card": {
+      const index = event.side === "a" ? 0 : 1
+      return `${after.advisers[index] === 1 ? "Yellow card" : "Red card, sent away"}: ${names[event.side]}'s adviser (${(CARD_REASON_LABEL[event.reason] ?? event.reason).toLowerCase()}).`
+    }
+    case "suspension":
+      return `Play suspended: ${names[event.side]} injured.`
+    case "suspension_end":
+      return "Suspension over: play resumes."
+    case "expedite":
+      return "Expedite system started: service changes every point."
+    case "retire":
+      return `${names[event.side]} retired. Match to ${names[event.side === "a" ? "b" : "a"]}.`
+    case "disqualify":
+      return `${names[event.side]} disqualified by the referee. Match to ${names[event.side === "a" ? "b" : "a"]}.`
     case "undo":
       return "Undo: the last action was taken back."
   }

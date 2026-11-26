@@ -18,6 +18,11 @@ def can_read(user, attachment: Attachment) -> bool:
         from competitions.views import sees_tournament
 
         return sees_tournament(user, attachment)
+    if attachment.purpose == Attachment.Purpose.MEETING_DOCUMENT:
+        # Decided by the meeting alone, even for whoever uploaded it.
+        from regions.minutes import reads_document
+
+        return reads_document(user, attachment)
     if attachment.owner_id == user.id:
         return True
     if attachment.purpose == Attachment.Purpose.AVATAR:

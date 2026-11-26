@@ -15,6 +15,7 @@ Staff may set aside the check-in and rest checks with a reason. Nothing sets asi
 import hashlib
 import logging
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
@@ -25,14 +26,14 @@ from competitions.models import DrawVersion, Entry, Event, Match, Rubber, Tourna
 from core.exceptions import ApiException
 from facilities.models import Table
 
-from .models import Hold, Reservation
+from .models import Hold, MatchCall, Reservation, TableBlock
 
 logger = logging.getLogger(__name__)
 
-CHECK_IN, REST = "check_in", "rest"
-OVERRIDABLE = (CHECK_IN, REST)
+CHECK_IN, REST, NOT_BEFORE = "check_in", "rest", "not_before"
+OVERRIDABLE = (CHECK_IN, REST, NOT_BEFORE)
 # Which check a refusal belongs to, when it is one staff may set aside.
-SETS_ASIDE = {"not_checked_in": CHECK_IN, "resting": REST}
+SETS_ASIDE = {"not_checked_in": CHECK_IN, "resting": REST, "not_before": NOT_BEFORE}
 
 
 class Blocked(ApiException):
@@ -143,10 +144,18 @@ def rest_until(user, event: Event):
 
 
 def dispatch(
-    match: Match, table: Table, actor, *, overrides=(), reason: str = "", automatic: bool = False
+    match: Match,
+    table: Table,
+    actor,
+    *,
+    overrides=(),
+    reason: str = "",
+    automatic: bool = False,
+    carry: Reservation | None = None,
 ) -> Reservation:
     """Send the match to the table: hold the table and the players, or say what stands in the way.
-    Call inside a transaction, with the tournament row locked."""
+    `carry` is the reservation of the table a match is moved from: its first call and who had reported
+    stay with the match. Call inside a transaction, with the tournament row locked."""
     overrides = [name for name in OVERRIDABLE if name in overrides]
     if overrides and not reason:
         raise ApiException("reason_required", "Say why the check is set aside.", 400)
@@ -172,12 +181,16 @@ def dispatch(
         raise Blocked(
             "table_busy", f"{table.label} is taken by a match of {held.reservation.match.draw.event.name}."
         )
+    blocked = TableBlock.objects.filter(table=table, ended_at__isnull=True).first()
+    if blocked:
+        raise Blocked("table_blocked", f"{table.label} is blocked: {blocked.get_reason_display().lower()}.")
     for blocked in standing_in_the_way(match, people, rubber):
         if SETS_ASIDE.get(blocked.blocker) not in overrides:
             raise blocked
 
     try:
         with transaction.atomic():
+            now = timezone.now()
             reservation = Reservation.objects.create(
                 match=match,
                 table=table,
@@ -185,7 +198,11 @@ def dispatch(
                 automatic=automatic,
                 overrides=overrides,
                 override_reason=reason,
+                called_at=(carry.called_at or carry.created_at) if carry else now,
+                a_reported_at=carry.a_reported_at if carry else None,
+                b_reported_at=carry.b_reported_at if carry else None,
             )
+            MatchCall.objects.create(match=match, reservation=reservation, called_by=actor)
             Hold.objects.create(reservation=reservation, table=table)
             Hold.objects.bulk_create(
                 Hold(reservation=reservation, user=user, rubber=rubber) for user in people
@@ -195,9 +212,25 @@ def dispatch(
     match.table = table
     match.dispatched_at = reservation.created_at
     match.save(update_fields=["table", "dispatched_at"])
+    from . import umpires
+
+    umpires.take_table_umpire(match, rubber, table, actor)
     from notifications import triggers
 
     triggers.called_to_table(match, reservation, [user.pk for user in people])
+    if carry is None:  # a move is logged by `control.move`, with its reason
+        from competitions import matchday
+
+        how = "automatically " if automatic else ""
+        matchday.log(
+            event.tournament_id,
+            matchday.Action.CALLED,
+            f"{matchday.match_title(match)} sent {how}to {table.label}",
+            actor=actor,
+            match=match,
+            table=table,
+            reason=reason,
+        )
     if not automatic:  # automatic dispatch announces once it has sent everything it can
         from . import board
 
@@ -223,7 +256,7 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
             for entry in (held.match.entry_a, held.match.entry_b):
                 if entry.id in sides:
                     found.append(
-                        Blocked("team_busy", f"{_entry_title(entry)} is playing a tie on {held.table.label}.")
+                        Blocked("team_busy", f"{entry_title(entry)} is playing a tie on {held.table.label}.")
                     )
     busy = Hold.objects.filter(user__in=people, active=True).select_related("user", "reservation__table")
     for hold in busy:
@@ -240,7 +273,7 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
         found.append(Blocked("umpire_busy", f"The umpire, {_name(umpire)}, is playing a match right now."))
     absent = [e for e in (match.entry_a, match.entry_b) if not jumbles.checked_in(e)]
     if absent:
-        names = " and ".join(_entry_title(entry) for entry in absent)
+        names = " and ".join(entry_title(entry) for entry in absent)
         verb = "hasn't" if len(absent) == 1 else "haven't"
         found.append(Blocked("not_checked_in", f"{names} {verb} checked in."))
     now = timezone.now()
@@ -255,10 +288,22 @@ def standing_in_the_way(match: Match, people: list, rubber: Rubber | None) -> li
             )
             blocked.until = until
             found.append(blocked)
+    # A player who can't play before a time (REQ-053).
+    from competitions.models import NotBefore
+
+    zone = ZoneInfo(event.tournament.timezone)
+    for later in NotBefore.objects.filter(
+        tournament_id=event.tournament_id, user__in=people, at__gt=now
+    ).select_related("user"):
+        blocked = Blocked(
+            "not_before", f"{_name(later.user)} can't play before {later.at.astimezone(zone):%H:%M}."
+        )
+        blocked.until = later.at
+        found.append(blocked)
     return found
 
 
-def _entry_title(entry: Entry) -> str:
+def entry_title(entry: Entry) -> str:
     return entry.team_name or " / ".join(place.user.display_name for place in entry.players.all())
 
 
@@ -331,7 +376,18 @@ def recall(match: Match, actor, reason: str) -> None:
     from notifications import triggers
 
     triggers.taken_off_table(match, players, reason)
-    _off_the_table(match)
+    from competitions import matchday
+
+    matchday.log(
+        match.draw.event.tournament_id,
+        matchday.Action.RECALLED,
+        f"{matchday.match_title(match)} off {reservation.table.label}",
+        actor=actor,
+        match=match,
+        table=reservation.table,
+        reason=reason,
+    )
+    off_the_table(match)
     look_for_the_next(match.draw.event.tournament, actor)
 
 
@@ -349,7 +405,7 @@ def look_for_the_next(tournament: Tournament, actor=None) -> None:
         logger.exception("Automatic dispatch failed for tournament %s", tournament.id)
 
 
-def _off_the_table(match: Match) -> None:
+def off_the_table(match: Match) -> None:
     match.table = None
     match.dispatched_at = None
     match.save(update_fields=["table", "dispatched_at"])
@@ -370,7 +426,7 @@ def on_event_closed(sender, event: Event, actor=None, **kwargs) -> None:
     for reservation in left.select_related("match"):
         lock()
         release(reservation, actor, Reservation.Ending.CLOSED)
-        _off_the_table(reservation.match)
+        off_the_table(reservation.match)
     look_for_the_next(event.tournament, actor)
 
 
@@ -387,6 +443,11 @@ def on_rubber_decided(sender, rubber: Rubber, tie_decided: bool = False, **kwarg
     done.update(active=False, released_at=timezone.now())
     if not tie_decided:  # what is left of a decided tie isn't played: nobody is held for it
         hold_next_rubber(reservation)
+        following = current_rubber(reservation.match)
+        if following is not None:
+            from . import umpires
+
+            umpires.take_table_umpire(reservation.match, following, reservation.table, None)
     _hold_those_waiting_for(freed)
 
 
@@ -442,7 +503,9 @@ def active_for(tournament: Tournament) -> list[Reservation]:
             match__draw__event__tournament=tournament, status=Reservation.Status.ACTIVE
         )
         .select_related("table", "match__draw__event", "match__entry_a", "match__entry_b", "created_by")
-        .prefetch_related("holds__user", "match__entry_a__players__user", "match__entry_b__players__user")
+        .prefetch_related(
+            "holds__user", "match__calls", "match__entry_a__players__user", "match__entry_b__players__user"
+        )
         .order_by("table__position", "created_at")
     )
 
@@ -457,8 +520,8 @@ def describe(reservation: Reservation) -> dict:
         "event_id": match.draw.event_id,
         "event_name": match.draw.event.name,
         "match_id": match.id,
-        "a": _entry_title(match.entry_a),
-        "b": _entry_title(match.entry_b),
+        "a": entry_title(match.entry_a),
+        "b": entry_title(match.entry_b),
         "since": reservation.created_at,
         "automatic": reservation.automatic,
         "people": sorted(

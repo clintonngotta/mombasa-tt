@@ -57,8 +57,14 @@ def is_news(tournament: Tournament, before: tuple, after: tuple) -> bool:
     return abs(new_at - old_at) > timedelta(minutes=tournament.schedule_notice_minutes)
 
 
-def _record(tournament, actor, kind, moves: list, **extra) -> ScheduleVersion:
-    """Apply `moves` (match, new table, new start) to what is published, and keep the version."""
+def record(tournament, actor, kind, moves: list, **extra) -> ScheduleVersion:
+    """Apply `moves` (match, new table, new start) to what is published, and keep the version. The first
+    version sets when the order of play goes public (REQ-053); until then a change is nobody's news
+    but the staff's, since nobody else has seen a time."""
+    from . import order_of_play
+
+    order_of_play.hold_back(tournament)
+    out = order_of_play.released(tournament)
     changes = []
     for match, table, at in moves:
         before = (match.planned_table, match.scheduled_at)
@@ -71,7 +77,7 @@ def _record(tournament, actor, kind, moves: list, **extra) -> ScheduleVersion:
                 "title": scheduling._title(match),
                 "before": {"table": _table(before[0]), "scheduled_at": _iso(before[1])},
                 "after": {"table": _table(table), "scheduled_at": _iso(at)},
-                "notify": is_news(tournament, before, (table, at)),
+                "notify": out and is_news(tournament, before, (table, at)),
             }
         )
         match.planned_table, match.scheduled_at = table, at
@@ -113,7 +119,7 @@ def publish(tournament: Tournament, actor, note: str = "") -> ScheduleVersion:
     ]
     if not moves:
         raise ApiException("nothing_to_publish", "The published schedule already matches the plan.", 409)
-    return _record(tournament, actor, ScheduleVersion.Kind.PUBLISHED, moves, note=note)
+    return record(tournament, actor, ScheduleVersion.Kind.PUBLISHED, moves, note=note)
 
 
 def delay(tournament: Tournament, actor, table, minutes: int, reason: str, note: str = "") -> dict:
@@ -136,7 +142,7 @@ def delay(tournament: Tournament, actor, table, minutes: int, reason: str, note:
                 match.draft_table, match.draft_at = plan.table, plan.at
                 match.save(update_fields=["draft_table", "draft_at"])
             moves.append((match, plan.table, plan.at))
-    version = _record(
+    version = record(
         tournament,
         actor,
         ScheduleVersion.Kind.DELAY,
@@ -196,9 +202,11 @@ def notify(payload: dict) -> None:
         for user in people:
             lines_for.setdefault(user, []).append(line)
     sent = 0
-    why = {"late_start": "a table started late", "out_of_service": "a table is out of service"}.get(
-        version.reason, "the organizers changed the schedule"
-    )
+    why = {
+        "late_start": "a table started late",
+        "out_of_service": "a table is out of service",
+        "player_request": "a player asked to start later",
+    }.get(version.reason, "the organizers changed the schedule")
     for user, lines in lines_for.items():
         if not user.can_receive_email:  # a guest: club staff pass the news on
             continue

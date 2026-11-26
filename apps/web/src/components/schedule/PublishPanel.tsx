@@ -20,7 +20,8 @@ import {
 } from "@/lib/schedule"
 import { tournamentKeys, updateTournament, type Tournament } from "@/lib/tournaments"
 
-const REASONS = Object.keys(DELAY_REASON_LABEL) as DelayReason[]
+// A player's request moves matches from the order of play page, not as a table delay.
+const REASONS = (Object.keys(DELAY_REASON_LABEL) as DelayReason[]).filter((reason): reason is Exclude<DelayReason, "player_request"> => reason !== "player_request")
 
 type Place = ScheduleVersion["changes"][number]["before"]
 
@@ -33,6 +34,9 @@ function versionTitle(version: ScheduleVersionSummary) {
   if (version.kind === "delay") {
     const reason = version.reason ? DELAY_REASON_LABEL[version.reason as DelayReason] : "Delay"
     return `${reason}: ${version.delayed_table?.label ?? "a table"} ${version.delay_minutes} min later`
+  }
+  if (version.kind === "moved") {
+    return `Moved later${version.reason === "player_request" ? " at a player's request" : ""}`
   }
   return "Published"
 }
@@ -69,7 +73,7 @@ export function PublishPanel({ tournament, schedule, onConflicts }: { tournament
   const [threshold, setThreshold] = useState<string | null>(null)
   const [delayTableId, setDelayTableId] = useState("")
   const [minutes, setMinutes] = useState("15")
-  const [reason, setReason] = useState<DelayReason>("late_start")
+  const [reason, setReason] = useState<(typeof REASONS)[number]>("late_start")
   const [delayNote, setDelayNote] = useState("")
   const [open, setOpen] = useState<number | null>(null)
   const versions = useQuery({ queryKey: scheduleKeys.versions(id), queryFn: () => listVersions(id) })
@@ -183,7 +187,7 @@ export function PublishPanel({ tournament, schedule, onConflicts }: { tournament
           <Field label="Minutes later" type="number" min={1} max={480} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
           <label className="flex flex-col gap-1 text-sm font-semibold">
             Why
-            <select className="h-12 rounded-lg border bg-background px-3 text-base font-normal" value={reason} onChange={(e) => setReason(e.target.value as DelayReason)}>
+            <select className="h-12 rounded-lg border bg-background px-3 text-base font-normal" value={reason} onChange={(e) => setReason(e.target.value as (typeof REASONS)[number])}>
               {REASONS.map((value) => (
                 <option key={value} value={value}>
                   {DELAY_REASON_LABEL[value]}

@@ -52,9 +52,15 @@ def by_token(token: str, lock: bool = False) -> GuestInvitation | None:
     return invitation if invitation and invitation.is_open else None
 
 
-def invite(guest: Guest, email: str, actor, phone: str = "") -> tuple[GuestInvitation, str]:
+MEMBER = "member"  # the guest was added as a club member, not (only) entered in a tournament
+
+
+def invite(
+    guest: Guest, email: str, actor, phone: str = "", purpose: str = ""
+) -> tuple[GuestInvitation, str]:
     """Ask the person behind the guest to claim it, by email, phone or both. A new invitation replaces
-    any still open. Returns the invitation and its link's secret, which is shown to staff once (to
+    any still open. `purpose` MEMBER words the email for someone added to the club. Returns the
+    invitation and its link's secret, which is shown to staff once (to
     share by WhatsApp or SMS) and never stored."""
     still_a_guest(guest)
     if guest.claims.filter(status=GuestClaim.Status.CONFLICT).exists():
@@ -74,23 +80,35 @@ def invite(guest: Guest, email: str, actor, phone: str = "") -> tuple[GuestInvit
         token_hash=_hash(token),
     )
     if invitation.email:
-        transaction.on_commit(lambda: _send_invitation(invitation, token))
+        transaction.on_commit(lambda: _send_invitation(invitation, token, purpose))
     return invitation, token
 
 
-def _send_invitation(invitation: GuestInvitation, token: str) -> None:
+def _send_invitation(invitation: GuestInvitation, token: str, purpose: str = "") -> None:
     """Sent whether or not the address has an account, so inviting never reveals who is registered."""
     guest = invitation.guest
     club = guest.organization.name
     inviter = invitation.invited_by.display_name if invitation.invited_by else "Club staff"
-    try:
-        send_mail(
-            f"Claim your matches at {club} on Coast TT",
+    if purpose == MEMBER:
+        subject = f"You've been added to {club} on Coast TT"
+        body = (
+            f'{inviter} added you to {club} on Coast TT as "{guest.user.display_name}". Open the link to '
+            "set your password and sign in.\n\n"
+            f"Set your password here: {join_link(token)}\n"
+            "Already on Coast TT? The same link lets you log in and add the membership to your account.\n\n"
+        )
+    else:
+        subject = f"Claim your matches at {club} on Coast TT"
+        body = (
             f'{inviter} at {club} entered you on Coast TT as "{guest.user.display_name}" before you had '
             "an account. Join to see your entries and results, and check your details.\n\n"
             f"Join or claim them here: {join_link(token)}\n"
             "Already on Coast TT? The same link lets you log in and add them to your account.\n\n"
-            f"The invitation expires on {invitation.expires_at:%d %b %Y}. "
+        )
+    try:
+        send_mail(
+            subject,
+            body + f"The invitation expires on {invitation.expires_at:%d %b %Y}. "
             "If this isn't you, ignore this email.",
             None,
             [invitation.email],

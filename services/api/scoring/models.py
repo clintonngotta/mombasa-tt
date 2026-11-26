@@ -50,6 +50,9 @@ class Scorecard(models.Model):
     assigned_at = models.DateTimeField(null=True, blank=True)
     # The one device scoring it (REQ-013). Empty until a device takes the sheet; another device has to
     # take it over, which issues a new assignment id and cuts the first one off.
+    # What a tie's later rubber started with (3.5.2.7), fixed when its first event is accepted, so
+    # striking out and re-scoring an earlier rubber never changes how this sheet replays.
+    carry = models.JSONField(null=True, blank=True)
     device_id = models.UUIDField(null=True, blank=True)
     device_label = models.CharField(max_length=80, blank=True)
     device_since = models.DateTimeField(null=True, blank=True)
@@ -178,3 +181,51 @@ class ScoreConflict(models.Model):
 
     def __str__(self):
         return f"Conflict {self.id} on {self.scorecard_id}"
+
+
+class MatchIncident(models.Model):
+    """An incident of a match as it stands on the umpire's sheet (REQ-043): a time-out, a card and its
+    penalty points, an adviser's card, a suspension, the expedite system, a retirement or a
+    disqualification. Rebuilt from the accepted events after every change, so an incident the umpire
+    undid is gone; the events themselves stay as the record of what was sent."""
+
+    class Kind(models.TextChoices):
+        TIMEOUT = "timeout"
+        TIMEOUT_END = "timeout_end"
+        CARD = "card"
+        ADVISER_CARD = "adviser_card"
+        SUSPENSION = "suspension"
+        SUSPENSION_END = "suspension_end"
+        EXPEDITE = "expedite"
+        RETIRED = "retired"
+        DISQUALIFIED = "disqualified"
+
+    class Card(models.TextChoices):
+        YELLOW = "yellow"  # a warning
+        YELLOW_RED = "yellow_red"  # a warning with penalty points
+        RED = "red"  # an adviser sent away
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    scorecard = models.ForeignKey(Scorecard, on_delete=models.CASCADE, related_name="incidents")
+    sequence = models.PositiveIntegerField()  # the event that recorded it
+    kind = models.CharField(max_length=14, choices=Kind.choices)
+    side = models.CharField(max_length=1, blank=True)
+    player = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    card = models.CharField(max_length=10, choices=Card.choices, blank=True)
+    penalty_points = models.PositiveSmallIntegerField(default=0)
+    reason = models.CharField(max_length=20, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    game_number = models.PositiveSmallIntegerField()
+    score = models.JSONField(default=list)  # the points of the game when it happened, [a, b]
+    at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["scorecard", "sequence"]
+        constraints = [
+            models.UniqueConstraint(fields=["scorecard", "sequence"], name="one_incident_per_event")
+        ]
+
+    def __str__(self):
+        return f"{self.kind} at {self.sequence} of {self.scorecard_id}"

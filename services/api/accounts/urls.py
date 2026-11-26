@@ -16,4 +16,5 @@ urlpatterns = [
         name="auth-password-reset-confirm",
     ),
     path("me/", views.MeView.as_view(), name="auth-me"),
+    path("me/email/", views.AddEmailView.as_view(), name="auth-me-email"),
 ]

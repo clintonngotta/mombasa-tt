@@ -13,8 +13,8 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project
 COPY . .
 # Django's own static files (admin, API browser). The proxy image copies them out of this stage's result;
-# the throwaway key and database address exist only for this command.
-RUN DJANGO_SECRET_KEY=collectstatic-only DATABASE_URL=postgres://build@localhost/build \
+# the throwaway key, database and Redis addresses exist only for this command.
+RUN DJANGO_SECRET_KEY=collectstatic-only DATABASE_URL=postgres://build@localhost/build REDIS_URL=redis://build \
     /opt/venv/bin/python manage.py collectstatic --noinput
 
 FROM python:3.13-slim
@@ -31,4 +31,6 @@ USER app
 
 EXPOSE 8000
 # Only the proxy reaches this port, so the forwarded client address it sets is trusted (throttling and logs).
-CMD ["daphne", "--bind", "0.0.0.0", "--port", "8000", "--proxy-headers", "config.asgi:application"]
+# The owner account is checked first (ensure_owner: nothing unless OWNER_EMAIL is set; a bad value stops
+# the start). The worker and beat replace this command, so only the API does it.
+CMD ["sh", "-c", "python manage.py ensure_owner && exec daphne --bind 0.0.0.0 --port 8000 --proxy-headers config.asgi:application"]

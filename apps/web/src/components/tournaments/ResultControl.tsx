@@ -14,6 +14,9 @@ import { tournamentKeys } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 
 type Ids = { tournamentId: string; eventId: string; matchId: string }
+
+/** Why a walkover is awarded (REQ-043); the referee picks one, and it is kept in the match-day log. */
+const WALKOVER_REASONS = ["No-show after the grace period", "Withdrew before the start", "Injured before the start"]
 type Target = { key: string; label: string; rubberId: string | null; decided: boolean; winner: "a" | "b" | ""; outcome: Outcome | ""; games: number[][] }
 
 /** What a result can be recorded for: the match itself, or for a tie its rubbers and the tie as a whole. */
@@ -43,14 +46,20 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
   const [outcome, setOutcome] = useState<Outcome>("played")
   const [games, setGames] = useState("")
   const [reason, setReason] = useState("")
+  const [why, setWhy] = useState(WALKOVER_REASONS[0])
   const parsed = outcome === "walkover" ? [] : parseGames(games)
+  const wholeTie = !!m.tie && !target?.rubberId
+  // Walkovers and disqualifications are the referee's alone (decision D5); the server says so too.
+  const outcomes: Outcome[] = [...(wholeTie ? [] : (["played"] as const)), "retired", ...(m.can_award_walkover ? (["walkover", "disqualified"] as const) : [])]
   const names = { a: m.a.entry?.title ?? "First side", b: m.b?.entry?.title ?? "Second side" }
   const known = !!m.a.entry && !!m.b?.entry
 
   const save = useMutation({
     mutationFn: () => {
       const body = { winner_entry_id: (winner === "a" ? m.a.entry?.id : m.b?.entry?.id) ?? "", outcome, games: parsed ?? [], rubber_id: target.rubberId }
-      return target.decided ? correctResult(ids.tournamentId, ids.eventId, ids.matchId, { ...body, reason: reason.trim() }) : enterResult(ids.tournamentId, ids.eventId, ids.matchId, body)
+      return target.decided
+        ? correctResult(ids.tournamentId, ids.eventId, ids.matchId, { ...body, reason: reason.trim() })
+        : enterResult(ids.tournamentId, ids.eventId, ids.matchId, { ...body, reason: outcome === "walkover" ? why : "" })
     },
     onSuccess: (fresh: MatchDetail) => {
       queryClient.setQueryData(drawKeys.match(ids.matchId), fresh)
@@ -69,7 +78,8 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
     setTargetKey(chosen.key)
     setWinner(chosen.winner)
     // A whole tie is never "played" here: it is awarded when a team didn't play or couldn't go on.
-    setOutcome(chosen.outcome || (m.tie && !chosen.rubberId ? "walkover" : "played"))
+    const fallback = m.tie && !chosen.rubberId ? (m.can_award_walkover ? "walkover" : "retired") : "played"
+    setOutcome(chosen.outcome || fallback)
     setGames(gamesText(chosen.games))
     save.reset()
   }
@@ -157,18 +167,19 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
             label="How it ended"
             value={outcome}
             onChange={(value) => setOutcome(value as Outcome)}
-            options={(m.tie && !target.rubberId ? (["walkover", "retired"] as const) : (["played", "walkover", "retired"] as const)).map((value) => ({
-              value,
-              label: OUTCOME_LABEL[value],
-            }))}
+            options={outcomes.map((value) => ({ value, label: OUTCOME_LABEL[value] }))}
+            hint={m.can_award_walkover ? undefined : "Only the referee awards a walkover or a disqualification."}
           />
-          {outcome !== "walkover" && !(m.tie && !target.rubberId) && (
+          {outcome === "walkover" && !target.decided && (
+            <SelectField label="Why a walkover" value={why} onChange={setWhy} options={WALKOVER_REASONS.map((value) => ({ value, label: value }))} hint="Kept in the match-day log. A walkover records no game scores." />
+          )}
+          {outcome !== "walkover" && !wholeTie && (
             <Field
               label="Games"
               value={games}
               onChange={(e) => setGames(e.target.value)}
               placeholder="11-5 11-7 9-11 11-8"
-              hint={`Points of each game, ${names.a}'s first. For a retirement, the games played so far.`}
+              hint={`Points of each game, ${names.a}'s first. For a retirement or a disqualification, the games played so far (none before play).`}
               error={games.trim() && parsed === null ? "Write each game as two numbers, like 11-5." : fieldErrors.games}
             />
           )}

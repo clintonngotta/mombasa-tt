@@ -193,6 +193,7 @@ def record_result(
     games=(),
     actor=None,
     source: str = official.Source.UMPIRE,
+    reason: str = "",
 ) -> None:
     """The match is decided: the winner moves into the match it feeds, and a finished group sends its
     qualifiers into the knockout. `games` are [a, b] points in playing order. Who may decide a match,
@@ -236,7 +237,7 @@ def record_result(
     match.games = [list(game) for game in games]
     match.save(update_fields=["winner", "status", "outcome", "games"])
     # The official record and the work that follows from it, written with the result itself.
-    official.accept(match, None, winner, outcome, match.games, actor=actor, source=source)
+    official.accept(match, None, winner, outcome, match.games, actor=actor, source=source, reason=reason)
     _send_on(match)
     if match.stage == Match.Stage.GROUP:
         place_qualifiers(match.draw, match.group)
@@ -250,8 +251,14 @@ def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
     played match has exactly the games its winner needed, a walkover none, a retirement too few, a
     disqualification whatever was played before it (none at all if it came before play)."""
     needed = best_of // 2 + 1
-    won = sum(1 for a, b in games if (a > b) == a_won and a != b)
-    lost = len(games) - won
+    counted = list(games)
+    # A retirement or disqualification may stop a game part-way; that game is neither won nor lost.
+    if outcome in (Match.Outcome.RETIRED, Match.Outcome.DISQUALIFIED) and counted:
+        a, b = counted[-1]
+        if not (max(a, b) >= 11 and abs(a - b) >= 2):
+            counted.pop()
+    won = sum(1 for a, b in counted if (a > b) == a_won and a != b)
+    lost = len(counted) - won
     plausible = {
         Match.Outcome.PLAYED: won == needed and lost < needed,
         Match.Outcome.WALKOVER: not games,
@@ -388,13 +395,15 @@ def ordinal(rank: int) -> str:
     return {1: "winner", 2: "runner-up"}.get(rank) or f"number {rank}"
 
 
-def describe(draw: DrawVersion) -> dict:
+def describe(draw: DrawVersion, staff: bool = False) -> dict:
     """The draw as DrawSerializer shows it."""
     places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
     entries = _entries_of(draw, places)
     seeds = {place.entry_id: place.seed for place in places}
     matches = _matches_of(draw)
-    shown = _match_describer(matches, entries, seeds, draw.event.status == Event.Status.IN_PROGRESS)
+    shown = _match_describer(
+        matches, entries, seeds, draw.event.status == Event.Status.IN_PROGRESS, _times_shown(draw, staff)
+    )
     numbers = sorted({place.group for place in places if place.group})
     return {
         "id": draw.id,
@@ -433,8 +442,19 @@ def _matches_of(draw: DrawVersion) -> list[Match]:
     )
 
 
-def _match_describer(matches: list[Match], entries: dict, seeds: dict, event_in_progress: bool):
-    """A function turning one of `matches` (all those of a draw) into what MatchSerializer shows."""
+def _times_shown(draw: DrawVersion, staff: bool) -> bool:
+    """Planned starts and tables are public once the order of play is out (REQ-053); the host's
+    competition staff see them from the moment they publish."""
+    from . import order_of_play
+
+    return staff or order_of_play.times_shown(draw.event.tournament)
+
+
+def _match_describer(
+    matches: list[Match], entries: dict, seeds: dict, event_in_progress: bool, times: bool = True
+):
+    """A function turning one of `matches` (all those of a draw) into what MatchSerializer shows.
+    Without `times`, planned starts and tables are left out: the order of play isn't out yet."""
     by_id = {match.id: match for match in matches}
     rounds = max((match.round for match in matches if match.stage == Match.Stage.KNOCKOUT), default=0)
 
@@ -470,9 +490,9 @@ def _match_describer(matches: list[Match], entries: dict, seeds: dict, event_in_
             "outcome": match.outcome,
             "games": match.games,
             "tie_score": list(tie_score(match)) if match.rubbers.all() else None,
-            "table": _table_label(match),
+            "table": _table_label(match) if times else (match.table.label if match.table else ""),
             "dispatched_at": match.dispatched_at,
-            "scheduled_at": match.scheduled_at,
+            "scheduled_at": match.scheduled_at if times else None,
         }
 
     return shown
@@ -490,7 +510,7 @@ def tie_score(match: Match) -> tuple[int, int]:
     return won.count(match.entry_a_id), won.count(match.entry_b_id)
 
 
-def describe_match(draw: DrawVersion, match_id) -> dict | None:
+def describe_match(draw: DrawVersion, match_id, staff: bool = False) -> dict | None:
     """One match of the draw as MatchDetailSerializer shows it, or None when it isn't in this draw."""
     places = list(draw.places.select_related("entry").prefetch_related("entry__players__user"))
     matches = _matches_of(draw)
@@ -502,6 +522,7 @@ def describe_match(draw: DrawVersion, match_id) -> dict | None:
         _entries_of(draw, places),
         {place.entry_id: place.seed for place in places},
         draw.event.status == Event.Status.IN_PROGRESS,
+        _times_shown(draw, staff),
     )
     # A winner of this match plays on in the match it feeds; the final feeds nothing.
     onward = next((m for m in matches if match.id in (m.feeder_a_id, m.feeder_b_id)), None)

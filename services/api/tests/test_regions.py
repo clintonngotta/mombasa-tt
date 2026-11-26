@@ -1,5 +1,5 @@
-"""Regional bodies (REQ-048, EVAL-048): set up by the region's official, the region's clubs, the yearly
-agenda, articles to clubs, meetings and sponsorships."""
+"""Regional bodies (REQ-048, EVAL-048): created by a platform super admin with its first admin (TASK-107),
+the region's clubs, the yearly agenda, articles to clubs, meetings and sponsorships."""
 
 from datetime import timedelta
 
@@ -7,7 +7,7 @@ import pytest
 from django.utils import timezone
 
 from core.models import Country, Region
-from organizations.models import OfficialAppointment, Organization
+from organizations.models import Organization
 from regions.models import Meeting
 
 from .helpers import logged_in, make_user
@@ -42,12 +42,16 @@ def placed(club, region_name="Mombasa"):
 
 @pytest.fixture
 def world(region, admin, club):
-    """Mombasa's body run by its official; Coast TT Club (admin) in Mombasa with a member; Kilifi Spinners
-    in Kilifi."""
+    """Mombasa's body, created by a platform super admin and run by its official as admin; Coast TT Club
+    (admin) in Mombasa with a member; Kilifi Spinners in Kilifi."""
     officer = make_user("officer@example.com", display_name="Officer Otieno")
-    OfficialAppointment.objects.create(user=officer, country=region["kenya"], region=region["mombasa"])
     officer_client = logged_in(officer)
-    made = officer_client.post(BODIES, {"name": "Mombasa Region TT"}, format="json")
+    root = logged_in(make_user("root@example.com", is_superuser=True, is_staff=True))
+    made = root.post(
+        BODIES,
+        {"name": "Mombasa Region TT", "country": "KE", "region": "Mombasa", "admin_email": officer.email},
+        format="json",
+    )
     assert made.status_code == 201, made.json()
     body = Organization.objects.get(pk=made.json()["id"])
     placed(club)
@@ -58,6 +62,7 @@ def world(region, admin, club):
     return {
         "body": body,
         "officer": officer_client,
+        "root": root,
         "club": club,
         "admin": logged_in(admin),
         "member": logged_in(member),
@@ -71,17 +76,15 @@ def org_url(org, path=""):
     return f"{ORGS}{org.id}/{path}"
 
 
-def test_the_regional_official_sets_up_the_body_once(world, region):
+def test_a_platform_super_admin_sets_up_the_body_once(world, region):
     body = world["body"]
     assert body.kind == "regional_body" and (body.country, body.region) == ("KE", "Mombasa")
-    again = world["officer"].post(BODIES, {"name": "Another"}, format="json")
-    assert again.status_code == 409
-    assert (
-        world["outsider"]
-        .post(BODIES, {"name": "Mine", "region_id": region["kilifi"].id}, format="json")
-        .status_code
-        == 403
-    )
+    again = {"name": "Another", "country": "KE", "region": "Mombasa", "admin_email": "outsider@example.com"}
+    assert world["root"].post(BODIES, again, format="json").status_code == 409
+    # The body's own admin doesn't make bodies either: only the platform does.
+    kilifi = {"name": "Mine", "country": "KE", "region": "Kilifi", "admin_email": "outsider@example.com"}
+    assert world["officer"].post(BODIES, kilifi, format="json").status_code == 403
+    assert world["outsider"].post(BODIES, kilifi, format="json").status_code == 403
     # Nobody picks the kind to make one.
     sneaky = world["outsider"].post(
         ORGS, {"name": "Fake body", "town": "Mombasa", "kind": "regional_body"}, format="json"
@@ -221,7 +224,11 @@ def test_a_body_meeting_invites_its_clubs_admins(world):
         .post(path + "minutes/", {"minutes": "Agreed the 2027 calendar."}, format="json")
         .json()
     )
-    assert minutes["minutes"] == "Agreed the 2027 calendar."
+    assert minutes["minutes"] == "Agreed the 2027 calendar." and minutes["minutes_status"] == "draft"
+    # Invitees read the minutes once governance staff approve them, after the meeting.
+    assert world["admin"].get(path).json()["minutes"] == ""
+    Meeting.objects.filter(pk=meeting["id"]).update(ends_at=timezone.now() - timedelta(minutes=1))
+    assert world["officer"].post(path + "minutes/approve/", {}, format="json").status_code == 200
     assert world["admin"].get(path).json()["minutes"] == "Agreed the 2027 calendar."
 
 

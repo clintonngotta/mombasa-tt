@@ -4,7 +4,7 @@ import type { Schemas } from "@/lib/schema"
 export type OfficialResult = Schemas["OfficialResult"]
 export type Resolution = Schemas["Resolution"]
 export type Outcome = OfficialResult["outcome"]
-export type ResultBody = { winner_entry_id: string; outcome: Outcome; games: number[][]; rubber_id: string | null }
+export type ResultBody = { winner_entry_id: string; outcome: Outcome; games: number[][]; rubber_id: string | null; reason?: string }
 
 export const resultKeys = {
   corrections: (tournamentId: string) => ["results", "corrections", tournamentId] as const,

@@ -6,7 +6,7 @@ import pytest
 from django.core import mail
 from django.utils import timezone
 
-from competitions.models import Entry, Match, ScheduleVersion
+from competitions.models import Entry, Match, ScheduleVersion, Tournament
 from reservations import service as reservations
 from scoring.models import Scorecard
 
@@ -35,6 +35,11 @@ def session(client, cup, expect=201, **body) -> dict:  # noqa: F811
     response = client.post(url(cup) + "schedule/sessions/", body, format="json")
     assert response.status_code == expect, response.json()
     return response.json()
+
+
+def released(cup) -> None:  # noqa: F811
+    """The order of play is out (REQ-053): from now on a change is news for the people it moves."""
+    Tournament.objects.filter(pk=cup["id"]).update(order_of_play_release_at=timezone.now())
 
 
 def emails_to() -> dict:
@@ -105,6 +110,7 @@ def test_publishing_keeps_versions_and_tells_only_the_people_whose_matches_moved
     mail.outbox.clear()  # the entries' own news
     keep(staff, cup, [slot(b, one, "09:00"), slot(c, two, "09:00"), slot(a, one, "10:00")])
     first = publish(staff, cup, note="First plan")
+    released(cup)  # before the order of play is out, a change is nobody's news (REQ-053)
     assert (first["number"], first["kind"], first["change_count"], first["notify_count"]) == (
         1,
         "published",
@@ -190,6 +196,7 @@ def test_a_table_delay_moves_its_matches_and_what_clashes_with_them(staff, cup):
     a = next(m for m in league(2) if people(m) & people(b))
     keep(staff, cup, [slot(b, one, "09:00"), slot(c, two, "09:00"), slot(a, two, "09:40")])
     publish(staff, cup)
+    released(cup)
     nothing = staff.post(
         url(cup) + "schedule/delay/", {"table_id": two, "minutes": 5, "reason": "other"}, format="json"
     )

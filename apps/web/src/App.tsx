@@ -60,7 +60,20 @@ import { ClubProfilePage } from "@/pages/club/ClubProfilePage"
 import { ClubProfileEditPage } from "@/pages/club/ClubProfileEditPage"
 import { TrainingPage } from "@/pages/training/TrainingPage"
 import { CeremonyPage } from "@/pages/tournaments/CeremonyPage"
+import { AnnualReportsPage } from "@/pages/club/AnnualReportsPage"
+import { ExternalIncomePage } from "@/pages/club/ExternalIncomePage"
+import { MyPenaltiesPage, PenaltiesPage } from "@/pages/club/PenaltyPages"
+import { MySquadsPage, SquadPage, SquadsPage } from "@/pages/club/SquadPages"
+import { TrainingRulesPage } from "@/pages/club/TrainingRulesPage"
+import { FeedbackAnswerPage } from "@/pages/tournaments/FeedbackAnswerPage"
+import { FeedbackBuilderPage, FeedbackResultsPage, TournamentFeedbackPage } from "@/pages/tournaments/FeedbackPages"
+import { ReviewPage } from "@/pages/tournaments/ReviewPage"
+import { AnnouncementsPage } from "@/pages/tournaments/AnnouncementsPage"
+import { LivePage } from "@/pages/tournaments/LivePage"
+import { OrderOfPlayPage } from "@/pages/tournaments/OrderOfPlayPage"
 import { ArticlePage, RegionPage } from "@/pages/region/RegionPage"
+import { InvitedEventsPage } from "@/pages/club/InvitedEventsPage"
+import { ActionItemsPage } from "@/pages/region/MeetingMinutes"
 import { MeetingPage, MeetingsPage } from "@/pages/region/MeetingPages"
 import { ClubPlanPage, PlanPage, TraineePlanPage } from "@/pages/training/PlanPage"
 import { CoachesPage } from "@/pages/coaching/CoachesPage"
@@ -70,6 +83,7 @@ import { TraineePage } from "@/pages/coaching/TraineePage"
 import { DrillDetailPage } from "@/pages/training/DrillDetailPage"
 import { DrillEditPage } from "@/pages/training/DrillEditPage"
 import { CommitteePage } from "@/pages/club/CommitteePage"
+import { RepresentativesPage } from "@/pages/club/RepresentativesPage"
 import { RolesPage } from "@/pages/club/RolesPage"
 import { RoleEditPage } from "@/pages/club/RoleEditPage"
 import { MemberFieldsPage } from "@/pages/club/MemberFieldsPage"
@@ -98,6 +112,8 @@ import { CoachingPage } from "@/pages/coaching/CoachingPage"
 import { RegionalPage } from "@/pages/region/RegionalPage"
 import { MorePage } from "@/pages/MorePage"
 import { SyncPage } from "@/pages/profile/SyncPage"
+import { TournamentsPage } from "@/pages/tournaments/TournamentsPage"
+import { HelpPage } from "@/pages/help/HelpPage"
 
 function App() {
   return (
@@ -133,6 +149,9 @@ function App() {
             <Route path="/events" element={<EventsPage />} />
             {/* Published tournaments, their results, rankings and ratings are public (REQ-020, TASK-035). A
                 facility acting as itself is still sent back to its desk from rankings (PersonOnly). */}
+            <Route path="/tournaments" element={<TournamentsPage />} />
+            {/* Help is for everyone, including someone deciding whether to sign up. */}
+            <Route path="/help" element={<HelpPage />} />
             <Route path="/tournaments/:id" element={<TournamentPage />} />
             <Route path="/tournaments/:id/events/:eventId/entries" element={<EntriesPage />} />
             <Route path="/tournaments/:id/events/:eventId/brackets" element={<EventPage tab="brackets" />} />
@@ -141,6 +160,8 @@ function App() {
             <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
             <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
             <Route path="/tournaments/:id/ceremony" element={<CeremonyPage />} />
+            <Route path="/tournaments/:id/live" element={<LivePage />} />
+            <Route path="/tournaments/:id/order-of-play" element={<OrderOfPlayPage />} />
             <Route path="/players/:id" element={<PlayerPage />} />
             <Route element={<PersonOnly />}>
               <Route path="/rankings" element={<RankingsPage />} />
@@ -174,6 +195,12 @@ function App() {
               <Route path="/more" element={<MorePage />} />
               <Route path="/tournaments/:id/edit" element={<TournamentFormPage />} />
               <Route path="/tournaments/:id/dashboard" element={<TournamentDashboardPage />} />
+              <Route path="/tournaments/:id/review" element={<ReviewPage />} />
+              <Route path="/tournaments/:id/feedback" element={<TournamentFeedbackPage />} />
+              <Route path="/feedback/:orgId/:formId/edit" element={<FeedbackBuilderPage />} />
+              <Route path="/feedback/:orgId/:formId/results" element={<FeedbackResultsPage />} />
+              <Route path="/feedback/:formId" element={<FeedbackAnswerPage />} />
+              <Route path="/tournaments/:id/announcements" element={<AnnouncementsPage />} />
               <Route path="/tournaments/:id/scoring" element={<ScoringOverviewPage />} />
               <Route path="/tournaments/:id/dispatch" element={<DispatchBoardPage />} />
               <Route path="/tournaments/:id/schedule-plan" element={<SchedulePage />} />
@@ -192,6 +219,8 @@ function App() {
               <Route path="/club/finance" element={<ClubFinancePage />} />
               <Route path="/club/finance/campaigns" element={<CampaignsPage />} />
               <Route path="/club/finance/spending" element={<SpendingPage />} />
+              <Route path="/club/finance/reports" element={<AnnualReportsPage />} />
+              <Route path="/club/finance/external" element={<ExternalIncomePage />} />
               <Route path="/club/welfare" element={<WelfarePage />} />
               <Route path="/club/my-payments" element={<MyFinancesPage />} />
               <Route path="/club" element={<ClubPage />} />
@@ -210,10 +239,17 @@ function App() {
               <Route path="/club/external-events" element={<ClubEventsPage />} />
               <Route path="/events/review" element={<ReviewEventsPage />} />
               <Route path="/club/schedule" element={<ClubSchedulePage />} />
+              <Route path="/club/training-rules" element={<TrainingRulesPage />} />
+              <Route path="/club/squads" element={<SquadsPage />} />
+              <Route path="/club/squads/:id" element={<SquadPage />} />
+              <Route path="/squads" element={<MySquadsPage />} />
+              <Route path="/club/penalties" element={<PenaltiesPage />} />
+              <Route path="/penalties" element={<MyPenaltiesPage />} />
               <Route path="/activities/:orgId/:id" element={<ActivityPage />} />
               <Route path="/facilities" element={<FindFacilityPage />} />
               <Route path="/facilities/:id" element={<FacilityPage />} />
               <Route path="/club/committee" element={<CommitteePage />} />
+              <Route path="/club/representatives" element={<RepresentativesPage />} />
               <Route path="/club/roles" element={<RolesPage />} />
               <Route path="/club/roles/new" element={<RoleEditPage />} />
               <Route path="/club/roles/:id" element={<RoleEditPage />} />
@@ -230,6 +266,8 @@ function App() {
               <Route path="/news/:orgId/:id" element={<ArticlePage />} />
               <Route path="/club/meetings" element={<MeetingsPage />} />
               <Route path="/meetings/:orgId/:id" element={<MeetingPage />} />
+              <Route path="/action-items" element={<ActionItemsPage />} />
+              <Route path="/invited" element={<InvitedEventsPage />} />
               <Route path="/players" element={<PlayersPage />} />
             </Route>
             {import.meta.env.DEV && <Route path="/dev/gallery" element={<GalleryPage />} />}

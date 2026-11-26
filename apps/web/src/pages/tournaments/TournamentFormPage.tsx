@@ -122,27 +122,6 @@ function TournamentForm({ orgId, coachDesk, tournament: t, defaultZone }: { orgI
           hint={firm ? "Players see this name as the organizer." : "Add your company or firm to your coach profile to organize in its name."}
         />
       )}
-      <SelectField
-        label="Tournament scope"
-        value={scope}
-        onChange={(value) => setScope(value as TournamentScope)}
-        options={SCOPE_OPTIONS}
-        disabled={scopeFrozen}
-        error={errors.scope}
-        hint={scopeFrozen ? "Fixed after publication." : "Choose the level at which this tournament is organized."}
-      />
-      <SelectField
-        label="Registration cost"
-        value={paid ? "paid" : "free"}
-        onChange={(value) => { setPaid(value === "paid"); setFeeError("") }}
-        options={[{ value: "free", label: "Free" }, { value: "paid", label: "Paid" }]}
-      />
-      {paid && <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Registration fee" type="number" inputMode="decimal" min="0.01" step="0.01" value={fee}
-          onChange={(event) => setFee(event.target.value)} error={feeError || errors["registration_fee.amount_minor"]} />
-        <Field label="Currency code" value={currency} maxLength={3} onChange={(event) => setCurrency(event.target.value.toUpperCase())}
-          error={errors["registration_fee.currency"]} />
-      </div>}
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="First day" type="date" required value={startsOn} onChange={(e) => setStartsOn(e.target.value)} error={errors.starts_on} />
         <Field
@@ -175,6 +154,27 @@ function TournamentForm({ orgId, coachDesk, tournament: t, defaultZone }: { orgI
         }
       />
       {venues.isError && <FormAlert>{errorMessage(venues.error, "We couldn't load your venues.")}</FormAlert>}
+      <SelectField
+        label="Tournament scope"
+        value={scope}
+        onChange={(value) => setScope(value as TournamentScope)}
+        options={SCOPE_OPTIONS}
+        disabled={scopeFrozen}
+        error={errors.scope}
+        hint={scopeFrozen ? "Fixed after publication." : "The level this tournament is played at."}
+      />
+      <SelectField
+        label="Registration cost"
+        value={paid ? "paid" : "free"}
+        onChange={(value) => { setPaid(value === "paid"); setFeeError("") }}
+        options={[{ value: "free", label: "Free" }, { value: "paid", label: "Paid" }]}
+      />
+      {paid && <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Registration fee" type="number" inputMode="decimal" min="0.01" step="0.01" value={fee}
+          onChange={(event) => setFee(event.target.value)} error={feeError || errors["registration_fee.amount_minor"]} />
+        <Field label="Currency code" hint="For example KES." value={currency} maxLength={3} onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+          error={errors["registration_fee.currency"]} />
+      </div>}
       <Field
         label="Timezone"
         list={zonesId}
@@ -203,7 +203,7 @@ function TournamentForm({ orgId, coachDesk, tournament: t, defaultZone }: { orgI
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : t ? "Save tournament" : "Create draft"}
       </Button>
-      {!t && <p className="text-sm text-muted-foreground">A draft is seen only by people who run competitions for your club, until you publish it.</p>}
+      {!t && <p className="text-sm text-muted-foreground">Only your competition staff see a draft. Next you add events, then publish it for players.</p>}
     </form>
   )
 }

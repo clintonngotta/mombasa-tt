@@ -12,7 +12,7 @@ from core.exceptions import ApiException
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
-from . import corrections, drawing, official, recap
+from . import corrections, drawing, matchday, official, recap
 from .models import DrawVersion, Entry, Match, Resolution, Rubber, Tournament
 from .serializers import (
     MatchDetailSerializer,
@@ -27,7 +27,7 @@ from .views import match_reply, require_staff, staff_tournament
 def describe_resolution(resolution: Resolution) -> dict:
     """A resolution as ResolutionSerializer shows it."""
     match = resolution.match
-    shown = drawing.describe_match(match.draw, match.id) or {}
+    shown = drawing.describe_match(match.draw, match.id, staff=True) or {}
     progress = (
         "decided"
         if match.status == Match.Status.COMPLETED
@@ -81,15 +81,18 @@ def results_tournament(user, pk) -> tuple[Tournament, bool]:
     return tournament, referee
 
 
+REFEREE_ONLY = (Match.Outcome.WALKOVER, Match.Outcome.DISQUALIFIED)
+
+
 def require_referee_for(referee: bool, match: Match, rubber: Rubber | None, outcome: str) -> None:
-    """Only the referee disqualifies (decision D5): giving a match a disqualification, or taking one away,
-    needs `results.referee`."""
+    """Only the referee awards walkovers and disqualifications (decision D5, REQ-043): giving a match
+    either, or taking one away, needs `results.referee`."""
     standing = official.current(match, rubber)
-    touches = outcome == Match.Outcome.DISQUALIFIED or (
-        standing is not None and standing.outcome == Match.Outcome.DISQUALIFIED
-    )
+    touches = outcome in REFEREE_ONLY or (standing is not None and standing.outcome in REFEREE_ONLY)
     if touches and not referee:
-        raise ApiException("referee_only", "Only the referee awards or changes a disqualification.", 403)
+        raise ApiException(
+            "referee_only", "Only the referee awards or changes a walkover or a disqualification.", 403
+        )
 
 
 class ResultViewSet(viewsets.GenericViewSet):
@@ -130,7 +133,19 @@ class ResultViewSet(viewsets.GenericViewSet):
             tournament, referee = results_tournament(request.user, tournament_pk)
             match, rubber, winner = self._target(tournament, event_pk, pk, asked)
             require_referee_for(referee, match, rubber, asked["outcome"])
-            corrections.enter(match, rubber, winner, asked["outcome"], asked["games"], request.user)
+            table = match.table  # read before the result frees it
+            corrections.enter(
+                match, rubber, winner, asked["outcome"], asked["games"], request.user, asked["reason"]
+            )
+            matchday.log(
+                tournament,
+                matchday.Action.RESULT_ENTERED,
+                matchday.result_summary(match, rubber, winner, asked["outcome"], asked["games"]),
+                actor=request.user,
+                match=match,
+                table=table,
+                reason=asked["reason"],
+            )
         return match_reply(request, match.draw, match.id)
 
     @extend_schema(request=ResultCorrectionSerializer, responses={200: MatchDetailSerializer})
@@ -148,6 +163,14 @@ class ResultViewSet(viewsets.GenericViewSet):
             require_referee_for(referee, match, rubber, asked["outcome"])
             corrections.correct(
                 match, rubber, winner, asked["outcome"], asked["games"], request.user, asked["reason"]
+            )
+            matchday.log(
+                tournament,
+                matchday.Action.RESULT_CORRECTED,
+                matchday.result_summary(match, rubber, winner, asked["outcome"], asked["games"]),
+                actor=request.user,
+                match=match,
+                reason=asked["reason"],
             )
         return match_reply(request, match.draw, match.id)
 
@@ -173,7 +196,29 @@ class ResultViewSet(viewsets.GenericViewSet):
                 pk=pk,
                 event__tournament=tournament,
             )
+            match = resolution.match
+            if asked["choice"] == Resolution.Choice.REPLACE:
+                # Replacing strikes out what was recorded there, a walkover or disqualification included.
+                referee = Permission.RESULTS_REFEREE in effective_permissions(
+                    request.user, tournament.organization
+                )
+                standing = [official.current(match, rubber) for rubber in [None, *match.rubbers.all()]]
+                if not referee and any(r is not None and r.outcome in REFEREE_ONLY for r in standing):
+                    raise ApiException(
+                        "referee_only",
+                        "This match holds a walkover or a disqualification: only the referee strikes it out.",
+                        403,
+                    )
             corrections.resolve(resolution, asked["choice"], asked["note"], request.user)
+            matchday.log(
+                tournament,
+                matchday.Action.CORRECTION_SETTLED,
+                f"{matchday.match_title(match)}: "
+                + ("kept as played" if asked["choice"] == Resolution.Choice.KEEP else "entry replaced"),
+                actor=request.user,
+                match=match,
+                reason=asked["note"],
+            )
         return Response(ResolutionSerializer(resolutions_of(tournament), many=True).data)
 
 

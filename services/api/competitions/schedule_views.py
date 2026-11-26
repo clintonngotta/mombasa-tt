@@ -171,7 +171,13 @@ class PublishNoteSerializer(serializers.Serializer):
 class TableDelaySerializer(PublishNoteSerializer):
     table_id = serializers.UUIDField()
     minutes = serializers.IntegerField(min_value=1, max_value=480)
-    reason = serializers.ChoiceField(choices=ScheduleVersion.Reason.choices)
+    reason = serializers.ChoiceField(
+        choices=[
+            (value, label)
+            for value, label in ScheduleVersion.Reason.choices
+            if value != ScheduleVersion.Reason.PLAYER_REQUEST
+        ]
+    )
 
 
 class DelayedSerializer(serializers.Serializer):

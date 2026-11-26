@@ -26,10 +26,12 @@ const CEREMONY_LABEL: Record<TournamentDashboard["ceremony"], string> = { none: 
 /** Every desk the dashboard links, so the top row and the event cards name and route each one the same way. */
 const DESK = {
   schedule: { path: "schedule-plan", label: "Schedule" },
-  tables: { path: "dispatch", label: "Tables" },
+  tables: { path: "dispatch", label: "Control centre" },
   scoring: { path: "scoring", label: "Scoring" },
   corrections: { path: "corrections", label: "Corrections" },
   ceremony: { path: "ceremony", label: "Ceremony" },
+  review: { path: "review", label: "Review" },
+  feedback: { path: "feedback", label: "Feedback forms" },
 } as const
 type Desk = keyof typeof DESK
 const deskPath = (tournamentId: string, desk: Desk) => `/tournaments/${tournamentId}/${DESK[desk].path}`
@@ -99,6 +101,8 @@ function Desks({ dashboard: d }: { dashboard: TournamentDashboard }) {
     ["scoring", d.status === "in_progress"],
     ["corrections", d.status === "in_progress" || d.corrections > 0],
     ["ceremony", d.status !== "draft" && d.status !== "cancelled"],
+    ["review", d.status === "in_progress" || d.status === "completed"],
+    ["feedback", d.status !== "draft" && d.status !== "cancelled"],
   ]
   const desks = shown.filter(([, on]) => on).map(([desk]) => desk)
   if (desks.length === 0) return null

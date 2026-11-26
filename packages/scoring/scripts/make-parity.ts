@@ -27,7 +27,11 @@ const CONFIGS: Config[] = [
   { best_of: 5, doubles: true },
   { best_of: 7, doubles: false },
   { best_of: 7, doubles: true },
+  // A team tie's later rubbers start with the offences and adviser cards carried from earlier ones.
+  { best_of: 5, doubles: false, carry: { offences: { a1: 1, a2: 0, b1: 2, b2: 0 }, advisers: [1, 0] } },
+  { best_of: 3, doubles: true, carry: { offences: { a1: 0, a2: 2, b1: 1, b2: 3 }, advisers: [2, 1] } },
 ]
+const REASONS = ["bad_behaviour", "racket_abuse", "illegal_advice", "delay", "other", "shouting"] as const
 const PLAYERS: Player[] = ["a1", "a2", "b1", "b2"]
 
 function match(config: Config, seed: number): ParityMatch {
@@ -74,12 +78,23 @@ function match(config: Config, seed: number): ParityMatch {
       if (roll > 0.45) send({ type: "timeout", side: side() })
       send({ type: "point", side: random() < lean ? "a" : "b" })
     }
+    // A suspension usually ends with play resumed, now and then with the player retiring.
+    else if (scoring.state.suspended !== null && roll < 0.6) send(roll < 0.05 ? { type: "retire", side: scoring.state.suspended } : { type: "suspension_end" })
     else if (roll < 0.04) send({ type: "undo" })
     else if (roll < 0.06) send({ type: "timeout", side: side() })
     else if (roll < 0.09) send({ type: "choose_server", player: pick(PLAYERS) })
     else if (roll < 0.1) send({ type: "start", server: "a1", a_end: "left" })
     else if (roll < 0.105) send({ type: "bogus" } as unknown as ScoreEvent)
     else if (roll < 0.11) send({ type: "point", side: "c" } as unknown as ScoreEvent)
+    // Incidents (TASK-083): cards and their penalty points, advisers, time-outs running and ending,
+    // suspensions, expedite, and now and then a retirement or a disqualification that ends it all.
+    else if (roll < 0.125) send({ type: "card", player: pick(PLAYERS), reason: pick(REASONS) } as ScoreEvent)
+    else if (roll < 0.13) send({ type: "adviser_card", side: side(), reason: pick(REASONS) } as ScoreEvent)
+    else if (roll < 0.14) send({ type: "timeout_end" })
+    else if (roll < 0.145) send({ type: "suspension", side: side() })
+    else if (roll < 0.155) send({ type: "suspension_end" })
+    else if (roll < 0.158) send({ type: "expedite" })
+    else if (roll < 0.1595) send({ type: random() < 0.5 ? "retire" : "disqualify", side: side() })
     else send({ type: "point", side: random() < lean ? "a" : "b" })
   }
   send({ type: "point", side: side() }) // refused: the match is over

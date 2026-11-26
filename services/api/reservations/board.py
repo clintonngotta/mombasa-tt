@@ -22,8 +22,8 @@ from competitions import drawing
 from competitions.models import DrawVersion, Event, Match, Tournament
 from facilities.models import Table
 
-from . import service
-from .models import Hold, Reservation
+from . import control, service
+from .models import Hold, Reservation, TableBlock
 
 READY, WAITING, BLOCKED = "ready", "waiting", "blocked"
 logger = logging.getLogger(__name__)
@@ -42,11 +42,18 @@ class Row:
     table: Table | None = None  # the free table suggested for it
     called_back: bool = False  # staff took it off a table: only a person sends it out again
     umpire: object = None  # whoever scores it, who can't be playing at the same time
+    stage_rank: int = 0  # its stage's place in the order of play (REQ-053); 0 for all without one
 
     @property
     def order(self):
         planned = self.match.scheduled_at
-        return (planned is None, planned or self.ready_since, self.ready_since, str(self.match.id))
+        return (
+            self.stage_rank,
+            planned is None,
+            planned or self.ready_since,
+            self.ready_since,
+            str(self.match.id),
+        )
 
 
 def _reason(code: str, message: str, until=None) -> dict:
@@ -77,6 +84,9 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
             match__draw__event__tournament=tournament, ending=Reservation.Ending.RECALLED
         ).values_list("match_id", flat=True)
     )
+    from competitions import order_of_play
+
+    ranks = order_of_play.ranks(tournament)
     rows, to_come, now = [], 0, timezone.now()
     for match in matches:
         if match.entry_a_id is None or match.entry_b_id is None:
@@ -89,7 +99,9 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
             service.ensure_dispatchable(match)
         except service.Blocked as blocked:  # a tie without its lineups
             reasons = [_reason(blocked.blocker, blocked.message)]
-            rows.append(Row(match, [], since, reasons, BLOCKED))
+            rows.append(
+                Row(match, [], since, reasons, BLOCKED, stage_rank=order_of_play.rank_of(ranks, match))
+            )
             continue
         people, rubber = service.people_to_hold(match)
         reasons = [
@@ -99,14 +111,21 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
         row = Row(match, people, since, reasons, BLOCKED if reasons else READY)
         row.called_back = match.id in called_back
         row.umpire = service._umpire_of(match, rubber) if not reasons else None
+        row.stage_rank = order_of_play.rank_of(ranks, match)
         rows.append(row)
     rows.sort(key=lambda row: row.order)
     return rows, to_come
 
 
 def _free_tables(tournament: Tournament) -> list[Table]:
+    """Tables nothing holds and staff haven't blocked."""
     held = Hold.objects.filter(table__venue_id=tournament.venue_id, active=True).values("table_id")
-    return list(Table.objects.filter(venue_id=tournament.venue_id, active=True).exclude(id__in=held))
+    blocked = TableBlock.objects.filter(table__venue_id=tournament.venue_id, ended_at__isnull=True)
+    return list(
+        Table.objects.filter(venue_id=tournament.venue_id, active=True)
+        .exclude(id__in=held)
+        .exclude(id__in=blocked.values("table_id"))
+    )
 
 
 def _suggest(rows: list[Row], free: list[Table]) -> None:
@@ -130,7 +149,7 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
         # A tie's later rubbers need its other players: the whole team counts as about to play.
         teams = [match.entry_a, match.entry_b] if match.draw.event.is_team else []
         needed = [(user.id, user.display_name) for user in row.people]
-        needed += [(entry.id, service._entry_title(entry)) for entry in teams]
+        needed += [(entry.id, service.entry_title(entry)) for entry in teams]
         if row.umpire is not None:
             needed.append((row.umpire.id, f"The umpire, {row.umpire.display_name},"))
         shared = next((name for key, name in needed if key in going), None)
@@ -156,7 +175,7 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
 
 
 def _title(match: Match) -> str:
-    return f"{service._entry_title(match.entry_a)} v {service._entry_title(match.entry_b)}"
+    return f"{service.entry_title(match.entry_a)} v {service.entry_title(match.entry_b)}"
 
 
 def _label(match: Match, shape: dict) -> str:
@@ -185,11 +204,78 @@ def _idle(tournament: Tournament, rows: list[Row], to_come: int) -> str:
     return f"Next would be {_title(first.match)}, but: {first.reasons[0]['message']}{rest}"
 
 
+def next_on(tournament: Tournament, table: Table) -> Row | None:
+    """The match that takes this table once its match ends (REQ-053 "Next match"): the queue paired with
+    the free tables as dispatch would pair them, this table counted free too. Only a recommendation:
+    nothing is held, sent or confirmed."""
+    rows, _to_come = _rows(tournament)
+    free = _free_tables(tournament) if tournament.venue_id else []
+    if all(found.id != table.id for found in free):
+        free.append(table)
+    _suggest(rows, free)
+    return next((row for row in rows if row.table is not None and row.table.id == table.id), None)
+
+
+def describe_next(row: Row | None, table: Table) -> dict | None:
+    if row is None:
+        return None
+    match = row.match
+    return {
+        "table_id": table.id,
+        "table": table.label,
+        "match_id": match.id,
+        "event_id": match.draw.event_id,
+        "event_name": match.draw.event.name,
+        "a": service.entry_title(match.entry_a),
+        "b": service.entry_title(match.entry_b),
+        "planned_at": match.scheduled_at,
+    }
+
+
+def table_use(tournament: Tournament, now: datetime) -> tuple[datetime | None, dict]:
+    """When today's play began, and table id -> (idle since, share of today's play it was in use, 0-100)
+    for this tournament's tables (REQ-053). Today is the venue's day; play starts with the day's first
+    match on a table."""
+    from zoneinfo import ZoneInfo
+
+    zone = ZoneInfo(tournament.timezone)
+    midnight = now.astimezone(zone).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = list(
+        Reservation.objects.filter(
+            match__draw__event__tournament=tournament, table__venue_id=tournament.venue_id
+        )
+        .filter(Q(released_at__isnull=True) | Q(released_at__gte=midnight))
+        .values("table_id", "created_at", "released_at")
+    )
+    if not today:
+        return tournament.started_at, {}
+    began = max(midnight, min(found["created_at"] for found in today))
+    span = max((now - began).total_seconds(), 1)
+    use: dict = {}
+    for found in today:
+        start = max(found["created_at"], began)
+        end = found["released_at"] or now
+        idle, busy = use.get(found["table_id"], (began, 0.0))
+        use[found["table_id"]] = (
+            max(idle, end) if found["released_at"] else now,
+            busy + max((end - start).total_seconds(), 0),
+        )
+    return began, {
+        table_id: (idle, min(100, round(100 * busy / span))) for table_id, (idle, busy) in use.items()
+    }
+
+
 def build(tournament: Tournament) -> dict:
     """The board as BoardSerializer shows it."""
+    from .models import TableUmpire
+
     rows, to_come = _rows(tournament)
     free = _free_tables(tournament) if tournament.venue_id else []
     _suggest(rows, free)
+    table_umpires = {
+        assigned.table_id: assigned.umpire
+        for assigned in TableUmpire.objects.filter(tournament=tournament).select_related("umpire")
+    }
     knockout = Q(stage=Match.Stage.KNOCKOUT)
     shape = {
         found["draw_id"]: (found["rounds"], found["groups"])
@@ -200,16 +286,51 @@ def build(tournament: Tournament) -> dict:
     suggested = {row.table.id: row for row in rows if row.table}
     on_tables = {held.table_id: held for held in service.active_for(tournament)}
     idle = _idle(tournament, rows, to_come)
+    blocks = control.blocks_at(tournament.venue_id) if tournament.venue_id else {}
+    live_now = control.Live(list(on_tables.values()))
+    now = timezone.now()
+    began, used = table_use(tournament, now) if _in_play(tournament) and tournament.venue_id else (None, {})
     tables = []
     for state in service.tables_of(tournament):
         held = on_tables.get(state["id"])
         row = suggested.get(state["id"])
+        blocked = blocks.get(state["id"])
+        live = control.describe_table(held, live_now, now) if held else None
         tables.append(
             {
                 **state,
+                "state": control.table_state(blocked, live, state["free"]),
+                "block": {
+                    "reason": blocked.reason,
+                    "reason_label": blocked.get_reason_display(),
+                    "note": blocked.note,
+                    "since": blocked.blocked_at,
+                    "by": blocked.blocked_by.display_name if blocked.blocked_by else "",
+                }
+                if blocked
+                else None,
+                "call": live["call"] if live else None,
+                "umpire": live["umpire"] if live else "",
+                "score": live["score"] if live else None,
                 "playing": service.describe(held) if held else None,
                 "suggested_match_id": row.match.id if row else None,
-                "idle_reason": idle if state["free"] and row is None else "",
+                "idle_reason": idle if state["free"] and not blocked and row is None else "",
+                "idle_since": (
+                    used.get(state["id"], (began, 0))[0]
+                    if state["free"] and not blocked and _in_play(tournament)
+                    else None
+                ),
+                "use_today": used.get(state["id"], (None, 0))[1] if _in_play(tournament) else None,
+                "table_umpire": (
+                    {"id": table_umpires[state["id"]].id, "name": table_umpires[state["id"]].display_name}
+                    if state["id"] in table_umpires
+                    else None
+                ),
+                "next_up": (
+                    describe_next(next_on(tournament, held.table), held.table)
+                    if held is not None and live and live["finishing"]
+                    else None
+                ),
             }
         )
     return {
@@ -222,8 +343,8 @@ def build(tournament: Tournament) -> dict:
                 "event_id": row.match.draw.event_id,
                 "event_name": row.match.draw.event.name,
                 "label": _label(row.match, shape),
-                "a": service._entry_title(row.match.entry_a),
-                "b": service._entry_title(row.match.entry_b),
+                "a": service.entry_title(row.match.entry_a),
+                "b": service.entry_title(row.match.entry_b),
                 "planned_at": row.match.scheduled_at,
                 "ready_since": row.ready_since,
                 "state": row.state,

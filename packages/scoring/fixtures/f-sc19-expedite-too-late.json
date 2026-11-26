@@ -1,0 +1,61 @@
+{
+  "name": "F-SC19: expedite is not introduced once 18 points have been scored in the game; brought in at an even score the server is unchanged",
+  "rules": "2.15.1, 2.15.3",
+  "config": {
+    "best_of": 3,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "points": "abababababababab",
+      "expect": {
+        "points": [
+          8,
+          8
+        ],
+        "server": "a1",
+        "receiver": "b1"
+      }
+    },
+    {
+      "event": {
+        "type": "expedite"
+      },
+      "expect": {
+        "expedite": true,
+        "server": "a1",
+        "receiver": "b1"
+      }
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "expedite": false
+      }
+    },
+    {
+      "points": "ab",
+      "expect": {
+        "points": [
+          9,
+          9
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "expedite"
+      },
+      "error": "expedite_too_late"
+    }
+  ]
+}

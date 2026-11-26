@@ -10,6 +10,7 @@ from core.geography import (
     validate_coordinates,
     validate_location,
 )
+from core.nearby import NearbySearchSerializer
 
 from . import profile
 from .models import (
@@ -279,6 +280,28 @@ class FacilitySerializer(serializers.ModelSerializer):
 
     def get_training_tables(self, venue) -> int:
         return self._count(venue, "training")
+
+
+class NearbyFacilitySearchSerializer(NearbySearchSerializer):
+    open_now = serializers.BooleanField(required=False, default=False)
+
+
+class NearbyFacilitySerializer(FacilitySerializer):
+    """A branch found near a point, with how far away it is."""
+
+    distance_m = serializers.SerializerMethodField()
+
+    class Meta(FacilitySerializer.Meta):
+        fields = [*FacilitySerializer.Meta.fields, "distance_m"]
+        read_only_fields = fields
+
+    def get_distance_m(self, venue) -> int:
+        return round(venue.distance_m)
+
+
+class NearbyFacilitiesSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    results = NearbyFacilitySerializer(many=True)
 
 
 class FacilityProfileSerializer(FacilitySerializer):

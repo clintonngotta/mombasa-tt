@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from . import service
+from . import control, service
+from .models import TableBlock
 
 
 class DispatchSerializer(serializers.Serializer):
@@ -73,10 +74,116 @@ class QueuedMatchSerializer(serializers.Serializer):
     suggested_table = serializers.CharField(allow_blank=True)
 
 
+class TableBlockSerializer(serializers.Serializer):
+    reason = serializers.ChoiceField(choices=TableBlock.Reason.choices)
+    reason_label = serializers.CharField()
+    note = serializers.CharField(allow_blank=True)
+    since = serializers.DateTimeField()
+    by = serializers.CharField(allow_blank=True)
+
+
+class MatchCallStateSerializer(serializers.Serializer):
+    """Where the call of the match on a table stands (REQ-043)."""
+
+    called_at = serializers.DateTimeField(help_text="First call; the grace period runs from it.")
+    calls = serializers.IntegerField(help_text="How many times it was called to this table.")
+    last_called_at = serializers.DateTimeField()
+    grace_until = serializers.DateTimeField()
+    a_reported_at = serializers.DateTimeField(allow_null=True)
+    b_reported_at = serializers.DateTimeField(allow_null=True)
+    no_show = serializers.ListField(
+        child=serializers.ChoiceField(choices=control.SIDES),
+        help_text="Sides not at the table when the grace period ran out. Only the referee awards a "
+        "walkover for it.",
+    )
+
+
+class LiveScoreSerializer(serializers.Serializer):
+    games_won = serializers.ListField(child=serializers.IntegerField())
+    points = serializers.ListField(child=serializers.IntegerField())
+    rubber = serializers.IntegerField(allow_null=True, help_text="The rubber being played, for a tie.")
+    rubbers_won = serializers.ListField(child=serializers.IntegerField(), required=False)
+
+
+class TableUmpireRefSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+
+
+class NextMatchSerializer(serializers.Serializer):
+    """The match recommended to take a table next (REQ-053). A recommendation only: nothing is sent."""
+
+    table_id = serializers.UUIDField()
+    table = serializers.CharField()
+    match_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    a = serializers.CharField()
+    b = serializers.CharField()
+    planned_at = serializers.DateTimeField(allow_null=True)
+
+
 class BoardTableSerializer(TableStateSerializer):
+    state = serializers.ChoiceField(
+        choices=[control.FREE, control.CALLED, control.WARMING_UP, control.IN_PLAY, control.BLOCKED],
+        help_text="called: sent and waiting for a side; warming_up: both sides at the table, no point "
+        "yet; in_play: scoring has started (or another tournament's match holds it); blocked: out of use.",
+    )
+    block = TableBlockSerializer(allow_null=True)
+    call = MatchCallStateSerializer(allow_null=True)
+    umpire = serializers.CharField(allow_blank=True)
+    score = LiveScoreSerializer(allow_null=True)
     playing = ReservationSerializer(allow_null=True, help_text="This tournament's match on the table.")
     suggested_match_id = serializers.UUIDField(allow_null=True)
     idle_reason = serializers.CharField(allow_blank=True, help_text="Why a free table has no match.")
+    idle_since = serializers.DateTimeField(
+        allow_null=True, help_text="A free table in use: since when nothing has been played on it."
+    )
+    use_today = serializers.IntegerField(
+        allow_null=True, help_text="Percent of today's play the table has had a match on it."
+    )
+    table_umpire = TableUmpireRefSerializer(
+        allow_null=True, help_text="Who takes every match sent to this table, until staff change it."
+    )
+    next_up = NextMatchSerializer(
+        allow_null=True,
+        help_text="Once the match here reaches its winning point and before it is confirmed: the match "
+        "recommended to take the table next.",
+    )
+
+
+class UmpireNextSerializer(serializers.Serializer):
+    """What follows on the umpire's table once their match is confirmed."""
+
+    next = NextMatchSerializer(allow_null=True)
+    on_table = serializers.BooleanField(help_text="Already sent to the table, not only recommended.")
+    scorecard_id = serializers.UUIDField(
+        allow_null=True, help_text="Set when the next match is already this umpire's to score."
+    )
+
+
+class UmpireRosterSerializer(serializers.Serializer):
+    """One of the tournament's umpires."""
+
+    user_id = serializers.UUIDField()
+    display_name = serializers.CharField()
+    table_id = serializers.UUIDField(allow_null=True)
+    table = serializers.CharField(allow_blank=True)
+    playing_on = serializers.CharField(allow_blank=True, help_text="The table they are playing on now.")
+    entered = serializers.BooleanField(help_text="They play in this tournament too.")
+
+
+class UmpireCandidateSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    display_name = serializers.CharField()
+
+
+class AddUmpireSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+
+
+class TableUmpireSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField(allow_null=True)
 
 
 class BoardSerializer(serializers.Serializer):
@@ -92,3 +199,43 @@ class BoardSerializer(serializers.Serializer):
 
 class AutoDispatchSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
+
+
+class ArrivalSerializer(serializers.Serializer):
+    side = serializers.ChoiceField(choices=control.SIDES)
+    undo = serializers.BooleanField(default=False)
+
+
+class MoveSerializer(serializers.Serializer):
+    table_id = serializers.UUIDField()
+    reason = serializers.CharField(max_length=300, trim_whitespace=True)
+
+
+class BlockSerializer(serializers.Serializer):
+    reason = serializers.ChoiceField(choices=TableBlock.Reason.choices)
+    note = serializers.CharField(
+        max_length=200, trim_whitespace=True, allow_blank=True, required=False, default=""
+    )
+
+
+class DeskEntrySerializer(serializers.Serializer):
+    """An accepted entry at the check-in desk."""
+
+    id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    title = serializers.CharField()
+    checked_in_at = serializers.DateTimeField(allow_null=True)
+    checked_in_by = serializers.CharField(allow_blank=True)
+
+
+class MatchDayLogSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    at = serializers.DateTimeField()
+    action = serializers.CharField()
+    action_label = serializers.CharField()
+    summary = serializers.CharField()
+    reason = serializers.CharField(allow_blank=True)
+    actor = serializers.CharField(allow_blank=True, help_text="Empty for automatic dispatch.")
+    match_id = serializers.UUIDField(allow_null=True)
+    table = serializers.CharField(allow_blank=True)

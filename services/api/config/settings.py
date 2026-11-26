@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "attachments",
     "competitions",
     "facilities",
+    "feedback",
     "finance",
     "coaching",
     "events",
@@ -69,12 +70,14 @@ INSTALLED_APPS = [
     "organizations",
     "guests",
     "outbox",
+    "penalties",
     "ratings",
     "realtime",
     "regions",
     "reservations",
     "scoring",
     "soda",
+    "squads",
     "training",
 ]
 
@@ -193,7 +196,7 @@ REST_FRAMEWORK = {
     # Applies only to views that set `throttle_scope` (anonymous auth endpoints, sending invitations).
     # ...and, for signed-out callers, the public competition pages (core/throttling.py).
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.ScopedRateThrottle",
+        "core.throttling.ScopedThrottle",
         "core.throttling.PublicReadThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
@@ -203,6 +206,8 @@ REST_FRAMEWORK = {
         "uploads": os.environ.get("THROTTLE_UPLOADS", "30/hour"),
         "entries": os.environ.get("THROTTLE_ENTRIES", "30/hour"),
         "public_reads": os.environ.get("THROTTLE_PUBLIC_READS", "120/min"),
+        "live_reads": os.environ.get("THROTTLE_LIVE_READS", "1800/min"),
+        "nearby": os.environ.get("THROTTLE_NEARBY", "30/min"),
     },
     # The client address is the last X-Forwarded-For hop added by the one proxy in front (Caddy), so a
     # client can't dodge a throttle by sending its own X-Forwarded-For. With no header, REMOTE_ADDR.
@@ -229,7 +234,22 @@ SPECTACULAR_SETTINGS = {
         "AttendanceMarkEnum": "regions.serializers.MARKS",
         "PenalizedAttendanceEnum": "regions.serializers.PENALIZED",
         "MeetingPenaltyStatusEnum": "regions.models.MeetingPenalty.Status",
+        "ActionItemStatusEnum": "regions.models.ActionItem.Status",
+        "FeedbackFormStatusEnum": "feedback.models.FeedbackForm.Status",
+        "SquadPlaceStatusEnum": "squads.models.SquadPlace.Status",
+        "AbsenceEnum": "penalties.models.Absence",
+        "ExpenseCategoryEnum": "finance.models.Expense.Category",
+        "PenaltyKindEnum": "penalties.models.PenaltyKind",
+        "AbsencePenaltyStatusEnum": "penalties.models.AbsencePenalty.Status",
+        "AppealEnum": "penalties.models.AbsencePenalty.Appeal",
+        "QuestionKindEnum": "feedback.serializers.KIND_CHOICES",
+        "MinutesStatusEnum": "regions.models.Meeting.MinutesStatus",
         "SkillEnum": "training.models.Skill",
+        "TableBlockReasonEnum": "reservations.models.TableBlock.Reason",
+        "IncidentKindEnum": "scoring.models.MatchIncident.Kind",
+        "AnnouncementScopeEnum": "competitions.models.Announcement.Scope",
+        "AnnouncementStatusEnum": "competitions.models.Announcement.Status",
+        "SideEnum": "reservations.control.SIDES",
         "ClubSessionStatusEnum": "training.models.ClubSession.Status",
         "RsvpAnswerEnum": "activities.models.Rsvp.Answer",
         "PaymentMethodEnum": "finance.models.Payment.Method",
@@ -296,6 +316,38 @@ LOGGING = {
 # developing: without it the outbox is polled by `manage.py work_outbox` and WebSocket messages reach
 # only pages served by the same process. Keep it on a private network (deployment.md).
 REDIS_URL = os.environ.get("REDIS_URL", "")
+# Production counts rate limits in Redis so every API process shares them (core/throttling.py); without
+# it each process would keep its own count and a client could spread requests across them.
+if not DEBUG and not REDIS_URL:
+    raise ImproperlyConfigured("REDIS_URL is required when DJANGO_DEBUG is off (shared rate limits).")
+
+# "default" holds the rate-limit counts and the second-old live score list (scoring/live.py). Calls to
+# Redis give up after half a second, so a slow Redis can't hold a request. "local" is this process's own
+# memory: the counts fall back to it while Redis is down, for the limits that stay open (throttling.py).
+_LOCAL_CACHE = {
+    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    "LOCATION": "coast-tt-local",
+    "OPTIONS": {"MAX_ENTRIES": 10000},
+}
+CACHES = {
+    "default": (
+        {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "coast-tt",
+            # JSON, not pickle (core/cache.py). No retries: one failed call is the answer.
+            "OPTIONS": {
+                "serializer": "core.cache.JsonSerializer",
+                "socket_connect_timeout": 0.5,
+                "socket_timeout": 0.5,
+                "retry_on_timeout": False,
+            },
+        }
+        if REDIS_URL
+        else {**_LOCAL_CACHE, "LOCATION": "coast-tt-default"}
+    ),
+    "local": _LOCAL_CACHE,
+}
 
 # The oldest web app build (its APP_BUILD number, e.g. 202611191200) the API still serves (REQ-035).
 # Raise it only when a change breaks older cached apps; 0 serves every build.

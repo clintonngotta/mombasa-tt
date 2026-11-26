@@ -1,0 +1,89 @@
+{
+  "name": "F-SC18: in a team tie a player's offences and the adviser's cards carry into later rubbers",
+  "rules": "3.5.2.7",
+  "config": {
+    "best_of": 3,
+    "doubles": false,
+    "carry": {
+      "offences": {
+        "a1": 2,
+        "a2": 0,
+        "b1": 0,
+        "b2": 1
+      },
+      "advisers": [
+        1,
+        0
+      ]
+    }
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      },
+      "expect": {
+        "offences": {
+          "a1": 2,
+          "a2": 0,
+          "b1": 0,
+          "b2": 1
+        },
+        "advisers": [
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "offences": {
+          "a1": 3,
+          "a2": 0,
+          "b1": 0,
+          "b2": 1
+        },
+        "points": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "card",
+        "player": "a1",
+        "reason": "bad_behaviour"
+      },
+      "error": "refer_to_referee"
+    },
+    {
+      "event": {
+        "type": "adviser_card",
+        "side": "a",
+        "reason": "bad_behaviour"
+      },
+      "expect": {
+        "advisers": [
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "event": {
+        "type": "adviser_card",
+        "side": "a",
+        "reason": "bad_behaviour"
+      },
+      "error": "adviser_sent_off"
+    }
+  ]
+}

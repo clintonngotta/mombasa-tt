@@ -11,8 +11,12 @@ import {
   HeartHandshake,
   KeyRound,
   Landmark,
+  UserRoundCheck,
   Map,
+  FileText,
+  Gavel,
   MapPin,
+  Shield,
   Megaphone,
   PartyPopper,
   Store,
@@ -22,7 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { ROW } from "@/lib/clubAdmin"
-import { can, type Membership } from "@/lib/clubs"
+import { can, isBodyKind, type Membership } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
 
 type OrgLink = { to: string; label: string; icon: LucideIcon }
@@ -62,6 +66,7 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
       (manageRoles || training) && { to: "/club/profile", label: `${variant === "facility" ? "Facility" : "Club"} profile and training hours`, icon: Store },
       training && { to: "/club/sessions", label: "Training sessions: invitations and attendance", icon: CalendarClock },
       competitions && { to: "/club/tournaments", label: "Tournaments and their dashboards", icon: Trophy },
+      competitions && { to: "/club/squads", label: "Squads: who represents us away", icon: Shield },
       activities && { to: "/club/activities", label: "Activities: nights out, fun days and visits", icon: PartyPopper },
       announce && { to: "/club/announce", label: `Announce to ${variant === "facility" ? "players" : "members"}`, icon: Bell },
       announce && { to: "/club/external-events", label: "Events elsewhere: list a tournament run outside Coast TT", icon: Megaphone },
@@ -78,20 +83,35 @@ function organizationGroups(membership: Membership, variant: "club" | "facility"
   }
   const money: Group = {
     title: "Money",
-    links: pick(finances && { to: "/club/finance", label: "Finances: charges, payments and balances", icon: Banknote }),
+    links: pick(
+      finances && { to: "/club/finance", label: "Finances: charges, payments and balances", icon: Banknote },
+      finances && { to: "/club/finance/external", label: "Outside income: sponsors, grants and gate takings", icon: Banknote },
+      member && { to: "/club/finance/reports", label: "Annual reports: the club's accounts", icon: FileText },
+    ),
   }
   const governanceGroup: Group = {
     title: "Governance",
     links: pick(
       { to: "/club/committee", label: governance ? "Committee and its positions" : "Committee", icon: Landmark },
+      member &&
+        variant === "club" &&
+        membership.organization.kind !== "coaching" && {
+          to: "/club/representatives",
+          label: isBodyKind(membership.organization.kind) ? "Representatives sent by clubs and regions" : "Representatives to the regional body",
+          icon: UserRoundCheck,
+        },
       member && { to: "/club/meetings", label: "Meetings", icon: CalendarClock },
-      membership.organization.kind === "regional_body" && { to: "/region", label: "Region: agenda, clubs, articles, meetings, sponsorships and approvals", icon: Map },
+      governance && { to: "/club/penalties", label: "Absence penalties: rules, proposals and appeals", icon: Gavel },
+      isBodyKind(membership.organization.kind) && { to: "/region", label: "Region: agenda, clubs, articles, meetings, sponsorships and approvals", icon: Map },
     ),
   }
   const mine: Group = {
     title: `Your ${word}`,
     links: pick(
       member && { to: "/club/schedule", label: "Schedule: activities, tournaments and training", icon: CalendarDays },
+      member && { to: "/penalties", label: "My penalties: absences and appeals", icon: Gavel },
+      member && { to: "/squads", label: "My squads: selections and where I've represented", icon: Shield },
+      member && { to: "/club/training-rules", label: "Training rules: weekly slots, place and check-in", icon: MapPin },
       member && { to: "/club/my-payments", label: "My payments", icon: Banknote },
       member && { to: "/club/welfare", label: "Welfare projects", icon: HeartHandshake },
     ),

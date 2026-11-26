@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from rest_framework.test import APIClient
 
 from accounts.models import User
@@ -12,6 +12,7 @@ PASSWORD = "correct-horse-battery"
 @pytest.fixture(autouse=True)
 def _clear_throttles():
     cache.clear()
+    caches["local"].clear()
 
 
 @pytest.fixture(autouse=True)

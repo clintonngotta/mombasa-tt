@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Clock, Globe, MapPin, Users } from "lucide-react"
+import { Clock, Globe, MapPin, UserCheck, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
@@ -10,7 +10,10 @@ import {
   activityKeys,
   ANSWER_LABEL,
   answerActivity,
+  AUDIENCE_REACH,
   cancelActivity,
+  checkInActivity,
+  markActivityAttendance,
   getActivity,
   KIND_LABEL,
   listAttendees,
@@ -39,13 +42,13 @@ export function ActivityPage() {
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <BackLink to={staff ? "/club/activities" : "/club/schedule"}>{staff ? "Activities" : "Club schedule"}</BackLink>
+      {staff ? <BackLink to="/club/activities">Activities</BackLink> : membership ? <BackLink to="/club/schedule">Club schedule</BackLink> : <BackLink to="/invited">Events for you</BackLink>}
       {activity.isError && <FormAlert>{errorMessage(activity.error, "This activity isn't available.")}</FormAlert>}
       {a && (
         <>
           <header className="flex flex-col gap-2">
             <p className="text-sm font-semibold text-brand-blue">
-              {KIND_LABEL[a.kind ?? "other"]}
+              {KIND_LABEL[a.kind ?? "other"]} · {a.organization.name}
               {a.status === "draft" && " · Draft: only organizers see it"}
             </p>
             <h1 className={cn("text-[32px] leading-9 font-bold", a.status === "cancelled" && "line-through")}>{a.title}</h1>
@@ -62,9 +65,9 @@ export function ActivityPage() {
                 <MapPin aria-hidden className="size-4 text-brand-blue" /> {a.place}
               </p>
             )}
-            {a.public && (
+            {(a.public || a.audience === "open") && (
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Globe aria-hidden className="size-4" /> Open to everyone on Coast TT
+                <Globe aria-hidden className="size-4" /> {a.audience === "open" ? "Open to every player on Coast TT" : "Everyone on Coast TT can see this"}
               </p>
             )}
             {a.description && <p className="whitespace-pre-wrap">{a.description}</p>}
@@ -76,10 +79,11 @@ export function ActivityPage() {
               {a.rsvp_deadline && ` · answers close ${formatInstant(a.rsvp_deadline, timeZone)}`}
             </p>
           </header>
+          {(a.can_check_in || a.my_checked_in_at) && <CheckIn orgId={orgId} activity={a} />}
           {a.can_answer && <Answer orgId={orgId} activity={a} />}
-          {(a.can_answer || staff) && a.status !== "draft" && <Attendees orgId={orgId} id={a.id} />}
+          {(staff || (a.can_answer && a.audience !== "open")) && a.status !== "draft" && <Attendees orgId={orgId} activity={a} staff={staff} />}
           {staff && <StaffActions orgId={orgId} activity={a} />}
-          {canShare && a.status === "published" && !a.cost_share && a.going > 0 && <ShareCost orgId={orgId} activity={a} />}
+          {canShare && (a.audience === "members" || a.audience === "selected") && a.status === "published" && !a.cost_share && a.going > 0 && <ShareCost orgId={orgId} activity={a} />}
         </>
       )}
     </div>
@@ -191,8 +195,42 @@ function Answer({ orgId, activity }: { orgId: string; activity: Activity }) {
   )
 }
 
-function Attendees({ orgId, id }: { orgId: string; id: string }) {
-  const attendees = useQuery({ queryKey: activityKeys.attendees(orgId, id), queryFn: () => listAttendees(orgId, id) })
+/** While the activity runs, whoever it is for says they are there. */
+function CheckIn({ orgId, activity }: { orgId: string; activity: Activity }) {
+  const queryClient = useQueryClient()
+  const checkIn = useMutation({
+    mutationFn: () => checkInActivity(orgId, activity.id),
+    onSuccess: (fresh) => {
+      queryClient.setQueryData(activityKeys.detail(orgId, activity.id), fresh)
+      void queryClient.invalidateQueries({ queryKey: activityKeys.all })
+    },
+  })
+  return (
+    <section aria-labelledby="check-in-heading" className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+      <h2 id="check-in-heading" className="flex items-center gap-2 text-xl font-bold">
+        <UserCheck aria-hidden className="size-5 text-brand-blue" /> {activity.my_checked_in_at ? "You're checked in" : "It's on now"}
+      </h2>
+      {!activity.my_checked_in_at && (
+        <Button className="self-start" disabled={checkIn.isPending} onClick={() => checkIn.mutate()}>
+          {checkIn.isPending ? "Checking in…" : "Check in"}
+        </Button>
+      )}
+      {checkIn.isError && <FormAlert>{errorMessage(checkIn.error)}</FormAlert>}
+    </section>
+  )
+}
+
+function Attendees({ orgId, activity, staff }: { orgId: string; activity: Activity; staff: boolean }) {
+  const queryClient = useQueryClient()
+  const id = activity.id
+  // Other people answer and check in, so staff taking attendance always see the latest list.
+  const attendees = useQuery({ queryKey: activityKeys.attendees(orgId, id), queryFn: () => listAttendees(orgId, id), staleTime: staff ? 0 : undefined })
+  const mark = useMutation({
+    mutationFn: ({ rsvp, attended }: { rsvp: string; attended: boolean }) => markActivityAttendance(orgId, id, rsvp, attended),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: activityKeys.attendees(orgId, id) }),
+  })
+  const [now] = useState(() => Date.now())
+  const taking = staff && activity.status === "published" && new Date(activity.starts_at).getTime() <= now
   const list = attendees.data ?? []
   const going = list.filter((a) => a.answer === "going" && !a.waitlisted)
   const maybe = list.filter((a) => a.answer === "maybe")
@@ -203,18 +241,53 @@ function Attendees({ orgId, id }: { orgId: string; id: string }) {
         <Users aria-hidden className="size-5 text-brand-blue" /> Who's coming
       </h2>
       {attendees.isError && <FormAlert>{errorMessage(attendees.error)}</FormAlert>}
+      {mark.isError && <FormAlert>{errorMessage(mark.error)}</FormAlert>}
       {attendees.isSuccess && list.length === 0 && <p className="text-muted-foreground">No answers yet.</p>}
-      {[
-        ["Going", going],
-        ["Maybe", maybe],
-        ["Waiting for a place", waiting],
-      ].map(([label, people]) =>
-        (people as typeof list).length ? (
-          <div key={label as string}>
-            <p className="text-sm font-semibold">{label as string}</p>
-            <p>{(people as typeof list).map((p) => p.display_name).join(", ")}</p>
-          </div>
-        ) : null
+      {taking && going.length + maybe.length > 0 ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            {list.filter((a) => a.attended).length} of {going.length + maybe.length} here. People who check in are marked for you.
+          </p>
+          <ul aria-label="Attendance" className="flex flex-col gap-2">
+            {[...going, ...maybe].map((person) => (
+              <li key={person.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2">
+                <span>
+                  <span className="font-semibold">{person.display_name}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {person.answer === "maybe" ? "Said maybe" : "Said going"}
+                    {person.checked_in_at && " · checked in"}
+                  </span>
+                </span>
+                <div role="group" aria-label={`Attendance of ${person.display_name}`} className="flex gap-1">
+                  <Button size="sm" variant={person.attended === true ? "default" : "outline"} aria-pressed={person.attended === true} disabled={mark.isPending} onClick={() => mark.mutate({ rsvp: person.id, attended: true })}>
+                    Here
+                  </Button>
+                  <Button size="sm" variant={person.attended === false ? "default" : "outline"} aria-pressed={person.attended === false} disabled={mark.isPending} onClick={() => mark.mutate({ rsvp: person.id, attended: false })}>
+                    Not here
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        [
+          ["Going", going],
+          ["Maybe", maybe],
+        ].map(([label, people]) =>
+          (people as typeof list).length ? (
+            <div key={label as string}>
+              <p className="text-sm font-semibold">{label as string}</p>
+              <p>{(people as typeof list).map((p) => p.display_name).join(", ")}</p>
+            </div>
+          ) : null
+        )
+      )}
+      {waiting.length > 0 && (
+        <div>
+          <p className="text-sm font-semibold">Waiting for a place</p>
+          <p>{waiting.map((p) => p.display_name).join(", ")}</p>
+        </div>
       )}
     </section>
   )
@@ -239,7 +312,7 @@ function StaffActions({ orgId, activity }: { orgId: string; activity: Activity }
       <div className="flex flex-wrap gap-2">
         {activity.status === "draft" && (
           <Button disabled={publish.isPending} onClick={() => publish.mutate()}>
-            Publish to {activity.audience === "selected" ? "the members invited" : "all members"}
+            Publish to {AUDIENCE_REACH[activity.audience ?? "members"]}
           </Button>
         )}
         {!cancelling && (
@@ -250,7 +323,7 @@ function StaffActions({ orgId, activity }: { orgId: string; activity: Activity }
       </div>
       {cancelling && (
         <div className="flex flex-wrap items-end gap-2 rounded-xl border border-destructive/40 p-4">
-          <Field label="Why it's cancelled" className="min-w-48 flex-1" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} hint="Members see this. The activity stays listed as cancelled." />
+          <Field label="Why it's cancelled" className="min-w-48 flex-1" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} hint="Everyone it's for sees this. The activity stays listed as cancelled." />
           <Button variant="destructive" disabled={!reason.trim() || cancel.isPending} onClick={() => cancel.mutate()}>
             Cancel it
           </Button>

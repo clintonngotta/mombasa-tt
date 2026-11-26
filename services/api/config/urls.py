@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView
 
+from activities.urls import me_urlpatterns as my_events
 from coaching.urls import coach_urlpatterns
 from coaching.urls import me_urlpatterns as my_coaching
 from competitions.urls import me_urlpatterns as my_entries
@@ -11,11 +12,15 @@ from core.catalogue import CountryCatalogueView, CountryOptionsView
 from events.urls import club_urls as event_club_urls
 from facilities.urls import finder_urls
 from facilities.urls import my_urls as facility_my_urls
+from feedback.urls import me_urlpatterns as my_feedback
+from feedback.urls import organization_urlpatterns as feedback_forms
 from guests.urls import club_urlpatterns as club_guests
 from guests.urls import link_urlpatterns as guest_links
 from guests.urls import me_urlpatterns as my_guest_claims
 from notifications.urls import club_urls as notification_club_urls
 from notifications.urls import my_urls as notification_my_urls
+from penalties.urls import me_urlpatterns as my_penalties
+from penalties.urls import organization_urlpatterns as penalty_routes
 from profiles.views import PlayerDetailView, PlayerDirectoryView
 from ratings.views import ClubRankingView, GeographyRankingView, PlayerRatingsView, RankingView
 from regions.urls import body_urlpatterns as regional_bodies
@@ -26,6 +31,8 @@ from scoring.urls import me_urlpatterns as my_scorecards
 from scoring.urls import tournament_urlpatterns as umpires
 from soda.urls import club_urls as soda_club_urls
 from soda.urls import my_urls as soda_my_urls
+from squads.urls import me_urlpatterns as my_squads
+from squads.urls import organization_urlpatterns as squad_routes
 from training.urls import club_drills, library_urls
 
 api_v1 = [
@@ -42,6 +49,14 @@ api_v1 = [
     path("me/", include(soda_my_urls)),
     path("me/", include(notification_my_urls)),
     path("me/", include(my_region)),
+    path("me/", include(my_events)),
+    path("me/", include(my_feedback)),
+    path("me/", include(my_squads)),
+    path("me/", include(my_penalties)),
+    path("organizations/<uuid:organization_pk>/", include(penalty_routes)),
+    path("organizations/<uuid:organization_pk>/", include(squad_routes)),
+    path("", include("feedback.urls")),
+    path("organizations/<uuid:organization_pk>/", include(feedback_forms)),
     path("me/", include(my_coaching)),
     path("me/", include(my_guest_claims)),
     path("coaches/", include(coach_urlpatterns)),

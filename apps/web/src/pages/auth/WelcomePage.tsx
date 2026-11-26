@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { CalendarClock, ClipboardCheck, TrendingUp } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
-import { Wordmark } from "@/components/brand/Wordmark"
+import { Logo } from "@/components/brand/Logo"
 import { cn } from "@/lib/utils"
 
 const HIGHLIGHTS = [
@@ -13,11 +13,8 @@ const HIGHLIGHTS = [
 export function WelcomePage() {
   return (
     <div className="flex min-h-dvh flex-col bg-brand-navy text-white">
-      <header className="flex h-14 items-center px-4 sm:px-8">
-        <Wordmark className="text-white [&>span]:text-brand-cyan" />
-      </header>
-
       <main className="mx-auto flex w-full max-w-[440px] flex-1 flex-col justify-end gap-10 px-4 pt-10 pb-10 sm:justify-center">
+        <Logo variant="reversed" className="h-32 self-start" />
         <div className="flex flex-col gap-4">
           <p className="font-display text-lg font-semibold tracking-wide text-brand-gold uppercase">Table tennis, organised</p>
           <h1 className="text-5xl leading-[1.05] font-bold">Run the club. Play the match. Keep the record.</h1>
@@ -44,6 +41,15 @@ export function WelcomePage() {
           >
             Log in
           </Link>
+          <p className="text-center text-white/80">
+            <Link to="/tournaments" className="font-semibold text-white underline">
+              Browse tournaments
+            </Link>{" "}
+            ·{" "}
+            <Link to="/help" className="font-semibold text-white underline">
+              Help
+            </Link>
+          </p>
         </div>
       </main>
     </div>

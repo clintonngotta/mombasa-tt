@@ -260,6 +260,14 @@ class ClubSession(models.Model):
     fee_currency = models.CharField(max_length=3, default="KES")
     open_to_players = models.BooleanField(default=False)
     series = models.UUIDField(null=True, blank=True, db_index=True)
+    # Where this session is held when it isn't the club's usual place (REQ-052): a venue or a map point.
+    # Check-in is measured from here. Empty means the usual location in the club's training rules.
+    location_venue = models.ForeignKey(
+        "facilities.Venue", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    location_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_label = models.CharField(max_length=120, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.SCHEDULED)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
@@ -273,6 +281,16 @@ class ClubSession(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=Q(ends_at__gt=F("starts_at")), name="club_session_ends_after_start"
+            ),
+            models.CheckConstraint(
+                condition=Q(location_latitude__isnull=True, location_longitude__isnull=True)
+                | Q(
+                    location_latitude__gte=-90,
+                    location_latitude__lte=90,
+                    location_longitude__gte=-180,
+                    location_longitude__lte=180,
+                ),
+                name="club_session_location_on_earth",
             ),
         ]
 
@@ -308,6 +326,22 @@ class SessionInvitation(models.Model):
     )
     attendance_at = models.DateTimeField(null=True, blank=True)
 
+    class Source(models.TextChoices):
+        NONE = ""
+        SELF = "self"  # the member checked in on their phone, at the place
+        STAFF = "staff"  # marked by hand
+
+    # How the mark was made, and for a check-in what the phone reported: how far from the session's
+    # location and how sure of it. The position itself is never kept (REQ-052).
+    attendance_source = models.CharField(max_length=5, choices=Source.choices, default="", blank=True)
+    late = models.BooleanField(default=False)
+    check_in_distance_m = models.PositiveIntegerField(null=True, blank=True)
+    check_in_accuracy_m = models.PositiveIntegerField(null=True, blank=True)
+    # An apology sent before the start (REQ-052): the member isn't coming and said so, with an optional
+    # reason for the staff. Attendance then shows them as apologised rather than absent.
+    apologised_at = models.DateTimeField(null=True, blank=True)
+    apology_reason = models.CharField(max_length=300, blank=True)
+
     class Meta:
         ordering = ["created_at", "id"]
         constraints = [
@@ -316,3 +350,52 @@ class SessionInvitation(models.Model):
 
     def __str__(self):
         return f"{self.user_id} to {self.session_id} ({self.status})"
+
+
+MAX_RADIUS_M = 300
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+class TrainingRules(models.Model):
+    """How a club trains (REQ-052): its weekly slots, where it usually trains, and when and from how far
+    a member may check themselves in. One per organization; without one the defaults below apply."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.OneToOneField(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="training_rules"
+    )
+    # The weekly schedule members see: [{"weekday": "monday", "starts": "18:00", "ends": "20:00",
+    # "title": str}], times on the organization's clock.
+    slots = models.JSONField(default=list, blank=True)
+    # The usual place: one of the organization's venues, or a point on the map.
+    venue = models.ForeignKey(
+        "facilities.Venue", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_label = models.CharField(max_length=120, blank=True)
+    # Check-in opens this long before the start and closes this long after it; later than
+    # `late_after_minutes` past the start counts as late.
+    opens_before_minutes = models.PositiveSmallIntegerField(default=30)
+    closes_after_minutes = models.PositiveSmallIntegerField(default=30)
+    late_after_minutes = models.PositiveSmallIntegerField(default=10)
+    radius_m = models.PositiveSmallIntegerField(default=MAX_RADIUS_M)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(radius_m__gte=25, radius_m__lte=MAX_RADIUS_M), name="training_radius_in_range"
+            ),
+            models.CheckConstraint(
+                condition=Q(latitude__isnull=True, longitude__isnull=True)
+                | Q(latitude__gte=-90, latitude__lte=90, longitude__gte=-180, longitude__lte=180),
+                name="training_rules_location_on_earth",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Training rules of {self.organization_id}"

@@ -1,6 +1,6 @@
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
-import type { Config, Player, ScoreEvent, Side, State } from "@scoring"
+import type { CardReason, Config, Player, ScoreEvent, Side, State } from "@scoring"
 
 export type Scorecard = Schemas["Scorecard"]
 export type MyScorecard = Schemas["MyScorecard"]
@@ -11,6 +11,15 @@ export type SubmitResult = Schemas["SubmitResult"]
 
 /** A score event on its way to the server: its own id (a retry is recognised) and its place in the stream. */
 export type Envelope = { id: string; sequence: number; event: ScoreEvent; device_time: string; expected_revision?: number }
+
+/** The reason categories a card is shown for (REQ-043), as the deck, its log and the live views name them. */
+export const CARD_REASON_LABEL: Record<CardReason, string> = {
+  bad_behaviour: "Bad behaviour",
+  racket_abuse: "Racket abuse",
+  illegal_advice: "Illegal advice",
+  delay: "Delay",
+  other: "Other",
+}
 
 export const scoringKeys = {
   mine: ["scoring", "mine"] as const,
@@ -100,6 +109,17 @@ export const REFUSAL: Record<string, string> = {
   game_under_way: "The first server can only be chosen before the first point of a game.",
   not_serving_pair: "Only the pair serving first chooses its server.",
   timeout_used: "That side has already taken its time-out.",
+  no_timeout: "No time-out is running.",
+  invalid_card: "Choose why the card is shown.",
+  refer_to_referee: "A fourth offence is the referee's to decide: call the referee.",
+  adviser_sent_off: "That adviser has already been sent away.",
+  suspended: "Play is suspended: resume it, or record the retirement.",
+  not_suspended: "Play isn't suspended.",
+  expedite_on: "The expedite system is already on.",
+  expedite_too_late: "The expedite system isn't brought in once 18 points have been played in the game.",
+  not_between_rallies: "A time-out is called between rallies in a game, once the game's first rally is played.",
+  invalid_note: "Keep the note to 200 characters.",
+  referee_only: "Only the referee disqualifies.",
   nothing_to_undo: "There is nothing to undo.",
   sequence_gap: "Some points didn't reach the server in order.",
   sequence_conflict: "The server already holds a different action at that place.",

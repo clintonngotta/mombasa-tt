@@ -9,12 +9,12 @@ from accounts.models import User
 from coaching.models import CoachProfile
 from core.models import Region
 from facilities.models import Table, Venue
-from organizations.models import Membership, OfficialAppointment, Organization, Role, seed_roles
+from organizations.models import Membership, Organization, Role, seed_roles
 from organizations.permissions import Permission, RoleKey
 from profiles.models import profile_for
 
 # Mirrors apps/web/src/lib/devAccounts.ts. Each user's place: (organization, role key or custom role name),
-# or None for someone with no membership (the regional officer acts through an appointment instead).
+# or None for the regional officer, an official of the dev region's body (TASK-107).
 DEV_CLUB = "Mombasa Dev TT Club"
 DEV_FACILITY = "Coast Dev TT Centre"
 DEV_REGION = ("KE", "Mombasa")
@@ -29,6 +29,12 @@ DEV_USERS = [
     ("regional@mombasa-tt.test", "Test Regional Officer", None),
 ]
 REGIONAL_OFFICER = "regional@mombasa-tt.test"
+
+
+# Map positions, so "near me" searches have something to find: the club on Moi Avenue, the facility's
+# branch about four kilometres away in Nyali.
+DEV_CLUB_POSITION = ("-4.063500", "39.668200")
+DEV_BRANCH_POSITION = ("-4.047000", "39.702000")
 
 
 def _organization(name: str, kind: str) -> Organization:
@@ -51,6 +57,13 @@ def _facility() -> Organization:
         venue = Venue.objects.create(
             organization=facility, name="Nyali branch", town="Mombasa", address="Links Road, Nyali"
         )
+    if venue.latitude is None and venue.profile == "hidden":
+        # A branch nobody has set up yet is put on the map and in the finder; one a developer
+        # changed is left alone.
+        country, region = DEV_REGION
+        venue.latitude, venue.longitude = DEV_BRANCH_POSITION
+        venue.country, venue.region, venue.profile = country, region, "public"
+        venue.save(update_fields=["latitude", "longitude", "country", "region", "profile"])
     for n in range(1, 5):
         Table.objects.get_or_create(venue=venue, label=f"Table {n}", active=True, defaults={"position": n})
     return facility
@@ -61,6 +74,41 @@ def _coach_role(club: Organization) -> Role:
         organization=club, key="", name=COACH_ROLE, defaults={"permissions": [Permission.TRAINING_MANAGE]}
     )
     return role
+
+
+def _regional_body(region: Region) -> Organization:
+    """The dev region's body, made here if the officer hasn't one yet."""
+    body = Organization.objects.filter(
+        kind=Organization.Kind.REGIONAL_BODY, country=region.country_id, region__iexact=region.name
+    ).first()
+    if body is None:
+        body = Organization.objects.create(
+            name=f"{region.name} Region TT",
+            town=region.name,
+            country=region.country_id,
+            region=region.name,
+            kind=Organization.Kind.REGIONAL_BODY,
+        )
+        seed_roles(body)
+    return body
+
+
+def _make_official(user: User, region: Region) -> Organization:
+    """An active member of the region's body holding tournament approval: its admin if it has none, its
+    Official otherwise."""
+    body = _regional_body(region)
+    membership, _ = Membership.objects.update_or_create(
+        organization=body, user=user, defaults={"status": Membership.Status.ACTIVE}
+    )
+    if not membership.roles.filter(key=RoleKey.ADMIN).exists():
+        has_admin = Membership.objects.admins(body).exclude(user=user).exists()
+        official, _ = Role.objects.get_or_create(
+            organization=body,
+            key=RoleKey.OFFICIAL,
+            defaults={"name": "Official", "permissions": [Permission.TOURNAMENTS_APPROVE]},
+        )
+        membership.roles.add(official if has_admin else body.roles.get(key=RoleKey.ADMIN))
+    return body
 
 
 def _region() -> Region:
@@ -83,8 +131,12 @@ class Command(BaseCommand):
 
         password = os.environ.get("DEV_LOGIN_PASSWORD", "mombasa-tt-dev")
         region = _region()
+        club = _organization(DEV_CLUB, Organization.Kind.CLUB_FACILITY)
+        if club.latitude is None:
+            club.latitude, club.longitude = DEV_CLUB_POSITION
+            club.save(update_fields=["latitude", "longitude"])
         organizations = {
-            DEV_CLUB: _organization(DEV_CLUB, Organization.Kind.CLUB_FACILITY),
+            DEV_CLUB: club,
             DEV_FACILITY: _facility(),
         }
         for email, display_name, place in DEV_USERS:
@@ -101,8 +153,8 @@ class Command(BaseCommand):
                 profile.save(update_fields=["onboarding_completed_at", "updated_at"])
 
             if place is None:
-                OfficialAppointment.objects.get_or_create(user=user, country=region.country, region=region)
-                where = f"regional official for {region}"
+                body = _make_official(user, region)
+                where = f"official of {body.name}"
             else:
                 org_name, role = place
                 organization = organizations[org_name]

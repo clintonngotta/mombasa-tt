@@ -7,7 +7,7 @@ import { Scoring, ScoringError, gamesNeeded, replay, type Config, type ScoreEven
 import { FIXTURES, canonical, digest, eventsOf, fixtures, type ParityMatch } from "./fixtures.ts"
 
 test("the hand-worked fixtures are there", () => {
-  assert.equal(fixtures().length, 16)
+  assert.equal(fixtures().length, 25)
 })
 
 for (const fixture of fixtures()) {
@@ -69,7 +69,10 @@ test("no stream ends in an impossible score", () => {
       assert.ok(!(Math.max(a, b) >= 11 && Math.abs(a - b) >= 2), `open game at ${a}-${b}`)
       assert.equal(state.games_won[0] + state.games_won[1], state.games.length)
       const needed = gamesNeeded(match.config)
-      assert.equal(state.status === "completed", Math.max(...state.games_won) === needed)
+      // Played to its end exactly when a side has the games needed; a retirement or disqualification
+      // ends it earlier, with the points played and nothing made up.
+      assert.equal(state.status === "completed" && state.outcome === "played", Math.max(...state.games_won) === needed)
+      assert.equal(state.status === "completed", state.outcome !== null)
       assert.ok(Math.max(...state.games_won) <= needed)
       if (state.status === "in_progress") assert.notEqual(state.server?.[0], state.receiver?.[0], "server and receiver are opponents")
       // 2.13.7: side a is at its starting end in odd games and at the other in even ones, the other
