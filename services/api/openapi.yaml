@@ -14974,8 +14974,8 @@ paths:
   /api/v1/rankings/clubs/:
     get:
       operationId: rankings_clubs_retrieve
-      description: Rank clubs by the sum of their active members' ratings for one
-        discipline.
+      description: 'Rank clubs by the sum of their active members'' ratings for one
+        discipline: the top RANKING_LIMIT.'
       parameters:
       - in: query
         name: discipline

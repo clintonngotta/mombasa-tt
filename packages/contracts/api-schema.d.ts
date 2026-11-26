@@ -6276,7 +6276,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Rank clubs by the sum of their active members' ratings for one discipline. */
+        /** @description Rank clubs by the sum of their active members' ratings for one discipline: the top RANKING_LIMIT. */
         get: operations["rankings_clubs_retrieve"];
         put?: never;
         post?: never;

@@ -161,7 +161,7 @@ class RankingView(APIView):
 
 
 class ClubRankingView(APIView):
-    """Rank clubs by the sum of their active members' ratings for one discipline."""
+    """Rank clubs by the sum of their active members' ratings for one discipline: the top RANKING_LIMIT."""
 
     permission_classes = [PublicReads]
     public_actions = ("get",)  # TASK-035
@@ -186,7 +186,7 @@ class ClubRankingView(APIView):
             .values("organization_id", name=F("organization__name"), town=F("organization__town"))
             .annotate(total_points=Sum("user__ratings__rating"), rated_members=Count("user_id"))
             .order_by("-total_points", "name", "town", "organization_id")
-        )
+        )[:RANKING_LIMIT]
         return Response(
             ClubRankingSerializer(
                 {
