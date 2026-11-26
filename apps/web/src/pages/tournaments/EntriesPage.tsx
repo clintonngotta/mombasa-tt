@@ -293,7 +293,7 @@ function EnterForm({ tournament: t, event, mode, onDone }: { tournament: Tournam
       {needsPicker ? (
         <PlayerPicker
           label={event.kind === "singles" || event.kind === "jumbles" ? "Player" : event.kind === "doubles" ? (staff ? "The two players" : "Your partner") : "Players"}
-          hint={DIRECTORY_HINT}
+          hint={staff ? `${DIRECTORY_HINT} For anyone else, choose “Add a new player”.` : DIRECTORY_HINT}
           picked={picked}
           fixed={fixed}
           max={ROSTER_SIZE[event.kind]}

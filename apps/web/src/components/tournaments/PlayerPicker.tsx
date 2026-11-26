@@ -1,6 +1,6 @@
 import { useId, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Plus, Search, X } from "lucide-react"
+import { Plus, Search, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FieldError } from "@/components/forms/Field"
@@ -15,8 +15,9 @@ export type Picked = { id: string; display_name: string }
 /**
  * Choose players for an entry from the player directory. `fixed` players (the person entering) are
  * shown and can't be removed. Only players who chose to be listed can be found; with `guestsOf`, the
- * host's staff also find that club's guests and can add somebody new before they register, with an
- * email or phone to send them a link to join and check their details (REQ-003).
+ * host's staff choose between finding a player (the club's guests included) and adding somebody new
+ * before they register, with an email or phone to send them a link to join, set a password and
+ * check their details (REQ-003).
  */
 export function PlayerPicker({
   label,
@@ -53,14 +54,17 @@ export function PlayerPicker({
     setInput("")
     setTerm("")
   }
-  const [adding, setAdding] = useState(false)
+  const [mode, setMode] = useState<"find" | "new">("find")
+  const adding = !!guestsOf && mode === "new"
+  const [newName, setNewName] = useState("")
   const [contact, setContact] = useState({ email: "", phone: "" })
   const [invited, setInvited] = useState<InvitedGuest | null>(null)
   const newGuest = useMutation({
-    mutationFn: () => createGuest(guestsOf ?? "", term, { email: contact.email.trim(), phone: contact.phone.trim() }),
+    mutationFn: () => createGuest(guestsOf ?? "", newName.trim(), { email: contact.email.trim(), phone: contact.phone.trim() }),
     onSuccess: (guest) => {
       add({ id: guest.id, display_name: `${guest.display_name} (guest)` })
-      setAdding(false)
+      setMode("find")
+      setNewName("")
       setContact({ email: "", phone: "" })
       setInvited(guest.invite_link ? guest : null)
       void queryClient.invalidateQueries({ queryKey: guestKeys.all })
@@ -98,6 +102,17 @@ export function PlayerPicker({
 
       {!full && (
         <div className="flex flex-col gap-2">
+          {guestsOf && (
+            <div role="group" aria-label={`${label}: find or add`} className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant={adding ? "outline" : "default"} aria-pressed={!adding} onClick={() => setMode("find")}>
+                <Search aria-hidden className="size-4" /> Find a player
+              </Button>
+              <Button type="button" size="sm" variant={adding ? "default" : "outline"} aria-pressed={adding} onClick={() => setMode("new")}>
+                <UserPlus aria-hidden className="size-4" /> Add a new player
+              </Button>
+            </div>
+          )}
+          {!adding && (
           <div className="flex gap-2">
             <label htmlFor={id} className="sr-only">
               Find a player by name
@@ -120,7 +135,10 @@ export function PlayerPicker({
               <Search aria-hidden className="size-5" />
             </Button>
           </div>
+          )}
           <div aria-live="polite" className="flex flex-col gap-2">
+            {!adding && (
+            <>
             {term.length > 0 && term.length < MIN_SEARCH_LENGTH && <p className="text-sm text-muted-foreground">Type at least {MIN_SEARCH_LENGTH} characters.</p>}
             {results.isLoading && <p className="text-sm text-muted-foreground">Searching…</p>}
             {results.isError && <FieldError>Search isn't working right now.</FieldError>}
@@ -166,31 +184,42 @@ export function PlayerPicker({
                 ))}
               </ul>
             )}
-            {guestsOf && results.isSuccess && term.length >= MIN_SEARCH_LENGTH && !adding && (
-              <Button type="button" variant="ghost" className="self-start" onClick={() => setAdding(true)}>
+            {guestsOf && results.isSuccess && term.length >= MIN_SEARCH_LENGTH && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="self-start"
+                onClick={() => {
+                  setNewName(term)
+                  setMode("new")
+                }}
+              >
                 <Plus aria-hidden className="size-5" /> Add “{term}”, not on Coast TT yet
               </Button>
             )}
-            {guestsOf && adding && (
+            </>
+            )}
+            {adding && (
               <div className="flex flex-col gap-3 rounded-lg border border-dashed p-3">
                 <p className="text-sm">
-                  Add <strong>{term}</strong> now. With an email or phone they get a link to join, see their entries and check their details.
+                  For somebody who isn't on Coast TT yet. With an email or phone they get a link to set a password, check their details and follow the tournament.
                 </p>
+                <Field label="Name" required maxLength={80} autoComplete="off" onKeyDown={keepEnter} value={newName} onChange={(e) => setNewName(e.target.value)} error={contactErrors.display_name} />
                 <div className="flex flex-wrap gap-3">
                   <Field label="Email" type="email" optional className="min-w-[200px] flex-1" onKeyDown={keepEnter} value={contact.email} onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))} error={contactErrors.email} />
                   <Field label="Phone" type="tel" inputMode="tel" optional className="min-w-[160px] flex-1" onKeyDown={keepEnter} value={contact.phone} onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))} error={contactErrors.phone} />
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" disabled={newGuest.isPending} onClick={() => newGuest.mutate()}>
+                  <Button type="button" disabled={newGuest.isPending || !newName.trim()} onClick={() => newGuest.mutate()}>
                     {newGuest.isPending ? "Adding…" : contact.email.trim() || contact.phone.trim() ? "Add and invite" : "Add without inviting"}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => setAdding(false)}>
+                  <Button type="button" variant="ghost" onClick={() => setMode("find")}>
                     Cancel
                   </Button>
                 </div>
               </div>
             )}
-            {newGuest.isError && !contactErrors.email && !contactErrors.phone && <FieldError>{errorMessage(newGuest.error, "We couldn't add the player.")}</FieldError>}
+            {newGuest.isError && !contactErrors.display_name && !contactErrors.email && !contactErrors.phone && <FieldError>{errorMessage(newGuest.error, "We couldn't add the player.")}</FieldError>}
           </div>
         </div>
       )}
