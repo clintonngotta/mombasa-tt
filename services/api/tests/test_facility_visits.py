@@ -235,7 +235,7 @@ def test_takings_reconcile_and_need_the_finance_permission(staff, club, hall, pr
     door = logged_in(keeper)
     visit(door, club, hall, pass_id=prices["day"]["id"], walk_in_name="Late", method="cash")
     assert door.get(f"{ORGS}{club.id}/facility-takings/").status_code == 403
-    books_role = Role.objects.create(organization=club, name="Treasurer", permissions=["finances.view"])
+    books_role = Role.objects.create(organization=club, name="Finance", permissions=["finances.view"])
     treasurer = make_user("books@example.com")
     add_member(club, treasurer, books_role)
     books = logged_in(treasurer)
