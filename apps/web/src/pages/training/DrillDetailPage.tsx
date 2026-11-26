@@ -86,7 +86,8 @@ function DrillView({ drill }: { drill: Drill }) {
       </div>
       {drill.description && <p className="text-lg">{drill.description}</p>}
 
-      <PlanActions drill={drill} />
+      {/* A coach's drill is read from the plan they gave; it can't go in the player's other plans. */}
+      {drill.library !== "coach" && <PlanActions drill={drill} />}
 
       <div className="grid gap-6 md:grid-cols-[280px_1fr]">
         {drill.pattern.length > 0 && (

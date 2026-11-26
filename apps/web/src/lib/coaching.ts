@@ -52,6 +52,9 @@ export const saveAvailability = (windows: Schemas["AvailabilityRequest"][]) =>
 export const listCoaches = (search: string) =>
   api<Schemas["PaginatedCoachProfileList"]>(`/coaches/?page_size=50${search ? `&search=${encodeURIComponent(search)}` : ""}`)
 export const getCoach = (id: string) => api<CoachProfile>(`/coaches/${id}/`)
+/** Rate a coach you trained with, 1 to 5 stars; null removes your rating. Answers the updated profile. */
+export const rateCoach = (id: string, stars: number | null) =>
+  stars == null ? api<CoachProfile>(`/coaches/${id}/rating/`, { method: "DELETE" }) : api<CoachProfile>(`/coaches/${id}/rating/`, { method: "PUT", body: { stars } })
 export const listSlots = (id: string, minutes: number) => api<Slot[]>(`/coaches/${id}/slots/?days=14&minutes=${minutes}`)
 
 export const listCoachings = () => api<Coaching[]>("/me/coachings/")

@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -14,7 +14,7 @@ from organizations.models import Membership, Organization, seed_roles
 from organizations.permissions import RoleKey
 from training import service as training
 
-from .models import Availability, Coaching, CoachProfile
+from .models import Availability, Booking, Coaching, CoachProfile
 
 SHORTEST = timedelta(minutes=30)
 LONGEST = timedelta(hours=3)
@@ -28,6 +28,20 @@ def active_coaching(coach, coaching_id) -> Coaching:
     return get_object_or_404(
         Coaching.objects.select_related("trainee"), pk=coaching_id, coach=coach, status=Coaching.Status.ACTIVE
     )
+
+
+def trained_with(player, coach_ref="user"):
+    """Whether `player` trained with the coach named by `coach_ref` (an outer reference from a coach
+    profile): the coach accepted them as a trainee at some point, or a confirmed session has ended.
+    Only then may they rate the coach."""
+    coached = Coaching.objects.filter(coach=OuterRef(coach_ref), trainee=player, started_at__isnull=False)
+    sat = Booking.objects.filter(
+        coach=OuterRef(coach_ref),
+        trainee=player,
+        status=Booking.Status.CONFIRMED,
+        ends_at__lte=timezone.now(),
+    )
+    return Exists(coached) | Exists(sat)
 
 
 def coaches(coach, trainee) -> bool:

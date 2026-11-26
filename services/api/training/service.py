@@ -29,14 +29,23 @@ def lock_player(user) -> None:
 
 
 def conflicts(
-    user, starts: datetime, ends: datetime, exclude: PlanItem | None = None, exclude_booking=None
+    user,
+    starts: datetime,
+    ends: datetime,
+    exclude: PlanItem | None = None,
+    exclude_booking=None,
+    with_coach=None,
 ) -> list[dict]:
+    """`with_coach`: a booked session with this coach and a session in a plan they gave are the same
+    hour on the table (the plan session is its running order), so those two never clash."""
     found = []
     sessions = PlanItem.objects.filter(
         plan__owner=user, kind=PlanItem.Kind.SESSION, starts_at__lt=ends, ends_at__gt=starts
     ).select_related("plan")
     if exclude is not None:
         sessions = sessions.exclude(pk=exclude.pk)
+    if with_coach is not None:
+        sessions = sessions.exclude(plan__coach=with_coach)
     for item in sessions:
         found.append(
             {"kind": "training", "title": item.title, "starts_at": item.starts_at, "ends_at": item.ends_at}
@@ -46,6 +55,8 @@ def conflicts(
     ).select_related("coach", "trainee")
     if exclude_booking is not None:
         bookings = bookings.exclude(pk=exclude_booking.pk)
+    if with_coach is not None:
+        bookings = bookings.exclude(coach=with_coach, trainee=user)
     for booking in bookings:
         other = booking.trainee if booking.coach_id == user.pk else booking.coach
         found.append(
@@ -109,10 +120,11 @@ def ensure_free(
     exclude: PlanItem | None = None,
     *,
     exclude_booking=None,
+    with_coach=None,
     message="You already have something on at that time.",
 ) -> None:
     """409 with the clashing commitments when the player isn't free. Call with `lock_player` held."""
-    clashes = conflicts(user, starts, ends, exclude, exclude_booking)
+    clashes = conflicts(user, starts, ends, exclude, exclude_booking, with_coach)
     if clashes:
         raise ApiException(
             "calendar_conflict",
@@ -133,6 +145,22 @@ def usable_drills(user):
     clubs = Membership.objects.active().filter(user=user).values("organization")
     standard = Q(owner__isnull=True, organization__isnull=True)
     return Drill.objects.filter(standard | Q(owner=user) | Q(organization__in=clubs))
+
+
+def readable_drills(user):
+    """Drills a player may open: the ones they may use, and any drill in a plan of theirs. A coach may
+    put their own drill in a trainee's plan, and the trainee must be able to read it."""
+    items = PlanItem.objects.filter(plan__owner=user)
+    in_plans = {
+        activity.get("drill")
+        for activities in items.filter(kind=PlanItem.Kind.SESSION).values_list("activities", flat=True)
+        for activity in activities
+    } - {None}
+    return Drill.objects.filter(
+        Q(pk__in=usable_drills(user).values("pk"))
+        | Q(pk__in=items.filter(drill__isnull=False).values("drill"))
+        | Q(pk__in=in_plans)
+    )
 
 
 LEVELS = ["beginner", "intermediate", "advanced"]

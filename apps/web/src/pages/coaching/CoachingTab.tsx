@@ -18,6 +18,7 @@ import {
 } from "@/lib/coaching"
 import { formatInstant } from "@/lib/dates"
 import { LOCAL_TIME_ZONE } from "@/lib/training"
+import { CoachStars } from "@/components/coaching/CoachStars"
 import { cn } from "@/lib/utils"
 import { CoachCalendar } from "@/components/coaching/CoachCalendar"
 import { OrganizeTournament } from "@/components/coaching/OrganizeTournament"
@@ -60,6 +61,7 @@ export function CoachingTab() {
             <span id="coach-heading" className="font-semibold">
               {profile.data ? "Your coach profile" : "Coach other players"}
             </span>
+            <CoachStars average={profile.data?.rating_average} count={profile.data?.rating_count} />
             <span className="text-sm text-muted-foreground">
               {profile.data
                 ? profile.data.accepting

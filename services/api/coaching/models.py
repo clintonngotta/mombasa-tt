@@ -199,3 +199,27 @@ class MatchComment(models.Model):
 
     def __str__(self):
         return f"Comment {self.id}"
+
+
+class CoachRating(models.Model):
+    """A player's star rating of a coach they trained with: one per player and coach, which they may
+    change or remove. Only the average and the count are shown; who gave which rating is not."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="coach_ratings"
+    )
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    stars = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["coach", "player"], name="coach_rating_one_each"),
+            models.CheckConstraint(condition=Q(stars__gte=1, stars__lte=5), name="coach_rating_one_to_five"),
+            models.CheckConstraint(condition=~Q(coach=F("player")), name="coach_rating_not_self"),
+        ]
+
+    def __str__(self):
+        return f"{self.player_id} rates {self.coach_id} {self.stars}"

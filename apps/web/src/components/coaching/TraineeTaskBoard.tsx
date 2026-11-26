@@ -28,6 +28,9 @@ const MAX_COLUMNS = 12
 /** Tasks by player (REQ-047): one column per trainee, holding the items of the plans the coach gave them.
  * A card opens its plan, where the task is changed. Cards stay with their player: a task belongs to one
  * player's plan, so the cards are plain links, not the kanban's draggable cards. */
+// Nothing is dragged here, so screen readers aren't told how to drag.
+const NO_DRAG_HELP = { screenReaderInstructions: { draggable: "" } }
+
 export function TraineeTaskBoard({ coachings }: { coachings: Coaching[] }) {
   const [search, setSearch] = useState("")
   const [show, setShow] = useState<Show>("open")
@@ -81,7 +84,7 @@ export function TraineeTaskBoard({ coachings }: { coachings: Coaching[] }) {
         </p>
       )}
       <div className="-mx-1 overflow-x-auto px-1 pb-2">
-        <KanbanProvider columns={columns} data={tasks} sensors={sensors} className="auto-cols-[minmax(15rem,1fr)] items-start gap-3">
+        <KanbanProvider columns={columns} data={tasks} sensors={sensors} accessibility={NO_DRAG_HELP} className="auto-cols-[minmax(15rem,1fr)] items-start gap-3">
           {(column) => {
             const count = counts.get(column.id) ?? { open: 0, done: 0 }
             const empty = !tasks.some((task) => task.column === column.id)

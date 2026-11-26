@@ -54,4 +54,5 @@ coach_urlpatterns = [
     path("", views.CoachListView.as_view(), name="coaches"),
     path("<uuid:pk>/", views.CoachDetailView.as_view(), name="coach"),
     path("<uuid:pk>/slots/", views.CoachSlotsView.as_view(), name="coach-slots"),
+    path("<uuid:pk>/rating/", views.CoachRatingView.as_view(), name="coach-rating"),
 ]

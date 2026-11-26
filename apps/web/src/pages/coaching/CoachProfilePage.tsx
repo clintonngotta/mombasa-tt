@@ -134,17 +134,19 @@ function ProfileForm({ profile }: { profile: CoachProfile | null }) {
         <Field label="County or region" optional maxLength={100} value={region} onChange={(e) => setRegion(e.target.value)} />
       </div>
       {clubs.length > 0 && (
-        <ChoiceGroup
-          multiple
-          legend="Clubs where you coach"
-          optional
-          options={clubs.map((m) => ({ value: m.organization.id, label: m.organization.name }))}
-          value={orgIds}
-          onChange={setOrgIds}
-          error={fields.organization_ids}
-        />
+        <>
+          <ChoiceGroup
+            multiple
+            legend="Clubs where you coach"
+            optional
+            options={clubs.map((m) => ({ value: m.organization.id, label: m.organization.name }))}
+            value={orgIds}
+            onChange={setOrgIds}
+            error={fields.organization_ids}
+          />
+          <p className="-mt-4 text-sm text-muted-foreground">Their training timetable and tournaments appear in your calendar.</p>
+        </>
       )}
-      <p className="-mt-4 text-sm text-muted-foreground">Their training timetable and tournaments appear in your calendar.</p>
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-base font-semibold">Weekly hours</legend>
