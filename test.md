@@ -393,6 +393,10 @@ The privacy matrix covers every new route, keeps walk-in names and references wi
 
 ## Phase 2 evaluations
 
+### EVAL-056
+
+**The platform's back office — integration/browser.** Setup: a platform super admin, a club admin, an operator with the staff flag only, players (one unverified, one switched off), a guest, a club and a facility, and a region with a town that a club and a player are in. Steps: call every back-office route signed out, as the club admin and as the operator; deactivate the super admin mid-session; list, search, filter and page accounts; switch an account off and on while it is signed in; give and take platform authority; change one's own account; send unknown fields, a bad value and a guest's id; list organizations with search and kind; read a country, switch listed-only, add a region and a town twice, rename both, rename onto an existing name, remove a place in use and an unused one; read the log after a change; open `/admin` signed out and as a super admin in the browser. Pass: signed out is 401 and everyone else 404 with nothing changed (privacy matrix, every role); a switched-off account loses its session and can't log in; authority follows the switch at once; one's own account can't be changed; only the two switches are accepted; lists take a fixed number of queries; renames carry clubs and players, duplicates are refused with 409 and used places are kept; the log names the actor and ids and no email; `/admin` on the API is 404 and Django admin answers only at `/django-admin/` (tests/test_backoffice.py, tests/test_privacy_matrix.py, tests/test_ensure_owner.py). Evidence: the tests, and a browser run of sign-in at `/admin`, the four pages and a place added, renamed and removed.
+
 ### EVAL-021
 
 **Booking approval — concurrent integration.** Setup: opening hours, closure and two requests for one slot. Steps: approve concurrently, race approval against match reservation, cancel winner, request closed time. Pass: at most one reservation; pending request never blocks; closure respected; cancellation releases future slot while retaining history. Evidence: transactions and reservation calendar.

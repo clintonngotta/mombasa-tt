@@ -5,7 +5,7 @@ Product decisions: [intent.md](intent.md). Execution: [tasks.md](tasks.md). Acce
 
 ## Requirement conventions
 
-REQ-001 through REQ-055 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
+REQ-001 through REQ-056 are authoritative requirements. Each maps to the same-numbered EVAL in test.md and at least one task in tasks.md. Phase 1 is the launch boundary; later-phase contracts reserve integration points without activating unfinished features.
 
 ### REQ-001
 
@@ -384,6 +384,19 @@ As built (TASK-130): one review per tournament, written from its last day (or on
 *Feedback forms.* Staff build feedback forms with a form builder. A form has ordered sections and questions of configurable types: rating (1 to 5), single choice, multiple choice, short text, long text, yes/no and number. Each question can be required and can have help text. Forms can be saved as templates and reused. A form is sent to a tournament's attendees: players with accepted entries, umpires, staff, and optionally named guests. It opens and closes on set dates, and can be anonymous. Each attendee answers once and can edit their answers until the form closes. Staff see live totals per question (averages, counts per choice, text answers) and export the answers as CSV. An anonymous form never shows staff who answered what.
 
 As built (TASK-131): a form belongs to the host and to one tournament; a template belongs to the host only and is copied, never sent. Sections, questions and choices carry ids given by the API, and answers are stored by question id. Sending fixes the questions and who is asked: players of accepted entries, the tournament's umpires, the host's competition staff and named guests (members or listed players), as chosen on the form; they are told in the app. The form opens now or at a set time and closes at a set time at most 180 days later; staff may move the closing time, also to open it again. A person asked answers once and changes their answers until it closes; anyone else gets "not found". Totals show how many answered and per question the average and counts, the count per choice, or the text answers, never names. The CSV of a named form adds who answered and when. An anonymous response stores no person and no times (only a keyed hash that lets the server find a person's own answers), and its CSV has neither; text answers and rows come in an order unrelated to when they were written.
+
+### REQ-056
+
+**The platform's back office at `/admin` — Phase 1 (owner request, 2026-11-26).** `/admin` is a page of the app itself, for platform super admins, not Django admin. A signed-out visitor is sent to log in and comes back to it; anyone signed in who is not a platform super admin sees "page not found", and the API answers "not found" on every back-office route to them, so the back office can't be probed. Super admins get an **Admin** entry in the menu.
+
+As built (TASK-138), under `/api/v1/platform/`:
+
+- *Overview.* Counts of accounts (all, new in 30 days, switched off), super admins, organizations by kind and tournaments by status, and what waits for the platform: tournaments asking for approval and outside events to review, with links to the pages that already handle them (Regional, event review, governing bodies).
+- *Accounts.* Every account, newest first, 20 a page (100 at most), found by part of a name, email or phone, or filtered to super admins or switched-off accounts. Guests entered by club staff are not accounts and are not listed. A super admin switches an account off (its sessions end at the next request and it can't log in) or on again, and gives or takes platform authority (only a verified account with a password can receive it). Nobody changes their own account there, so one super admin always remains. Nothing else about an account is changed here: not its email, phone, name or password.
+- *Organizations.* Every organization with its kind, place, admin and member count, found by name, town or region, or by kind. Opening one shows it as its members see it, where the platform's existing authority applies (its place, appointing an admin).
+- *Places.* A country's regions and towns: add, rename, remove, and whether the country takes listed regions only. A rename carries the clubs and players stored under the old name; a place still in use is not removed.
+
+Every change is written to the server log with who made it and the ids involved, never names, emails or phones. Django admin stays in the API as a fallback at `/django-admin/`, which the production proxy does not serve; its login keeps the login rate limit.
 
 ## Competition rules: version `ITTF-2026-ch3`
 

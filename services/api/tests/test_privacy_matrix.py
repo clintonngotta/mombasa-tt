@@ -49,6 +49,7 @@ from competitions.models import (
     TournamentDocument,
     TournamentReview,
 )
+from core.models import City, Country, Region
 from events.models import ExternalEvent, LinkReport
 from facilities.models import Booking as TableBooking
 from facilities.models import OpeningHour, Pass, Table, Venue, Visit
@@ -130,6 +131,7 @@ OWNER = "owner"  # the caller's own data only
 MEMBER = "member"  # any active member of that organization
 STAFF = "staff"  # needs a permission in that organization
 APPROVER = "approver"  # a platform super admin or the scoped official for the competition
+PLATFORM = "platform"  # platform super admins alone; "not found" for everyone else (test_backoffice.py)
 
 ACCESS: dict[str, dict[str, str]] = {
     "auth-csrf": {"get": PUBLIC},
@@ -156,6 +158,16 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-external-event": {"patch": STAFF},
     "organization-external-event-live": {"post": STAFF},
     "geography-country": {"get": PUBLIC},
+    # The back office at /admin (REQ-056): accounts, organizations and the place catalogue.
+    "platform-overview": {"get": PLATFORM},
+    "platform-accounts": {"get": PLATFORM},
+    "platform-account": {"patch": PLATFORM},
+    "platform-organizations": {"get": PLATFORM},
+    "platform-country": {"get": PLATFORM, "patch": PLATFORM},
+    "platform-regions": {"post": PLATFORM},
+    "platform-region": {"patch": PLATFORM, "delete": PLATFORM},
+    "platform-cities": {"post": PLATFORM},
+    "platform-city": {"patch": PLATFORM, "delete": PLATFORM},
     "attachment-content": {"get": PUBLIC},  # the signed token is the authorization
     "auth-me": {"get": OWNER, "patch": OWNER},
     "auth-me-email": {"post": OWNER},  # a phone-only account asks to add an email: a link is sent
@@ -690,6 +702,12 @@ def pdf_upload():
 
 
 BODIES = {
+    ("platform-account", "patch"): {"is_active": False, "is_platform_admin": True},
+    ("platform-country", "patch"): {"catalogue_only": False},
+    ("platform-regions", "post"): {"name": "Taken Region"},
+    ("platform-region", "patch"): {"name": "Renamed Region"},
+    ("platform-cities", "post"): {"name": "Taken Town"},
+    ("platform-city", "patch"): {"name": "Renamed Town"},
     ("auth-me-email", "post"): {"email": "new.address@example.com"},
     ("tournament-ceremony", "put"): {"location": "Main hall"},
     ("tournament-review", "put"): {"went_well": "Ran to time"},
@@ -1042,6 +1060,9 @@ class World:
         self.hamisi = make_user("hamisi.left@coast.example", display_name="Hamisi Juma")
         self.operator = make_user("operator@platform.example", display_name="Olive Operator", is_staff=True)
         self.imani = make_user("mark.invitee@else.example", display_name="Imani Invited")
+        country, _ = Country.objects.get_or_create(code="KE", defaults={"name": "Kenya"})
+        self.place_region, _ = Region.objects.get_or_create(country=country, name="Matrix Region")
+        self.place_city, _ = City.objects.get_or_create(region=self.place_region, name="Matrix Town")
 
         self.coast = Organization.objects.create(name="Coast Spinners", town="Mombasa")
         self.nyali = Organization.objects.create(name="Nyali Loop", town="Nyali")
@@ -1885,6 +1906,10 @@ class World:
     def kwargs(self, name: str, names: set[str]) -> dict:
         """Real ids of Coast Spinners or Baraka for a route, so a refusal is never just 'no such id'."""
         pk = {
+            "platform-account": self.baraka.id,
+            "platform-region": self.place_region.id,
+            "platform-cities": self.place_region.id,
+            "platform-city": self.place_city.id,
             "attachment-link": self.baraka_avatar.id,
             "attachment-content": self.baraka_avatar.id,
             "personal-match-detail": self.match.id,
@@ -2235,6 +2260,12 @@ class World:
     def state(self) -> dict:
         """Everything the refused requests could have changed."""
         return {
+            "accounts": sorted(User.objects.values_list("email", "is_active", "is_superuser", "is_staff")),
+            "places": [
+                sorted(Country.objects.values_list("code", "catalogue_only")),
+                sorted(Region.objects.values_list("id", "name")),
+                sorted(City.objects.values_list("id", "name")),
+            ],
             "members": sorted(Membership.objects.values_list("user__email", "organization__name", "status")),
             "member_roles": sorted(Membership.roles.through.objects.values_list("membership_id", "role_id")),
             "roles": sorted(Role.objects.values_list("organization__name", "name", "permissions")),
@@ -2514,6 +2545,19 @@ def test_staff_routes_refuse_members_other_clubs_and_outsiders(world, who):
                 continue
             response = call(client, method, name, world.url(name, names))
             assert response.status_code in {403, 404}, f"{method.upper()} {name}: {response.status_code}"
+    assert world.state() == before
+
+
+@pytest.mark.parametrize("who", ["amina", "baraka", "faith", "chiku", "daudi", "grace", "hamisi", "operator"])
+def test_platform_routes_do_not_exist_for_anyone_but_a_super_admin(world, who):
+    before = world.state()
+    client = logged_in(world.viewers[who])
+    for name, methods, names in ROUTES:
+        for method in methods:
+            if ACCESS[name][method] != PLATFORM:
+                continue
+            response = call(client, method, name, world.url(name, names))
+            assert response.status_code == 404, f"{method.upper()} {name}: {response.status_code}"
     assert world.state() == before
 
 
@@ -2905,11 +2949,13 @@ def test_model_serializers_name_every_field_they_expose():
 
 
 def test_routes_outside_the_api_serve_no_data(world):
-    """Health checks say only that the service is up; the Django admin is for platform operators."""
+    """Health checks say only that the service is up. /admin is the app's own page, never the API's; the
+    Django admin (a fallback the proxy doesn't serve) is for platform operators."""
     anonymous = BrowserClient()
     for path in ("/health/live", "/health/ready"):
         response = anonymous.get(path)
         assert response.status_code == 200
         assert len(response.content) < 100
-    assert anonymous.get("/admin/").status_code == 302
-    assert logged_in(world.amina).get("/admin/").status_code == 302  # a club admin is not an operator
+    assert anonymous.get("/admin/").status_code == 404
+    assert anonymous.get("/django-admin/").status_code == 302
+    assert logged_in(world.amina).get("/django-admin/").status_code == 302  # a club admin is not an operator

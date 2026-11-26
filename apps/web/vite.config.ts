@@ -14,9 +14,6 @@ export default defineConfig({
     proxy: {
       // ws: live tournament updates at /api/v1/ws/ go through the same proxy.
       "/api": { target: API, ws: true },
-      // Django admin (where the platform owner signs in) and its styles, as the production proxy does.
-      "^/admin(/|$)": { target: API },
-      "^/static/": { target: API },
     },
     // The scoring reducer lives beside the app in packages/scoring (shared with future clients).
     fs: { allow: [import.meta.dirname + "/../.."] },

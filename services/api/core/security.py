@@ -73,7 +73,7 @@ class AdminLoginThrottleMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.method == "POST" and request.path.startswith("/admin/login/"):
+        if request.method == "POST" and request.path.startswith("/django-admin/login/"):
             if not _AdminLoginThrottle().allow_request(request, None):
                 return JsonResponse(
                     {

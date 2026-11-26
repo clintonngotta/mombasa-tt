@@ -14,8 +14,9 @@ const CACHE = `coast-tt-shell-${BUILD}`
 const PREFIX = "coast-tt-shell-"
 const PAGE = "/index.html"
 
-/** Paths that are never answered from a cache: the API, uploaded files, the admin. */
-const LIVE = ["/api/", "/media/", "/admin/", "/static/", "/health/"]
+/** Paths that are never answered from a cache: the API, uploaded files, the API's own static files. /admin is
+ * the app's own back office, so it is served from the kept shell like any other page. */
+const LIVE = ["/api/", "/media/", "/static/", "/health/"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)))
