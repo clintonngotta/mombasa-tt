@@ -1,10 +1,13 @@
 import type { ReactNode } from "react"
-import { Link, NavLink, useParams } from "react-router-dom"
+import { Link, NavLink, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { CalendarDays, ChartColumn, LayoutGrid, Network, type LucideIcon } from "lucide-react"
+import { CalendarDays, ChartColumn, FileDown, ImageDown, LayoutGrid, Network, type LucideIcon } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { buttonVariants } from "@/components/ui/button"
 import { FormAlert } from "@/components/forms/Field"
+import { SearchBox } from "@/components/forms/SearchBox"
+import { Segmented } from "@/components/forms/Segmented"
+import { SearchSelect } from "@/components/forms/SelectField"
 import { BracketView } from "@/components/tournaments/BracketView"
 import { GroupsView } from "@/components/tournaments/GroupsView"
 import { ScheduleView } from "@/components/tournaments/ScheduleView"
@@ -13,7 +16,8 @@ import { EventStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
 import { formatInstant } from "@/lib/dates"
-import { drawKeys, getDraw, getStandings, type Draw, type Standings } from "@/lib/draws"
+import { drawKeys, drawSheetUrl, filterDraw, getDraw, getStandings, type Draw, type DrawFilters, type Standings } from "@/lib/draws"
+import { entryText, matchesSearch } from "@/lib/search"
 import { canManageTournament, eventSummary, eventTabPath, getTournament, tournamentKeys, type EventTab, type Tournament, type TournamentEvent } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
 import { useLiveTournament } from "@/lib/live"
@@ -46,6 +50,18 @@ export function EventPage({ tab }: { tab: EventTab }) {
   const standings = useQuery({ queryKey: drawKeys.standings(eventId), queryFn: () => getStandings(id, eventId), enabled: !!published })
   const staff = !!t && canManageTournament(memberships, t)
   const missing = (tournament.error instanceof ApiError && tournament.error.status === 404) || (!!t && !event)
+  const [params, setParams] = useSearchParams()
+  const filters = readFilters(params)
+  const setFilter = (name: "q" | "group" | "stage", value: string) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value) next.set(name, value)
+        else next.delete(name)
+        return next
+      },
+      { replace: true }
+    )
 
   return (
     <div className="flex max-w-[1200px] flex-col gap-5">
@@ -73,6 +89,16 @@ export function EventPage({ tab }: { tab: EventTab }) {
                   Draw desk
                 </Link>
               )}
+              {published && (
+                <>
+                  <a href={drawSheetUrl(id, eventId, "pdf")} className={buttonVariants({ variant: "outline" })}>
+                    <FileDown aria-hidden /> Draw (PDF)
+                  </a>
+                  <a href={drawSheetUrl(id, eventId, "png")} download="coast-tt-draw.png" className={buttonVariants({ variant: "outline" })}>
+                    <ImageDown aria-hidden /> Draw image
+                  </a>
+                </>
+              )}
             </div>
           </header>
 
@@ -80,7 +106,7 @@ export function EventPage({ tab }: { tab: EventTab }) {
             {TABS.map(({ tab: name, label, icon: Icon }) => (
               <NavLink
                 key={name}
-                to={eventTabPath(id, eventId, name)}
+                to={{ pathname: eventTabPath(id, eventId, name), search: params.toString() ? `?${params}` : "" }}
                 replace
                 className={({ isActive }) =>
                   cn(
@@ -101,7 +127,8 @@ export function EventPage({ tab }: { tab: EventTab }) {
           {published && (
             <section aria-label={TABS.find((candidate) => candidate.tab === tab)?.label} className="flex flex-col gap-4">
               {published.stale && <FormAlert>The entries have changed since this draw was published. The organizers will publish a new one.</FormAlert>}
-              <TabBody tab={tab} tournament={t} event={event} draw={published} standings={standings.data} standingsError={standings.error} />
+              <FilterBar tab={tab} draw={published} filters={filters} onChange={setFilter} />
+              <TabBody tab={tab} tournament={t} event={event} draw={published} filters={filters} standings={standings.data} standingsError={standings.error} />
               <p className="text-sm text-muted-foreground">
                 Draw version {published.version}
                 {published.published_at && `, published ${formatInstant(published.published_at, t.timezone)}`}. Rules {published.rules_version}, draw number {published.rng_seed}.
@@ -113,6 +140,47 @@ export function EventPage({ tab }: { tab: EventTab }) {
     </div>
   )
 }
+
+function readFilters(params: URLSearchParams): DrawFilters {
+  const group = Number(params.get("group"))
+  const stage = params.get("stage")
+  return {
+    search: (params.get("q") ?? "").slice(0, 100),
+    group: Number.isInteger(group) && group > 0 ? group : null,
+    stage: stage === "group" || stage === "knockout" ? stage : "",
+  }
+}
+
+const STAGES: { value: "" | "group" | "knockout"; label: string }[] = [
+  { value: "", label: "All stages" },
+  { value: "group", label: "Groups" },
+  { value: "knockout", label: "Knockout" },
+]
+
+/** Search by player or team on every tab; pick a group where there are several, and a stage on the schedule. */
+function FilterBar({ tab, draw, filters, onChange }: { tab: EventTab; draw: Draw; filters: DrawFilters; onChange: (name: "q" | "group" | "stage", value: string) => void }) {
+  const groups = draw.groups.length > 1 && tab !== "brackets"
+  const stages = tab === "schedule" && draw.groups.length > 0 && draw.matches.some((match) => match.stage === "knockout")
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <SearchBox label="Search players and teams" placeholder="Name" value={filters.search} onChange={(value) => onChange("q", value)} className="w-full sm:w-72" />
+      {groups && (
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-sm font-semibold">Group</span>
+          <SearchSelect
+            aria-label="Group"
+            value={filters.group ? String(filters.group) : ""}
+            onChange={(value) => onChange("group", value)}
+            options={[{ value: "", label: "All groups" }, ...draw.groups.map((group) => ({ value: String(group.number), label: group.name }))]}
+          />
+        </div>
+      )}
+      {stages && <Segmented label="Stage" options={STAGES} value={filters.stage} onChange={(value) => onChange("stage", value)} />}
+    </div>
+  )
+}
+
+const NOTHING_FITS = "Nothing fits these filters."
 
 /** What a tab will hold for this event's format once the draw is published, or why it will hold nothing. */
 const BEFORE_DRAW: Record<EventTab, Record<TournamentEvent["format"], string>> = {
@@ -163,6 +231,7 @@ function TabBody({
   tournament: t,
   event,
   draw,
+  filters,
   standings,
   standingsError,
 }: {
@@ -170,6 +239,7 @@ function TabBody({
   tournament: Tournament
   event: TournamentEvent
   draw: Draw
+  filters: DrawFilters
   standings?: Standings
   standingsError: unknown
 }) {
@@ -185,7 +255,7 @@ function TabBody({
         </NotApplicable>
       )
     }
-    return <BracketView matches={knockout} matchPath={matchPath} timeZone={t.timezone} />
+    return <BracketView matches={knockout} search={filters.search} matchPath={matchPath} timeZone={t.timezone} />
   }
   if (tab === "groups") {
     if (draw.groups.length === 0) {
@@ -195,17 +265,32 @@ function TabBody({
         </NotApplicable>
       )
     }
+    const shown = filterDraw(draw, { ...filters, stage: "group" })
+    // While searching, a group shows only if someone in it, or one of its matches, fits.
+    const groups = filters.search
+      ? { ...shown, groups: shown.groups.filter((group) => shown.places.some((place) => place.group === group.number) || shown.matches.some((match) => match.group === group.number)) }
+      : shown
     return (
       <>
         {!!standingsError && <FormAlert>{errorMessage(standingsError, "We couldn't load who has qualified. The fixtures below are complete.")}</FormAlert>}
-        <GroupsView draw={draw} standings={standings} matchPath={matchPath} timeZone={t.timezone} />
+        {groups.groups.length === 0 ? <p className="text-muted-foreground">{NOTHING_FITS}</p> : <GroupsView draw={groups} single={draw.groups.length === 1} standings={standings} matchPath={matchPath} timeZone={t.timezone} />}
       </>
     )
   }
-  if (tab === "schedule") return <ScheduleView draw={draw} matchPath={matchPath} timeZone={t.timezone} />
+  if (tab === "schedule") return <ScheduleView draw={filterDraw(draw, filters)} groups={draw.groups} matchPath={matchPath} timeZone={t.timezone} />
 
   if (standingsError) return <FormAlert>{errorMessage(standingsError, "We couldn't load the standings.")}</FormAlert>
   if (!standings) return <p className="text-muted-foreground">Loading standings…</p>
+  const fits = (entry: { title: string; players?: { display_name: string }[] }) => matchesSearch(filters.search, entryText(entry))
+  const narrowed: Standings = {
+    ...standings,
+    groups: standings.groups
+      .filter((group) => filters.group === null || group.number === filters.group)
+      .map((group) => ({ ...group, rows: group.rows.filter((row) => fits(row.entry)) }))
+      .filter((group) => group.rows.length > 0),
+    placements: filters.group === null ? standings.placements.map((placement) => ({ ...placement, entries: placement.entries.filter(fits) })).filter((placement) => placement.entries.length > 0) : [],
+  }
+  const filtering = !!filters.search || filters.group !== null
   return (
     <div className="flex flex-col gap-4">
       {draw.groups.length === 0 && (
@@ -215,7 +300,7 @@ function TabBody({
         </NotApplicable>
       )}
       {draw.groups.length === 0 && standings.placements.length === 0 && <p className="text-muted-foreground">No round is finished yet.</p>}
-      <StandingsView standings={standings} />
+      {filtering && narrowed.groups.length === 0 && narrowed.placements.length === 0 ? <p className="text-muted-foreground">{NOTHING_FITS}</p> : <StandingsView standings={narrowed} single={standings.groups.length === 1} />}
     </div>
   )
 }

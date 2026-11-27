@@ -21,8 +21,9 @@ export const entryKeys = {
 const base = (id: string, eventId: string) => `/tournaments/${id}/events/${eventId}/entries/`
 
 /** Accepted entries plus the caller's own; staff get every entry. Up to 100, the API's largest page. */
-export const listEntries = (id: string, eventId: string, status: EntryStatus | "" = "") =>
-  api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100${status ? `&status=${status}` : ""}`)
+/** `search` narrows to entries whose team or a player has the text in its name. */
+export const listEntries = (id: string, eventId: string, status: EntryStatus | "" = "", search = "") =>
+  api<Schemas["PaginatedEntryList"]>(`${base(id, eventId)}?page_size=100${status ? `&status=${status}` : ""}${search ? `&search=${encodeURIComponent(search)}` : ""}`)
 /** Every entry of one status, page after page, for the draw desk: a big field is seeded as a whole. */
 export async function listAllEntries(id: string, eventId: string, status: EntryStatus) {
   const first = await listEntries(id, eventId, status)

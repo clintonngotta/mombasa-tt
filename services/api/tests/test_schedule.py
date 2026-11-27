@@ -236,3 +236,57 @@ def test_the_schedule_is_for_staff_and_the_board_offers_the_planned_table(staff,
     shown = board.build(first.draw.event.tournament)
     row = next(r for r in shown["queue"] if r["match_id"] == first.id)
     assert row["suggested_table"] == "Table 2", (row["state"], row["reasons"])
+
+
+@pytest.fixture
+def groups_cup(staff, club):
+    """Four groups of three, two through from each into quarter-finals, seeded 1 to 12, on four tables."""
+    venue = make_venue(staff, club)
+    for n in range(1, 5):
+        add_table(staff, club, venue, f"Table {n}")
+    tournament = make_tournament(staff, club, venue)
+    add_event(staff, tournament, name="Open", format="groups_knockout", group_count=4, qualifiers_per_group=2)
+    tournament = do(staff, tournament, "publish")
+    event = tournament["events"][0]
+    entries = [enter(staff, tournament, event, player_ids=[str(person(f"Player {n}").id)]) for n in range(12)]
+    body = {"seeded_entry_ids": [entry["id"] for entry in entries], "rng_seed": 5}
+    assert staff.post(draw_url(tournament, event, "preview"), body, format="json").status_code == 200
+    assert staff.post(draw_url(tournament, event, "publish"), {}, format="json").status_code == 200
+    return tournament
+
+
+def starts(made) -> dict:
+    """Match id -> recommended start."""
+    return {slot["match_id"]: at(slot["scheduled_at"]) for slot in made["slots"]}
+
+
+def test_places_still_to_come_in_one_draw_play_side_by_side(staff, groups_cup):
+    made = recommend(staff, groups_cup)
+    when = starts(made)
+    assert all(when.values())
+    quarters = Match.objects.filter(stage=Match.Stage.KNOCKOUT, round=1)
+    # A group's winner and runner-up are two players, so the four quarter-finals needn't wait on each other.
+    assert len({when[str(m.id)] for m in quarters}) == 1
+    semis = Match.objects.filter(stage=Match.Stage.KNOCKOUT, round=2)
+    assert len({when[str(m.id)] for m in semis}) == 1
+    kept = keep(staff, groups_cup, made["slots"])
+    assert kept["conflicts"] == [] and kept["warnings"] == []
+
+
+def test_a_side_still_to_come_is_named_as_the_draw_names_it(staff, groups_cup):
+    rows = {row["label"]: row["title"] for row in schedule(staff, groups_cup)["rows"]}
+    first = rows["Open, quarter-final 1"]
+    assert " winner v " in first and first.startswith("Group ") and first.endswith("runner-up")
+    assert rows["Open, semi-final 1"] == "Winner of quarter-final 1 v Winner of quarter-final 2"
+    assert rows["Open, Final"] == "Winner of semi-final 1 v Winner of semi-final 2"
+
+
+def test_the_top_seeds_dont_open_the_day(staff, groups_cup):
+    when = starts(recommend(staff, groups_cup))
+    tops = {e.id for e in Entry.objects.all() if e.draw_places.filter(seed__lte=4).exists()}
+    group = Match.objects.filter(stage=Match.Stage.GROUP)
+    opening = min(when.values())
+    with_tops = [when[str(m.id)] for m in group if {m.entry_a_id, m.entry_b_id} & tops]
+    # Each group of three has one match without its top seed: those open the day, on all four tables.
+    assert sum(1 for m in group if when[str(m.id)] == opening) == 4
+    assert with_tops and min(with_tops) > opening

@@ -3,8 +3,7 @@ import { MatchCard, YouBadge } from "@/components/tournaments/MatchCard"
 import { byRound, type Draw, type Standings } from "@/lib/draws"
 
 /** Each group (REQ-010): who is in it, its fixtures round by round, and who has qualified so far. */
-export function GroupsView({ draw, standings, matchPath, timeZone }: { draw: Draw; standings?: Standings; matchPath: (matchId: string) => string; timeZone: string }) {
-  const single = draw.groups.length === 1
+export function GroupsView({ draw, single = draw.groups.length === 1, standings, matchPath, timeZone }: { draw: Draw; single?: boolean; standings?: Standings; matchPath: (matchId: string) => string; timeZone: string }) {
   return (
     <div className="flex flex-col gap-8">
       {draw.groups.map((group) => {

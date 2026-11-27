@@ -601,6 +601,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-entries": {"get": OWNER},
     # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
     "tournament-event-draw": {"get": PUBLIC},
+    # The published draw as a PDF and a PNG (not found until one is published).
+    "tournament-event-draw-pdf": {"get": PUBLIC},
+    "tournament-event-draw-png": {"get": PUBLIC},
     "tournament-event-standings": {"get": PUBLIC},
     "tournament-event-match": {"get": PUBLIC},  # of the published draw only
     # A match's recap and result card are public for a published tournament (REQ-018).

@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from "react"
+import { useDeferredValue, useState, type FormEvent } from "react"
 import { Link, useLocation, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CircleCheck, Crown } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
+import { SearchBox } from "@/components/forms/SearchBox"
+import { Segmented } from "@/components/forms/Segmented"
 import { SelectField } from "@/components/forms/SelectField"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
 import { PlayerPicker, type Picked } from "@/components/tournaments/PlayerPicker"
@@ -38,7 +40,15 @@ export function EntriesPage() {
   const { id = "", eventId = "" } = useParams()
   const { results: memberships } = useMemberships()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
-  const entries = useQuery({ queryKey: entryKeys.event(eventId), queryFn: () => listEntries(id, eventId), enabled: tournament.isSuccess })
+  const [search, setSearch] = useState("")
+  const term = useDeferredValue(search.trim())
+  // The search runs on the server: an event's entries come a page at a time.
+  const entries = useQuery({
+    queryKey: [...entryKeys.event(eventId), term],
+    queryFn: () => listEntries(id, eventId, "", term),
+    enabled: tournament.isSuccess,
+    placeholderData: (previous) => previous,
+  })
   const t = tournament.data
   const event = t?.events.find((candidate) => candidate.id === eventId)
   const staff = !!t && canManageTournament(memberships, t)
@@ -73,6 +83,7 @@ export function EntriesPage() {
               </p>
             )}
           </header>
+          <SearchBox label="Search entries" placeholder="Player or team name" value={search} onChange={setSearch} className="sm:w-80" />
           {entries.isPending && <p className="text-muted-foreground">Loading entries…</p>}
           {entries.isError && <FormAlert>{errorMessage(entries.error, "We couldn't load the entries.")}</FormAlert>}
           {entries.isSuccess && (
@@ -82,6 +93,7 @@ export function EntriesPage() {
                   Showing the first {all.length} of {entries.data.count} entries.
                 </FormAlert>
               )}
+              {term && all.length === 0 && <p className="text-muted-foreground">No entry matches “{term}”.</p>}
               {signedIn ? <MyEntry tournament={t} event={event} staff={staff} entries={mine} /> : !me.isPending && <LogInToEnter tournament={t} event={event} />}
               {staff ? <Desk tournament={t} event={event} entries={all} /> : <Accepted entries={all.filter((entry) => entry.status === "accepted")} />}
             </>
@@ -362,12 +374,22 @@ const GROUPS: { status: EntryStatus; title: string; empty: string }[] = [
   { status: "withdrawn", title: "Withdrawn", empty: "" },
 ]
 
+type ArrivalFilter = "all" | "in" | "out"
+const ARRIVALS: { value: ArrivalFilter; label: string }[] = [
+  { value: "all", label: "Everyone" },
+  { value: "in", label: "Checked in" },
+  { value: "out", label: "Not checked in" },
+]
+
 /** The organizers' entry desk: decide, check in, withdraw, and enter people themselves. */
 function Desk({ tournament: t, event, entries }: { tournament: Tournament; event: TournamentEvent; entries: Entry[] }) {
   const onChange = useEntryChange(t, event)
   const [adding, setAdding] = useState(false)
   const taking = t.status !== "draft" && !isClosed(t) && event.status === "scheduled"
   const checkingIn = t.status !== "draft" && !isClosed(t) && !isClosed(event)
+  const [show, setShow] = useState<EntryStatus | "all">("all")
+  const [arrived, setArrived] = useState<ArrivalFilter>("all")
+  const fitsArrival = (entry: Entry) => arrived === "all" || (arrived === "in") === !!entry.checked_in_at
 
   return (
     <section aria-labelledby="desk-heading" className="flex flex-col gap-4 rounded-xl border border-brand-blue/30 bg-surface-selected p-4">
@@ -395,9 +417,16 @@ function Desk({ tournament: t, event, entries }: { tournament: Tournament; event
           </Button>
         ))}
 
-      {GROUPS.map((group) => {
-        const rows = entries.filter((entry) => entry.status === group.status)
-        if (rows.length === 0 && !group.empty) return null
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-0">
+          <SelectField label="Status" value={show} onChange={(value) => setShow(value as EntryStatus | "all")} options={[{ value: "all", label: "All statuses" }, ...GROUPS.map((group) => ({ value: group.status, label: group.title }))]} />
+        </div>
+        <Segmented label="Check-in" options={ARRIVALS} value={arrived} onChange={setArrived} />
+      </div>
+
+      {GROUPS.filter((group) => show === "all" || group.status === show).map((group) => {
+        const rows = entries.filter((entry) => entry.status === group.status).filter(fitsArrival)
+        if (rows.length === 0 && (!group.empty || arrived !== "all")) return null
         return (
           <div key={group.status} className="flex flex-col gap-2">
             <h3 className="text-lg font-bold">

@@ -476,3 +476,21 @@ def test_a_player_of_another_club_enters_a_public_event_without_joining_the_host
     assert list(Membership.objects.filter(user=juma).values_list("organization_id", flat=True)) == [home.id]
     members = staff.get(f"{ORGS}{club.id}/members/").json()["results"]
     assert juma.email not in str(members)
+
+
+def test_entries_are_searched_by_team_or_player_name_without_showing_more(staff, cup, singles, doubles):
+    wanjiru, otieno, amani = player("Wanjiru Kamau"), player("Otieno Ouma"), player("Amani Said")
+    enter(staff, cup, doubles, player_ids=[str(wanjiru.id), str(otieno.id)])
+    pending = enter(staff, cup, singles, player_ids=[str(amani.id)])
+    enter(staff, cup, singles, player_ids=[str(wanjiru.id)])
+
+    assert [names(e) for e in listed(staff, cup, doubles, "?search=ouma")] == [
+        ["Wanjiru Kamau", "Otieno Ouma"]
+    ]
+    assert [names(e) for e in listed(staff, cup, singles, "?search=WANJ")] == [["Wanjiru Kamau"]]
+    assert listed(staff, cup, singles, "?search=nobody") == []
+    # A search never shows a visitor an entry they couldn't see without it.
+    Entry.objects.filter(pk=pending["id"]).update(status=Entry.Status.PENDING)
+    assert listed(logged_in(player("Visitor")), cup, singles, "?search=amani") == []
+    response = staff.get(entries_url(cup, singles) + "?search=" + "x" * 101)
+    assert response.status_code == 400
