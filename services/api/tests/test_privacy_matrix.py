@@ -661,6 +661,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-draw-preview": {"post": STAFF},
     "tournament-event-draw-publish": {"post": STAFF},
     "tournament-event-draw-discard": {"post": STAFF},
+    "tournament-event-draw-move": {"post": STAFF},
+    "tournament-event-draw-reopen": {"post": STAFF},
     "player-directory": {"get": SIGNED_IN},
     "player-detail": {"get": PUBLIC},  # signed out, the name of a listed player with competition records
     "player-ratings": {"get": PUBLIC},  # signed out, only players with competition records
@@ -714,6 +716,16 @@ def order_stages() -> dict:
     return {"stages": [{"event_id": str(match.draw.event_id), "stage": match.stage}]}
 
 
+def draw_swap() -> dict:
+    """Two entries of the Entered Cup's preview (drawn again first if an earlier call discarded it)."""
+    event = Event.objects.get(tournament__name="Entered Cup")
+    preview = event.draws.filter(status=DrawVersion.Status.PREVIEW).first()
+    if preview is None:
+        preview = drawing.make_preview(event, None, [], rng_seed=1)
+    first, second = preview.places.all()[:2]
+    return {"entry_id": str(first.entry_id), "swap_with": str(second.entry_id)}
+
+
 def pdf_upload():
     from io import BytesIO
 
@@ -723,6 +735,7 @@ def pdf_upload():
 
 
 BODIES = {
+    ("tournament-event-draw-move", "post"): draw_swap,
     ("platform-account", "patch"): {"is_active": False, "is_platform_admin": True},
     ("platform-country", "patch"): {"catalogue_only": False},
     ("platform-regions", "post"): {"name": "Taken Region"},

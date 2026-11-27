@@ -7272,6 +7272,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/move/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Move an entry of the preview by hand, into another group or into another entry's place. The
+         *     matches it touches are made again. Groups over the limit on one club, team or region are listed
+         *     in `over_limit`; the draw can't be published until none is.
+         */
+        post: operations["tournaments_events_draw_move_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/preview/": {
         parameters: {
             query?: never;
@@ -7307,6 +7328,27 @@ export interface paths {
          *     accepted entries have changed since it was drawn (`draw_stale`).
          */
         post: operations["tournaments_events_draw_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Take the published draw up again as the preview, exactly as it is, to add late entries to a
+         *     group or take withdrawn ones out without drawing again. Publishing it makes a new version.
+         *     Replaces a preview being worked on.
+         */
+        post: operations["tournaments_events_draw_reopen_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10312,6 +10354,19 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             published_at: string | null;
+            /**
+             * Format: date-time
+             * @description When the organizers last moved an entry by hand; null if never.
+             */
+            moved_at: string | null;
+            /** @description What the organizers chose to keep apart in the groups. */
+            keep_apart: components["schemas"]["KeepApartEnum"][];
+            /** @description The most entries of one club, team or region kept apart that a group may hold. */
+            same_group_limit: number;
+            /** @description In the organizers' preview: groups holding more entries of one club, team or region than allowed. The draw can't be published while any is listed. */
+            over_limit: components["schemas"]["DrawLimitBreach"][];
+            /** @description In the organizers' preview: accepted entries the draw doesn't hold yet, entered since it was made, with the group suggested for each. */
+            not_in_draw: components["schemas"]["DrawMissingEntry"][];
             groups: components["schemas"]["DrawGroup"][];
             places: components["schemas"]["DrawPlace"][];
             matches: components["schemas"]["Match"][];
@@ -10337,17 +10392,54 @@ export interface components {
             number: number;
             name: string;
         };
+        /** @description A group over the limit: `count` entries of the club, team or region `name`, `limit` allowed. */
+        DrawLimitBreach: {
+            group: number;
+            name: string;
+            count: number;
+            limit: number;
+        };
+        DrawMissingEntry: {
+            entry: components["schemas"]["DrawEntry"];
+            /** @description The smallest group it can join within the draw's rules; null for a knockout. */
+            suggested_group: number | null;
+        };
+        /**
+         * @description Change one entry's place in the preview: into a group (`group`: moved there, or added there when it
+         *     is an accepted entry the draw doesn't hold yet), into another entry's place (`swap_with`), or out
+         *     of the draw when it is no longer accepted (`remove`). Exactly one of the three.
+         */
+        DrawMoveRequest: {
+            /** Format: uuid */
+            entry_id: string;
+            group?: number;
+            /** Format: uuid */
+            swap_with?: string;
+            /** @description Take an entry that is no longer accepted out of its group. */
+            remove?: boolean;
+        };
         DrawPlace: {
             entry: components["schemas"]["DrawEntry"];
             seed: number | null;
             group: number | null;
             group_position: number | null;
             bracket_position: number | null;
+            /** @description In the organizers' preview: the clubs, teams and regions of the entry's players, which the draw keeps apart. Empty everywhere else. */
+            affiliations: string[];
+            /**
+             * @description In the organizers' preview: no longer accepted, to be taken out of its group.
+             * @default false
+             */
+            withdrawn: boolean;
         };
         /** @description Seeds in order, best first (accepted entries of the event). `rng_seed` repeats an earlier draw. */
         DrawRequestRequest: {
             seeded_entry_ids?: string[];
             rng_seed?: number;
+            /** @description In a groups stage, keep entries of one club, team or region apart. All three when left out; an empty list keeps nothing apart. */
+            keep_apart?: components["schemas"]["KeepApartEnum"][];
+            /** @description The most entries of one of them a group may hold (3 when left out), or its fair share when it has too many entries for that. */
+            same_group_limit?: number;
         };
         /**
          * @description * `preview` - Preview
@@ -11380,6 +11472,13 @@ export interface components {
          * @enum {string}
          */
         JoinRequestStatusEnum: "pending" | "approved" | "rejected" | "withdrawn";
+        /**
+         * @description * `clubs` - Clubs
+         *     * `teams` - Teams
+         *     * `regions` - Regions
+         * @enum {string}
+         */
+        KeepApartEnum: "clubs" | "teams" | "regions";
         /**
          * @description * `club` - Club
          *     * `team` - Team
@@ -32877,6 +32976,41 @@ export interface operations {
             };
         };
     };
+    tournaments_events_draw_move_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrawMoveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_events_draw_preview_create: {
         parameters: {
             query?: never;
@@ -32913,6 +33047,37 @@ export interface operations {
         };
     };
     tournaments_events_draw_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDraw"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_draw_reopen_create: {
         parameters: {
             query?: never;
             header?: never;

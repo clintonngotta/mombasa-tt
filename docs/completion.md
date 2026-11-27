@@ -1,14 +1,14 @@
 # Coast TT: project completion
 
-Updated 2026-11-27. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #88, TASK-082 (match-day control centre), TASK-083 (scoring incidents), TASK-084 (live score channel) and TASK-085 (results announcements), with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21, TASK-128 (next-match recommendation), TASK-133 (tournament and table umpires, added 2026-11-22) TASK-127 (order of play), TASK-107 (regional and national bodies) TASK-134 (nearby search, Tournaments tab, help centre; added and done 2026-11-25), TASK-108 (representatives), TASK-109 (meeting minutes, documents and notices), TASK-110 (events beyond the membership), TASK-130 (post-tournament review), TASK-131 (feedback form builder), TASK-125 (training rules and location check-in), TASK-126 (apologies), TASK-123 (representative squads) and TASK-129 (absence penalties). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
+Updated 2026-11-27. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #88, TASK-082 (match-day control centre), TASK-083 (scoring incidents), TASK-084 (live score channel) and TASK-085 (results announcements), with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21, TASK-128 (next-match recommendation), TASK-133 (tournament and table umpires, added 2026-11-22) TASK-127 (order of play), TASK-107 (regional and national bodies) TASK-134 (nearby search, Tournaments tab, help centre; added and done 2026-11-25), TASK-108 (representatives), TASK-109 (meeting minutes, documents and notices), TASK-110 (events beyond the membership), TASK-130 (post-tournament review), TASK-131 (feedback form builder), TASK-125 (training rules and location check-in), TASK-126 (apologies), TASK-123 (representative squads) and TASK-129 (absence penalties), and TASK-144 (keeping clubs, teams and regions apart in the groups; moving and swapping draw entries; late entries). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
 
 ## Summary
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 111 | 143 | 32 | 78% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 111 | 139 | 28 | 80% |
-| **Phase 1 launch** | **99** | **108** | **9** | **92%** |
+| All tasks | 112 | 144 | 32 | 78% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 112 | 140 | 28 | 80% |
+| **Phase 1 launch** | **100** | **109** | **9** | **92%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -22,7 +22,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: competitions and operations | 23 | 24 | TASK-034 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
-| Current feature checklist | 56 | 56 | — |
+| Current feature checklist | 57 | 57 | — |
 | Phase 2: reservations and finances | 8 | 8 | — |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
@@ -30,7 +30,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 6: organization subscriptions | 0 | 4 | TASK-054 to TASK-057 |
 | Operations and release gates | 0 | 11 | TASK-058 to TASK-068 |
 | Deferred native follow-on | 0 | 2 | TASK-069, TASK-070 |
-| **All tasks** | **110** | **142** | **32** |
+| **All tasks** | **112** | **144** | **32** |
 
 ## Left for Phase 1 launch (9)
 
@@ -80,3 +80,4 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-26 | 108 | 140 | 77% | 91% (96/105) | TASK-140 added and done (teams: players without a training place form and join a team; Team menu entry; team ranking) |
 | 2026-11-26 | 110 | 142 | 77% | 92% (98/107) | TASK-141 (Secretary and Treasurer roles for clubs and teams) and TASK-142 (pictures of a club, team or facility) added and done |
 | 2026-11-27 | 111 | 143 | 78% | 92% (99/108) | TASK-143 (save draft on forms, kept on the device) added and done. |
+| 2026-11-27 | 112 | 144 | 78% | 92% (100/109) | TASK-144 (group rules on the draw desk: keep clubs, teams and regions apart, three to a group by default; move or swap draw entries by hand; late entries added to one group of the published draw) added and done. |
