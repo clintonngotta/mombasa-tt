@@ -144,6 +144,8 @@ jobs:
         run: pnpm test:live
       - name: Form draft tests
         run: pnpm test:drafts
+      - name: Staying signed in offline
+        run: pnpm test:session
       - name: Typecheck and build
         run: pnpm build
       - name: Dependency audit
