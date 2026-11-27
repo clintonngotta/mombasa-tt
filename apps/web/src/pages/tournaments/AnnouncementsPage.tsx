@@ -169,7 +169,7 @@ function Draft({ post, tournamentId }: { post: Announcement; tournamentId: strin
       <details className="rounded-lg border p-3">
         <summary className="min-h-12 cursor-pointer py-3 font-semibold">Preview the image card</summary>
         {changed && <p className="text-sm text-muted-foreground">Save to see your changes on the card.</p>}
-        <img src={`${announcementCardUrl(tournamentId, post.id)}?v=${cardVersion}`} alt={`Image card: ${post.title}`} className="mt-2 aspect-square w-full max-w-[420px] rounded-lg border" />
+        <img src={`${announcementCardUrl(tournamentId, post.id)}?v=${cardVersion}`} alt={`Image card: ${post.title}`} className="mt-2 h-auto w-full max-w-[420px] rounded-lg border" />
       </details>
       <a href={announcementPdfUrl(tournamentId, post.id)} className="self-start font-semibold text-brand-blue underline-offset-4 hover:underline">
         Download as PDF{changed ? " (as last saved)" : ""}

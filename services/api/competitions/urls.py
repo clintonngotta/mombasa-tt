@@ -84,6 +84,16 @@ urlpatterns = [
         name="tournament-announcement-card",
     ),
     path(
+        "<uuid:tournament_pk>/results.pdf",
+        news.ResultsSheetView.as_view(kind="pdf"),
+        name="tournament-results-pdf",
+    ),
+    path(
+        "<uuid:tournament_pk>/results.png",
+        news.ResultsSheetView.as_view(kind="png"),
+        name="tournament-results-png",
+    ),
+    path(
         "<uuid:tournament_pk>/dashboard/",
         dashboard.TournamentDashboardView.as_view(),
         name="tournament-dashboard",
@@ -255,9 +265,15 @@ urlpatterns = [
         name="tournament-event-match-recap",
     ),
     path(
-        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/card.svg",
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/card.png",
         MatchCardView.as_view(),
         name="tournament-event-match-card",
+    ),
+    # The address apps from before the PNG card still ask for; it answers with the PNG too.
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/card.svg",
+        MatchCardView.as_view(),
+        name="tournament-event-match-card-svg",
     ),
     path(
         "<uuid:tournament_pk>/events/<uuid:event_pk>/matches/<uuid:pk>/result/",

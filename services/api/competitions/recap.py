@@ -3,11 +3,10 @@
 A recap is the official result and nothing else: who played, the games, who won, and each player's
 rating change once the ledger has it. While the result waits for the rating worker it says "processing"
 rather than inventing a number. Nothing is inferred from score presses (no aces, rallies or shots).
-The card is an SVG with the same public facts, for sharing.
+The card is a PNG with the same public facts, for sharing.
 """
 
-from html import escape
-
+from core import brand
 from ratings.models import RatingEvent
 
 from .models import Match, OfficialResult
@@ -76,53 +75,40 @@ def recap(match: Match) -> dict:
     }
 
 
-NAVY, GOLD, WHITE, MUTED = "#0b1f3a", "#f2b705", "#ffffff", "#9fb3c8"
-
-
-def _text(x, y, fill, size, content, *, bold=False, end=False) -> str:
-    weight = ' font-weight="700"' if bold else ""
-    anchor = ' text-anchor="end"' if end else ""
-    return (
-        f'<text x="{x}" y="{y}" fill="{fill}" font-family="sans-serif" font-size="{size}"{weight}{anchor}>'
-        f"{escape(str(content))}</text>"
-    )
-
-
 # How the card marks a match that wasn't played to a finish.
 CARD_OUTCOME = {"walkover": " (W/O)", "retired": " (ret.)", "disqualified": " (DQ)"}
 
 
-def card_svg(shown: dict) -> str:
-    """A 1080x1080 result card: tournament, event, sides, games and the winner. Public facts only. A game
-    left unfinished by a retirement or a disqualification is shown but not counted as won (REQ-043)."""
+def card_png(shown: dict) -> bytes:
+    """The result as a share image."""
+    return brand.share_image(
+        shown["tournament_name"],
+        shown["event_name"],
+        [brand.Card("Result", card_rows(shown), big=True)],
+    )
+
+
+def card_rows(shown: dict) -> list[brand.Row]:
+    """Each side with the games it won, the scores and the winner. Public facts only. A game left
+    unfinished by a retirement or a disqualification is shown but not counted as won (REQ-043)."""
     finished = [(a, b) for a, b in shown["games"] if max(a, b) >= 11 and abs(a - b) >= 2]
     won_a = sum(1 for a, b in finished if a > b)
     sides = [
         (shown["side_a"], won_a, shown["winner_side"] == "a"),
         (shown["side_b"], len(finished) - won_a, shown["winner_side"] == "b"),
     ]
-    winner = next((name for name, _, won in sides if won), "")
-    lines = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">',
-        f'<rect width="1080" height="1080" fill="{NAVY}"/>',
-        f'<rect x="0" y="0" width="1080" height="16" fill="{GOLD}"/>',
-        _text(80, 140, GOLD, 40, "COAST TT", bold=True),
-        _text(80, 220, WHITE, 52, shown["tournament_name"][:40], bold=True),
-        _text(80, 280, MUTED, 36, shown["event_name"][:50]),
+    rows = [
+        brand.Row(name or "To be decided", str(games) if shown["official"] else "", strong=won)
+        for name, games, won in sides
     ]
-    for i, (name, games, won) in enumerate(sides):
-        y = 460 + i * 170
-        colour = GOLD if won else WHITE
-        lines.append(_text(80, y, colour, 54, (name or "To be decided")[:30], bold=True))
-        lines.append(_text(1000, y, colour, 96, games, bold=True, end=True))
-    lines.append(_text(80, 830, MUTED, 40, "  ".join(f"{a}-{b}" for a, b in shown["games"])))
+    if shown["games"]:
+        rows.append(brand.Row("Games  " + "   ".join(f"{a}-{b}" for a, b in shown["games"]), note=True))
+    winner = next((name for name, _, won in sides if won), "")
     if winner:
-        how = CARD_OUTCOME.get(shown["outcome"], "")
-        lines.append(_text(80, 960, GOLD, 44, f"{winner[:36]} wins{how}", bold=True))
+        rows.append(brand.Row(f"{winner} wins{CARD_OUTCOME.get(shown['outcome'], '')}", note=True))
     elif not shown["official"]:
-        lines.append(_text(80, 960, MUTED, 44, "Not played yet"))
-    lines.append("</svg>")
-    return "\n".join(lines)
+        rows.append(brand.Row("Not played yet", note=True))
+    return rows
 
 
 def published_match(tournament_pk, event_pk, pk) -> Match | None:

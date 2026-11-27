@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Copy, FileDown, Image as ImageIcon, Megaphone, Share2 } from "lucide-react"
+import { Copy, FileDown, Image as ImageIcon, ImageDown, Megaphone, Share2 } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { announcementCardUrl, announcementKeys, announcementLink, announcementPdfUrl, announcementsPdfUrl, getAnnouncements, type Announcement } from "@/lib/announcements"
+import { announcementCardUrl, announcementKeys, announcementLink, announcementPdfUrl, announcementsPdfUrl, getAnnouncements, resultsSheetUrl, type Announcement } from "@/lib/announcements"
 import { formatInstant } from "@/lib/dates"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +20,12 @@ export function NewsFeed({ tournamentId, staff, timeZone }: { tournamentId: stri
           News
         </h2>
         <div className="flex flex-wrap gap-2">
+          <a href={resultsSheetUrl(tournamentId, "pdf")} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            <FileDown aria-hidden /> Final results (PDF)
+          </a>
+          <a href={resultsSheetUrl(tournamentId, "png")} download="coast-tt-final-results.png" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            <ImageDown aria-hidden /> Final results image
+          </a>
           {posts.length > 0 && (
             <a href={announcementsPdfUrl(tournamentId)} className={buttonVariants({ variant: "outline", size: "sm" })}>
               <FileDown aria-hidden /> All results as PDF
