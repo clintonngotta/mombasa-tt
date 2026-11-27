@@ -578,6 +578,8 @@ ACCESS: dict[str, dict[str, str]] = {
     # Lists only the drafts the caller may approve; see test_authority.
     "tournament-awaiting-approval": {"get": SIGNED_IN},
     "tournament-detail": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
+    # A tournament's public link (/tournaments/<slug>): shown as tournament-detail shows it.
+    "tournament-by-slug": {"get": PUBLIC},
     "tournament-publish": {"post": STAFF},
     "tournament-request-approval": {"post": STAFF},
     "tournament-reject-approval": {"post": APPROVER},
@@ -2210,6 +2212,8 @@ class World:
             found["code"] = "KE"
         if "token" in names:
             found["token"] = self.guest_link
+        if "slug" in names:
+            found["slug"] = self.draft.slug
         if "organization_pk" in names:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
@@ -2963,6 +2967,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
     cup = viewer.get(f"/api/v1/tournaments/{world.published.id}/").json()
     assert set(cup) == {
         "id",
+        "slug",  # the public link, made from the tournament's own name and year
         "organization",
         "organizer",
         "presented_as",

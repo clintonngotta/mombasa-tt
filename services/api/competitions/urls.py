@@ -48,6 +48,11 @@ urlpatterns = [
     ),
     path("overseen/", TournamentViewSet.as_view({"get": "overseen"}), name="tournament-overseen"),
     path(
+        "by-slug/<slug:slug>/",
+        TournamentViewSet.as_view({"get": "by_slug"}),
+        name="tournament-by-slug",
+    ),
+    path(
         "awaiting-approval/",
         TournamentViewSet.as_view({"get": "awaiting_approval"}),
         name="tournament-awaiting-approval",

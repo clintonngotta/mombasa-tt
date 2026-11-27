@@ -8759,6 +8759,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/by-slug/{slug}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The tournament a public link names, as `retrieve` shows it: a draft only to its staff. */
+        get: operations["tournaments_by_slug_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/overseen/": {
         parameters: {
             query?: never;
@@ -16520,6 +16537,8 @@ export interface components {
         Tournament: {
             /** Format: uuid */
             readonly id: string;
+            /** @description The public link's name: /tournaments/<slug>. */
+            readonly slug: string;
             readonly organization: components["schemas"]["OrganizationSummary"];
             readonly organizer: components["schemas"]["Organizer"];
             /**
@@ -35955,6 +35974,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedTournamentList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_by_slug_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
                 };
             };
             /** @description Error envelope */

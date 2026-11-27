@@ -316,10 +316,13 @@ class TournamentSerializer(serializers.ModelSerializer):
         help_text="A published match moved by more than this, or to another table, is news for its people.",
     )
 
+    slug = serializers.CharField(read_only=True, help_text="The public link's name: /tournaments/<slug>.")
+
     class Meta:
         model = Tournament
         fields = [
             "id",
+            "slug",
             "organization",
             "organizer",
             "presented_as",
@@ -346,6 +349,7 @@ class TournamentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "slug",
             "approval_status",
             "status",
             "published_at",

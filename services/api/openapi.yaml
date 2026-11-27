@@ -20307,6 +20307,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/by-slug/{slug}/:
+    get:
+      operationId: tournaments_by_slug_retrieve
+      description: 'The tournament a public link names, as `retrieve` shows it: a
+        draft only to its staff.'
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/overseen/:
     get:
       operationId: tournaments_overseen_list
@@ -38961,6 +38989,10 @@ components:
           type: string
           format: uuid
           readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          description: 'The public link''s name: /tournaments/<slug>.'
         organization:
           allOf:
           - $ref: '#/components/schemas/OrganizationSummary'
@@ -39072,6 +39104,7 @@ components:
       - registration_fee
       - schedule_notice_minutes
       - scope
+      - slug
       - started_at
       - starts_on
       - status
