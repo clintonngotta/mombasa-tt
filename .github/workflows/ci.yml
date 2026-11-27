@@ -1,24 +1,69 @@
 # Release gate for every PR into dev and main (TASK-008). Each job must pass before a branch can merge;
 # require these checks in the branch protection rules for dev and main.
+#
+# Kept cheap (Actions minutes are billed per job, rounded up to the minute):
+# - only pull requests run it. A push to dev or main is a merge of a PR that already passed here.
+# - the release PR from dev into main skips the jobs: the same commits passed on their way into dev.
+#   Skipped jobs count as passed for required checks.
+# - each job runs only when files it checks changed; a docs-only PR runs the secret scan alone.
 name: CI
 
 on:
   pull_request:
     branches: [dev, main]
-  push:
-    branches: [dev, main]
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch' || github.head_ref != 'dev'
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.api == 'true' }}
+      web: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.web == 'true' }}
+      images: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.images == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            api:
+              - 'services/api/**'
+              - 'packages/scoring/fixtures/**'
+              - '.github/workflows/ci.yml'
+            web:
+              - 'apps/web/**'
+              - 'packages/**'
+              - 'services/api/openapi.yaml'
+              - '.github/workflows/ci.yml'
+            images:
+              - '**/Dockerfile*'
+              - 'infra/**'
+              - 'services/api/pyproject.toml'
+              - 'services/api/uv.lock'
+              - 'apps/web/package.json'
+              - 'apps/web/pnpm-lock.yaml'
+              - 'apps/web/vite.config.*'
+              - '.github/workflows/ci.yml'
+
   api:
     name: API (lint, migrations, schema, tests)
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: services/api
@@ -59,7 +104,10 @@ jobs:
 
   web:
     name: Web (lint, types, build)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/web
@@ -103,7 +151,11 @@ jobs:
 
   images:
     name: Images (production build)
+    # Only when what goes into an image changes; every merge to main builds them anyway.
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -118,7 +170,9 @@ jobs:
 
   secrets:
     name: Secret scan
+    if: github.event_name == 'workflow_dispatch' || github.head_ref != 'dev'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: read  # gitleaks-action lists the PR's commits to scan
