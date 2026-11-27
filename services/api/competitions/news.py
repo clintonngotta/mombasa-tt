@@ -6,8 +6,7 @@ A published announcement never changes; a correction to a result it covers marks
 amendment is published beside it.
 """
 
-import textwrap
-from html import escape
+import re
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
@@ -23,16 +22,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core import brand, pdf
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
-from core.pdf import text_pdf
 from core.permissions import PublicReads
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
-from . import announcements
+from . import announcements, results_sheet
 from .models import Announcement, Entry, EntryPlayer, Match, Tournament
-from .recap import GOLD, MUTED, NAVY, WHITE
+from .serializers import organizer
 
 Scope = Announcement.Scope
 
@@ -96,7 +95,7 @@ class PublishSerializer(serializers.Serializer):
 
 
 def _tournament(pk) -> Tournament:
-    return get_object_or_404(Tournament.objects.select_related("organization"), pk=pk)
+    return get_object_or_404(Tournament.objects.select_related("organization", "venue"), pk=pk)
 
 
 def _staff(user, tournament: Tournament) -> bool:
@@ -261,43 +260,63 @@ class AmendAnnouncementView(APIView):
         return _reply(made, status=201)
 
 
-CARD_LINES = 14
-CARD_WIDTH = 46
+ROUND_LINE = re.compile(r"^(Final|Semi-final|Quarter-final|Round of \d+|Round \d+|Group \S+, round \d+)$")
+HEAD_LINE = re.compile(r": results( of [^:]{1,40})?$")
+GAMES = re.compile(r"^(.{1,300}) \((\d{1,2}-\d{1,2}(?:, \d{1,2}-\d{1,2}){0,8})\)$")
+PLACE_LINE = {f"{label}: ": place for place, label in announcements.PLACE.items()}
 
 
-def card_svg(announcement: Announcement) -> str:
-    """A 1080x1080 card of the announcement's text, in the result card's colours: the title, then as many
-    lines as fit and how many more there are."""
-    lines = []
-    for paragraph in announcement.body.splitlines()[1:]:  # the first line is the heading, shown as the title
-        lines.extend(textwrap.wrap(paragraph, CARD_WIDTH) or [""])
-    while lines and not lines[0]:
-        lines.pop(0)
-    shown, rest = lines[:CARD_LINES], len(lines) - CARD_LINES
-    out = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">',
-        f'<rect width="1080" height="1080" fill="{NAVY}"/>',
-        f'<rect x="0" y="0" width="1080" height="16" fill="{GOLD}"/>',
-        f'<text x="80" y="120" fill="{GOLD}" font-family="sans-serif" font-size="36" '
-        'font-weight="700">COAST TT</text>',
-    ]
-    for number, line in enumerate(textwrap.wrap(announcement.title, 34)[:2]):
-        out.append(
-            f'<text x="80" y="{190 + number * 52}" fill="{WHITE}" font-family="sans-serif" font-size="44" '
-            f'font-weight="700">{escape(line)}</text>'
-        )
-    for number, line in enumerate(shown):
-        out.append(
-            f'<text x="80" y="{320 + number * 50}" fill="{WHITE}" font-family="sans-serif" '
-            f'font-size="32">{escape(line)}</text>'
-        )
-    if rest > 0:
-        out.append(
-            f'<text x="80" y="1030" fill="{MUTED}" font-family="sans-serif" font-size="30">'
-            f"…and {rest} more line{'s' if rest != 1 else ''} in the full post</text>"
-        )
-    out.append("</svg>")
-    return "\n".join(out)
+def card_png(announcement: Announcement) -> bytes:
+    """The announcement as a share image, its title in the header."""
+    return brand.share_image(
+        announcement.title,
+        results_sheet.where_and_when(announcement.tournament),
+        announcement_cards(announcement),
+    )
+
+
+def announcement_cards(announcement: Announcement, whole: bool = False) -> list[brand.Card]:
+    """The announcement's text as cards: one per event, its matches as rows (the games on the right),
+    round names and group tables as small lines, and the podium with medals. The title is in the header,
+    so a first line that is the post's heading is left out. A long card is cut for the image; `whole`
+    keeps every line (the PDF, which has pages)."""
+    tournament = announcement.tournament
+    events = set(tournament.events.values_list("name", flat=True))
+    cards: list[brand.Card] = []
+    lines = announcement.body.splitlines()
+    # A drafted post opens with its heading ("Coast Open: results"), which the title in the header covers.
+    head, title = (lines[0].strip() if lines else ""), announcement.title.strip()
+    if head and (title.endswith(head) or HEAD_LINE.search(head)):
+        lines = lines[1:]
+    for line in lines:
+        text = line.strip()
+        if not text:
+            continue
+        if text in events:
+            cards.append(brand.Card(text))
+            continue
+        if not cards:
+            cards.append(brand.Card("Results"))
+        rows = cards[-1].rows
+        place = next((p for prefix, p in PLACE_LINE.items() if text.startswith(prefix)), None)
+        if place is not None:
+            rows.append(brand.Row(text.split(": ", 1)[1], badge=place, strong=place == 1))
+        elif ROUND_LINE.match(text) or text.startswith("Rubber ") or " table" in text.split(":")[0]:
+            rows.append(brand.Row(text, note=True))
+        else:
+            games = GAMES.match(text)
+            rows.append(brand.Row(games[1], games[2]) if games else brand.Row(text))
+    for card in cards:
+        if not whole and len(card.rows) > CARD_ROWS:
+            more = len(card.rows) - CARD_ROWS + 1
+            card.rows = [
+                *card.rows[: CARD_ROWS - 1],
+                brand.Row(f"…and {more} more lines in the full post", note=True),
+            ]
+    return cards
+
+
+CARD_ROWS = 18
 
 
 class AnnouncementCardView(APIView):
@@ -306,42 +325,57 @@ class AnnouncementCardView(APIView):
     permission_classes = [PublicReads]
     public_actions = ("get",)
 
-    @extend_schema(responses={(200, "image/svg+xml"): OpenApiTypes.STR})
+    @extend_schema(responses={(200, "image/png"): OpenApiTypes.BINARY})
     def get(self, request, tournament_pk, pk):
         tournament = _tournament(tournament_pk)
         announcement = _one(tournament, pk, _visible(request, tournament))
-        response = HttpResponse(card_svg(announcement), content_type="image/svg+xml")
-        response["Content-Disposition"] = 'inline; filename="coast-tt-results.svg"'
+        response = HttpResponse(card_png(announcement), content_type="image/png")
+        response["Content-Disposition"] = 'inline; filename="coast-tt-results.png"'
         return response
 
 
 MAX_PDF_POSTS = 200
 
 
-def pdf_lines(tournament: Tournament, posts) -> list[str]:
-    """The announcements as a printable sheet: the tournament, then each post with when it was
-    published. A post that a later one corrected says so."""
+def announcements_pdf(tournament: Tournament, posts, single: bool = False) -> bytes:
+    """The announcements as a printable document in the look of the image card: each post's events as
+    cards, under when it was published. A post that a later one corrected says so. A `single` post gives
+    the document its title, with the tournament named under it; in the tournament's sheet each post has
+    a heading."""
     zone = ZoneInfo(tournament.timezone)
-    lines = [tournament.name, f"Results announcements · {tournament.organization.name}", ""]
+    posts = list(posts)
+    blocks: list = []
     for post in posts:
         when = (
-            timezone.localtime(post.published_at, zone).strftime("%a %d %b %Y, %H:%M")
+            timezone.localtime(post.published_at, zone).strftime("Published %a %d %b %Y, %H:%M")
             if post.published_at
             else "Draft"
         )
-        lines += [
-            "=" * 60,
-            post.title,
-            when + (" · corrected by a later announcement" if post.outdated_at else ""),
-        ]
-        lines += ["", *post.body.splitlines(), ""]
-    if not posts:
-        lines.append("No announcements have been published yet.")
-    return lines
+        if post.outdated_at:
+            when += " · corrected by a later announcement"
+        if not single:
+            blocks.append(pdf.Heading(post.title))
+        blocks.append(pdf.Text(when, muted=True))
+        blocks += announcement_cards(post, whole=True)
+    if not blocks:
+        blocks.append(pdf.Text("No announcements have been published yet.", muted=True))
+    return pdf.document(
+        posts[0].title if single else f"Results: {tournament.name}",
+        " · ".join(
+            part
+            for part in (
+                tournament.name if single and tournament.name.lower() not in posts[0].title.lower() else "",
+                results_sheet.where_and_when(tournament),
+            )
+            if part
+        ),
+        blocks,
+        prepared_by=organizer(tournament)["name"],
+    )
 
 
-def _pdf_response(lines: list[str], name: str) -> HttpResponse:
-    response = HttpResponse(text_pdf(lines), content_type="application/pdf")
+def _pdf_response(content: bytes, name: str) -> HttpResponse:
+    response = HttpResponse(content, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{name}.pdf"'
     return response
 
@@ -357,7 +391,7 @@ class AnnouncementPdfView(APIView):
     def get(self, request, tournament_pk, pk):
         tournament = _tournament(tournament_pk)
         announcement = _one(tournament, pk, _visible(request, tournament))
-        return _pdf_response(pdf_lines(tournament, [announcement]), "coast-tt-results")
+        return _pdf_response(announcements_pdf(tournament, [announcement], single=True), "coast-tt-results")
 
 
 class AnnouncementsPdfView(APIView):
@@ -372,4 +406,25 @@ class AnnouncementsPdfView(APIView):
         tournament = _tournament(tournament_pk)
         _visible(request, tournament)
         posts = list(_feed(tournament, staff=False).order_by("published_at", "id")[:MAX_PDF_POSTS])
-        return _pdf_response(pdf_lines(tournament, posts), "coast-tt-results")
+        return _pdf_response(announcements_pdf(tournament, posts), "coast-tt-results")
+
+
+class ResultsSheetView(APIView):
+    """GET /tournaments/{id}/results.pdf and results.png: the final results sheet (each finished event's
+    podium with the players' clubs), for whoever may see the tournament."""
+
+    permission_classes = [PublicReads]
+    public_actions = ("get",)
+    kind = "pdf"
+
+    @extend_schema(
+        responses={(200, "application/pdf"): OpenApiTypes.BINARY, (200, "image/png"): OpenApiTypes.BINARY}
+    )
+    def get(self, request, tournament_pk):
+        tournament = _tournament(tournament_pk)
+        _visible(request, tournament)
+        if self.kind == "png":
+            response = HttpResponse(results_sheet.as_image(tournament), content_type="image/png")
+            response["Content-Disposition"] = 'inline; filename="coast-tt-final-results.png"'
+            return response
+        return _pdf_response(results_sheet.as_pdf(tournament), "coast-tt-final-results")

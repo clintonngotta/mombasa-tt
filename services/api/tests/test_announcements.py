@@ -8,11 +8,12 @@ from datetime import UTC, datetime, time
 import pytest
 from rest_framework.test import APIClient
 
-from competitions import drawing
+from competitions import drawing, news
 from competitions.models import Announcement, Match, ScheduleSession
 from competitions.official import title
 from notifications.models import Notification
 
+from .files import pdf_pages, pdf_text, png_size
 from .helpers import logged_in, make_user
 from .test_draws import draw_url, fill
 from .test_ties import cup, tie  # noqa: F401
@@ -172,7 +173,8 @@ def test_publishing_freezes_it_notifies_and_a_correction_brings_an_amendment(sta
     feed = anybody.get(news_url(knockout)).json()["results"]
     assert [post["id"] for post in feed] == [made["id"]]
     card = anybody.get(news_url(knockout, made["id"], "card"))
-    assert card.status_code == 200 and card["Content-Type"] == "image/svg+xml"
+    assert card.status_code == 200 and card["Content-Type"] == "image/png"
+    assert png_size(card.content)[0] == 1080
 
     # The result is corrected: the post is outdated, an amendment is drawn from the result as it is now.
     corrected = staff.post(
@@ -245,16 +247,28 @@ def test_a_first_result_outdates_nothing_and_a_post_is_amended_once_at_a_time(st
     assert (again.status_code, again.json()["code"]) == (409, "amendment_pending")
 
 
-def test_a_drafts_card_is_the_staffs_and_its_text_is_escaped(staff, knockout):
+def test_a_drafts_card_is_the_staffs_and_its_text_stays_text(staff, knockout):
     made = generate(staff, knockout, scope="tournament")
     staff.patch(
         news_url(knockout, made["id"]),
-        {"title": "<script>x</script>", "body": "Head\n<b>&</b>"},
+        {
+            "title": "<script>x</script>",
+            "body": "Head\n<b>&</b>\nSingles\nSemi-final\nAmina 3-1 Brian (11-7, 9-11)",
+        },
         format="json",
     )
     assert APIClient().get(news_url(knockout, made["id"], "card")).status_code == 404
-    card = staff.get(news_url(knockout, made["id"], "card")).content.decode()
-    assert "<script>" not in card and "&lt;script&gt;" in card and "&lt;b&gt;&amp;&lt;/b&gt;" in card
+    card = staff.get(news_url(knockout, made["id"], "card"))
+    assert card["Content-Type"] == "image/png" and png_size(card.content)[0] == 1080
+    # Drawn as written, never read as markup; the event's matches under its name, the games aside.
+    cards = news.announcement_cards(Announcement.objects.get(pk=made["id"]))
+    assert [(c.title, [(r.text, r.aside, r.note) for r in c.rows]) for c in cards] == [
+        ("Results", [("Head", "", False), ("<b>&</b>", "", False)]),
+        ("Singles", [("Semi-final", "", True), ("Amina 3-1 Brian", "11-7, 9-11", False)]),
+    ]
+    text = pdf_text(staff.get(news_url(knockout, made["id"], "pdf")).content)
+    # The title heads the page in capitals.
+    assert "<SCRIPT>X</SCRIPT>" in text and "<b>&</b>" in text
 
 
 def test_only_players_holding_a_place_are_told(staff, knockout):
@@ -311,27 +325,28 @@ def test_announcements_export_as_pdf_for_whoever_may_read_them(staff, knockout):
     assert anyone.get(news_url(knockout, draft["id"], "pdf")).status_code == 404
     assert staff.get(news_url(knockout, draft["id"], "pdf")).status_code == 200
     sheet = anyone.get(news_url(knockout) + "export.pdf")
-    assert sheet.status_code == 200 and b"No announcements have been published yet." in sheet.content
-    assert b"Semi-final" not in sheet.content
+    assert sheet.status_code == 200 and "No announcements have been published yet." in pdf_text(sheet.content)
+    assert "Semi-final" not in pdf_text(sheet.content)
 
     staff.post(news_url(knockout, draft["id"], "publish"), {}, format="json")
     one = anyone.get(news_url(knockout, draft["id"], "pdf"))
     assert one.status_code == 200 and one["Content-Type"] == "application/pdf"
     assert "attachment" in one["Content-Disposition"]
-    assert one.content.startswith(b"%PDF-1.4") and one.content.rstrip().endswith(b"%%EOF")
-    # The text is in the file, with brackets escaped the way PDF wants them.
-    assert b"Amina 3-1 Brian" in one.content and rb"Day one \(results\)" in one.content
-    sheet = anyone.get(news_url(knockout) + "export.pdf").content
-    assert b"Semi-final" in sheet and knockout["cup"]["name"].encode() in sheet
+    text = pdf_text(one.content)
+    assert "Amina 3-1 Brian" in text and "DAY ONE (RESULTS)" in text and "coastloopas.org" in text
+    sheet = pdf_text(anyone.get(news_url(knockout) + "export.pdf").content)
+    assert "Semi-final" in sheet and knockout["cup"]["name"].upper() in sheet
     # A tournament that isn't there, or another's announcement, is not found.
     assert anyone.get(f"/api/v1/tournaments/{draft['id']}/announcements/export.pdf").status_code == 404
 
 
-def test_a_long_announcement_wraps_and_runs_over_pages():
-    from core.pdf import PER_PAGE, WIDTH, text_pdf, wrap
+def test_a_long_table_runs_over_pages_and_keeps_every_letter():
+    from core import pdf
 
-    long_line = "  " + "word " * 60
-    assert all(len(line) <= WIDTH for line in wrap([long_line]))
-    pdf = text_pdf([f"Line {n}" for n in range(PER_PAGE * 2 + 1)])
-    assert pdf.count(b"/Type /Page ") == 3 and b"/Count 3" in pdf
-    assert b"?" in text_pdf(["Wanjikũ 中"])  # outside Latin-1: shown as a question mark
+    rows = [[str(n), f"Player {n}", "Mombasa TT Club"] for n in range(1, 121)]
+    rows[4][1] = "Wanjikũ Kĩmani"  # letters from the extended font
+    content = pdf.document("Final results", "", [pdf.Table(["Rank", "Player", "Club"], rows, ranked=True)])
+    pages = pdf_pages(content)
+    assert len(pages) >= 3 and f"Page 1 of {len(pages)}" in pages[0]
+    assert all("PLAYER" in page for page in pages)  # the header row repeats on every page
+    assert "Wanjikũ Kĩmani" in pages[0] and "Player 120" in pages[-1]

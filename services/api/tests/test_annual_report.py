@@ -14,6 +14,7 @@ from finance.models import Allocation, AnnualReport, Campaign, Charge, Expense, 
 from organizations.models import Role
 
 from .conftest import BrowserClient
+from .files import pdf_text
 from .helpers import logged_in, make_user
 from .test_roles import ORGS, add_member
 
@@ -356,7 +357,7 @@ def test_the_report_exports_as_csv_and_pdf(world):
     assert "'=SUM(A1:A9) was a steady year." in rows  # a spreadsheet won't run it
     pdf = world["member"].get(report_url(world, report, "export.pdf"))
     assert pdf.status_code == 200 and pdf["Content-Type"] == "application/pdf"
-    assert pdf.content.startswith(b"%PDF-1.4") and pdf.content.rstrip().endswith(b"%%EOF")
-    assert b"Closing balance" in pdf.content and b"770.00" in pdf.content
+    text = pdf_text(pdf.content)
+    assert "Closing balance (KES)" in text and "770.00" in text and "=SUM(A1:A9) was a steady year." in text
     # A draft can be thrown away; a published one can't (covered above).
     assert world["outsider"].get(report_url(world, report, "export.pdf")).status_code == 404

@@ -16059,9 +16059,10 @@ paths:
       responses:
         '200':
           content:
-            image/svg+xml:
+            image/png:
               schema:
                 type: string
+                format: binary
           description: ''
         4XX:
           description: Error envelope
@@ -17567,10 +17568,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg:
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.png:
     get:
-      operationId: tournaments_events_matches_card.svg_retrieve
-      description: The recap as a branded square image (SVG) to download or share.
+      operationId: tournaments_events_matches_card.png_retrieve
+      description: The recap as a branded image (PNG) to download or share.
       parameters:
       - in: path
         name: event_pk
@@ -17598,9 +17599,52 @@ paths:
       responses:
         '200':
           content:
-            image/svg+xml:
+            image/png:
               schema:
                 type: string
+                format: binary
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg:
+    get:
+      operationId: tournaments_events_matches_card.svg_retrieve
+      description: The recap as a branded image (PNG) to download or share.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
           description: ''
         4XX:
           description: Error envelope
@@ -18656,6 +18700,76 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Reservation'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/results.pdf:
+    get:
+      operationId: tournaments_results.pdf_retrieve
+      description: |-
+        GET /tournaments/{id}/results.pdf and results.png: the final results sheet (each finished event's
+        podium with the players' clubs), for whoever may see the tournament.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/results.png:
+    get:
+      operationId: tournaments_results.png_retrieve
+      description: |-
+        GET /tournaments/{id}/results.pdf and results.png: the final results sheet (each finished event's
+        podium with the players' clubs), for whoever may see the tournament.
+      parameters:
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
           description: ''
         4XX:
           description: Error envelope
