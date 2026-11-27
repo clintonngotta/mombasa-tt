@@ -28,7 +28,8 @@ function inPlayingOrder(a: DrawMatch, b: DrawMatch) {
  * Every match of the event by day (REQ-010) with its table and where it stands, filtered by status
  * and by entry. Days and times are the venue's. Byes aren't matches, so they aren't listed.
  */
-export function ScheduleView({ draw, matchPath, timeZone }: { draw: Draw; matchPath: (matchId: string) => string; timeZone: string }) {
+/** `groups` are all the event's groups, for naming them when the draw shown is narrowed to one. */
+export function ScheduleView({ draw, groups = draw.groups, matchPath, timeZone }: { draw: Draw; groups?: Draw["groups"]; matchPath: (matchId: string) => string; timeZone: string }) {
   const [show, setShow] = useState<StatusFilter>("all")
   const [who, setWho] = useState(EVERYONE)
   const whoId = useId()
@@ -79,7 +80,7 @@ export function ScheduleView({ draw, matchPath, timeZone }: { draw: Draw; matchP
           <ol className="flex flex-col gap-2">
             {list.map((match) => (
               <li key={match.id}>
-                <MatchCard match={match} to={matchPath(match.id)} heading={matchLabel(match, draw.groups)} timeZone={timeZone} />
+                <MatchCard match={match} to={matchPath(match.id)} heading={matchLabel(match, groups)} timeZone={timeZone} />
               </li>
             ))}
           </ol>

@@ -15,8 +15,12 @@ without the event's rest in between, a table holds one match at a time, and a ma
 before the matches it waits for (the ones whose winners or group places fill its sides) have ended.
 
 Who plays a match whose sides aren't known yet is uncertain: it is anybody who could still get there.
-The recommendation keeps those people apart as well, and a check reports an overlap among them as a
-warning rather than a conflict, because it may never happen.
+A side still to come is one place ("Group A winner", "Winner of quarter-final 2"), so within a draw two
+such matches never share a player unless one feeds the other. Across draws the recommendation keeps
+those people apart as well, and a check reports an overlap among them as a warning rather than a
+conflict, because it may never happen.
+
+The top seeds don't open the day: their first matches start after the first two rounds of the tables.
 """
 
 from dataclasses import dataclass, field
@@ -33,6 +37,8 @@ MINUTES_BY_BEST_OF = {1: 10, 3: 20, 5: 30, 7: 40}
 DAY_STARTS = time(9, 0)
 DAY_ENDS = time(21, 0)
 STEP = timedelta(minutes=5)
+TOP_SEEDS = 4  # at least the first four seeds of a draw, or one per group when there are more groups
+SEEDS_WAIT = (5, 10)  # top seeds start after this many matches: two rounds of the tables, within it
 
 
 def match_minutes(event: Event) -> int:
@@ -50,6 +56,7 @@ class Item:
     maybe: dict  # user id -> name, who could still reach it
     after: list = field(default_factory=list)  # ids of the matches it waits for
     level: int = 0
+    top_seeds: set = field(default_factory=set)  # entry ids of the top seeds it has
 
     @property
     def length(self) -> timedelta:
@@ -60,18 +67,52 @@ def _people(entry) -> dict:
     return {place.user_id: place.user.display_name for place in entry.players.all()} if entry else {}
 
 
-def _title(match: Match) -> str:
-    def side(entry):
-        return " / ".join(place.user.display_name for place in entry.players.all()) if entry else "To come"
+def _rounds(match: Match, known: dict | None) -> int:
+    """How many knockout rounds the match's draw has, asked once per draw when `known` is shared."""
+    known = {} if known is None else known
+    if match.draw_id not in known:
+        known[match.draw_id] = (
+            Match.objects.filter(draw_id=match.draw_id, stage=Match.Stage.KNOCKOUT)
+            .order_by("-round")
+            .values_list("round", flat=True)
+            .first()
+            or 0
+        )
+    return known[match.draw_id]
 
-    return f"{side(match.entry_a)} v {side(match.entry_b)}"
+
+def _awaiting(match: Match, feeder: Match | None, group, rank, known: dict | None) -> str:
+    """A side still to come as the draw names it: "Group A winner", "Winner of quarter-final 2"."""
+    from .drawing import group_name, ordinal, round_name
+
+    if feeder is not None and feeder.status == Match.Status.BYE:
+        group, rank, feeder = feeder.a_from_group, feeder.a_from_rank, None
+    if feeder is not None:
+        return f"Winner of {round_name(feeder.round, _rounds(match, known)).lower()} {feeder.position}"
+    if group is not None and rank is not None:
+        return f"{group_name(group)} {ordinal(rank)}"
+    return "To come"
 
 
-def label(match: Match) -> str:
+def _title(match: Match, known: dict | None = None) -> str:
+    def side(entry, feeder_id, group, rank, feeder):
+        if entry:
+            return " / ".join(place.user.display_name for place in entry.players.all())
+        return _awaiting(match, feeder() if feeder_id else None, group, rank, known)
+
+    a = side(match.entry_a, match.feeder_a_id, match.a_from_group, match.a_from_rank, lambda: match.feeder_a)
+    b = side(match.entry_b, match.feeder_b_id, match.b_from_group, match.b_from_rank, lambda: match.feeder_b)
+    return f"{a} v {b}"
+
+
+def label(match: Match, known: dict | None = None) -> str:
+    from .drawing import round_name
+
     event = match.draw.event.name
     if match.stage == Match.Stage.GROUP:
         return f"{event}, group {chr(64 + (match.group or 1))} round {match.round}"
-    return f"{event}, round {match.round} match {match.position}"
+    name = round_name(match.round, _rounds(match, known))
+    return f"{event}, {name}" if name == "Final" else f"{event}, {name.lower()} {match.position}"
 
 
 def plannable(tournament: Tournament) -> list[Match]:
@@ -84,7 +125,9 @@ def plannable(tournament: Tournament) -> list[Match]:
             status=Match.Status.SCHEDULED,
             dispatched_at__isnull=True,
         )
-        .select_related("draw__event", "planned_table", "draft_table", "entry_a", "entry_b")
+        .select_related(
+            "draw__event", "planned_table", "draft_table", "entry_a", "entry_b", "feeder_a", "feeder_b"
+        )
         .prefetch_related("entry_a__players__user", "entry_b__players__user")
         .order_by("draw__event__position", "draw__event__created_at", "stage", "group", "round", "position")
     )
@@ -187,6 +230,7 @@ def items_for(matches: list[Match]) -> dict:
     for match in matches:
         if match.stage == Match.Stage.GROUP:
             group_matches.setdefault((match.draw_id, match.group), []).append(match.id)
+    top = top_seeds(matches)
     items = {}
     for match in matches:
         event = match.draw.event
@@ -202,6 +246,7 @@ def items_for(matches: list[Match]) -> dict:
             people=people,
             maybe={},
             after=after,
+            top_seeds={pk for pk in (match.entry_a_id, match.entry_b_id) if pk in top},
         )
 
     def settle(item: Item, seen: set) -> None:
@@ -222,6 +267,52 @@ def items_for(matches: list[Match]) -> dict:
     for item in items.values():
         settle(item, done)
     return items
+
+
+def top_seeds(matches: list[Match]) -> set:
+    """The entries that are top seeds of their draws: the first seeds, one per group (at least four)."""
+    from .models import DrawPlace
+
+    draws = {match.draw_id: match.draw for match in matches}
+    found = set()
+    for place in DrawPlace.objects.filter(draw_id__in=draws, seed__isnull=False).values(
+        "draw_id", "entry_id", "seed"
+    ):
+        if place["seed"] <= max(TOP_SEEDS, draws[place["draw_id"]].group_count or 0):
+            found.add(place["entry_id"])
+    return found
+
+
+def seeds_wait(tables: list) -> int:
+    """How many matches start before a top seed plays: two rounds of the tables, from five to ten."""
+    return min(SEEDS_WAIT[1], max(SEEDS_WAIT[0], 2 * len(tables)))
+
+
+def _seeds_later(order: list[Item], wait: int) -> list[Item]:
+    """`order` with each top seed's first match moved behind the first `wait` matches, as organizers
+    do: the top seeds don't open the day. A match waiting for a moved one still comes after it."""
+    played: set = set()
+    held: list[Item] = []
+    moved: set = set()
+    found: list[Item] = []
+
+    def let_go() -> None:
+        while held:
+            item = held.pop(0)
+            found.append(item)
+            played.update(item.top_seeds)
+
+    for item in order:
+        if len(found) >= wait or any(pk in moved for pk in item.after):
+            let_go()
+        if len(found) < wait and item.top_seeds - played:
+            held.append(item)
+            moved.add(item.match.id)
+            continue
+        found.append(item)
+        played.update(item.top_seeds)
+    let_go()
+    return found
 
 
 def _local(moment: datetime, zone: ZoneInfo) -> datetime:
@@ -254,9 +345,9 @@ def recommend(
     first_day = _at(tournament.starts_on, day_starts, zone)
     start = _round_up(max(starts_at or first_day, timezone.now(), first_day))
     items = items_for(plannable(tournament))
-    order = _in_order(items, order_of_play.ranks(tournament))
     if not tables:
         return []
+    order = _seeds_later(_in_order(items, order_of_play.ranks(tournament)), seeds_wait(tables))
     spans = [w for w in windows(tournament, tables, day_starts, day_ends) if w.end > start]
 
     table_free = {table.id: start for table in tables}
@@ -270,12 +361,21 @@ def recommend(
             table_free[busy.table.id] = max(table_free[busy.table.id], busy.until)
         for user_id in busy.users:
             person_free[user_id] = max(person_free.get(user_id, start), busy.until + busy.rest)
+    # Who might play a match whose sides aren't known yet is held apart only from other draws: in one
+    # draw, a player reaches two matches only when one feeds the other, which `after` and the rest
+    # after it already keep apart. Holding them in their own draw too would keep, say, every
+    # quarter-final off the tables while any of them is played.
+    maybe_free: dict = {}  # user id -> draw id -> free from
     ends: dict = {}
     slots = []
     for item in order:
-        earliest = max([start, *(ends[pk] for pk in item.after if pk in ends)])
+        draw_id = item.match.draw_id
+        earliest = max([start, *(ends[pk] + items[pk].rest for pk in item.after if pk in ends)])
         for user_id in {**item.people, **item.maybe}:
             earliest = max(earliest, person_free.get(user_id, earliest))
+            for other, free in maybe_free.get(user_id, {}).items():
+                if other != draw_id:
+                    earliest = max(earliest, free)
         best = None
         for span in spans:
             if span.events is not None and item.match.draw.event_id not in span.events:
@@ -295,8 +395,11 @@ def recommend(
         end = at + item.length
         table_free[table.id] = end
         ends[item.match.id] = end
-        for user_id in {**item.people, **item.maybe}:
+        for user_id in item.people:
             person_free[user_id] = end + item.rest
+        for user_id in item.maybe:
+            held = maybe_free.setdefault(user_id, {})
+            held[draw_id] = max(held.get(draw_id, start), end + item.rest)
         slots.append(
             {
                 "match_id": item.match.id,
@@ -470,7 +573,9 @@ def _problems(tournament: Tournament, plans: dict, items: dict, zone) -> tuple[l
             everyone_a = {**plan.item.people, **plan.item.maybe}
             everyone_b = {**other.item.people, **other.item.maybe}
             maybe = set(everyone_a) & set(everyone_b)
-            if maybe and plan.item.match.id not in _ancestors(other.item, items):
+            # In one draw, two matches share a player only when one feeds the other.
+            same_draw = plan.item.match.draw_id == other.item.match.draw_id
+            if maybe and not same_draw and plan.item.match.id not in _ancestors(other.item, items):
                 name = min(everyone_a[k] for k in maybe)
                 problem(
                     warnings,
@@ -496,13 +601,14 @@ def rows(tournament: Tournament) -> list[dict]:
     """The plannable matches as they are planned now, for the schedule editor."""
     matches = plannable(tournament)
     items = items_for(matches)
+    known: dict = {}
     return [
         {
             "match_id": match.id,
             "event_id": match.draw.event_id,
             "event": match.draw.event.name,
-            "label": label(match),
-            "title": _title(match),
+            "label": label(match, known),
+            "title": _title(match, known),
             "minutes": items[match.id].minutes,
             "table_id": match.draft_table_id,
             "scheduled_at": match.draft_at,

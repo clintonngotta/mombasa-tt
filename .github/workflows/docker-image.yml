@@ -5,6 +5,11 @@ name: Build and push images
 on:
   push:
     branches: [main]
+    # Nothing in the images changes with the docs or the planning files.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 concurrency:

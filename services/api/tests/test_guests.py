@@ -260,3 +260,22 @@ def test_a_rated_guest_is_rated_again_as_the_claimant(staff, club):
     assert not Rating.objects.filter(user_id=guest["id"]).exists()
     job = Job.objects.get(kind=merge.RERATE)
     merge.rerate(job.payload)  # what the worker runs: the ledgers again from the official results
+
+
+def test_a_claim_moves_every_column_that_holds_a_user_hidden_ones_included():
+    """Captains, rubber players and the like are declared with related_name="+", which Django's own list
+    of relations leaves out. Every user column outside the guest's record and the ratings is moved."""
+    from django.apps import apps
+
+    from guests import merge
+
+    moved = set(merge._references())
+    for model in apps.get_models(include_auto_created=True):
+        if model._meta.app_label in merge.SKIPPED or model in merge.RECOMPUTED:
+            continue
+        for field in model._meta.concrete_fields:
+            if field.is_relation and field.related_model is User:
+                assert (model, field.name) in moved, f"{model._meta.label}.{field.name} is not moved"
+    from competitions.models import Entry, RubberPlayer
+
+    assert (Entry, "captain") in moved and (RubberPlayer, "user") in moved

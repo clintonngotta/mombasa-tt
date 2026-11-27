@@ -44,6 +44,7 @@ from .serializers import (
 )
 
 MANAGE = Permission.COMPETITIONS_MANAGE
+MAX_SEARCH = 100
 T = Tournament.Status
 E = Event.Status
 
@@ -560,11 +561,15 @@ class EntryViewSet(viewsets.GenericViewSet):
         return tournament, get_object_or_404(Event, pk=event_pk, tournament=tournament), staff
 
     @extend_schema(
-        parameters=[OpenApiParameter("status", str, enum=Entry.Status.values)],
+        parameters=[
+            OpenApiParameter("status", str, enum=Entry.Status.values),
+            OpenApiParameter("search", str, description="Part of a team's or a player's name."),
+        ],
         responses={200: EntrySerializer(many=True)},
     )
     def list(self, request, tournament_pk, event_pk):
-        """Accepted entries, plus the caller's own in any status. Competition staff get them all."""
+        """Accepted entries, plus the caller's own in any status. Competition staff get them all.
+        `search` narrows them to entries whose team or one of whose players has the text in its name."""
         _, event, staff = self._open(tournament_pk, event_pk, lock=False)
         found = entry_list().filter(event=event)
         if not staff:
@@ -579,6 +584,12 @@ class EntryViewSet(viewsets.GenericViewSet):
             if wanted not in Entry.Status.values:
                 raise ValidationError({"status": "Not an entry status."})
             found = found.filter(status=wanted)
+        term = search_term(request)
+        if len(term) > MAX_SEARCH:
+            raise ValidationError({"search": f"At most {MAX_SEARCH} characters."})
+        if term:
+            named = Entry.objects.filter(event=event, players__user__display_name__icontains=term)
+            found = found.filter(Q(team_name__icontains=term) | Q(pk__in=named.values("pk")))
         page = self.paginate_queryset(found)
         return self.get_paginated_response(
             EntrySerializer(page, many=True, context={"request": request}).data
