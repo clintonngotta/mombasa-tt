@@ -102,6 +102,23 @@ export function useDraft(form: string | null): Draft {
   )
 }
 
+/**
+ * Keeps the draft as `value` changes, without pressing Save draft: saved when it differs from
+ * `initial`, removed when it is put back. Call it after the useDraftState that holds `value`, so the
+ * field already holds the new value when this saves. A restored draft stays "restored" until changed.
+ */
+export function useAutoDraft(draft: Draft, value: unknown, initial: unknown) {
+  const { enabled, save, clear } = draft
+  const last = useRef(JSON.stringify(value))
+  useEffect(() => {
+    const now = JSON.stringify(value)
+    if (!enabled || now === last.current) return
+    last.current = now
+    if (now === JSON.stringify(initial)) clear()
+    else save()
+  }, [enabled, value, initial, save, clear])
+}
+
 /** useState for a form field that belongs to a draft. Only plain values: text, numbers, choices, lists of them. */
 export function useDraftState<T>(draft: Draft, key: string, initial: T | (() => T)): [T, Dispatch<SetStateAction<T>>] {
   const [first] = useState(initial)

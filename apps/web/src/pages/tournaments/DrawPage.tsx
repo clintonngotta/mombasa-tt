@@ -3,7 +3,9 @@ import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { DraftBar } from "@/components/forms/Draft"
 import { FormAlert } from "@/components/forms/Field"
+import { useAutoDraft, useDraft, useDraftState } from "@/components/forms/useDraft"
 import { DrawView } from "@/components/tournaments/DrawView"
 import { SeedList } from "@/components/tournaments/SeedList"
 import { EventStatusChip } from "@/components/tournaments/StatusChip"
@@ -73,15 +75,19 @@ export function DrawPage() {
 /** Seeds in order, a preview that can be drawn again, and publication. */
 function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: TournamentEvent; draw: EventDraw }) {
   const queryClient = useQueryClient()
+  const open = t.status !== "draft" && !isClosed(t) && event.status === "scheduled"
+  const seeded = event.seeding !== "none"
   // Start from the seeds of the draw already made, so drawing again keeps them.
-  const [seeds, setSeeds] = useState<string[]>(() =>
+  const [start] = useState<string[]>(() =>
     (draw.preview ?? draw.published)?.places
       .filter((place) => place.seed)
       .sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0))
       .map((place) => place.entry.id) ?? draw.recommended_seeds
   )
-  const open = t.status !== "draft" && !isClosed(t) && event.status === "scheduled"
-  const seeded = event.seeding !== "none"
+  // Seeds put in order but not drawn yet stay on this device, saved as they change, until the draw is made.
+  const draft = useDraft(open && seeded ? `draw:${event.id}` : null)
+  const [seeds, setSeeds] = useDraftState<string[]>(draft, "seeds", start)
+  useAutoDraft(draft, seeds, start)
   const entries = useQuery({ queryKey: entryKeys.accepted(event.id), queryFn: () => listAllEntries(t.id, event.id, "accepted"), enabled: open })
   const accepted = entries.data?.results ?? []
   const total = entries.data?.count ?? 0
@@ -91,7 +97,13 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
     queryClient.setQueryData(drawKeys.event(event.id), fresh)
     void queryClient.invalidateQueries({ queryKey: drawKeys.standings(event.id) })
   }
-  const make = useMutation({ mutationFn: () => previewDraw(t.id, event.id, seeded ? chosen : []), onSuccess: settle })
+  const make = useMutation({
+    mutationFn: () => previewDraw(t.id, event.id, seeded ? chosen : []),
+    onSuccess: (fresh) => {
+      draft.clear() // the seeds are in the preview now
+      settle(fresh)
+    },
+  })
   const publish = useMutation({ mutationFn: () => publishDraw(t.id, event.id), onSuccess: settle })
   const [deleting, setDeleting] = useState(false) // asked once more before the preview goes
   const discard = useMutation({
@@ -142,6 +154,7 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
                     </li>
                   ))}
               </ul>
+              <DraftBar draft={draft} />
             </div>
           )}
           {make.isError && <FormAlert>{errorMessage(make.error)}</FormAlert>}
