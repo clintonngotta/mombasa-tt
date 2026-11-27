@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from attachments.models import Attachment
@@ -381,6 +382,16 @@ class DrawVersion(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     published_at = models.DateTimeField(null=True, blank=True)
+    # What the organizers chose to keep apart in the groups ("clubs", "teams", "regions") and the most
+    # entries of one a group may hold. Publication checks the draw against the same choice.
+    keep_apart = ArrayField(models.CharField(max_length=8), default=list, blank=True)
+    same_group_limit = models.PositiveSmallIntegerField(default=3)
+    # The last time the organizers moved an entry of this draw by hand. A moved draw is no longer what
+    # `rng_seed` alone gives.
+    moved_at = models.DateTimeField(null=True, blank=True)
+    moved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
 
     class Meta:
         ordering = ["event", "version"]

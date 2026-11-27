@@ -326,6 +326,16 @@ urlpatterns = [
         name="tournament-event-draw-publish",
     ),
     path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/reopen/",
+        action(DrawViewSet, "reopen"),
+        name="tournament-event-draw-reopen",
+    ),
+    path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/move/",
+        action(DrawViewSet, "move"),
+        name="tournament-event-draw-move",
+    ),
+    path(
         "<uuid:tournament_pk>/events/<uuid:event_pk>/draw/discard/",
         action(DrawViewSet, "discard"),
         name="tournament-event-draw-discard",

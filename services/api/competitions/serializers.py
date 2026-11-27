@@ -542,6 +542,16 @@ class DrawPlaceSerializer(serializers.Serializer):
     group = serializers.IntegerField(allow_null=True)
     group_position = serializers.IntegerField(allow_null=True)
     bracket_position = serializers.IntegerField(allow_null=True)
+    affiliations = serializers.ListField(
+        child=serializers.CharField(),
+        default=list,
+        help_text="In the organizers' preview: the clubs, teams and regions of the entry's players, which "
+        "the draw keeps apart. Empty everywhere else.",
+    )
+    withdrawn = serializers.BooleanField(
+        default=False,
+        help_text="In the organizers' preview: no longer accepted, to be taken out of its group.",
+    )
 
 
 class MatchSideSerializer(serializers.Serializer):
@@ -769,6 +779,26 @@ class DrawGroupSerializer(serializers.Serializer):
     name = serializers.CharField()
 
 
+KEEP_APART_CHOICES = [("clubs", "Clubs"), ("teams", "Teams"), ("regions", "Regions")]
+
+
+class DrawLimitBreachSerializer(serializers.Serializer):
+    """A group over the limit: `count` entries of the club, team or region `name`, `limit` allowed."""
+
+    group = serializers.IntegerField()
+    name = serializers.CharField()
+    count = serializers.IntegerField()
+    limit = serializers.IntegerField()
+
+
+class DrawMissingEntrySerializer(serializers.Serializer):
+    entry = DrawEntrySerializer()
+    suggested_group = serializers.IntegerField(
+        allow_null=True,
+        help_text="The smallest group it can join within the draw's rules; null for a knockout.",
+    )
+
+
 class DrawSerializer(serializers.Serializer):
     """One version of an event's draw: who sits where, and every match with its sides."""
 
@@ -782,6 +812,26 @@ class DrawSerializer(serializers.Serializer):
     )
     created_at = serializers.DateTimeField()
     published_at = serializers.DateTimeField(allow_null=True)
+    moved_at = serializers.DateTimeField(
+        allow_null=True, help_text="When the organizers last moved an entry by hand; null if never."
+    )
+    keep_apart = serializers.ListField(
+        child=serializers.ChoiceField(choices=KEEP_APART_CHOICES),
+        help_text="What the organizers chose to keep apart in the groups.",
+    )
+    same_group_limit = serializers.IntegerField(
+        help_text="The most entries of one club, team or region kept apart that a group may hold."
+    )
+    over_limit = DrawLimitBreachSerializer(
+        many=True,
+        help_text="In the organizers' preview: groups holding more entries of one club, team or region than "
+        "allowed. The draw can't be published while any is listed.",
+    )
+    not_in_draw = DrawMissingEntrySerializer(
+        many=True,
+        help_text="In the organizers' preview: accepted entries the draw doesn't hold yet, entered since "
+        "it was made, with the group suggested for each.",
+    )
     groups = DrawGroupSerializer(many=True)
     places = DrawPlaceSerializer(many=True)
     matches = MatchSerializer(many=True)
@@ -802,6 +852,42 @@ class DrawRequestSerializer(serializers.Serializer):
         child=serializers.UUIDField(), max_length=MAX_SEEDS, required=False
     )
     rng_seed = serializers.IntegerField(min_value=0, max_value=2**31 - 1, required=False)
+    keep_apart = serializers.ListField(
+        child=serializers.ChoiceField(choices=KEEP_APART_CHOICES),
+        max_length=3,
+        required=False,
+        help_text="In a groups stage, keep entries of one club, team or region apart. All three when left "
+        "out; an empty list keeps nothing apart.",
+    )
+    same_group_limit = serializers.IntegerField(
+        min_value=1,
+        max_value=16,
+        required=False,
+        help_text="The most entries of one of them a group may hold (3 when left out), or its fair share "
+        "when it has too many entries for that.",
+    )
+
+
+class DrawMoveSerializer(serializers.Serializer):
+    """Change one entry's place in the preview: into a group (`group`: moved there, or added there when it
+    is an accepted entry the draw doesn't hold yet), into another entry's place (`swap_with`), or out
+    of the draw when it is no longer accepted (`remove`). Exactly one of the three."""
+
+    entry_id = serializers.UUIDField()
+    group = serializers.IntegerField(min_value=1, max_value=64, required=False)
+    swap_with = serializers.UUIDField(required=False)
+    remove = serializers.BooleanField(
+        required=False, help_text="Take an entry that is no longer accepted out of its group."
+    )
+
+    def validate(self, attrs):
+        if attrs.get("remove") is False:
+            del attrs["remove"]
+        if sum(name in attrs for name in ("group", "swap_with", "remove")) != 1:
+            raise serializers.ValidationError(
+                "Give one of: a group to move or add it to, an entry to swap with, or remove."
+            )
+        return attrs
 
 
 class TieBreakStepSerializer(serializers.Serializer):

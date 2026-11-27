@@ -31,8 +31,24 @@ export const submitLineup = (id: string, eventId: string, matchId: string, entry
   api<MatchDetail>(`/tournaments/${id}/events/${eventId}/matches/${matchId}/lineup/`, { body: { entry_id: entryId, picks } })
 /** Staff: send both teams back to choose again. */
 export const resetLineups = (id: string, eventId: string, matchId: string) => api<MatchDetail>(`/tournaments/${id}/events/${eventId}/matches/${matchId}/lineup/reset/`, { body: {} })
+/** What a groups stage keeps apart, and how many of one a group may hold. */
+export type KeepApart = Schemas["KeepApartEnum"]
+export type DrawRules = { keep_apart: KeepApart[]; same_group_limit: number }
+export const KEEP_APART: { value: KeepApart; label: string; description: string }[] = [
+  { value: "clubs", label: "Keep clubs apart", description: "Players who are members of the same club." },
+  { value: "teams", label: "Keep teams apart", description: "Players of the same team." },
+  { value: "regions", label: "Keep regions apart", description: "Players who live in the same region, from their profiles." },
+]
+export const DEFAULT_RULES: DrawRules = { keep_apart: ["clubs", "teams", "regions"], same_group_limit: 3 }
+
 /** Draw the accepted entries (again); seeds are entry ids, best first. */
-export const previewDraw = (id: string, eventId: string, seeds: string[]) => api<EventDraw>(`${base(id, eventId)}preview/`, { body: { seeded_entry_ids: seeds } })
+export const previewDraw = (id: string, eventId: string, seeds: string[], rules?: DrawRules) =>
+  api<EventDraw>(`${base(id, eventId)}preview/`, { body: { seeded_entry_ids: seeds, ...rules } })
+/** Move an entry of the preview by hand: into another group, or into another entry's place. */
+export const moveInDraw = (id: string, eventId: string, move: { entry_id: string; group?: number; swap_with?: string; remove?: boolean }) =>
+  api<EventDraw>(`${base(id, eventId)}move/`, { body: move })
+/** Take the published draw up again as the preview, to add late entries or take withdrawn ones out. */
+export const reopenDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}reopen/`, { body: {} })
 /** Delete the preview, before it is published, to start the draw again. */
 export const discardDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}discard/`, { body: {} })
 export const publishDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}publish/`, { body: {} })
