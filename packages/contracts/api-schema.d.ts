@@ -1323,7 +1323,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        /**
+         * @description Open invitations addressed to the signed-in player's verified email, or to them as a player found
+         *     in the directory; they accept or decline.
+         */
         get: operations["me_invitations_list"];
         put?: never;
         post?: never;
@@ -1342,7 +1345,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        /**
+         * @description Open invitations addressed to the signed-in player's verified email, or to them as a player found
+         *     in the directory; they accept or decline.
+         */
         post: operations["me_invitations_accept_create"];
         delete?: never;
         options?: never;
@@ -1359,7 +1365,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        /**
+         * @description Open invitations addressed to the signed-in player's verified email, or to them as a player found
+         *     in the directory; they accept or decline.
+         */
         post: operations["me_invitations_decline_create"];
         delete?: never;
         options?: never;
@@ -11338,12 +11347,13 @@ export interface components {
             total_minor: number;
             by_source: components["schemas"]["SourceTotal"][];
         };
-        /** @description Staff view of an invitation they sent. */
+        /** @description Staff view of an invitation they sent. An invited player is shown by name; their email isn't. */
         Invitation: {
             /** Format: uuid */
             readonly id: string;
             /** Format: email */
             readonly email: string;
+            readonly invitee_name: string;
             readonly status: components["schemas"]["InvitationStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
@@ -11352,9 +11362,12 @@ export interface components {
             /** Format: date-time */
             readonly decided_at: string | null;
         };
+        /** @description Invite by email, or a player found in the player directory: one of the two. */
         InvitationCreateRequest: {
             /** Format: email */
-            email: string;
+            email?: string;
+            /** Format: uuid */
+            player_id?: string;
         };
         /**
          * @description What an invitation link shows the person who opens it: who they were entered as, where, by whom,
@@ -26923,7 +26936,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["InvitationCreateRequest"];
             };

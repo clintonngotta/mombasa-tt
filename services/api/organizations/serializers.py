@@ -244,18 +244,28 @@ class MyJoinRequestSerializer(serializers.ModelSerializer):
 
 
 class InvitationCreateSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    """Invite by email, or a player found in the player directory: one of the two."""
+
+    email = serializers.EmailField(required=False)
+    player_id = serializers.UUIDField(required=False)
 
     def validate_email(self, value: str) -> str:
         return value.strip().lower()
 
+    def validate(self, attrs):
+        if ("email" in attrs) == ("player_id" in attrs):
+            raise serializers.ValidationError({"email": "Give an email address or choose a player."})
+        return attrs
+
 
 class InvitationSerializer(serializers.ModelSerializer):
-    """Staff view of an invitation they sent."""
+    """Staff view of an invitation they sent. An invited player is shown by name; their email isn't."""
+
+    invitee_name = serializers.CharField(source="invitee.display_name", read_only=True, default=None)
 
     class Meta:
         model = Invitation
-        fields = ["id", "email", "status", "created_at", "expires_at", "decided_at"]
+        fields = ["id", "email", "invitee_name", "status", "created_at", "expires_at", "decided_at"]
         read_only_fields = fields
 
 

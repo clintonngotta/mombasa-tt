@@ -270,8 +270,9 @@ def invitation_expiry():
 
 
 class Invitation(models.Model):
-    """Staff invite someone by email to join an organization (REQ-004). The invitee sees it once they
-    are signed in with that verified address, and must explicitly accept; nothing is joined until then."""
+    """Staff invite someone to join an organization (REQ-004): by email, or a player found in the player
+    directory (`invitee`, whose address staff never see). The invitee sees it once signed in (with that
+    verified address, or as that player) and must explicitly accept; nothing is joined until then."""
 
     class Status(models.TextChoices):
         PENDING = "pending"
@@ -281,7 +282,11 @@ class Invitation(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invitations")
-    email = models.EmailField()  # stored lower-cased
+    email = models.EmailField(blank=True)  # stored lower-cased; blank when inviting a player
+    # A player chosen from the directory; null for an invitation by email.
+    invitee = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
     )
@@ -298,13 +303,24 @@ class Invitation(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["organization", "email"],
-                condition=models.Q(status="pending"),  # Invitation.Status.PENDING (not in scope in Meta)
+                # Invitation.Status.PENDING (not in scope in Meta)
+                condition=models.Q(status="pending") & ~models.Q(email=""),
                 name="org_one_pending_invitation",
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "invitee"],
+                condition=models.Q(status="pending", invitee__isnull=False),
+                name="org_one_pending_player_invitation",
+            ),
+            models.CheckConstraint(
+                condition=(~models.Q(email="") & models.Q(invitee__isnull=True))
+                | (models.Q(email="") & models.Q(invitee__isnull=False)),
+                name="invitation_by_email_or_player",
             ),
         ]
 
     def __str__(self):
-        return f"{self.email} -> {self.organization_id} ({self.status})"
+        return f"{self.email or self.invitee_id} -> {self.organization_id} ({self.status})"
 
     def save(self, *args, **kwargs):
         self.email = self.email.strip().lower()  # the pending-unique constraint relies on this
