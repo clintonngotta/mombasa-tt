@@ -435,7 +435,9 @@ def add_entry(event: Event, actor, entry_id: str, group: int) -> None:
     preview = event.draws.filter(status=D.PREVIEW).first()
     if preview is None:
         raise _conflict("no_preview", "Start from the published draw, or make a draw, first.")
-    if preview.format == Event.Format.KNOCKOUT or event.kind == Event.Kind.JUMBLES:
+    if event.kind == Event.Kind.JUMBLES:
+        raise _conflict("not_movable", "A Jumbles draw makes new pairs each round; draw it again instead.")
+    if preview.format == Event.Format.KNOCKOUT:
         raise _conflict("not_addable", "A knockout's bracket depends on how many entered: draw it again.")
     entry = event.entries.filter(pk=entry_id, status=Entry.Status.ACCEPTED).first()
     if entry is None:

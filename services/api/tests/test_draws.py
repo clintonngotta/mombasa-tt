@@ -386,11 +386,14 @@ def test_staff_preview_and_publish_a_draw_and_everyone_sees_the_published_one(st
     assert seen["preview"] is None and seen["published"] == published["published"]
     assert set(seen["published"]) == {
         "id", "version", "status", "rules_version", "rng_seed", "stale", "created_at", "published_at",
-        "moved_at", "keep_apart", "same_group_limit", "over_limit", "groups", "places", "matches",
+        "moved_at", "keep_apart", "same_group_limit", "over_limit", "not_in_draw", "groups", "places",
+        "matches",
     }  # fmt: skip
     # Who is kept apart from whom is for the organizers' preview only.
-    assert seen["published"]["over_limit"] == [] and all(
-        not p["affiliations"] for p in seen["published"]["places"]
+    assert (
+        seen["published"]["over_limit"] == []
+        and seen["published"]["not_in_draw"] == []
+        and all(not p["affiliations"] for p in seen["published"]["places"])
     )
     # Reloading gives the same draw: a published version doesn't move.
     assert viewer.get(draw_url(cup, singles)).json() == seen
