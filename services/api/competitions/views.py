@@ -28,6 +28,7 @@ from . import drawing, entries, lifecycle, matchday, official, ties
 from .emails import send_entry_news
 from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
+    DrawMoveSerializer,
     DrawRequestSerializer,
     EntryRequestSerializer,
     EntrySerializer,
@@ -910,7 +911,56 @@ class DrawViewSet(viewsets.GenericViewSet):
                 if "seeded_entry_ids" in asked
                 else drawing.rating_seeds(event)
             )
-            drawing.make_preview(event, request.user, seeds, asked.get("rng_seed"))
+            drawing.make_preview(
+                event,
+                request.user,
+                seeds,
+                asked.get("rng_seed"),
+                keep_apart=asked.get("keep_apart", drawing.KEEP_APART),
+                limit=asked.get("same_group_limit", drawing.draws.SAME_GROUP_LIMIT),
+            )
+        return self._shown(event, staff=True)
+
+    @extend_schema(request=DrawMoveSerializer, responses={200: EventDrawSerializer})
+    def move(self, request, tournament_pk, event_pk):
+        """Move an entry of the preview by hand, into another group or into another entry's place. The
+        matches it touches are made again. Groups over the limit on one club, team or region are listed
+        in `over_limit`; the draw can't be published until none is."""
+        with transaction.atomic():
+            # Who may move comes first, so nobody else learns anything from the body's validation.
+            tournament = staff_tournament(request.user, tournament_pk)
+            event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+            serializer = DrawMoveSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            asked = serializer.validated_data
+            drawing.ensure_drawable(tournament, event)
+            entry_id = str(asked["entry_id"])
+            preview = event.draws.filter(status=DrawVersion.Status.PREVIEW).first()
+            placed = preview is not None and preview.places.filter(entry_id=entry_id).exists()
+            if asked.get("remove"):
+                drawing.remove_entry(event, request.user, entry_id)
+            elif "group" in asked and preview is not None and not placed:
+                drawing.add_entry(event, request.user, entry_id, asked["group"])
+            else:
+                drawing.move(
+                    event,
+                    request.user,
+                    entry_id,
+                    group=asked.get("group"),
+                    swap_with=str(asked["swap_with"]) if "swap_with" in asked else None,
+                )
+        return self._shown(event, staff=True)
+
+    @extend_schema(request=None, responses={200: EventDrawSerializer})
+    def reopen(self, request, tournament_pk, event_pk):
+        """Take the published draw up again as the preview, exactly as it is, to add late entries to a
+        group or take withdrawn ones out without drawing again. Publishing it makes a new version.
+        Replaces a preview being worked on."""
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            event = get_object_or_404(Event, pk=event_pk, tournament=tournament)
+            drawing.ensure_drawable(tournament, event)
+            drawing.reopen(event, request.user)
         return self._shown(event, staff=True)
 
     @extend_schema(request=None, responses={200: EventDrawSerializer})

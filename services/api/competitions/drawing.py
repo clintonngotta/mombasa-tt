@@ -10,12 +10,14 @@ from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from core.exceptions import ApiException
+from organizations.models import Membership, Organization
+from profiles.models import PlayerProfile
 from ratings.elo import START
 from ratings.models import Discipline, Rating
 from scoring.models import EnginePhase, Scorecard
 
 from . import draws, official, signals, standings
-from .models import DrawPlace, DrawVersion, Entry, Event, Match, Rubber, Tournament
+from .models import DrawPlace, DrawVersion, Entry, EntryPlayer, Event, Match, Rubber, Tournament
 from .rules import RULES_VERSION
 
 D = DrawVersion.Status
@@ -61,6 +63,71 @@ def rating_seeds(event: Event) -> list[str]:
     return [entry_id for _, _, entry_id in sorted(ranked)[: draws.MAX_SEEDS]]
 
 
+# What the organizers may keep apart in the groups, and the organizations each choice covers: clubs
+# are places people train at, teams are players without one (REQ-057).
+KEEP_APART = ("clubs", "teams", "regions")
+KINDS_KEPT_APART = {
+    "clubs": (Organization.Kind.CLUB, Organization.Kind.CLUB_FACILITY),
+    "teams": (Organization.Kind.TEAM,),
+}
+
+
+def affiliations(entry_ids, keep=KEEP_APART) -> tuple[dict[str, set[str]], dict[str, str]]:
+    """For each entry, as keys, the clubs and teams its players are active members of and the regions
+    they live in (their profiles), as far as `keep` asks for them; and a name for each key. A pair or
+    team counts once for each club or region any of its players has."""
+    entry_ids = list(entry_ids)
+    players = list(EntryPlayer.objects.filter(entry_id__in=entry_ids).values_list("entry_id", "user_id"))
+    users = {user_id for _, user_id in players}
+    of_user: dict = {user_id: set() for user_id in users}
+    names: dict[str, str] = {}
+    kinds = [kind for choice in keep for kind in KINDS_KEPT_APART.get(choice, ())]
+    if kinds:
+        memberships = (
+            Membership.objects.active()
+            .filter(user_id__in=users, organization__kind__in=kinds)
+            .values_list("user_id", "organization_id", "organization__name")
+        )
+        for user_id, organization_id, name in memberships:
+            key = f"org:{organization_id}"
+            of_user[user_id].add(key)
+            names[key] = name
+    if "regions" in keep:
+        regions = (
+            PlayerProfile.objects.filter(user_id__in=users)
+            .exclude(region="")
+            .values_list("user_id", "country", "region")
+        )
+        for user_id, country, region in regions:
+            key = f"region:{country}:{region.strip().lower()}"
+            of_user[user_id].add(key)
+            names.setdefault(key, region.strip())
+    found: dict[str, set[str]] = {str(entry_id): set() for entry_id in entry_ids}
+    for entry_id, user_id in players:
+        found[str(entry_id)] |= of_user[user_id]
+    return found, names
+
+
+def limit_breaches(draw: DrawVersion, places) -> list[dict]:
+    """Groups of the draw holding more entries of one club, team or region than the limit allows, as
+    DrawSerializer shows them. A draw with one group (or none) has nothing to keep apart."""
+    groups: dict[int, list[str]] = {}
+    for place in places:
+        if place.group:
+            groups.setdefault(place.group, []).append(str(place.entry_id))
+    if len(groups) < 2 or not draw.keep_apart or draw.event.kind == Event.Kind.JUMBLES:
+        return []
+    numbers = sorted(groups)
+    entries = [entry for members in groups.values() for entry in members]
+    found, names = affiliations(entries, draw.keep_apart)
+    return [
+        {"group": numbers[index - 1], "name": names[key], "count": count, "limit": limit}
+        for index, key, count, limit in draws.over_limit(
+            [groups[number] for number in numbers], found, draw.same_group_limit
+        )
+    ]
+
+
 def is_stale(draw: DrawVersion, places=None) -> bool:
     """The accepted entries or the event's format are no longer the ones this draw was made for."""
     if draw.status == D.SUPERSEDED:
@@ -73,8 +140,17 @@ def is_stale(draw: DrawVersion, places=None) -> bool:
     return {str(place.entry_id) for place in places} != accepted_ids(event)
 
 
-def make_preview(event: Event, actor, seeds: list[str], rng_seed: int | None = None) -> DrawVersion:
-    """Draw the accepted entries and keep the result as the event's preview, replacing the last one."""
+def make_preview(
+    event: Event,
+    actor,
+    seeds: list[str],
+    rng_seed: int | None = None,
+    keep_apart=KEEP_APART,
+    limit: int = draws.SAME_GROUP_LIMIT,
+) -> DrawVersion:
+    """Draw the accepted entries and keep the result as the event's preview, replacing the last one.
+    In a groups stage, at most `limit` entries of one club, team or region named in `keep_apart` share a
+    group, unless one has too many entries for that."""
     if seeds and event.seeding == Event.Seeding.NONE:
         raise _conflict("unseeded_event", "This event is unseeded. Change its seeding to seed entries.")
     if rng_seed is None:
@@ -86,14 +162,20 @@ def make_preview(event: Event, actor, seeds: list[str], rng_seed: int | None = N
             jumbles.drop(old)
         last = event.draws.order_by("-version").values_list("version", flat=True).first() or 0
         return jumbles.make_draw(event, actor, rng_seed, last + 1, RULES_VERSION)
+    entries = list(accepted_ids(event))
+    keep_apart = [choice for choice in KEEP_APART if choice in keep_apart]
+    grouped = event.format == Event.Format.GROUPS_KNOCKOUT
+    spread = affiliations(entries, keep_apart)[0] if grouped and keep_apart else None
     try:
         plan = draws.build(
             event.format,
-            list(accepted_ids(event)),
+            entries,
             seeds,
             rng_seed,
             group_count=event.group_count,
             qualifiers_per_group=event.qualifiers_per_group,
+            affiliations=spread,
+            limit=limit,
         )
     except draws.DrawError as error:
         raise _conflict("draw_not_possible", str(error)) from error
@@ -108,6 +190,8 @@ def make_preview(event: Event, actor, seeds: list[str], rng_seed: int | None = N
         format=event.format,
         group_count=event.group_count,
         qualifiers_per_group=event.qualifiers_per_group,
+        keep_apart=keep_apart,
+        same_group_limit=limit,
         created_by=actor,
     )
     _save_plan(draw, plan)
@@ -127,8 +211,12 @@ def _save_plan(draw: DrawVersion, plan: draws.Plan) -> None:
         for entry, place in where.items()
     )
 
+    _save_matches(draw, plan.matches)
+
+
+def _save_matches(draw: DrawVersion, planned_matches: list[draws.PlannedMatch]) -> None:
     knockout: dict[tuple[int, int], Match] = {}
-    for planned in plan.matches:  # rounds come in order, so a feeder is always saved before its match
+    for planned in planned_matches:  # rounds come in order, so a feeder is always saved before its match
         a, b = planned.a, planned.b
         match = Match(
             draw=draw,
@@ -173,6 +261,14 @@ def publish(event: Event, actor) -> DrawVersion:
         raise _conflict(
             "draw_stale", "The accepted entries or the format changed since this draw was made. Draw again."
         )
+    over = limit_breaches(preview, list(preview.places.all()))
+    if over:
+        first = over[0]
+        raise _conflict(
+            "draw_over_limit",
+            f"{group_name(first['group'])} has {first['count']} entries from {first['name']}; it may have "
+            f"{first['limit']} at most. Move entries between groups before publishing.",
+        )
     event.draws.filter(status=D.PUBLISHED).update(status=D.SUPERSEDED)
     preview.status = D.PUBLISHED
     preview.published_by = actor
@@ -180,6 +276,232 @@ def publish(event: Event, actor) -> DrawVersion:
     preview.save(update_fields=["status", "published_by", "published_at"])
     mark_ready(preview)
     return preview
+
+
+def move(
+    event: Event, actor, entry_id: str, *, group: int | None = None, swap_with: str | None = None
+) -> None:
+    """Move an entry of the preview by hand: into another group (`group`), or into the place of another
+    entry (`swap_with`), in a group or on a knockout line. The matches the move touches are made again;
+    nothing has been played in a preview. Group numbers follow seeds, then the order drawn, the moved
+    entry last among the unseeded."""
+    preview = event.draws.filter(status=D.PREVIEW).first()
+    if preview is None:
+        raise _conflict("no_preview", "Make a draw to preview before moving entries in it.")
+    if event.kind == Event.Kind.JUMBLES:
+        raise _conflict("not_movable", "A Jumbles draw makes new pairs each round; draw it again instead.")
+    places = {str(place.entry_id): place for place in preview.places.all()}
+    place = places.get(str(entry_id))
+    other = places.get(str(swap_with)) if swap_with else None
+    if place is None or (swap_with and other is None):
+        raise ApiException("not_in_draw", "Choose entries of this draw.", 400)
+    if other is place:
+        raise ApiException("invalid_move", "Choose two different entries to swap.", 400)
+
+    if preview.format == Event.Format.KNOCKOUT:
+        if other is None:
+            raise ApiException("invalid_move", "In a knockout, swap two entries' places.", 400)
+        place.bracket_position, other.bracket_position = other.bracket_position, place.bracket_position
+        DrawPlace.objects.bulk_update([place, other], ["bracket_position"])
+        lines: list[str | None] = [None] * draws.bracket_size(len(places))
+        for found in places.values():
+            lines[found.bracket_position - 1] = str(found.entry_id)
+        preview.matches.all().delete()
+        _save_matches(
+            preview, draws.knockout_matches([draws.Side(entry) if entry else None for entry in lines])
+        )
+    else:
+        if preview.format != Event.Format.GROUPS_KNOCKOUT:
+            raise _conflict(
+                "not_movable", "A round robin is one group: there is nowhere to move an entry to."
+            )
+        groups = preview.group_count or 0
+        before = place.group
+        if other is not None:
+            if other.group == place.group:
+                raise ApiException("invalid_move", "Those two entries are already in the same group.", 400)
+            place.group, other.group = other.group, place.group
+            place.group_position, other.group_position = other.group_position, place.group_position
+        else:
+            if group is None or not 1 <= group <= groups:
+                raise ApiException("invalid_move", f"Choose a group from 1 to {groups}.", 400)
+            if group == place.group:
+                raise ApiException("invalid_move", "That entry is already in this group.", 400)
+            left = sum(1 for found in places.values() if found.group == place.group) - 1
+            if left < (preview.qualifiers_per_group or 1) + 1:
+                raise _conflict(
+                    "group_too_small",
+                    f"{group_name(place.group)} would have {left} entries, too few to send "
+                    f"{preview.qualifiers_per_group} through. Swap entries instead.",
+                )
+            place.group, place.group_position = group, 10_000  # last of the group until renumbered
+        _renumber(preview, places.values(), sorted({before, place.group}))
+    preview.moved_at = timezone.now()
+    preview.moved_by = actor
+    preview.save(update_fields=["moved_at", "moved_by"])
+
+
+# Copied when the published draw is taken up again: everything a match of a draw not yet started holds.
+COPIED_MATCH_FIELDS = (
+    "stage", "group", "round", "position", "entry_a_id", "entry_b_id", "a_from_group", "a_from_rank",
+    "b_from_group", "b_from_rank", "status", "winner_id", "outcome", "games", "scheduled_at",
+    "planned_table_id", "draft_table_id", "draft_at",
+)  # fmt: skip
+
+
+def reopen(event: Event, actor) -> DrawVersion:
+    """Take the published draw up again as the preview, exactly as it is: the same groups, numbers,
+    seeds, knockout and planned times, and the same rules. Late entries are then added to a group and
+    withdrawn ones taken out, each touching only its group, and the result is published as a new
+    version. Replaces a preview being worked on."""
+    published = event.draws.filter(status=D.PUBLISHED).first()
+    if published is None:
+        raise _conflict("no_published_draw", "There is no published draw to start from. Make the draw.")
+    if event.kind == Event.Kind.JUMBLES:
+        raise _conflict("not_movable", "A Jumbles draw makes new pairs each round; draw it again instead.")
+    discard_preview(event)
+    last = event.draws.order_by("-version").values_list("version", flat=True).first() or 0
+    copy = DrawVersion.objects.create(
+        event=event,
+        version=last + 1,
+        rules_version=published.rules_version,
+        rng_seed=published.rng_seed,
+        format=published.format,
+        group_count=published.group_count,
+        qualifiers_per_group=published.qualifiers_per_group,
+        keep_apart=published.keep_apart,
+        same_group_limit=published.same_group_limit,
+        created_by=actor,
+        moved_at=timezone.now(),
+        moved_by=actor,
+    )
+    DrawPlace.objects.bulk_create(
+        DrawPlace(
+            draw=copy,
+            entry_id=place.entry_id,
+            seed=place.seed,
+            group=place.group,
+            group_position=place.group_position,
+            bracket_position=place.bracket_position,
+        )
+        for place in published.places.all()
+    )
+    copied: dict = {}
+    # Feeders come before the matches they feed: by stage, then round.
+    for match in published.matches.order_by("stage", "round", "position"):
+        made = Match(draw=copy, **{name: getattr(match, name) for name in COPIED_MATCH_FIELDS})
+        made.feeder_a_id = copied.get(match.feeder_a_id)
+        made.feeder_b_id = copied.get(match.feeder_b_id)
+        made.save()
+        copied[match.id] = made.id
+    return copy
+
+
+def missing_entries(draw: DrawVersion, places) -> list[Entry]:
+    """Accepted entries of the event the draw doesn't hold: entered or accepted since it was made."""
+    placed = {place.entry_id for place in places}
+    return list(
+        draw.event.entries.filter(status=Entry.Status.ACCEPTED)
+        .exclude(pk__in=placed)
+        .prefetch_related("players__user")
+        .order_by("created_at")
+    )
+
+
+def suggested_group(draw: DrawVersion, places, entry_id) -> int | None:
+    """Where a late entry fits best: the smallest group it can join without breaking the draw's rules,
+    the first such; or the smallest group when none can. None for a draw without groups."""
+    groups: dict[int, list[str]] = {}
+    for place in places:
+        if place.group:
+            groups.setdefault(place.group, []).append(str(place.entry_id))
+    if not groups:
+        return None
+    numbers = sorted(groups, key=lambda number: (len(groups[number]), number))
+    if draw.keep_apart and len(groups) > 1:
+        entries = [entry for members in groups.values() for entry in members] + [str(entry_id)]
+        found = affiliations(entries, draw.keep_apart)[0]
+        for number in numbers:
+            trial = [groups[n] + ([str(entry_id)] if n == number else []) for n in sorted(groups)]
+            if not draws.over_limit(trial, found, draw.same_group_limit):
+                return number
+    return numbers[0]
+
+
+def add_entry(event: Event, actor, entry_id: str, group: int) -> None:
+    """Put an accepted entry the preview doesn't hold yet into a group, last among its unseeded, and
+    make that group's matches again. A knockout's bracket and byes depend on how many entered, so a
+    late entry there means drawing again."""
+    preview = event.draws.filter(status=D.PREVIEW).first()
+    if preview is None:
+        raise _conflict("no_preview", "Start from the published draw, or make a draw, first.")
+    if event.kind == Event.Kind.JUMBLES:
+        raise _conflict("not_movable", "A Jumbles draw makes new pairs each round; draw it again instead.")
+    if preview.format == Event.Format.KNOCKOUT:
+        raise _conflict("not_addable", "A knockout's bracket depends on how many entered: draw it again.")
+    entry = event.entries.filter(pk=entry_id, status=Entry.Status.ACCEPTED).first()
+    if entry is None:
+        raise ApiException("not_in_draw", "Choose an accepted entry of this event.", 400)
+    places = list(preview.places.all())
+    if any(place.entry_id == entry.id for place in places):
+        raise ApiException("invalid_move", "That entry is already in the draw.", 400)
+    groups = (preview.group_count or 1) if preview.format == Event.Format.GROUPS_KNOCKOUT else 1
+    if not 1 <= group <= groups:
+        raise ApiException("invalid_move", f"Choose a group from 1 to {groups}.", 400)
+    place = DrawPlace.objects.create(draw=preview, entry=entry, group=group, group_position=10_000)
+    _renumber(preview, [*places, place], [group])
+    preview.moved_at = timezone.now()
+    preview.moved_by = actor
+    preview.save(update_fields=["moved_at", "moved_by"])
+
+
+def remove_entry(event: Event, actor, entry_id: str) -> None:
+    """Take an entry that is no longer accepted (withdrawn, rejected) out of its group in the preview and
+    make that group's matches again. An accepted entry is moved, never taken out."""
+    preview = event.draws.filter(status=D.PREVIEW).first()
+    if preview is None:
+        raise _conflict("no_preview", "Start from the published draw, or make a draw, first.")
+    places = list(preview.places.select_related("entry"))
+    place = next((found for found in places if str(found.entry_id) == str(entry_id)), None)
+    if place is None:
+        raise ApiException("not_in_draw", "Choose entries of this draw.", 400)
+    if place.entry.status == Entry.Status.ACCEPTED:
+        raise ApiException("invalid_move", "Only an entry that is no longer accepted is taken out.", 400)
+    if not place.group:
+        raise _conflict("not_addable", "A knockout's bracket depends on how many entered: draw it again.")
+    left = sum(1 for found in places if found.group == place.group) - 1
+    needed = (preview.qualifiers_per_group or 1) + 1 if preview.format == Event.Format.GROUPS_KNOCKOUT else 2
+    if left < needed:
+        raise _conflict(
+            "group_too_small",
+            f"{group_name(place.group)} would have {left} entries. Move an entry into it first.",
+        )
+    place.delete()
+    _renumber(preview, [found for found in places if found is not place], [place.group])
+    preview.moved_at = timezone.now()
+    preview.moved_by = actor
+    preview.save(update_fields=["moved_at", "moved_by"])
+
+
+def _renumber(draw: DrawVersion, places, touched: list[int]) -> None:
+    """Number the members of the touched groups again (seeds first, then in the order they sit) and make
+    those groups' matches again. Knockout places wait for (group, rank), so they stay as they are."""
+    changed: list[DrawPlace] = []
+    for number in touched:
+        members = sorted(
+            (found for found in places if found.group == number),
+            key=lambda found: (found.seed is None, found.seed or 0, found.group_position or 0),
+        )
+        for position, found in enumerate(members, start=1):
+            found.group_position = position
+            changed.append(found)
+    DrawPlace.objects.bulk_update(changed, ["group", "group_position"])
+    draw.matches.filter(stage=Match.Stage.GROUP, group__in=touched).delete()
+    planned = []
+    for number in touched:
+        members = [str(found.entry_id) for found in changed if found.group == number]  # already in order
+        planned += draws.group_matches(number, members, draw.qualifiers_per_group or 1)
+    _save_matches(draw, planned)
 
 
 def mark_ready(draw: DrawVersion) -> None:
@@ -412,6 +734,13 @@ def describe(draw: DrawVersion, staff: bool = False) -> dict:
         matches, entries, seeds, draw.event.status == Event.Status.IN_PROGRESS, _times_shown(draw, staff)
     )
     numbers = sorted({place.group for place in places if place.group})
+    # Who each entry is kept apart from, for the organizers moving entries of their preview.
+    working = staff and draw.status == D.PREVIEW
+    found, names = affiliations([p.entry_id for p in places], draw.keep_apart) if working else ({}, {})
+    for place in places:
+        place.affiliations = sorted(names[key] for key in found.get(str(place.entry_id), ()))
+        # Withdrawn or rejected since the draw was made: the organizers take it out of its group.
+        place.withdrawn = working and place.entry.status != Entry.Status.ACCEPTED
     return {
         "id": draw.id,
         "version": draw.version,
@@ -421,6 +750,16 @@ def describe(draw: DrawVersion, staff: bool = False) -> dict:
         "stale": is_stale(draw, places),
         "created_at": draw.created_at,
         "published_at": draw.published_at,
+        "moved_at": draw.moved_at,
+        "keep_apart": draw.keep_apart,
+        "same_group_limit": draw.same_group_limit,
+        "over_limit": limit_breaches(draw, places) if working else [],
+        "not_in_draw": [
+            {"entry": entry, "suggested_group": suggested_group(draw, places, entry.id)}
+            for entry in missing_entries(draw, places)
+        ]
+        if working
+        else [],
         "groups": [{"number": number, "name": group_name(number)} for number in numbers],
         "places": places,
         "matches": [shown(match) for match in matches],

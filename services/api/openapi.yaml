@@ -17045,6 +17045,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/move/:
+    post:
+      operationId: tournaments_events_draw_move_create
+      description: |-
+        Move an entry of the preview by hand, into another group or into another entry's place. The
+        matches it touches are made again. Groups over the limit on one club, team or region are listed
+        in `over_limit`; the draw can't be published until none is.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrawMoveRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDraw'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/preview/:
     post:
       operationId: tournaments_events_draw_preview_create
@@ -17093,6 +17136,43 @@ paths:
       description: |-
         Publish the preview as the event's draw, superseding the one before. Refused when the
         accepted entries have changed since it was drawn (`draw_stale`).
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDraw'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/reopen/:
+    post:
+      operationId: tournaments_events_draw_reopen_create
+      description: |-
+        Take the published draw up again as the preview, exactly as it is, to add late entries to a
+        group or take withdrawn ones out without drawing again. Publishing it makes a new version.
+        Replaces a preview being worked on.
       parameters:
       - in: path
         name: event_pk
@@ -24172,6 +24252,33 @@ components:
           type: string
           format: date-time
           nullable: true
+        moved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the organizers last moved an entry by hand; null if never.
+        keep_apart:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeepApartEnum'
+          description: What the organizers chose to keep apart in the groups.
+        same_group_limit:
+          type: integer
+          description: The most entries of one club, team or region kept apart that
+            a group may hold.
+        over_limit:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrawLimitBreach'
+          description: 'In the organizers'' preview: groups holding more entries of
+            one club, team or region than allowed. The draw can''t be published while
+            any is listed.'
+        not_in_draw:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrawMissingEntry'
+          description: 'In the organizers'' preview: accepted entries the draw doesn''t
+            hold yet, entered since it was made, with the group suggested for each.'
         groups:
           type: array
           items:
@@ -24188,11 +24295,16 @@ components:
       - created_at
       - groups
       - id
+      - keep_apart
       - matches
+      - moved_at
+      - not_in_draw
+      - over_limit
       - places
       - published_at
       - rng_seed
       - rules_version
+      - same_group_limit
       - stale
       - status
       - version
@@ -24247,6 +24359,59 @@ components:
       required:
       - name
       - number
+    DrawLimitBreach:
+      type: object
+      description: 'A group over the limit: `count` entries of the club, team or region
+        `name`, `limit` allowed.'
+      properties:
+        group:
+          type: integer
+        name:
+          type: string
+        count:
+          type: integer
+        limit:
+          type: integer
+      required:
+      - count
+      - group
+      - limit
+      - name
+    DrawMissingEntry:
+      type: object
+      properties:
+        entry:
+          $ref: '#/components/schemas/DrawEntry'
+        suggested_group:
+          type: integer
+          nullable: true
+          description: The smallest group it can join within the draw's rules; null
+            for a knockout.
+      required:
+      - entry
+      - suggested_group
+    DrawMoveRequest:
+      type: object
+      description: |-
+        Change one entry's place in the preview: into a group (`group`: moved there, or added there when it
+        is an accepted entry the draw doesn't hold yet), into another entry's place (`swap_with`), or out
+        of the draw when it is no longer accepted (`remove`). Exactly one of the three.
+      properties:
+        entry_id:
+          type: string
+          format: uuid
+        group:
+          type: integer
+          maximum: 64
+          minimum: 1
+        swap_with:
+          type: string
+          format: uuid
+        remove:
+          type: boolean
+          description: Take an entry that is no longer accepted out of its group.
+      required:
+      - entry_id
     DrawPlace:
       type: object
       properties:
@@ -24264,12 +24429,26 @@ components:
         bracket_position:
           type: integer
           nullable: true
+        affiliations:
+          type: array
+          items:
+            type: string
+          description: 'In the organizers'' preview: the clubs, teams and regions
+            of the entry''s players, which the draw keeps apart. Empty everywhere
+            else.'
+        withdrawn:
+          type: boolean
+          default: false
+          description: 'In the organizers'' preview: no longer accepted, to be taken
+            out of its group.'
       required:
+      - affiliations
       - bracket_position
       - entry
       - group
       - group_position
       - seed
+      - withdrawn
     DrawRequestRequest:
       type: object
       description: Seeds in order, best first (accepted entries of the event). `rng_seed`
@@ -24285,6 +24464,19 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        keep_apart:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeepApartEnum'
+          description: In a groups stage, keep entries of one club, team or region
+            apart. All three when left out; an empty list keeps nothing apart.
+          maxItems: 3
+        same_group_limit:
+          type: integer
+          maximum: 16
+          minimum: 1
+          description: The most entries of one of them a group may hold (3 when left
+            out), or its fair share when it has too many entries for that.
     DrawStatusEnum:
       enum:
       - preview
@@ -26986,6 +27178,16 @@ components:
         * `approved` - Approved
         * `rejected` - Rejected
         * `withdrawn` - Withdrawn
+    KeepApartEnum:
+      enum:
+      - clubs
+      - teams
+      - regions
+      type: string
+      description: |-
+        * `clubs` - Clubs
+        * `teams` - Teams
+        * `regions` - Regions
     KindEnum:
       enum:
       - club

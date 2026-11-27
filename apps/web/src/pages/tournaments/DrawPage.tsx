@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { DraftBar } from "@/components/forms/Draft"
-import { FormAlert } from "@/components/forms/Field"
+import { Field, FormAlert } from "@/components/forms/Field"
+import { SearchSelect } from "@/components/forms/SelectField"
+import { Toggle } from "@/components/forms/Toggle"
 import { useAutoDraft, useDraft, useDraftState } from "@/components/forms/useDraft"
 import { DrawView } from "@/components/tournaments/DrawView"
 import { SeedList } from "@/components/tournaments/SeedList"
@@ -12,7 +14,7 @@ import { EventStatusChip } from "@/components/tournaments/StatusChip"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships } from "@/lib/clubs"
 import { formatInstant } from "@/lib/dates"
-import { discardDraw, drawKeys, getDraw, previewDraw, publishDraw, type EventDraw } from "@/lib/draws"
+import { DEFAULT_RULES, discardDraw, drawKeys, getDraw, KEEP_APART, moveInDraw, previewDraw, publishDraw, reopenDraw, type Draw, type DrawRules, type EventDraw } from "@/lib/draws"
 import { entryKeys, entryTitle, listAllEntries, type Entry } from "@/lib/entries"
 import { canManageTournament, eventSummary, eventTabPath, firstTab, getTournament, isClosed, SEEDING_LABEL, tournamentKeys, type Tournament, type TournamentEvent } from "@/lib/tournaments"
 
@@ -97,14 +99,20 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
     queryClient.setQueryData(drawKeys.event(event.id), fresh)
     void queryClient.invalidateQueries({ queryKey: drawKeys.standings(event.id) })
   }
+  // The rules of a groups stage: start from those the preview was drawn with.
+  const grouped = event.format === "groups_knockout" && event.kind !== "jumbles"
+  const [rules, setRules] = useState<DrawRules>(() =>
+    draw.preview?.keep_apart ? { keep_apart: draw.preview.keep_apart, same_group_limit: draw.preview.same_group_limit } : DEFAULT_RULES
+  )
   const make = useMutation({
-    mutationFn: () => previewDraw(t.id, event.id, seeded ? chosen : []),
+    mutationFn: () => previewDraw(t.id, event.id, seeded ? chosen : [], grouped ? rules : undefined),
     onSuccess: (fresh) => {
       draft.clear() // the seeds are in the preview now
       settle(fresh)
     },
   })
   const publish = useMutation({ mutationFn: () => publishDraw(t.id, event.id), onSuccess: settle })
+  const reopen = useMutation({ mutationFn: () => reopenDraw(t.id, event.id), onSuccess: settle })
   const [deleting, setDeleting] = useState(false) // asked once more before the preview goes
   const discard = useMutation({
     mutationFn: () => discardDraw(t.id, event.id),
@@ -157,10 +165,25 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
               <DraftBar draft={draft} />
             </div>
           )}
+          {grouped && <RulesPanel rules={rules} onChange={setRules} />}
           {make.isError && <FormAlert>{errorMessage(make.error)}</FormAlert>}
-          <Button size="lg" variant={preview ? "outline" : "default"} className="self-start" disabled={make.isPending || entries.isPending} onClick={() => make.mutate()}>
-            {make.isPending ? "Drawing…" : preview ? "Draw again" : "Make the draw"}
-          </Button>
+          {reopen.isError && <FormAlert>{errorMessage(reopen.error)}</FormAlert>}
+          <div className="flex flex-wrap gap-2">
+            <Button size="lg" variant={preview ? "outline" : "default"} disabled={make.isPending || entries.isPending} onClick={() => make.mutate()}>
+              {make.isPending ? "Drawing…" : preview ? "Draw again" : "Make the draw"}
+            </Button>
+            {draw.published && event.kind !== "jumbles" && (
+              <Button size="lg" variant="outline" disabled={reopen.isPending} onClick={() => reopen.mutate()}>
+                {reopen.isPending ? "Copying…" : "Start from the published draw"}
+              </Button>
+            )}
+          </div>
+          {draw.published && event.kind !== "jumbles" && (
+            <p className="text-sm text-muted-foreground">
+              To add late entries or take withdrawn ones out without drawing again, start from the published draw: only the groups you change get new matches.
+              {preview && " This replaces the preview below."}
+            </p>
+          )}
 
           {preview && (
             <div className="flex flex-col gap-4 rounded-lg border bg-card p-3">
@@ -168,12 +191,26 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
                 <h3 className="text-lg font-bold">Preview (version {preview.version})</h3>
                 <p className="text-sm text-muted-foreground">Nobody else sees this until you publish it.</p>
               </div>
-              {preview.stale && <FormAlert>The accepted entries changed since this was drawn. Draw again before publishing.</FormAlert>}
+              {preview.stale && (
+                <FormAlert>
+                  The accepted entries changed since this was drawn.{" "}
+                  {(preview.not_in_draw ?? []).length || preview.places.some((place) => place.withdrawn) ? "Add or take out the entries listed below, or draw again, before publishing." : "Draw again before publishing."}
+                </FormAlert>
+              )}
+              {(preview.over_limit ?? []).length > 0 && (
+                <FormAlert>
+                  Move entries before publishing:{" "}
+                  {(preview.over_limit ?? []).map((over) => `${preview.groups.find((g) => g.number === over.group)?.name ?? `Group ${over.group}`} has ${over.count} from ${over.name} (at most ${over.limit})`).join("; ")}.
+                </FormAlert>
+              )}
+              {preview.moved_at && <p className="text-sm text-muted-foreground">Entries were moved by hand {formatInstant(preview.moved_at, t.timezone)}.</p>}
               <DrawView draw={preview} />
+              {event.kind !== "jumbles" && <LateEntries tournamentId={t.id} eventId={event.id} preview={preview} onChanged={settle} />}
+              {event.kind !== "jumbles" && event.format !== "round_robin" && <MovePanel tournamentId={t.id} eventId={event.id} preview={preview} onMoved={settle} />}
               {publish.isError && <FormAlert>{errorMessage(publish.error)}</FormAlert>}
               {discard.isError && <FormAlert>{errorMessage(discard.error)}</FormAlert>}
               <div className="flex flex-wrap gap-2">
-                <Button size="lg" disabled={publish.isPending || discard.isPending || preview.stale} onClick={() => publish.mutate()}>
+                <Button size="lg" disabled={publish.isPending || discard.isPending || preview.stale || (preview.over_limit ?? []).length > 0} onClick={() => publish.mutate()}>
                   {publish.isPending ? "Publishing…" : draw.published ? "Publish as the new draw" : "Publish draw"}
                 </Button>
                 {!deleting && (
@@ -204,5 +241,141 @@ function Desk({ tournament: t, event, draw }: { tournament: Tournament; event: T
         </>
       )}
     </section>
+  )
+}
+
+/** What the draw keeps apart in the groups, and how many of one a group may hold. */
+function RulesPanel({ rules, onChange }: { rules: DrawRules; onChange: (rules: DrawRules) => void }) {
+  const on = (value: DrawRules["keep_apart"][number], checked: boolean) =>
+    onChange({ ...rules, keep_apart: KEEP_APART.map((rule) => rule.value).filter((v) => (v === value ? checked : rules.keep_apart.includes(v))) })
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
+      <h3 className="text-lg font-bold">Group rules</h3>
+      <p className="text-sm text-muted-foreground">
+        Choose who the draw spreads over the groups. A club, team or region with more entries than the groups can hold at this number gets its fair share in each group. The draw can't be published
+        while a group breaks a rule you chose.
+      </p>
+      {KEEP_APART.map((rule) => (
+        <Toggle key={rule.value} label={rule.label} description={rule.description} checked={rules.keep_apart.includes(rule.value)} onChange={(checked) => on(rule.value, checked)} />
+      ))}
+      <Field
+        label="Most from one club, team or region in a group"
+        type="number"
+        min={1}
+        max={16}
+        inputMode="numeric"
+        className="[&_input]:max-w-40"
+        disabled={rules.keep_apart.length === 0}
+        value={rules.same_group_limit}
+        onChange={(e) => onChange({ ...rules, same_group_limit: Math.min(16, Math.max(1, Number(e.target.value) || 1)) })}
+      />
+    </div>
+  )
+}
+
+/** Move an entry of the preview by hand: to another group, or into the place of another entry. */
+function MovePanel({ tournamentId, eventId, preview, onMoved }: { tournamentId: string; eventId: string; preview: Draw; onMoved: (fresh: EventDraw) => void }) {
+  const [entryId, setEntryId] = useState("")
+  const [target, setTarget] = useState("")
+  const knockout = preview.groups.length === 0
+  const groupName = (number: number | null | undefined) => preview.groups.find((group) => group.number === number)?.name ?? ""
+  const where = (place: Draw["places"][number]) => (knockout ? `line ${place.bracket_position}` : groupName(place.group))
+  const label = (place: Draw["places"][number]) =>
+    `${place.entry.title} (${where(place)}${place.affiliations?.length ? `, ${place.affiliations.join(", ")}` : ""})`
+  const places = [...preview.places].sort((a, b) => (a.group ?? 0) - (b.group ?? 0) || (a.group_position ?? a.bracket_position ?? 0) - (b.group_position ?? b.bracket_position ?? 0))
+  const chosen = places.find((place) => place.entry.id === entryId)
+  const targets = chosen
+    ? [
+        ...(knockout ? [] : preview.groups.filter((group) => group.number !== chosen.group).map((group) => ({ value: `group:${group.number}`, label: `Move to ${group.name}` }))),
+        ...places
+          .filter((place) => place.entry.id !== chosen.entry.id && (knockout || place.group !== chosen.group))
+          .map((place) => ({ value: `swap:${place.entry.id}`, label: `Swap with ${label(place)}` })),
+      ]
+    : []
+  const move = useMutation({
+    mutationFn: () => {
+      const [kind, value] = target.split(":")
+      return moveInDraw(tournamentId, eventId, kind === "group" ? { entry_id: entryId, group: Number(value) } : { entry_id: entryId, swap_with: value })
+    },
+    onSuccess: (fresh) => {
+      setTarget("")
+      onMoved(fresh)
+    },
+  })
+  return (
+    <div role="group" aria-labelledby="move-heading" className="flex flex-col gap-3 rounded-lg border p-3">
+      <h4 id="move-heading" className="font-bold">
+        Move or swap entries
+      </h4>
+      <p className="text-sm text-muted-foreground">
+        {knockout
+          ? "Swap two players, pairs or teams in the first round; a bye goes with its place."
+          : "Move a player, pair or team to another group, or swap two of them between groups. Seeds stay first in their group."}
+      </p>
+      <SearchSelect aria-label="Entry to move" placeholder="Choose an entry" options={places.map((place) => ({ value: place.entry.id, label: label(place) }))} value={entryId} onChange={(value) => { setEntryId(value); setTarget("") }} />
+      {chosen && <SearchSelect aria-label="Where to move it" placeholder="Choose where it goes" options={targets} value={target} onChange={setTarget} />}
+      {move.isError && <FormAlert>{errorMessage(move.error)}</FormAlert>}
+      <Button variant="outline" className="self-start" disabled={!chosen || !target || move.isPending} onClick={() => move.mutate()}>
+        {move.isPending ? "Moving…" : "Move"}
+      </Button>
+    </div>
+  )
+}
+
+/** Entries the preview doesn't hold yet (accepted since it was drawn), and ones no longer accepted. */
+function LateEntries({ tournamentId, eventId, preview, onChanged }: { tournamentId: string; eventId: string; preview: Draw; onChanged: (fresh: EventDraw) => void }) {
+  const [chosen, setChosen] = useState<Record<string, string>>({})
+  const change = useMutation({
+    mutationFn: (body: { entry_id: string; group?: number; remove?: boolean }) => moveInDraw(tournamentId, eventId, body),
+    onSuccess: onChanged,
+  })
+  // A draw saved on the device by an older version of the app may lack these.
+  const missing = preview.not_in_draw ?? []
+  const withdrawn = preview.places.filter((place) => place.withdrawn)
+  if (missing.length === 0 && withdrawn.length === 0) return null
+  const groups = preview.groups.length ? preview.groups : null
+  const groupName = (number: number | null | undefined) => preview.groups.find((group) => group.number === number)?.name ?? "the group"
+  return (
+    <div role="group" aria-labelledby="late-heading" className="flex flex-col gap-3 rounded-lg border border-brand-blue/30 p-3">
+      <h4 id="late-heading" className="font-bold">
+        Changes since the draw
+      </h4>
+      {change.isError && <FormAlert>{errorMessage(change.error)}</FormAlert>}
+      {missing.map(({ entry, suggested_group }) => {
+        const group = chosen[entry.id] ?? (suggested_group ? String(suggested_group) : "1")
+        return (
+          <div key={entry.id} className="flex flex-col gap-2 rounded-lg bg-card p-2">
+            <p>
+              <span className="font-semibold">{entry.title}</span> isn't in the draw yet.
+              {!groups && " A knockout's bracket depends on how many entered: draw it again to include them."}
+            </p>
+            {groups && (
+              <div className="flex flex-wrap items-center gap-2">
+                <SearchSelect
+                  aria-label={`Group for ${entry.title}`}
+                  className="max-w-56"
+                  options={groups.map((g) => ({ value: String(g.number), label: g.number === suggested_group ? `${g.name} (suggested)` : g.name }))}
+                  value={group}
+                  onChange={(value) => setChosen({ ...chosen, [entry.id]: value })}
+                />
+                <Button variant="outline" disabled={change.isPending} onClick={() => change.mutate({ entry_id: entry.id, group: Number(group) })}>
+                  Add to {groupName(Number(group))}
+                </Button>
+              </div>
+            )}
+          </div>
+        )
+      })}
+      {withdrawn.map((place) => (
+        <div key={place.entry.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-card p-2">
+          <p className="flex-1">
+            <span className="font-semibold">{place.entry.title}</span> is no longer entered but is still in {groupName(place.group)}.
+          </p>
+          <Button variant="outline" disabled={change.isPending} onClick={() => change.mutate({ entry_id: place.entry.id, remove: true })}>
+            Take out
+          </Button>
+        </div>
+      ))}
+    </div>
   )
 }
