@@ -1,4 +1,5 @@
 import { SearchSelect } from "@/components/forms/SelectField"
+import { KindBadge, OrganizationName } from "@/components/clubs/KindBadge"
 import { setActiveOrganization, useActiveMembership } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
 
@@ -8,7 +9,7 @@ export function OrganizationSwitcher({ className }: { className?: string }) {
   if (!active) return null
 
   if (all.length === 1) {
-    return <span className={cn("truncate text-sm font-semibold text-muted-foreground", className)}>{active.organization.name}</span>
+    return <OrganizationName organization={active.organization} className={cn("text-sm font-semibold text-muted-foreground", className)} />
   }
 
   return (
@@ -17,7 +18,7 @@ export function OrganizationSwitcher({ className }: { className?: string }) {
       value={active.organization.id}
       onChange={setActiveOrganization}
       className={cn("text-sm font-semibold", className)}
-      options={all.map(({ organization }) => ({ value: organization.id, label: organization.name }))}
+      options={all.map(({ organization }) => ({ value: organization.id, label: organization.name, badge: <KindBadge kind={organization.kind} /> }))}
     />
   )
 }

@@ -20,6 +20,7 @@ import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { DEFAULT_TIME_ZONE, formatInstant, fromZonedInput } from "@/lib/dates"
 import { listWelfare, welfareKeys } from "@/lib/finance"
 import { cn } from "@/lib/utils"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 const STATUS: Record<Activity["status"], string> = { draft: "Draft", published: "Published", cancelled: "Cancelled" }
 
@@ -42,7 +43,7 @@ export function ActivitiesPage() {
       <BackLink to="/club">Club</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Activities</h1>
-        {active && <p className="text-muted-foreground">{active.organization.name}</p>}
+        {active && <p className="text-muted-foreground"><OrganizationName organization={active.organization} /></p>}
       </div>
       {memberships.isSuccess && (!allowed || accessLost) && <AccessLost />}
       {allowed && !accessLost && (

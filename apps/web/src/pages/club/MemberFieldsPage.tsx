@@ -9,6 +9,7 @@ import { can, clubKeys, FIELD_KIND_LABEL, listMemberFields, setMemberFieldRetire
 import { cn } from "@/lib/utils"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 const summary = (field: MemberField) =>
   [FIELD_KIND_LABEL[field.kind], field.required ? "required" : "optional", field.visibility === "staff" ? "staff only" : "members fill this in"].join(
@@ -38,7 +39,7 @@ export function MemberFieldsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-[32px] leading-9 font-bold">Member fields</h1>
-          {active && <p className="text-muted-foreground">{active.organization.name}</p>}
+          {active && <p className="text-muted-foreground"><OrganizationName organization={active.organization} /></p>}
         </div>
         {allowed && (
           <Link to="/club/fields/new" className={buttonVariants({ variant: "outline" })}>

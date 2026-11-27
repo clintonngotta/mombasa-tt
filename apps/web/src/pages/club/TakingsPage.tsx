@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/coaching"
 import { formatDay } from "@/lib/dates"
 import { doorKeys, getTakings, METHOD_LABEL, type Takings } from "@/lib/door"
 import { listVenues, venueKeys } from "@/lib/venues"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 type Row = Takings["total"][number] & { label: string }
 
@@ -32,7 +33,7 @@ export function TakingsPage() {
       <BackLink to="/club">Club</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Door takings</h1>
-        {active && <p className="text-muted-foreground">{active.organization.name}</p>}
+        {active && <p className="text-muted-foreground"><OrganizationName organization={active.organization} /></p>}
       </div>
       {memberships.isSuccess && (!allowed || accessLost) && <AccessLost />}
       {allowed && !accessLost && (

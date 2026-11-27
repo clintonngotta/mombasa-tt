@@ -9,6 +9,7 @@ import { can, clubKeys, listRoles, useActiveMembership } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 /** The organization's roles (REQ-005): templates plus custom roles, with member counts. */
 export function RolesPage() {
@@ -24,7 +25,7 @@ export function RolesPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-[32px] leading-9 font-bold">Roles</h1>
-          {active && <p className="text-muted-foreground">{active.organization.name}</p>}
+          {active && <p className="text-muted-foreground"><OrganizationName organization={active.organization} /></p>}
         </div>
         {allowed && (
           <Link to="/club/roles/new" className={buttonVariants({ variant: "outline" })}>
