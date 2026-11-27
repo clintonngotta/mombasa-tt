@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Segmented } from "@/components/forms/Segmented"
 import { MatchCard } from "@/components/tournaments/MatchCard"
-import { byRound, roundHeading, type DrawMatch } from "@/lib/draws"
+import { byRound, matchFitsSearch, roundHeading, type DrawMatch } from "@/lib/draws"
 import { cn } from "@/lib/utils"
 
 type Layout = "bracket" | "rounds"
@@ -36,13 +36,16 @@ function BracketConnector({ upper, highlighted }: { upper: boolean; highlighted:
  * The knockout (REQ-010): one column per round, each match level with the two that feed it, or the
  * same matches as a list round by round. Both show byes, scores and the caller's own entry.
  */
-export function BracketView({ matches, matchPath, timeZone }: { matches: DrawMatch[]; matchPath: (matchId: string) => string; timeZone: string }) {
+/** With `search`, the bracket fades the matches that don't fit and the round list leaves them out. */
+export function BracketView({ matches, search = "", matchPath, timeZone }: { matches: DrawMatch[]; search?: string; matchPath: (matchId: string) => string; timeZone: string }) {
   const [layout, setLayout] = useState<Layout>(initialLayout)
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null)
   const rounds = byRound(matches).map((round) => ({
     ...round,
     byPosition: new Map(round.matches.map((match) => [match.position, match])),
   }))
+  const fits = (match: DrawMatch) => matchFitsSearch(match, search)
+  const anyFits = matches.some(fits)
   const firstRoundLines = rounds[0]?.matches.length ?? 0
   const journey = { entryId: activeEntryId, onChange: setActiveEntryId }
 
@@ -70,7 +73,7 @@ export function BracketView({ matches, matchPath, timeZone }: { matches: DrawMat
                     return (
                       <li
                         key={match.id}
-                        className="relative flex flex-col justify-center py-1.5"
+                        className={cn("relative flex flex-col justify-center py-1.5 transition-opacity", search && !fits(match) && "opacity-30")}
                         style={{ gridRow: `${(match.position - 1) * span + 1} / span ${span}` }}
                       >
                         <MatchCard match={match} to={matchPath(match.id)} timeZone={timeZone} compact journey={journey} showLive />
@@ -85,11 +88,12 @@ export function BracketView({ matches, matchPath, timeZone }: { matches: DrawMat
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          {rounds.map((round) => (
+          {!anyFits && <p className="text-muted-foreground">Nothing fits this search.</p>}
+          {rounds.filter((round) => round.matches.some(fits)).map((round) => (
             <section key={round.name} aria-label={roundHeading(round)} className="flex flex-col gap-2">
               <h2 className="text-xl font-bold">{roundHeading(round)}</h2>
               <ol className="flex flex-col gap-2">
-                {round.matches.map((match) => (
+                {round.matches.filter(fits).map((match) => (
                   <li key={match.id}>
                     <MatchCard match={match} to={matchPath(match.id)} timeZone={timeZone} showLive />
                   </li>

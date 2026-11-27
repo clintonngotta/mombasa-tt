@@ -16925,6 +16925,90 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw.pdf:
+    get:
+      operationId: tournaments_events_draw.pdf_retrieve
+      description: |-
+        GET /tournaments/{id}/events/{event_id}/draw.pdf and draw.png: the event's published draw, for
+        whoever may see the tournament. Not found until a draw is published; a draft tournament's draw is
+        its staff's.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw.png:
+    get:
+      operationId: tournaments_events_draw.png_retrieve
+      description: |-
+        GET /tournaments/{id}/events/{event_id}/draw.pdf and draw.png: the event's published draw, for
+        whoever may see the tournament. Not found until a draw is published; a draft tournament's draw is
+        its staff's.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/discard/:
     post:
       operationId: tournaments_events_draw_discard_create
@@ -17042,8 +17126,9 @@ paths:
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/:
     get:
       operationId: tournaments_events_entries_list
-      description: Accepted entries, plus the caller's own in any status. Competition
-        staff get them all.
+      description: |-
+        Accepted entries, plus the caller's own in any status. Competition staff get them all.
+        `search` narrows them to entries whose team or one of whose players has the text in its name.
       parameters:
       - in: path
         name: event_pk
@@ -17063,6 +17148,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Part of a team's or a player's name.
       - in: query
         name: status
         schema:

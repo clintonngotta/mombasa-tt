@@ -7210,6 +7210,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/events/{event_id}/draw.pdf and draw.png: the event's published draw, for
+         *     whoever may see the tournament. Not found until a draw is published; a draft tournament's draw is
+         *     its staff's.
+         */
+        get: operations["tournaments_events_draw.pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/events/{event_id}/draw.pdf and draw.png: the event's published draw, for
+         *     whoever may see the tournament. Not found until a draw is published; a draft tournament's draw is
+         *     its staff's.
+         */
+        get: operations["tournaments_events_draw.png_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/draw/discard/": {
         parameters: {
             query?: never;
@@ -7278,7 +7320,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Accepted entries, plus the caller's own in any status. Competition staff get them all. */
+        /**
+         * @description Accepted entries, plus the caller's own in any status. Competition staff get them all.
+         *     `search` narrows them to entries whose team or one of whose players has the text in its name.
+         */
         get: operations["tournaments_events_entries_list"];
         put?: never;
         /**
@@ -32737,6 +32782,70 @@ export interface operations {
             };
         };
     };
+    "tournaments_events_draw.pdf_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/png": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "tournaments_events_draw.png_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/png": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_events_draw_discard_create: {
         parameters: {
             query?: never;
@@ -32841,6 +32950,8 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                /** @description Part of a team's or a player's name. */
+                search?: string;
                 status?: "accepted" | "pairing" | "pending" | "rejected" | "waitlisted" | "withdrawn";
             };
             header?: never;

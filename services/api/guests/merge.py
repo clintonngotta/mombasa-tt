@@ -41,18 +41,24 @@ class Clash(Exception):
 
 
 def _references():
-    """Every column, in any app, that holds a user: (model, field name)."""
-    for relation in User._meta.related_objects:
-        model = relation.related_model
-        if model._meta.app_label in SKIPPED or model in RECOMPUTED:
+    """Every column, in any app, that holds a user: (model, field name). Hidden relations count too: a
+    foreign key declared with related_name="+" (a team captain, a rubber's player) holds a user like any
+    other, and Django's related_objects leaves those out."""
+    seen = set()
+    for relation in User._meta.get_fields(include_hidden=True):
+        if not (relation.auto_created and not relation.concrete and relation.is_relation):
             continue
         if relation.many_to_many:
             through = relation.through
-            for field in through._meta.fields:
-                if field.is_relation and field.related_model is User:
-                    yield through, field.name
+            columns = [f.name for f in through._meta.fields if f.is_relation and f.related_model is User]
+            found = [(through, name) for name in columns]
         else:
-            yield model, relation.field.name
+            found = [(relation.related_model, relation.field.name)]
+        for model, name in found:
+            if model._meta.app_label in SKIPPED or model in RECOMPUTED or (model, name) in seen:
+                continue
+            seen.add((model, name))
+            yield model, name
 
 
 def _words(model) -> str:

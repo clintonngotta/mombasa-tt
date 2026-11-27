@@ -1,5 +1,6 @@
-import { api } from "@/lib/api"
+import { api, apiUrl } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
+import { entryText, matchesSearch } from "@/lib/search"
 
 export type Draw = Schemas["Draw"]
 export type DrawMatch = Schemas["Match"]
@@ -35,6 +36,8 @@ export const previewDraw = (id: string, eventId: string, seeds: string[]) => api
 /** Delete the preview, before it is published, to start the draw again. */
 export const discardDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}discard/`, { body: {} })
 export const publishDraw = (id: string, eventId: string) => api<EventDraw>(`${base(id, eventId)}publish/`, { body: {} })
+/** The published draw to download: a PDF to print, or a PNG to share. */
+export const drawSheetUrl = (id: string, eventId: string, kind: "pdf" | "png") => apiUrl(`/tournaments/${id}/events/${eventId}/draw.${kind}`)
 
 /** Matches of one stage (and group) by round, in playing order. */
 export function byRound(matches: DrawMatch[]) {
@@ -112,4 +115,24 @@ export function matchLabel(match: Pick<DrawMatch, "stage" | "group" | "round_nam
   if (match.stage === "knockout") return match.round_name
   const group = groups.length > 1 ? groups.find((candidate) => candidate.number === match.group)?.name : undefined
   return group ? `${group} · ${match.round_name}` : match.round_name
+}
+
+/** What the event tabs are narrowed to: typed text, one group, one stage. Kept in the address, so it stays when the tab changes. */
+export type DrawFilters = { search: string; group: number | null; stage: "" | Schemas["MatchStageEnum"] }
+
+/** Whether a match involves the typed text: either side's entry or players, or who it waits for. */
+export const matchFitsSearch = (match: Pick<DrawMatch, "a" | "b">, search: string) =>
+  matchesSearch(search, entryText(match.a.entry), entryText(match.b?.entry), match.a.awaiting, match.b?.awaiting)
+
+/** The draw narrowed to the filters: groups (and their places and matches), stage, and typed text. */
+export function filterDraw(draw: Draw, filters: DrawFilters): Draw {
+  const inGroup = (group: number | null | undefined) => filters.group === null || group === filters.group
+  return {
+    ...draw,
+    groups: draw.groups.filter((group) => inGroup(group.number)),
+    places: draw.places.filter((place) => (place.group == null || inGroup(place.group)) && matchesSearch(filters.search, entryText(place.entry))),
+    matches: draw.matches.filter(
+      (match) => (filters.stage === "" || match.stage === filters.stage) && (match.stage !== "group" || inGroup(match.group)) && matchFitsSearch(match, filters.search)
+    ),
+  }
 }

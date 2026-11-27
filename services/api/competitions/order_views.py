@@ -101,11 +101,12 @@ def _slots(tournament: Tournament, user) -> list[dict]:
             scheduled_at__isnull=False,
         )
         .exclude(status=Match.Status.BYE)
-        .select_related("draw__event", "table", "planned_table", "entry_a", "entry_b")
+        .select_related("draw__event", "table", "planned_table", "entry_a", "entry_b", "feeder_a", "feeder_b")
         .prefetch_related("entry_a__players__user", "entry_b__players__user")
         .order_by("scheduled_at", "planned_table__position", "id")
     )
     me = user.pk if user.is_authenticated else None
+    known: dict = {}
     found = []
     for match in matches:
         people = {**scheduling._people(match.entry_a), **scheduling._people(match.entry_b)}
@@ -116,8 +117,8 @@ def _slots(tournament: Tournament, user) -> list[dict]:
                 "event_id": match.draw.event_id,
                 "event_name": match.draw.event.name,
                 "stage": match.stage,
-                "label": scheduling.label(match),
-                "title": scheduling._title(match),
+                "label": scheduling.label(match, known),
+                "title": scheduling._title(match, known),
                 "table": table.label if table else "",
                 "scheduled_at": match.scheduled_at,
                 "status": match.status,

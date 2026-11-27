@@ -96,7 +96,8 @@ function GroupTable({ group, single }: { group: Group; single: boolean }) {
 }
 
 /** Group tables with the reason for every separated tie (REQ-010), and the knockout's decided places. */
-export function StandingsView({ standings }: { standings: Standings }) {
+/** `single` names a lone table "Table"; pass it when the standings shown are narrowed by a filter. */
+export function StandingsView({ standings, single = standings.groups.length === 1 }: { standings: Standings; single?: boolean }) {
   return (
     <div className="flex flex-col gap-6">
       {standings.placements.length > 0 && (
@@ -110,7 +111,7 @@ export function StandingsView({ standings }: { standings: Standings }) {
         </dl>
       )}
       {standings.groups.map((group) => (
-        <GroupTable key={group.number} group={group} single={standings.groups.length === 1} />
+        <GroupTable key={group.number} group={group} single={single} />
       ))}
       {standings.groups.length > 0 && (
         <p className="text-sm text-muted-foreground">
