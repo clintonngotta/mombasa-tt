@@ -50,7 +50,8 @@ def test_the_sheet_lists_each_finished_event_podium_with_clubs(staff, knockout):
     ]
 
     response = anyone.get(sheet_url(knockout, "pdf"))
-    assert "attachment" in response["Content-Disposition"]
+    name = f"{knockout['cup']['name']} - Final results.pdf"
+    assert response["Content-Disposition"] == f'attachment; filename="{name}"'
     text = pdf_text(response.content)
     assert f"FINAL RESULTS: {knockout['cup']['name'].upper()}" in text
     assert "SINGLES" in text and title(final.entry_b) in text and "Nyali Loopers" in text

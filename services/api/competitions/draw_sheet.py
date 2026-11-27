@@ -12,6 +12,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.views import APIView
 
 from core import brand, pdf
+from core.downloads import file_name, named
 from core.permissions import PublicReads
 
 from . import drawing
@@ -164,10 +165,9 @@ class DrawSheetView(APIView):
         )
         if draw is None:
             raise Http404
+        name = lambda extension: file_name(tournament.name, event.name, "Draw", extension=extension)  # noqa: E731
         if self.kind == "png":
-            response = HttpResponse(as_image(draw), content_type="image/png")
-            response["Content-Disposition"] = 'inline; filename="coast-tt-draw.png"'
-            return response
-        response = HttpResponse(as_pdf(draw), content_type="application/pdf")
-        response["Content-Disposition"] = 'attachment; filename="coast-tt-draw.pdf"'
-        return response
+            return named(
+                HttpResponse(as_image(draw), content_type="image/png"), name("png"), attachment=False
+            )
+        return named(HttpResponse(as_pdf(draw), content_type="application/pdf"), name("pdf"), attachment=True)

@@ -23,7 +23,7 @@ export function NewsFeed({ tournamentId, staff, timeZone }: { tournamentId: stri
           <a href={resultsSheetUrl(tournamentId, "pdf")} className={buttonVariants({ variant: "outline", size: "sm" })}>
             <FileDown aria-hidden /> Final results (PDF)
           </a>
-          <a href={resultsSheetUrl(tournamentId, "png")} download="coast-tt-final-results.png" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <a href={resultsSheetUrl(tournamentId, "png")} download className={buttonVariants({ variant: "outline", size: "sm" })}>
             <ImageDown aria-hidden /> Final results image
           </a>
           {posts.length > 0 && (

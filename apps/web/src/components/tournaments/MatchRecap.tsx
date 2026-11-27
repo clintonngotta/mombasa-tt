@@ -40,7 +40,7 @@ export function MatchRecap({ tournamentId, eventId, matchId }: { tournamentId: s
         </ul>
       )}
       <div className="flex flex-wrap gap-2">
-        <a href={cardUrl(tournamentId, eventId, matchId)} download="coast-tt-result.png" className={buttonVariants({ variant: "outline" })}>
+        <a href={cardUrl(tournamentId, eventId, matchId)} download className={buttonVariants({ variant: "outline" })}>
           <Download aria-hidden className="size-4" /> Result card
         </a>
         <Button variant="outline" onClick={() => void share()}>
