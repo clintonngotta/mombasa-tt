@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -59,11 +61,13 @@ export function ClubProfileEditPage() {
 
 function DescriptionForm({ club }: { club: ClubProfile }) {
   const queryClient = useQueryClient()
-  const [description, setDescription] = useState(club.description)
+  const draft = useDraft(`club-description:${club.id}`)
+  const [description, setDescription] = useDraftState(draft, "description", club.description)
   const [saved, setSaved] = useState(false)
   const save = useMutation({
     mutationFn: () => updateOrganizationLocation(club.id, { description: description.trim() }),
     onSuccess: async () => {
+      draft.clear()
       await queryClient.invalidateQueries({ queryKey: clubKeys.all })
       setSaved(true)
     },
@@ -98,6 +102,7 @@ function DescriptionForm({ club }: { club: ClubProfile }) {
           Saved.
         </p>
       )}
+      <DraftBar draft={draft} />
       <Button type="submit" className="self-start" disabled={save.isPending}>
         {save.isPending ? "Saving…" : "Save description"}
       </Button>

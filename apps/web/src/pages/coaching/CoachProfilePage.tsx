@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -47,17 +49,18 @@ function ProfileForm({ profile }: { profile: CoachProfile | null }) {
   const queryClient = useQueryClient()
   const { results: memberships } = useMemberships()
   const clubs = (memberships ?? []).filter((m) => !m.managedOnly)
-  const [headline, setHeadline] = useState(profile?.headline ?? "")
-  const [bio, setBio] = useState(profile?.bio ?? "")
-  const [levels, setLevels] = useState<CoachLevel[]>(profile?.levels ?? [])
-  const [specialties, setSpecialties] = useState<Skill[]>((profile?.specialties ?? []) as Skill[])
-  const [rate, setRate] = useState(profile?.rate_minor != null ? String(profile.rate_minor / 100) : "")
-  const [town, setTown] = useState(profile?.town ?? "")
-  const [firm, setFirm] = useState(profile?.firm_name ?? "")
-  const [region, setRegion] = useState(profile?.region ?? "")
-  const [accepting, setAccepting] = useState(profile?.accepting ?? true)
-  const [orgIds, setOrgIds] = useState<string[]>(profile?.organizations.map((o) => o.id) ?? [])
-  const [windows, setWindows] = useState<Window[]>(profile?.availability.map(toWindow) ?? [])
+  const draft = useDraft("coach-profile")
+  const [headline, setHeadline] = useDraftState(draft, "headline", profile?.headline ?? "")
+  const [bio, setBio] = useDraftState(draft, "bio", profile?.bio ?? "")
+  const [levels, setLevels] = useDraftState<CoachLevel[]>(draft, "levels", profile?.levels ?? [])
+  const [specialties, setSpecialties] = useDraftState<Skill[]>(draft, "specialties", (profile?.specialties ?? []) as Skill[])
+  const [rate, setRate] = useDraftState(draft, "rate", profile?.rate_minor != null ? String(profile.rate_minor / 100) : "")
+  const [town, setTown] = useDraftState(draft, "town", profile?.town ?? "")
+  const [firm, setFirm] = useDraftState(draft, "firm", profile?.firm_name ?? "")
+  const [region, setRegion] = useDraftState(draft, "region", profile?.region ?? "")
+  const [accepting, setAccepting] = useDraftState(draft, "accepting", profile?.accepting ?? true)
+  const [orgIds, setOrgIds] = useDraftState<string[]>(draft, "orgIds", profile?.organizations.map((o) => o.id) ?? [])
+  const [windows, setWindows] = useDraftState<Window[]>(draft, "windows", profile?.availability.map(toWindow) ?? [])
   const [missing, setMissing] = useState(false)
 
   const save = useMutation({
@@ -78,6 +81,7 @@ function ProfileForm({ profile }: { profile: CoachProfile | null }) {
       return saveAvailability(windows.map((w) => ({ weekday: Number(w.weekday), starts: w.starts, ends: w.ends, venue: w.venue.trim() })))
     },
     onSuccess: async () => {
+      draft.clear()
       await queryClient.invalidateQueries({ queryKey: coachingKeys.all })
       navigate("/training?tab=coaching")
     },
@@ -180,6 +184,7 @@ function ProfileForm({ profile }: { profile: CoachProfile | null }) {
         label="Taking new players"
         description="When off, you're not listed and only your current trainees can book you."
       />
+      <DraftBar draft={draft} />
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : profile ? "Save" : "Create coach profile"}
       </Button>

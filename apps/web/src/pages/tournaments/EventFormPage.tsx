@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Plus, X } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
@@ -87,23 +89,24 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const frozen = !!event && event.status !== "scheduled"
-  const [name, setName] = useState(event?.name ?? "")
-  const [kind, setKind] = useState<EventKind | "">(event?.kind ?? "")
-  const [format, setFormat] = useState<EventFormat | "">(event?.format ?? "")
-  const [groups, setGroups] = useState(event?.group_count?.toString() ?? "")
-  const [qualifiers, setQualifiers] = useState(event?.qualifiers_per_group?.toString() ?? "")
-  const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? "")
-  const [bestOf, setBestOf] = useState<`${BestOf}`>(`${event?.best_of ?? 5}`)
-  const [rest, setRest] = useState((event?.rest_minutes ?? 10).toString())
-  const [grace, setGrace] = useState((event?.call_grace_minutes ?? 10).toString())
-  const [seeding, setSeeding] = useState<Seeding>(event?.seeding ?? "rating")
+  const draft = useDraft(`event:${t.id}:${event?.id ?? "new"}`)
+  const [name, setName] = useDraftState(draft, "name", event?.name ?? "")
+  const [kind, setKind] = useDraftState<EventKind | "">(draft, "kind", event?.kind ?? "")
+  const [format, setFormat] = useDraftState<EventFormat | "">(draft, "format", event?.format ?? "")
+  const [groups, setGroups] = useDraftState(draft, "groups", event?.group_count?.toString() ?? "")
+  const [qualifiers, setQualifiers] = useDraftState(draft, "qualifiers", event?.qualifiers_per_group?.toString() ?? "")
+  const [capacity, setCapacity] = useDraftState(draft, "capacity", event?.capacity?.toString() ?? "")
+  const [bestOf, setBestOf] = useDraftState<`${BestOf}`>(draft, "bestOf", `${event?.best_of ?? 5}`)
+  const [rest, setRest] = useDraftState(draft, "rest", (event?.rest_minutes ?? 10).toString())
+  const [grace, setGrace] = useDraftState(draft, "grace", (event?.call_grace_minutes ?? 10).toString())
+  const [seeding, setSeeding] = useDraftState<Seeding>(draft, "seeding", event?.seeding ?? "rating")
   const defaultFee = event?.entry_fee ?? t.registration_fee
-  const [fee, setFee] = useState(defaultFee.amount_minor > 0 ? (defaultFee.amount_minor / 100).toString() : "")
-  const [opens, setOpens] = useState(toZonedInput(event?.registration_opens_at ?? null, t.timezone))
-  const [closes, setCloses] = useState(toZonedInput(event?.registration_closes_at ?? null, t.timezone))
-  const [admission, setAdmission] = useState<EventAdmission>(event?.admission ?? "closed")
-  const [rubbers, setRubbers] = useState<RubberKind[]>(event?.tie_rubbers.length ? event.tie_rubbers : DEFAULT_TIE_RUBBERS)
-  const [winsNeeded, setWinsNeeded] = useState(event?.tie_wins_needed ?? MAX_TIE_RUBBERS)
+  const [fee, setFee] = useDraftState(draft, "fee", defaultFee.amount_minor > 0 ? (defaultFee.amount_minor / 100).toString() : "")
+  const [opens, setOpens] = useDraftState(draft, "opens", toZonedInput(event?.registration_opens_at ?? null, t.timezone))
+  const [closes, setCloses] = useDraftState(draft, "closes", toZonedInput(event?.registration_closes_at ?? null, t.timezone))
+  const [admission, setAdmission] = useDraftState<EventAdmission>(draft, "admission", event?.admission ?? "closed")
+  const [rubbers, setRubbers] = useDraftState<RubberKind[]>(draft, "rubbers", event?.tie_rubbers.length ? event.tie_rubbers : DEFAULT_TIE_RUBBERS)
+  const [winsNeeded, setWinsNeeded] = useDraftState(draft, "winsNeeded", event?.tie_wins_needed ?? MAX_TIE_RUBBERS)
   const [confirmRemove, setConfirmRemove] = useState(false)
   // With both teams one short there must still be a rubber to play, or a tie could end without a winner.
   const mostWins = Math.floor((rubbers.length + 1) / 2)
@@ -140,7 +143,10 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
       if (event) return updateEvent(t.id, event.id, frozen ? details : { ...details, ...structure })
       return createEvent(t.id, { ...details, ...structure })
     },
-    onSuccess: done,
+    onSuccess: (fresh) => {
+      draft.clear()
+      done(fresh)
+    },
   })
   const remove = useMutation({ mutationFn: () => deleteEvent(t.id, event!.id), onSuccess: done })
 
@@ -319,6 +325,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
       <p className="text-sm text-muted-foreground">Times are venue local ({t.timezone}).</p>
 
       {save.isError && Object.keys(errors).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : event ? "Save event" : "Add event"}
       </Button>

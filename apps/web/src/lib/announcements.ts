@@ -35,5 +35,7 @@ export const announcementCardUrl = (tournamentId: string, id: string) => apiUrl(
 export const announcementPdfUrl = (tournamentId: string, id: string) => apiUrl(`${base(tournamentId)}${id}/pdf/`)
 /** Every published announcement of the tournament in one PDF, oldest first. */
 export const announcementsPdfUrl = (tournamentId: string) => apiUrl(`${base(tournamentId)}export.pdf`)
+/** The final results sheet: each finished event's podium with the players' clubs, as a PDF or a PNG to share. */
+export const resultsSheetUrl = (tournamentId: string, kind: "pdf" | "png") => apiUrl(`/tournaments/${tournamentId}/results.${kind}`)
 /** Where a post is on the tournament page, for sharing. */
 export const announcementLink = (tournamentId: string, id: string) => `${window.location.origin}/tournaments/${tournamentId}#news-${id}`

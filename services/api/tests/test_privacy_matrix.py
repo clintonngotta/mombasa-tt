@@ -291,6 +291,9 @@ ACCESS: dict[str, dict[str, str]] = {
     # The same published text as a PDF: one post, or the tournament's whole sheet (never drafts).
     "tournament-announcement-pdf": {"get": PUBLIC},
     "tournament-announcements-pdf": {"get": PUBLIC},
+    # The final results sheet: podiums of finished events with the players' clubs.
+    "tournament-results-pdf": {"get": PUBLIC},
+    "tournament-results-png": {"get": PUBLIC},
     "tournament-live": {"get": PUBLIC},
     "tournament-ceremony-generate": {"post": STAFF},
     "tournament-ceremony-publish": {"post": STAFF},
@@ -603,6 +606,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # A match's recap and result card are public for a published tournament (REQ-018).
     "tournament-event-match-recap": {"get": PUBLIC},
     "tournament-event-match-card": {"get": PUBLIC},
+    "tournament-event-match-card-svg": {"get": PUBLIC},  # the old address, answering with the PNG
     # A team's lineup is handed in by its captain or by staff: who may, and who sees the picks, is
     # covered in tests/test_ties.py. Sending both teams back to choose again is for staff.
     "tournament-event-match-lineup": {"post": SIGNED_IN},
@@ -2068,6 +2072,7 @@ class World:
             "tournament-event-match": self.preview_match_id,
             "tournament-event-match-recap": self.preview_match_id,
             "tournament-event-match-card": self.preview_match_id,
+            "tournament-event-match-card-svg": self.preview_match_id,
             "tournament-event-match-lineup": self.tie.id,
             "tournament-event-match-lineup-reset": self.tie.id,
             "tournament-event-match-umpire": self.scored_match.id,

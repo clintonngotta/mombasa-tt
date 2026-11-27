@@ -7489,6 +7489,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The recap as a branded image (PNG) to download or share. */
+        get: operations["tournaments_events_matches_card.png_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/card.svg": {
         parameters: {
             query?: never;
@@ -7496,7 +7513,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The recap as a branded square image (SVG) to download or share. */
+        /** @description The recap as a branded image (PNG) to download or share. */
         get: operations["tournaments_events_matches_card.svg_retrieve"];
         put?: never;
         post?: never;
@@ -7973,6 +7990,46 @@ export interface paths {
         };
         /** @description Matches of this tournament that are on a table, with who is held. */
         get: operations["tournaments_reservations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/results.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/results.pdf and results.png: the final results sheet (each finished event's
+         *     podium with the players' clubs), for whoever may see the tournament.
+         */
+        get: operations["tournaments_results.pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/results.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description GET /tournaments/{id}/results.pdf and results.png: the final results sheet (each finished event's
+         *     podium with the players' clubs), for whoever may see the tournament.
+         */
+        get: operations["tournaments_results.png_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31868,7 +31925,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "image/svg+xml": string;
+                    "image/png": string;
                 };
             };
             /** @description Error envelope */
@@ -33177,6 +33234,38 @@ export interface operations {
             };
         };
     };
+    "tournaments_events_matches_card.png_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     "tournaments_events_matches_card.svg_retrieve": {
         parameters: {
             query?: never;
@@ -33195,7 +33284,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "image/svg+xml": string;
+                    "image/png": string;
                 };
             };
             /** @description Error envelope */
@@ -34065,6 +34154,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Reservation"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "tournaments_results.pdf_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/png": string;
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    "tournaments_results.png_retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/png": string;
                 };
             };
             /** @description Error envelope */

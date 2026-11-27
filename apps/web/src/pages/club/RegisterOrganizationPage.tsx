@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -24,7 +26,8 @@ export function RegisterOrganizationPage({ side = "club" }: { side?: Side }) {
   const queryClient = useQueryClient()
   // Someone who signed up as a club or a facility arrives with that kind chosen.
   const asked = useSearchParams()[0].get("kind")
-  const [form, setForm] = useState<Omit<OrganizationInput, "directions" | "latitude" | "longitude">>({
+  const draft = useDraft(`register:${side}`)
+  const [form, setForm] = useDraftState<Omit<OrganizationInput, "directions" | "latitude" | "longitude">>(draft, "form", {
     name: "",
     town: "",
     country: "",
@@ -32,7 +35,7 @@ export function RegisterOrganizationPage({ side = "club" }: { side?: Side }) {
     description: "",
     kind: team ? "team" : (KIND_OPTIONS.find((option) => option.value === asked)?.value ?? "club"),
   })
-  const [finder, setFinder] = useState(placeFinderFrom())
+  const [finder, setFinder] = useDraftState(draft, "finder", placeFinderFrom())
   const [submitted, setSubmitted] = useState(false)
   const location = { country: form.country, region: form.region, city: form.town }
   const missingLocation = { ...locationErrors(location), ...(team ? {} : placeFinderErrors(finder)) }
@@ -40,6 +43,7 @@ export function RegisterOrganizationPage({ side = "club" }: { side?: Side }) {
   const create = useMutation({
     mutationFn: createOrganization,
     onSuccess: async (organization) => {
+      draft.clear()
       await queryClient.invalidateQueries({ queryKey: clubKeys.all })
       setActiveOrganization(organization.id)
       navigate(SIDE[side].path)
@@ -103,6 +107,7 @@ export function RegisterOrganizationPage({ side = "club" }: { side?: Side }) {
           />
         )}
         {create.isError && !hasFieldErrors && <FormAlert>{errorMessage(create.error)}</FormAlert>}
+        <DraftBar draft={draft} />
         <Button type="submit" size="lg" disabled={create.isPending}>
           {create.isPending ? (team ? "Forming…" : "Registering…") : team ? "Form team" : "Register"}
         </Button>

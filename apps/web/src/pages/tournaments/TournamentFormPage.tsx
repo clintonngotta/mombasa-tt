@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useId, useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -48,21 +50,22 @@ function TournamentForm({ orgId, coachDesk, tournament: t, defaultZone }: { orgI
   const queryClient = useQueryClient()
   const zonesId = useId()
   const venues = useQuery({ queryKey: venueKeys.list(orgId), queryFn: () => listVenues(orgId) })
-  const [name, setName] = useState(t?.name ?? "")
-  const [description, setDescription] = useState(t?.description ?? "")
-  const [startsOn, setStartsOn] = useState(t?.starts_on ?? "")
-  const [endsOn, setEndsOn] = useState(t?.ends_on ?? "")
-  const [venueId, setVenueId] = useState(t?.venue?.id ?? "")
-  const [zone, setZone] = useState(t?.timezone ?? defaultZone)
-  const [scope, setScope] = useState<TournamentScope>(t?.scope ?? "local")
+  const draft = useDraft(`tournament:${t?.id ?? "new"}`)
+  const [name, setName] = useDraftState(draft, "name", t?.name ?? "")
+  const [description, setDescription] = useDraftState(draft, "description", t?.description ?? "")
+  const [startsOn, setStartsOn] = useDraftState(draft, "startsOn", t?.starts_on ?? "")
+  const [endsOn, setEndsOn] = useDraftState(draft, "endsOn", t?.ends_on ?? "")
+  const [venueId, setVenueId] = useDraftState(draft, "venueId", t?.venue?.id ?? "")
+  const [zone, setZone] = useDraftState(draft, "zone", t?.timezone ?? defaultZone)
+  const [scope, setScope] = useDraftState<TournamentScope>(draft, "scope", t?.scope ?? "local")
   // A coach's tournament is organized in their own name or their firm's.
   const coach = useQuery({ queryKey: coachingKeys.profile, queryFn: getMyCoachProfile, enabled: coachDesk })
   const [params] = useSearchParams()
-  const [presentedAs, setPresentedAs] = useState<"coach" | "firm">((t ? t.presented_as : params.get("as")) === "firm" ? "firm" : "coach")
+  const [presentedAs, setPresentedAs] = useDraftState<"coach" | "firm">(draft, "presentedAs", (t ? t.presented_as : params.get("as")) === "firm" ? "firm" : "coach")
   const firm = coach.data?.firm_name ?? ""
-  const [paid, setPaid] = useState((t?.registration_fee.amount_minor ?? 0) > 0)
-  const [fee, setFee] = useState(t?.registration_fee.amount_minor ? String(t.registration_fee.amount_minor / 100) : "")
-  const [currency, setCurrency] = useState(t?.registration_fee.currency ?? "KES")
+  const [paid, setPaid] = useDraftState(draft, "paid", (t?.registration_fee.amount_minor ?? 0) > 0)
+  const [fee, setFee] = useDraftState(draft, "fee", t?.registration_fee.amount_minor ? String(t.registration_fee.amount_minor / 100) : "")
+  const [currency, setCurrency] = useDraftState(draft, "currency", t?.registration_fee.currency ?? "KES")
   const [feeError, setFeeError] = useState("")
   const started = t?.status === "in_progress"
   const scopeFrozen = !!t && t.status !== "draft"
@@ -87,6 +90,7 @@ function TournamentForm({ orgId, coachDesk, tournament: t, defaultZone }: { orgI
       return t ? updateTournament(t.id, body) : createTournament(orgId, body)
     },
     onSuccess: async (saved) => {
+      draft.clear()
       queryClient.setQueryData(tournamentKeys.detail(saved.id), saved)
       await queryClient.invalidateQueries({ queryKey: tournamentKeys.all, refetchType: "active" })
       navigate(`/tournaments/${saved.id}`)
@@ -203,6 +207,7 @@ function TournamentForm({ orgId, coachDesk, tournament: t, defaultZone }: { orgI
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : t ? "Save tournament" : "Create draft"}
       </Button>
+      <DraftBar draft={draft} label="Finish later" />
       {!t && <p className="text-sm text-muted-foreground">Only your competition staff see a draft. Next you add events, then publish it for players.</p>}
     </form>
   )

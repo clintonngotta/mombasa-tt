@@ -138,6 +138,7 @@ def test_the_result_card_marks_a_disqualification_and_counts_only_finished_games
         "tournament_name": "Coast Open", "event_name": "Men's singles", "side_a": "Amina", "side_b": "Brian",
         "games": [[11, 7], [4, 3]], "winner_side": "a", "official": True, "outcome": "disqualified",
     }  # fmt: skip
-    body = recap.card_svg(shown)
-    assert "Amina wins (DQ)" in body and "4-3" in body
-    assert ">1<" in body and ">0<" in body and ">2<" not in body  # the unfinished game isn't counted as won
+    rows = recap.card_rows(shown)
+    assert [(row.text, row.aside) for row in rows[:2]] == [("Amina", "1"), ("Brian", "0")]  # 4-3 isn't won
+    assert "4-3" in rows[2].text and rows[3].text == "Amina wins (DQ)"
+    assert recap.card_png(shown).startswith(b"\x89PNG")

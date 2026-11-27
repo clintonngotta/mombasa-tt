@@ -13,7 +13,7 @@ from datetime import date, timedelta
 
 from django.db.models import Q, Sum
 
-from core.pdf import text_pdf
+from core import pdf
 
 from .models import Allocation, Charge, Expense, ExternalIncome, FinanceSettings, Payment
 
@@ -300,5 +300,39 @@ def as_csv(rows: list[tuple[str, str]]) -> str:
 
 
 def as_pdf(rows: list[tuple[str, str]]) -> bytes:
-    """The same rows as a plain PDF: the label, and the amount in a column on the right."""
-    return text_pdf([f"{label[:78]:<80}{amount:>16}" if amount else label for label, amount in rows])
+    """The same rows as a branded PDF. The first three rows (the organization, the period and the version)
+    head the page; each part after a blank row is a table of items and amounts, or a card when it is only
+    text (the changes and the summary). A label with no amount is a heading inside its table."""
+    head, rest = rows[:3], rows[3:]
+    parts: list[list[tuple[str, str]]] = [[]]
+    for label, amount in rest:
+        if not label and not amount:
+            parts.append([])
+        else:
+            parts[-1].append((label, amount))
+    blocks: list = []
+    for part in filter(None, parts):
+        if not any(amount for _, amount in part):
+            blocks.append(pdf.Card(part[0][0], lines=[label.strip() for label, _ in part[1:]]))
+            continue
+        blocks.append(
+            pdf.Table(
+                ["Item", "Amount"],
+                [
+                    [INDENT * (len(label) - len(label.lstrip())) + label.strip(), amount]
+                    for label, amount in part
+                ],
+                widths=[4, 1.4],
+                right=(1,),
+            )
+        )
+    name = head[0][0] if head else ""
+    return pdf.document(
+        head[1][0] if len(head) > 1 else "Financial report",
+        " · ".join(label for label, _ in head[:3:2] if label),
+        blocks,
+        prepared_by=name,
+    )
+
+
+INDENT = "\u00a0\u00a0"  # one leading space of a label, kept by the PDF

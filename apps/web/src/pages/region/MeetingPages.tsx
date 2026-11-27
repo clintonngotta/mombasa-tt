@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -93,20 +95,21 @@ export function MeetingsPanel({ orgId, timeZone, staff, body }: { orgId: string;
 function NewMeeting({ orgId, timeZone, body, onDone }: { orgId: string; timeZone: string; body: boolean; onDone: () => void }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [title, setTitle] = useState("")
-  const [kind, setKind] = useState<MeetingKind>(body ? "representatives" : "committee")
-  const [audience, setAudience] = useState<MeetingAudience>(body ? "club_admins" : "committee")
-  const [starts, setStarts] = useState("")
-  const [ends, setEnds] = useState("")
-  const [location, setLocation] = useState("")
-  const [link, setLink] = useState("")
-  const [agenda, setAgenda] = useState<string[]>([""])
-  const [rules, setRules] = useState<Record<Penalized, { penalty: string; amount: string }>>({
+  const draft = useDraft(`meeting-new:${orgId}`)
+  const [title, setTitle] = useDraftState(draft, "title", "")
+  const [kind, setKind] = useDraftState<MeetingKind>(draft, "kind", body ? "representatives" : "committee")
+  const [audience, setAudience] = useDraftState<MeetingAudience>(draft, "audience", body ? "club_admins" : "committee")
+  const [starts, setStarts] = useDraftState(draft, "starts", "")
+  const [ends, setEnds] = useDraftState(draft, "ends", "")
+  const [location, setLocation] = useDraftState(draft, "location", "")
+  const [link, setLink] = useDraftState(draft, "link", "")
+  const [agenda, setAgenda] = useDraftState<string[]>(draft, "agenda", [""])
+  const [rules, setRules] = useDraftState<Record<Penalized, { penalty: string; amount: string }>>(draft, "rules", {
     absent: { penalty: "", amount: "" },
     late: { penalty: "", amount: "" },
     apologies: { penalty: "", amount: "" },
   })
-  const [secretary, setSecretary] = useState("")
+  const [secretary, setSecretary] = useDraftState(draft, "secretary", "")
   const members = useQuery({ queryKey: ["clubs", orgId, "members", ""], queryFn: () => listMembers(orgId, "") })
   const create = useMutation({
     mutationFn: () =>
@@ -127,6 +130,7 @@ function NewMeeting({ orgId, timeZone, body, onDone }: { orgId: string; timeZone
         ...(secretary ? { secretary_id: secretary } : {}),
       }),
     onSuccess: async (meeting) => {
+      draft.clear()
       await queryClient.invalidateQueries({ queryKey: regionKeys.meetings(orgId) })
       onDone()
       navigate(`/meetings/${orgId}/${meeting.id}`)
@@ -189,6 +193,7 @@ function NewMeeting({ orgId, timeZone, body, onDone }: { orgId: string; timeZone
         {fields.rules && <p className="text-sm text-destructive">{fields.rules}</p>}
       </fieldset>
       <p className="text-sm text-muted-foreground">It's saved as a draft. Invitees are fixed and see it when you publish.</p>
+      <DraftBar draft={draft} label="Finish later" />
       <div className="flex gap-2">
         <Button type="submit" disabled={create.isPending || !title.trim() || !starts || !ends}>
           {create.isPending ? "Saving…" : "Save draft"}

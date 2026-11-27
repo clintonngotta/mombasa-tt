@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useMemo, useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -302,13 +304,14 @@ const toDraft = (phase: Phase, drill?: Drill): Draft => ({ phase, title: drill ?
 
 function AddItem({ api, plan, drills, personal }: { api: PlanApi; plan: TrainingPlan; drills: Drill[]; personal: boolean }) {
   const updated = usePlanUpdate(api)
-  const [kind, setKind] = useState<Kind>("checklist")
-  const [title, setTitle] = useState("")
-  const [drill, setDrill] = useState(NO_DRILL)
-  const [notes, setNotes] = useState("")
-  const [starts, setStarts] = useState("")
-  const [ends, setEnds] = useState("")
-  const [run, setRun] = useState<Draft[]>([])
+  const draft = useDraft(`plan-item:${plan.id}`)
+  const [kind, setKind] = useDraftState<Kind>(draft, "kind", "checklist")
+  const [title, setTitle] = useDraftState(draft, "title", "")
+  const [drill, setDrill] = useDraftState(draft, "drill", NO_DRILL)
+  const [notes, setNotes] = useDraftState(draft, "notes", "")
+  const [starts, setStarts] = useDraftState(draft, "starts", "")
+  const [ends, setEnds] = useDraftState(draft, "ends", "")
+  const [run, setRun] = useDraftState<Draft[]>(draft, "run", [])
   const recommended = useQuery({ queryKey: [...trainingKeys.recommendations(plan.id), plan.goal_skills, plan.items.length], queryFn: api.recommendations, enabled: kind === "session" })
 
   const add = useMutation({
@@ -329,6 +332,7 @@ function AddItem({ api, plan, drills, personal }: { api: PlanApi; plan: Training
           : {}),
       }),
     onSuccess: async (saved) => {
+      draft.clear()
       setTitle("")
       setNotes("")
       setDrill(NO_DRILL)
@@ -473,6 +477,7 @@ function AddItem({ api, plan, drills, personal }: { api: PlanApi; plan: Training
         </div>
       )}
       {add.isError && conflicts.length === 0 && Object.keys(errors).length === 0 && <FormAlert>{errorMessage(add.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <Button type="submit" className="self-start" disabled={add.isPending}>
         {add.isPending ? "Adding…" : kind === "session" ? "Add session" : "Add item"}
       </Button>

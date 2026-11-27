@@ -271,17 +271,16 @@ class MatchRecapView(APIView):
 
 
 class MatchCardView(APIView):
-    """The recap as a branded square image (SVG) to download or share."""
+    """The recap as a branded image (PNG) to download or share."""
 
     permission_classes = [AllowAny]
     public_actions = ("get",)  # throttled for signed-out callers (core/throttling.py)
 
-    @extend_schema(responses={(200, "image/svg+xml"): OpenApiTypes.STR})
+    @extend_schema(responses={(200, "image/png"): OpenApiTypes.BINARY})
     def get(self, request, tournament_pk, event_pk, pk):
         match = recap.published_match(tournament_pk, event_pk, pk)
         if match is None:
             raise Http404
-        response = HttpResponse(recap.card_svg(recap.recap(match)), content_type="image/svg+xml")
-        response["Content-Disposition"] = 'inline; filename="coast-tt-result.svg"'
-        response["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+        response = HttpResponse(recap.card_png(recap.recap(match)), content_type="image/png")
+        response["Content-Disposition"] = 'inline; filename="coast-tt-result.png"'
         return response

@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -64,11 +66,13 @@ export function FeedbackAnswerPage() {
 
 function AnswerForm({ form }: { form: MyFeedbackForm }) {
   const queryClient = useQueryClient()
-  const [answers, setAnswers] = useState<Answers>(() => ({ ...(form.my_answers as Answers) }))
+  const draft = useDraft(`feedback-answers:${form.id}`)
+  const [answers, setAnswers] = useDraftState<Answers>(draft, "answers", () => ({ ...(form.my_answers as Answers) }))
   const [saved, setSaved] = useState(false)
   const save = useMutation({
     mutationFn: () => saveMyAnswers(form.id, answers),
     onSuccess: (fresh) => {
+      draft.clear()
       queryClient.setQueryData(feedbackKeys.mine(form.id), fresh)
       void queryClient.invalidateQueries({ queryKey: feedbackKeys.asked })
       setSaved(true)
@@ -119,6 +123,7 @@ function AnswerForm({ form }: { form: MyFeedbackForm }) {
       ))}
 
       {save.isError && <FormAlert>{Object.keys(perQuestion).length ? "Some answers need another look." : errorMessage(save.error, "We couldn't save your answers.")}</FormAlert>}
+      {form.open && <DraftBar draft={draft} />}
       {form.open && (
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={save.isPending}>

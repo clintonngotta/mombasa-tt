@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -56,7 +58,8 @@ export function DrillEditPage() {
 function DrillForm({ drill, orgId }: { drill?: Drill; orgId: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [draft, setDraft] = useState({
+  const kept = useDraft(`drill:${drill?.id ?? "new"}`)
+  const [draft, setDraft] = useDraftState(kept, "draft", {
     title: drill?.title ?? "",
     instructions: drill?.instructions ?? "",
     description: drill?.description ?? "",
@@ -69,8 +72,8 @@ function DrillForm({ drill, orgId }: { drill?: Drill; orgId: string }) {
     category: (drill?.category || NONE) as Category | typeof NONE,
     level: drill?.level || NONE,
   })
-  const [skills, setSkills] = useState<Skill[]>(drill?.skills ?? [])
-  const [pattern, setPattern] = useState<PatternStep[]>(drill?.pattern ?? [])
+  const [skills, setSkills] = useDraftState<Skill[]>(kept, "skills", drill?.skills ?? [])
+  const [pattern, setPattern] = useDraftState<PatternStep[]>(kept, "pattern", drill?.pattern ?? [])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const set = (name: keyof typeof draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft({ ...draft, [name]: e.target.value })
 
@@ -95,6 +98,7 @@ function DrillForm({ drill, orgId }: { drill?: Drill; orgId: string }) {
       return orgId ? createClubDrill(orgId, body) : createMyDrill(body)
     },
     onSuccess: async (saved) => {
+      kept.clear()
       await queryClient.invalidateQueries({ queryKey: trainingKeys.all })
       navigate(`/training/drills/${saved.id}`)
     },
@@ -155,6 +159,7 @@ function DrillForm({ drill, orgId }: { drill?: Drill; orgId: string }) {
       <Field label="YouTube video" optional type="url" maxLength={300} value={draft.video} onChange={set("video")} error={errors.video_url} hint="A video of the drill being played." />
       {save.isError && Object.keys(errors).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
       {remove.isError && <FormAlert>{errorMessage(remove.error)}</FormAlert>}
+      <DraftBar draft={kept} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" size="lg" disabled={save.isPending}>
           {save.isPending ? "Saving…" : drill ? "Save drill" : "Create drill"}

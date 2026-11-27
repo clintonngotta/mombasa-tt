@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -47,8 +49,9 @@ function RoleForm({ membership, role }: { membership: Membership; role?: Role })
   const orgId = membership.organization.id
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [name, setName] = useState(role?.name ?? "")
-  const [permissions, setPermissions] = useState<Permission[]>(role?.permissions ?? [])
+  const draft = useDraft(`role:${role?.id ?? "new"}`)
+  const [name, setName] = useDraftState(draft, "name", role?.name ?? "")
+  const [permissions, setPermissions] = useDraftState<Permission[]>(draft, "permissions", role?.permissions ?? [])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const catalog = useQuery({ queryKey: clubKeys.permissions, queryFn: listPermissions, staleTime: Infinity })
   const isAdminRole = role?.key === "admin"
@@ -67,7 +70,10 @@ function RoleForm({ membership, role }: { membership: Membership; role?: Role })
       const body = { name: name.trim(), ...(isAdminRole ? {} : { permissions }) }
       return role ? updateRole(orgId, role.id, body) : createRole(orgId, body)
     },
-    onSuccess: done,
+    onSuccess: () => {
+      draft.clear()
+      return done()
+    },
   })
   const remove = useMutation({ mutationFn: () => deleteRole(orgId, role!.id), onSuccess: done })
 
@@ -108,6 +114,7 @@ function RoleForm({ membership, role }: { membership: Membership; role?: Role })
         <p className="text-sm text-muted-foreground">Greyed-out permissions are ones you don't hold, so you can't change them.</p>
       )}
       {save.isError && Object.keys(fields).length === 0 && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+      <DraftBar draft={draft} />
       <Button type="submit" size="lg" disabled={save.isPending}>
         {save.isPending ? "Saving…" : role ? "Save role" : "Create role"}
       </Button>

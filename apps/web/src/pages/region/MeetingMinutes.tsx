@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useRef, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -126,12 +128,13 @@ type AgendaDraft = { id?: string; title: string; presenter: string; tournament: 
 
 /** Governance staff change a meeting until it starts. Once it is published, invitees are told. */
 export function EditMeeting({ orgId, meeting, timeZone, onChange, onDone }: { orgId: string; meeting: Meeting; timeZone: string; onChange: Change; onDone: () => void }) {
-  const [title, setTitle] = useState(meeting.title)
-  const [starts, setStarts] = useState(toZonedInput(meeting.starts_at, timeZone))
-  const [ends, setEnds] = useState(toZonedInput(meeting.ends_at, timeZone))
-  const [location, setLocation] = useState(meeting.location)
-  const [link, setLink] = useState(meeting.online_link)
-  const [agenda, setAgenda] = useState<AgendaDraft[]>(() => meeting.agenda.map((row) => ({ id: row.id || undefined, title: row.title, presenter: row.presenter, tournament: row.tournament })))
+  const editDraft = useDraft(`meeting-edit:${meeting.id}`)
+  const [title, setTitle] = useDraftState(editDraft, "title", meeting.title)
+  const [starts, setStarts] = useDraftState(editDraft, "starts", toZonedInput(meeting.starts_at, timeZone))
+  const [ends, setEnds] = useDraftState(editDraft, "ends", toZonedInput(meeting.ends_at, timeZone))
+  const [location, setLocation] = useDraftState(editDraft, "location", meeting.location)
+  const [link, setLink] = useDraftState(editDraft, "link", meeting.online_link)
+  const [agenda, setAgenda] = useDraftState<AgendaDraft[]>(editDraft, "agenda", () => meeting.agenda.map((row) => ({ id: row.id || undefined, title: row.title, presenter: row.presenter, tournament: row.tournament })))
   const save = useMutation({
     mutationFn: () =>
       updateMeeting(orgId, meeting.id, {
@@ -143,6 +146,7 @@ export function EditMeeting({ orgId, meeting, timeZone, onChange, onDone }: { or
         agenda: agenda.filter((row) => row.title.trim()).map((row) => ({ ...row, title: row.title.trim(), presenter: row.presenter.trim() })) as Meeting["agenda"],
       }),
     onSuccess: (fresh) => {
+      editDraft.clear()
       onChange(fresh)
       onDone()
     },
@@ -183,6 +187,7 @@ export function EditMeeting({ orgId, meeting, timeZone, onChange, onDone }: { or
           <Plus aria-hidden className="size-4" /> Add an item
         </Button>
       </fieldset>
+      <DraftBar draft={editDraft} />
       <div className="flex gap-2">
         <Button type="submit" disabled={save.isPending || !title.trim() || !starts || !ends}>
           {save.isPending ? "Saving…" : "Save changes"}
@@ -228,11 +233,13 @@ export function Minutes({ orgId, meeting, staff, timeZone, started, over, onChan
   const draft = meeting.minutes_status === "draft"
   const [editing, setEditing] = useState(false)
   const [createNext, setCreateNext] = useState(true)
-  const [amendment, setAmendment] = useState("")
+  const amendDraft = useDraft(`minutes-amendment:${meeting.id}`)
+  const [amendment, setAmendment] = useDraftState(amendDraft, "amendment", "")
   const approve = useMutation({ mutationFn: () => approveMinutes(orgId, meeting.id, createNext && !!meeting.next_meeting_at), onSuccess: onChange })
   const amend = useMutation({
     mutationFn: () => amendMinutes(orgId, meeting.id, amendment.trim()),
     onSuccess: (fresh) => {
+      amendDraft.clear()
       onChange(fresh)
       setAmendment("")
     },
@@ -343,6 +350,7 @@ export function Minutes({ orgId, meeting, staff, timeZone, started, over, onChan
           className="flex flex-col gap-2"
         >
           <TextAreaField label="Add an amendment" rows={3} maxLength={5000} value={amendment} onChange={(e) => setAmendment(e.target.value)} hint="A correction shown under the minutes. The approved minutes stay as they are." />
+          <DraftBar draft={amendDraft} />
           <Button type="submit" variant="outline" className="self-start" disabled={!amendment.trim() || amend.isPending}>
             {amend.isPending ? "Saving…" : "Add amendment"}
           </Button>
@@ -353,12 +361,13 @@ export function Minutes({ orgId, meeting, staff, timeZone, started, over, onChan
 }
 
 function MinutesEditor({ orgId, meeting, timeZone, onChange, onDone }: { orgId: string; meeting: Meeting; timeZone: string; onChange: Change; onDone: () => void }) {
-  const [text, setText] = useState(meeting.minutes)
-  const [decisions, setDecisions] = useState<DecisionDraft[]>(() => meeting.decisions.map((d) => ({ item: d.item ?? "", text: d.text })))
-  const [actions, setActions] = useState<ActionDraft[]>(() =>
+  const minutesDraft = useDraft(`minutes:${meeting.id}`)
+  const [text, setText] = useDraftState(minutesDraft, "text", meeting.minutes)
+  const [decisions, setDecisions] = useDraftState<DecisionDraft[]>(minutesDraft, "decisions", () => meeting.decisions.map((d) => ({ item: d.item ?? "", text: d.text })))
+  const [actions, setActions] = useDraftState<ActionDraft[]>(minutesDraft, "actions", () =>
     meeting.action_items.map((a) => ({ id: a.id, item: a.item, description: a.description, owner: a.owner_id ?? "", due: a.due_on ?? "" }))
   )
-  const [next, setNext] = useState(toZonedInput(meeting.next_meeting_at, timeZone))
+  const [next, setNext] = useDraftState(minutesDraft, "next", toZonedInput(meeting.next_meeting_at, timeZone))
   const save = useMutation({
     mutationFn: () =>
       recordMinutes(orgId, meeting.id, {
@@ -370,6 +379,7 @@ function MinutesEditor({ orgId, meeting, timeZone, onChange, onDone }: { orgId: 
         next_meeting_at: fromZonedInput(next, timeZone),
       }),
     onSuccess: (fresh) => {
+      minutesDraft.clear()
       onChange(fresh)
       onDone()
     },
@@ -437,6 +447,7 @@ function MinutesEditor({ orgId, meeting, timeZone, onChange, onDone }: { orgId: 
       </fieldset>
 
       <Field label="Next meeting" optional type="datetime-local" value={next} onChange={(e) => setNext(e.target.value)} hint="When you approve the minutes you can create it as a draft." />
+      <DraftBar draft={minutesDraft} label="Finish later" />
       <div className="flex gap-2">
         <Button type="submit" disabled={empty || save.isPending}>
           {save.isPending ? "Saving…" : "Save draft"}

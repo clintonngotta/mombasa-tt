@@ -2,7 +2,10 @@
 
 import pytest
 
+from competitions import recap
+
 from .conftest import BrowserClient
+from .files import png_size
 from .test_official_results import GAMES, enter, hall, knockout  # noqa: F401
 from .test_ratings import work
 from .test_tournaments import url
@@ -53,14 +56,18 @@ def test_the_card_carries_public_facts_only_and_a_draft_has_none(staff, club, ha
     game = knockout(staff, club, hall)
     semi = game["semis"][0]
     enter(staff, game, semi, semi.entry_a, games=GAMES)
-    card = BrowserClient().get(recap_url(game, semi, "card.svg"))
-    assert card.status_code == 200 and card["Content-Type"] == "image/svg+xml"
-    body = card.content.decode()
-    assert body.startswith("<svg") and "Coast Open" in body and "11-5" in body and "wins" in body
+    card = BrowserClient().get(recap_url(game, semi, "card.png"))
+    assert card.status_code == 200 and card["Content-Type"] == "image/png"
+    assert png_size(card.content)[0] == 1080
+    # Apps from before the PNG ask for card.svg: they get the same image.
+    assert BrowserClient().get(recap_url(game, semi, "card.svg")).content == card.content
+    shown = BrowserClient().get(recap_url(game, semi)).json()
+    body = " ".join(f"{row.text} {row.aside}" for row in recap.card_rows(shown))
+    assert "11-5" in body and "wins" in body
     assert "@" not in body  # no email or other contact
     # A draft tournament's matches have no recap for anyone.
     from competitions.models import Tournament
 
     Tournament.objects.filter(pk=game["cup"]["id"]).update(status="draft")
     assert BrowserClient().get(recap_url(game, semi)).status_code == 404
-    assert BrowserClient().get(recap_url(game, semi, "card.svg")).status_code == 404
+    assert BrowserClient().get(recap_url(game, semi, "card.png")).status_code == 404

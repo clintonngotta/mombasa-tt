@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -181,13 +183,14 @@ export function FeedbackBuilderPage() {
 function Builder({ orgId, form }: { orgId: string; form: FeedbackForm }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [title, setTitle] = useState(form.title)
-  const [intro, setIntro] = useState(form.intro)
-  const [anonymous, setAnonymous] = useState(form.anonymous)
-  const [toEntrants, setToEntrants] = useState(form.to_entrants)
-  const [toUmpires, setToUmpires] = useState(form.to_umpires)
-  const [toStaff, setToStaff] = useState(form.to_staff)
-  const [sections, setSections] = useState<SectionDraft[]>(() => (form.sections.length ? form.sections.map((s) => ({ ...s, questions: s.questions.map((q) => ({ ...q })) })) : [{ title: "", description: "", questions: [blankQuestion()] }]))
+  const draft = useDraft(`feedback-form:${form.id}`)
+  const [title, setTitle] = useDraftState(draft, "title", form.title)
+  const [intro, setIntro] = useDraftState(draft, "intro", form.intro)
+  const [anonymous, setAnonymous] = useDraftState(draft, "anonymous", form.anonymous)
+  const [toEntrants, setToEntrants] = useDraftState(draft, "toEntrants", form.to_entrants)
+  const [toUmpires, setToUmpires] = useDraftState(draft, "toUmpires", form.to_umpires)
+  const [toStaff, setToStaff] = useDraftState(draft, "toStaff", form.to_staff)
+  const [sections, setSections] = useDraftState<SectionDraft[]>(draft, "sections", () => (form.sections.length ? form.sections.map((s) => ({ ...s, questions: s.questions.map((q) => ({ ...q })) })) : [{ title: "", description: "", questions: [blankQuestion()] }]))
   const [closes, setCloses] = useState("")
   const [saved, setSaved] = useState(false)
   const count = sections.reduce((sum, section) => sum + section.questions.length, 0)
@@ -217,6 +220,7 @@ function Builder({ orgId, form }: { orgId: string; form: FeedbackForm }) {
   const save = useMutation({
     mutationFn: () => updateForm(orgId, form.id, body()),
     onSuccess: (fresh) => {
+      draft.clear()
       settle(fresh)
       setSaved(true)
     },
@@ -361,6 +365,7 @@ function Builder({ orgId, form }: { orgId: string; form: FeedbackForm }) {
 
       {/* Beside the buttons that caused it, not at the top of a long form. */}
       {(save.error ?? asTemplate.error) && <FormAlert>{fields.sections ?? errorMessage(save.error ?? asTemplate.error, "We couldn't save the form.")}</FormAlert>}
+      <DraftBar draft={draft} label="Finish later" />
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={!title.trim() || save.isPending}>
           {save.isPending ? "Saving…" : "Save draft"}

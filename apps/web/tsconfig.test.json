@@ -14,5 +14,5 @@
     "noUnusedParameters": true,
     "skipLibCheck": true
   },
-  "include": ["test", "src/lib/deck", "src/lib/offline/store.ts"]
+  "include": ["test", "src/lib/deck", "src/lib/offline/store.ts", "src/lib/drafts.ts"]
 }

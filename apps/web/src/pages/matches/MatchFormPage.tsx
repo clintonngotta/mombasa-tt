@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type ComponentProps, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -61,7 +63,8 @@ export function MatchFormPage() {
 function MatchForm({ match }: { match?: PersonalMatch }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [form, setForm] = useState<FormState>(() => (match ? fromMatch(match) : emptyForm()))
+  const draft = useDraft(`match:${match?.id ?? "new"}`)
+  const [form, setForm] = useDraftState<FormState>(draft, "form", () => (match ? fromMatch(match) : emptyForm()))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const labels = useQuery({ queryKey: matchKeys.labels, queryFn: getMatchLabels })
 
@@ -72,6 +75,7 @@ function MatchForm({ match }: { match?: PersonalMatch }) {
   const save = useMutation({
     mutationFn: async (input: PersonalMatchInput) => (match ? { kept: false as const, data: await updateMatch(match.id, input) } : createMatchOrKeep(input)),
     onSuccess: (sent) => {
+      draft.clear()
       // No connection: kept on this device, and the banner says it is waiting to be sent (REQ-035).
       if (sent.kept) return navigate("/matches", { replace: true })
       const saved = sent.data
@@ -274,6 +278,8 @@ function MatchForm({ match }: { match?: PersonalMatch }) {
             className="w-full rounded-lg border border-input bg-card px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
         </div>
+
+        <DraftBar draft={draft} />
 
         <Button type="submit" size="lg" disabled={save.isPending}>
           {save.isPending ? "Saving…" : match ? "Save changes" : "Save match"}

@@ -1,3 +1,5 @@
+import { DraftBar } from "@/components/forms/Draft"
+import { useDraft, useDraftState } from "@/components/forms/useDraft"
 import { useState, type FormEvent } from "react"
 import { useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -105,9 +107,10 @@ function ReviewText({ review, timeZone }: { review: TournamentReview; timeZone: 
 
 function ReviewForm({ tournamentId, review, onDone }: { tournamentId: string; review: TournamentReview; onDone: () => void }) {
   const queryClient = useQueryClient()
-  const [well, setWell] = useState(review.went_well ?? "")
-  const [wrong, setWrong] = useState(review.went_wrong ?? "")
-  const [actions, setActions] = useState<ActionDraft[]>(() => (review.actions ?? []).map((a) => ({ text: a.text, owner: a.owner ?? "", due: a.due_on ?? "", done: !!a.done })))
+  const draft = useDraft(`review:${tournamentId}`)
+  const [well, setWell] = useDraftState(draft, "well", review.went_well ?? "")
+  const [wrong, setWrong] = useDraftState(draft, "wrong", review.went_wrong ?? "")
+  const [actions, setActions] = useDraftState<ActionDraft[]>(draft, "actions", () => (review.actions ?? []).map((a) => ({ text: a.text, owner: a.owner ?? "", due: a.due_on ?? "", done: !!a.done })))
   const save = useMutation({
     mutationFn: () =>
       saveReview(tournamentId, {
@@ -116,6 +119,7 @@ function ReviewForm({ tournamentId, review, onDone }: { tournamentId: string; re
         actions: actions.filter((a) => a.text.trim()).map((a) => ({ text: a.text.trim(), owner: a.owner.trim(), due_on: a.due || null, done: a.done })),
       }),
     onSuccess: (fresh) => {
+      draft.clear()
       queryClient.setQueryData(reviewKey(tournamentId), fresh)
       onDone()
     },
@@ -158,6 +162,7 @@ function ReviewForm({ tournamentId, review, onDone }: { tournamentId: string; re
           <Plus aria-hidden className="size-4" /> Add an action
         </Button>
       </fieldset>
+      <DraftBar draft={draft} />
       <div className="flex gap-2">
         <Button type="submit" disabled={empty || save.isPending}>
           {save.isPending ? "Saving…" : "Save review"}
