@@ -102,7 +102,15 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
         except service.Blocked as blocked:  # a tie without its lineups
             reasons = [_reason(blocked.blocker, blocked.message)]
             rows.append(
-                Row(match, [], since, reasons, BLOCKED, stage_rank=order_of_play.rank_of(ranks, match))
+                Row(
+                    match,
+                    [],
+                    since,
+                    reasons,
+                    BLOCKED,
+                    held=match.held_table,
+                    stage_rank=order_of_play.rank_of(ranks, match),
+                )
             )
             continue
         people, rubber = service.people_to_hold(match)
