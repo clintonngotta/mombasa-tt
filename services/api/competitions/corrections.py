@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from core.exceptions import ApiException
 
-from . import drawing, official, signals
+from . import drawing, official, signals, substitutes
 from .models import DrawVersion, Entry, Event, Match, Resolution, Rubber, Tournament
 
 Source = official.Source
@@ -230,7 +230,8 @@ def _move_on(match: Match, winner: Entry | None, cause) -> list[Resolution]:
     opened = []
     for side in ("a", "b"):
         for later in Match.objects.filter(**{f"feeder_{side}": match}).select_related("draw__event"):
-            opened += _set_sides(later, {side: winner}, cause)
+            # A winner replaced by a swapped-in player since is followed by their place (TASK-155).
+            opened += _set_sides(later, {side: substitutes.current(winner)}, cause)
     return opened
 
 

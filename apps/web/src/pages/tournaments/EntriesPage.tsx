@@ -27,11 +27,13 @@ import {
   POOL_LABEL,
   placesTaken,
   selfCheckInOrKeep,
+  substituteEntry,
   withdrawEntry,
   type Entry,
   type EntryStatus,
   type StaffEntryAction,
 } from "@/lib/entries"
+import { drawKeys } from "@/lib/draws"
 import { useMe } from "@/lib/session"
 import { canManageTournament, eventSummary, formatFee, getTournament, isClosed, tournamentKeys, type Tournament, type TournamentEvent } from "@/lib/tournaments"
 import { EntryNames, PlayerName } from "@/components/tournaments/PlayerNames"
@@ -373,6 +375,7 @@ const GROUPS: { status: EntryStatus; title: string; empty: string }[] = [
   { status: "waitlisted", title: "Waiting list", empty: "The waiting list is empty." },
   { status: "rejected", title: "Not accepted", empty: "" },
   { status: "withdrawn", title: "Withdrawn", empty: "" },
+  { status: "replaced", title: "Replaced by another player", empty: "" },
 ]
 
 type ArrivalFilter = "all" | "in" | "out"
@@ -439,6 +442,7 @@ function Desk({ tournament: t, event, entries }: { tournament: Tournament; event
                 {rows.map((entry) => (
                   <li key={entry.id}>
                     <DeskRow tournament={t} event={event} entry={entry} taking={taking} checkingIn={checkingIn} onChange={onChange} />
+                    {checkingIn && entry.status === "accepted" && event.kind !== "jumbles" && <SwapPlayer tournament={t} event={event} entry={entry} onChange={onChange} />}
                   </li>
                 ))}
               </ul>
@@ -532,5 +536,72 @@ function DeskRow({
         </div>
       )}
     </article>
+  )
+}
+
+/**
+ * A player leaves part-way and someone else plays in their place (TASK-155). The place carries on: its
+ * results so far stay with it, and the matches already played stay with whoever played them.
+ */
+function SwapPlayer({ tournament: t, event, entry, onChange }: { tournament: Tournament; event: TournamentEvent; entry: Entry; onChange: () => void }) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [leaving, setLeaving] = useState(entry.players[0]?.id ?? "")
+  const [joining, setJoining] = useState<Picked[]>([])
+  const [reason, setReason] = useState("")
+  const swap = useMutation({
+    mutationFn: () => substituteEntry(t.id, event.id, entry.id, { leaving_user_id: leaving, joining_user_id: joining[0]?.id ?? "", reason: reason.trim() }),
+    onSuccess: () => {
+      // The draw, its matches and the standings now name the new player.
+      void queryClient.invalidateQueries({ queryKey: drawKeys.event(event.id) })
+      setOpen(false)
+      setJoining([])
+      setReason("")
+      onChange()
+    },
+  })
+  const title = entryTitle(entry)
+  const fieldErrors = swap.error instanceof ApiError ? swap.error.fieldErrors() : {}
+  if (!open) {
+    return (
+      <Button variant="outline" className="mt-2" aria-label={`Swap a player: ${title}`} onClick={() => setOpen(true)}>
+        Swap a player
+      </Button>
+    )
+  }
+  const leaver = entry.players.find((player) => player.id === leaving)
+  return (
+    <form
+      className="mt-2 flex flex-col gap-3 rounded-lg border bg-card p-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        swap.mutate()
+      }}
+    >
+      <h4 className="font-bold">Swap a player in {title}</h4>
+      {entry.players.length > 1 ? (
+        <SelectField label="Who leaves" value={leaving} onChange={setLeaving} options={entry.players.map((player) => ({ value: player.id, label: player.display_name }))} />
+      ) : (
+        <p>
+          <span className="font-semibold">Who leaves:</span> {leaver?.display_name}
+        </p>
+      )}
+      <PlayerPicker label="Who plays instead" hint={`${DIRECTORY_HINT} For anyone else, choose “Add a new player”.`} picked={joining} max={1} error={fieldErrors.joining_user_id} guestsOf={t.organization.id} onChange={setJoining} />
+      <Field label="Reason" optional maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} hint="Kept in the match-day log." />
+      <p className="text-sm text-muted-foreground">
+        {event.kind === "team"
+          ? "The new player joins the team's roster in place of the one who leaves; rubbers already played stay as they were."
+          : "The new player takes over this place: its results so far stay with it, and the matches already played stay with whoever played them."}
+      </p>
+      {swap.isError && <FormAlert>{errorMessage(swap.error)}</FormAlert>}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={!leaving || joining.length !== 1 || swap.isPending}>
+          {swap.isPending ? "Swapping…" : "Swap the player"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   )
 }

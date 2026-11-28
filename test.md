@@ -149,6 +149,8 @@ The invitation routes are in the privacy matrix: `auth-invitation` is public (th
 
 During the registration window, verify that open admission accepts an eligible entry into the last place and waitlists the next entry. Verify that closed admission gives an eligible entry pending status until competition staff approve it. Verify that the registration window applies to both modes and that staff recheck capacity when promoting a waitlisted entry.
 
+Swapping a player (TASK-155): in a round robin, swap in a new player for one who has won a match; the won match keeps its winner and rates the original players, the matches left name the new player, and the group table credits the place with the win. In a knockout, the replaced winner's place in the next round goes to the new entry, and the other semi-final still sends its winner on. In doubles the remaining partner moves to the new entry; in a team the roster and captaincy change in place, and a lineup naming the leaver blocks the swap. A match on a table blocks it, as does a newcomer already entered; only competition staff may swap.
+
 ### EVAL-009
 
 **Formats/byes — unit and integration.** Setup: reviewed fixtures for 8/6-entry knockout, round robin and group qualification. Steps: generate/publish/reload, complete predecessors, inspect progression. Pass: knockout has expected bye count and no self-match, round robin schedules each pair once, qualifiers follow approved rules, bye/unplayed matches produce no Elo, published draw version is stable. Evidence: draw graphs and independent fixture assertions.

@@ -44,6 +44,9 @@ export const selfCheckInOrKeep = (id: string, eventId: string, entryId: string, 
 export const selfCheckIn = (id: string, eventId: string, entryId: string) => api<Entry>(`${base(id, eventId)}${entryId}/self-check-in/`, { body: {} })
 export const changeEntry = (id: string, eventId: string, entryId: string, action: StaffEntryAction, reason?: string) =>
   api<Entry>(`${base(id, eventId)}${entryId}/${action}/`, { body: reason === undefined ? {} : { reason } })
+/** A player of the entry leaves and someone else plays in their place; the place keeps its results (TASK-155). */
+export const substituteEntry = (id: string, eventId: string, entryId: string, body: { leaving_user_id: string; joining_user_id: string; reason: string }) =>
+  api<Entry>(`${base(id, eventId)}${entryId}/substitute/`, { body })
 export const listMyEntries = () => api<Schemas["PaginatedMyEntryList"]>("/me/entries/")
 
 export const ENTRY_STATUS_LABEL: Record<EntryStatus, string> = {
@@ -53,6 +56,7 @@ export const ENTRY_STATUS_LABEL: Record<EntryStatus, string> = {
   rejected: "Not accepted",
   withdrawn: "Withdrawn",
   pairing: "Jumbles pair",
+  replaced: "Replaced by another player",
 }
 
 export const POOL_LABEL = { men: "Men's pool", women: "Women's pool" } as const
