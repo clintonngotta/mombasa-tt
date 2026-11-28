@@ -10,10 +10,11 @@ from rest_framework.views import APIView
 
 from core.downloads import file_name, named
 from core.exceptions import ApiException
+from core.permissions import is_platform_super_admin
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
 
-from . import corrections, drawing, matchday, official, recap
+from . import corrections, drawing, formats, matchday, official, recap
 from .models import DrawVersion, Entry, Match, Resolution, Rubber, Tournament
 from .serializers import (
     EntryWalkoverSerializer,
@@ -87,6 +88,24 @@ def results_tournament(user, pk) -> tuple[Tournament, bool]:
 REFEREE_ONLY = (Match.Outcome.WALKOVER, Match.Outcome.DISQUALIFIED)
 
 
+def set_best_of(user, match: Match, best_of: int | None) -> str:
+    """A platform super admin says what best of the match was really played over (user request,
+    2026-11-28: matches kept at best of 3 when an event moved to best of 5 part-way). Returns words for
+    the match-day log, empty when nothing changes. Anyone else asking for a change is refused."""
+    if best_of is None or best_of == formats.best_of_for(match):
+        return ""
+    if not is_platform_super_admin(user):
+        raise ApiException(
+            "super_admin_only",
+            "Only a platform super admin can change how many games a match was played over.",
+            403,
+        )
+    before = formats.best_of_for(match)
+    match.best_of = best_of
+    match.save(update_fields=["best_of"])
+    return f" (played over best of {best_of}, not {before})"
+
+
 def require_referee_for(referee: bool, match: Match, rubber: Rubber | None, outcome: str) -> None:
     """Only the referee awards walkovers and disqualifications (decision D5, REQ-043): giving a match
     either, or taking one away, needs `results.referee`."""
@@ -137,6 +156,7 @@ class ResultViewSet(viewsets.GenericViewSet):
             match, rubber, winner = self._target(tournament, event_pk, pk, asked)
             official.ensure_not_playing(match, request.user)
             require_referee_for(referee, match, rubber, asked["outcome"])
+            length = set_best_of(request.user, match, asked["best_of"])
             table = match.table  # read before the result frees it
             corrections.enter(
                 match, rubber, winner, asked["outcome"], asked["games"], request.user, asked["reason"]
@@ -144,7 +164,7 @@ class ResultViewSet(viewsets.GenericViewSet):
             matchday.log(
                 tournament,
                 matchday.Action.RESULT_ENTERED,
-                matchday.result_summary(match, rubber, winner, asked["outcome"], asked["games"]),
+                matchday.result_summary(match, rubber, winner, asked["outcome"], asked["games"]) + length,
                 actor=request.user,
                 match=match,
                 table=table,
@@ -166,13 +186,14 @@ class ResultViewSet(viewsets.GenericViewSet):
             match, rubber, winner = self._target(tournament, event_pk, pk, asked)
             official.ensure_not_playing(match, request.user)
             require_referee_for(referee, match, rubber, asked["outcome"])
+            length = set_best_of(request.user, match, asked["best_of"])
             corrections.correct(
                 match, rubber, winner, asked["outcome"], asked["games"], request.user, asked["reason"]
             )
             matchday.log(
                 tournament,
                 matchday.Action.RESULT_CORRECTED,
-                matchday.result_summary(match, rubber, winner, asked["outcome"], asked["games"]),
+                matchday.result_summary(match, rubber, winner, asked["outcome"], asked["games"]) + length,
                 actor=request.user,
                 match=match,
                 reason=asked["reason"],
