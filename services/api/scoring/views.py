@@ -314,19 +314,16 @@ class ScorecardViewSet(viewsets.GenericViewSet):
             )
         return self._reply(scorecard)
 
-    @extend_schema(responses={200: UmpireNextSerializer})
-    def next(self, request, pk):
-        """After confirming: the match that takes this table next (REQ-053). The match already sent
-        there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned."""
+    def _following(self, scorecard: Scorecard):
+        """The match that takes this sheet's table next: the one already sent there (True), or else the
+        one dispatch would send (False). (None, False) when there is none or the match had no table."""
         from reservations import board
         from reservations.models import Reservation
 
-        scorecard = get_object_or_404(scorecards(), pk=pk, umpire=request.user)
         match = scorecard.rubber.match if scorecard.rubber_id else scorecard.match
         table = match.table
-        empty = {"next": None, "on_table": False, "scorecard_id": None}
         if table is None:
-            return Response(UmpireNextSerializer(empty).data)
+            return None, None, False
         tournament = match.draw.event.tournament
         there = (
             Reservation.objects.filter(
@@ -337,21 +334,87 @@ class ScorecardViewSet(viewsets.GenericViewSet):
             .first()
         )
         if there is not None:
-            row = board.Row(there.match, [], there.created_at)
-            on_table = True
-        else:
-            row = board.next_on(tournament, table)
-            on_table = False
-        following = board.describe_next(row, table)
-        mine = None
+            return board.Row(there.match, [], there.created_at), table, True
+        return board.next_on(tournament, table), table, False
+
+    def _next_reply(self, request, row, table, on_table) -> Response:
+        from reservations import board
+        from reservations import service as reservations
+
+        following = board.describe_next(row, table) if table is not None else None
+        mine, umpire, can_claim = None, "", False
         if following is not None:
-            card = Scorecard.objects.filter(
-                match_id=following["match_id"], umpire=request.user, confirmed_at__isnull=True
+            match = row.match
+            rubber = reservations.current_rubber(match) if match.draw.event.is_team else None
+            card = (
+                Scorecard.objects.filter(rubber=rubber) if rubber else Scorecard.objects.filter(match=match)
+            )
+            card = card.select_related("umpire").first()
+            if card is not None and card.umpire_id == request.user.id and card.confirmed_at is None:
+                mine = card.id
+            elif card is not None and card.umpire_id is not None:
+                umpire = card.umpire.display_name
+            else:
+                can_claim = service.can_umpire(request.user, match.draw.event)
+        shown = {"next": following, "on_table": on_table, "scorecard_id": mine, "umpire": umpire}
+        return Response(UmpireNextSerializer({**shown, "can_claim": can_claim}).data)
+
+    @extend_schema(responses={200: UmpireNextSerializer})
+    def next(self, request, pk):
+        """After confirming: the match that takes this table next (REQ-053). The match already sent
+        there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned
+        unless the umpire claims it."""
+        scorecard = get_object_or_404(scorecards(), pk=pk, umpire=request.user)
+        row, table, on_table = self._following(scorecard)
+        return self._next_reply(request, row, table, on_table)
+
+    @extend_schema(request=None, responses={200: UmpireNextSerializer})
+    def claim_next(self, request, pk):
+        """The umpire takes the match recommended for their table next (user request, 2026-11-28),
+        once they have confirmed the one they scored. They become its umpire, and a match still in the
+        queue waits for their table. Refused when somebody already umpires it (`has_umpire`), when there
+        is none (`no_next_match`), and by every rule of assigning an umpire (one of its players, playing
+        right now, no longer an umpire here)."""
+        from reservations import control
+        from reservations import service as reservations
+
+        with transaction.atomic():
+            scorecard = get_object_or_404(scorecards(), pk=pk, umpire=request.user)
+            if not service.is_umpire_of(scorecard, request.user):
+                raise Http404
+            own = scorecard.rubber.match if scorecard.rubber_id else scorecard.match
+            tournament = Tournament.objects.select_for_update(of=("self",)).get(
+                pk=own.draw.event.tournament_id
+            )
+            if scorecard.confirmed_at is None:
+                raise ApiException("not_confirmed", "Confirm the result of this match first.", 409)
+            row, table, on_table = self._following(scorecard)
+            if row is None:
+                raise ApiException("no_next_match", "No match is waiting for this table.", 409)
+            match = Match.objects.select_related(
+                "draw__event__tournament__organization", "entry_a", "entry_b"
+            ).get(pk=row.match.id)
+            rubber = reservations.current_rubber(match) if match.draw.event.is_team else None
+            card = (
+                Scorecard.objects.filter(rubber=rubber) if rubber else Scorecard.objects.filter(match=match)
             ).first()
-            mine = card.id if card else None
-        return Response(
-            UmpireNextSerializer({"next": following, "on_table": on_table, "scorecard_id": mine}).data
-        )
+            if card is None or card.umpire_id != request.user.id:
+                if card is not None and card.umpire_id is not None:
+                    raise ApiException("has_umpire", "Somebody already umpires that match.", 409)
+                service.assign(match, rubber, request.user, request.user)
+                where = f" (rubber {rubber.position})" if rubber else ""
+                matchday.log(
+                    tournament,
+                    matchday.Action.UMPIRE_ASSIGNED,
+                    f"{matchday.match_title(match)}{where}: {request.user.display_name} took it",
+                    actor=request.user,
+                    match=match,
+                    table=match.table or table,
+                )
+            # Still in the queue: it waits for this table, unless staff set another aside for it.
+            if match.dispatched_at is None and match.held_table_id is None:
+                control.hold_table(match, table, request.user)
+        return self._next_reply(request, row, table, on_table)
 
 
 class LiveViewSet(viewsets.GenericViewSet):

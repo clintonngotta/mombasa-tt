@@ -639,6 +639,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "scorecard-events": {"post": OWNER},
     "scorecard-confirm": {"post": OWNER},
     "scorecard-next": {"get": OWNER},
+    "scorecard-next-claim": {"post": OWNER},
     "scorecard-device": {"post": OWNER},
     # A conflict report is taken from whoever holds the sheet or held it before (test_scoring_conflicts.py).
     "scorecard-conflicts": {"post": OWNER},
@@ -2144,6 +2145,7 @@ class World:
             "scorecard-events": self.scorecard.id,
             "scorecard-confirm": self.scorecard.id,
             "scorecard-next": self.scorecard.id,
+            "scorecard-next-claim": self.scorecard.id,
             "scorecard-device": self.scorecard.id,
             "scorecard-conflicts": self.scorecard.id,
             "tournament-scoring-conflict-resolve": self.conflict.id,
