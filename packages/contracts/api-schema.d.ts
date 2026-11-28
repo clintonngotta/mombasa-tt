@@ -12130,6 +12130,8 @@ export interface components {
             can_record_result: boolean;
             /** @description The caller is the referee: they may also award or change a walkover or a disqualification. */
             can_award_walkover: boolean;
+            /** @description The caller is a platform super admin: they may also say what best of the match was played over when entering or correcting its result. */
+            can_change_best_of: boolean;
             /** @description A corrected earlier result put its opponent in question; nothing is played until settled. */
             held_for_correction: boolean;
         };
@@ -15594,6 +15596,14 @@ export interface components {
             games?: number[][];
             /** Format: uuid */
             rubber_id?: string | null;
+            /**
+             * @description Platform super admins only: the games the match was really played over, when that differs from what it is set to (a match kept at its old length when the event's match lengths changed). The games are then checked against it, and it stays the match's best of.
+             *
+             *     * `3` - 3
+             *     * `5` - 5
+             *     * `7` - 7
+             */
+            best_of?: (components["schemas"]["BestOfEnum"] | components["schemas"]["NullEnum"]) | null;
             reason: string;
         };
         /**
@@ -15608,6 +15618,14 @@ export interface components {
             games?: number[][];
             /** Format: uuid */
             rubber_id?: string | null;
+            /**
+             * @description Platform super admins only: the games the match was really played over, when that differs from what it is set to (a match kept at its old length when the event's match lengths changed). The games are then checked against it, and it stays the match's best of.
+             *
+             *     * `3` - 3
+             *     * `5` - 5
+             *     * `7` - 7
+             */
+            best_of?: (components["schemas"]["BestOfEnum"] | components["schemas"]["NullEnum"]) | null;
             /**
              * @description Why, kept in the match-day log: for a walkover, a no-show after the grace period, a withdrawal or an injury before the start (REQ-043).
              * @default

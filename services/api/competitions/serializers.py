@@ -790,6 +790,15 @@ class ResultEntrySerializer(serializers.Serializer):
         max_length=9,
     )
     rubber_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    best_of = serializers.ChoiceField(
+        choices=formats.BEST_OF,
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Platform super admins only: the games the match was really played over, when that "
+        "differs from what it is set to (a match kept at its old length when the event's match lengths "
+        "changed). The games are then checked against it, and it stays the match's best of.",
+    )
     reason = serializers.CharField(
         max_length=300,
         trim_whitespace=True,
@@ -883,6 +892,10 @@ class MatchDetailSerializer(MatchSerializer):
     can_record_result = serializers.BooleanField(help_text="The caller may enter or correct its result.")
     can_award_walkover = serializers.BooleanField(
         help_text="The caller is the referee: they may also award or change a walkover or a disqualification."
+    )
+    can_change_best_of = serializers.BooleanField(
+        help_text="The caller is a platform super admin: they may also say what best of the match was played "
+        "over when entering or correcting its result."
     )
     held_for_correction = serializers.BooleanField(
         help_text="A corrected earlier result put its opponent in question; nothing is played until settled."

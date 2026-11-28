@@ -5,7 +5,7 @@ export type OfficialResult = Schemas["OfficialResult"]
 export type Resolution = Schemas["Resolution"]
 export type Outcome = OfficialResult["outcome"]
 export type EntryWalkovers = Schemas["EntryWalkovers"]
-export type ResultBody = { winner_entry_id: string; outcome: Outcome; games: number[][]; rubber_id: string | null; reason?: string }
+export type ResultBody = { winner_entry_id: string; outcome: Outcome; games: number[][]; rubber_id: string | null; reason?: string; best_of?: 3 | 5 | 7 }
 
 export const resultKeys = {
   corrections: (tournamentId: string) => ["results", "corrections", tournamentId] as const,

@@ -28601,6 +28601,10 @@ components:
           type: boolean
           description: 'The caller is the referee: they may also award or change a
             walkover or a disqualification.'
+        can_change_best_of:
+          type: boolean
+          description: 'The caller is a platform super admin: they may also say what
+            best of the match was played over when entering or correcting its result.'
         held_for_correction:
           type: boolean
           description: A corrected earlier result put its opponent in question; nothing
@@ -28610,6 +28614,7 @@ components:
       - b
       - best_of
       - can_award_walkover
+      - can_change_best_of
       - can_dispatch
       - can_record_result
       - dispatched_at
@@ -36664,6 +36669,17 @@ components:
           type: string
           format: uuid
           nullable: true
+        best_of:
+          nullable: true
+          description: |-
+            Platform super admins only: the games the match was really played over, when that differs from what it is set to (a match kept at its old length when the event's match lengths changed). The games are then checked against it, and it stays the match's best of.
+
+            * `3` - 3
+            * `5` - 5
+            * `7` - 7
+          oneOf:
+          - $ref: '#/components/schemas/BestOfEnum'
+          - $ref: '#/components/schemas/NullEnum'
         reason:
           type: string
           minLength: 1
@@ -36699,6 +36715,17 @@ components:
           type: string
           format: uuid
           nullable: true
+        best_of:
+          nullable: true
+          description: |-
+            Platform super admins only: the games the match was really played over, when that differs from what it is set to (a match kept at its old length when the event's match lengths changed). The games are then checked against it, and it stays the match's best of.
+
+            * `3` - 3
+            * `5` - 5
+            * `7` - 7
+          oneOf:
+          - $ref: '#/components/schemas/BestOfEnum'
+          - $ref: '#/components/schemas/NullEnum'
         reason:
           type: string
           default: ''
