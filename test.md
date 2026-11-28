@@ -143,6 +143,8 @@ The invitation routes are in the privacy matrix: `auth-invitation` is public (th
 
 **Tournament lifecycle — integration.** Setup: draft events in all types. Steps: configure/publish/start/complete/cancel; try changing format and qualification after start; inspect local date display. Pass: only allowed transitions/actors succeed, dates round-trip correctly, published configuration is identifiable, frozen structure cannot silently change. Evidence: state-transition assertions.
 
+Best of by stage (TASK-158): with best of 3 and 5 from the semi-finals, 7 in the final, the draw shows 3/5/7 by round; a semi-final result with two games won is refused and three is accepted; the final's scoring sheet is best of 7; an unknown stage or a best of 4 is refused, a round robin keeps only the group stage, and the setting is frozen once the event starts.
+
 ### EVAL-008
 
 **Registration — concurrent integration.** Setup: one remaining accepted slot, doubles/team entries, waitlist. Steps: issue 20 simultaneous acceptance requests, submit duplicate participant entries, withdraw, promote waitlist, check in. Pass: accepted count never exceeds capacity; duplicate participants rejected; promotion rechecks capacity; check-in and payment are independent. Evidence: database counts and race logs.

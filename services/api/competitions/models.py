@@ -218,6 +218,7 @@ class Event(models.Model):
         "kind",
         "format",
         "best_of",
+        "best_of_by_stage",
         "seeding",
         "group_count",
         "qualifiers_per_group",
@@ -233,6 +234,10 @@ class Event(models.Model):
     format = models.CharField(max_length=16, choices=Format.choices)
     capacity = models.PositiveSmallIntegerField(null=True, blank=True)  # entries; null = no limit
     best_of = models.PositiveSmallIntegerField(default=5)
+    # Longer matches as the event goes on (user request, 2026-11-28): {stage: 3 | 5 | 7} for any of
+    # STAGE_KEYS. A stage not given plays as the one before it; groups and the first knockout rounds
+    # fall back to `best_of`. See `competitions.formats`.
+    best_of_by_stage = models.JSONField(default=dict, blank=True)
     rest_minutes = models.PositiveSmallIntegerField(default=10)
     # How long a called player has to report at the table before they are flagged (REQ-043).
     call_grace_minutes = models.PositiveSmallIntegerField(default=10)

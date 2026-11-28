@@ -78,7 +78,7 @@ Custom member fields: text, number, date, boolean, single selection; required/op
 
 ### REQ-007
 
-**Tournament setup — Phase 1.** Tournament has host, venue, dates/timezone, publication state and one or more singles/doubles/team events. Event setup includes format, capacity, scoring best-of, rest period, registration window, entry fee, seed order, groups and qualification count. Lifecycle draft → published → in progress → completed, with cancellation as audited terminal action. Separate public publication from operational permissions. Freeze format/qualification structure on start. Walkovers and withdrawals are explicit outcomes.
+**Tournament setup — Phase 1.** Tournament has host, venue, dates/timezone, publication state and one or more singles/doubles/team events. Event setup includes format, capacity, scoring best-of, rest period, registration window, entry fee, seed order, groups and qualification count. Lifecycle draft → published → in progress → completed, with cancellation as audited terminal action. Separate public publication from operational permissions. Freeze format/qualification structure on start. Walkovers and withdrawals are explicit outcomes. Matches can get longer as the event goes on (user request, 2026-11-28): the event's best of applies everywhere unless a stage sets its own (groups, knockout rounds before the quarter-finals, quarter-finals, semi-finals, final); a knockout stage not set plays like the one before it. Results, standings, scoring and schedule estimates follow each match's best of, and the setting is part of the structure frozen at the start.
 
 ### REQ-008
 

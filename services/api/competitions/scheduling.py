@@ -31,6 +31,7 @@ from django.utils import timezone
 
 from facilities.models import Table
 
+from . import formats
 from .models import DrawVersion, Event, Match, ScheduleSession, Tournament
 
 MINUTES_BY_BEST_OF = {1: 10, 3: 20, 5: 30, 7: 40}
@@ -41,8 +42,10 @@ TOP_SEEDS = 4  # at least the first four seeds of a draw, or one per group when 
 SEEDS_WAIT = (5, 10)  # top seeds start after this many matches: two rounds of the tables, within it
 
 
-def match_minutes(event: Event) -> int:
-    return MINUTES_BY_BEST_OF.get(event.best_of, 6 * event.best_of)
+def match_minutes(event: Event, match: Match | None = None) -> int:
+    """How long a match is expected to take, from the games it is played over (by stage, if set)."""
+    best_of = formats.best_of_for(match, event) if match is not None else event.best_of
+    return MINUTES_BY_BEST_OF.get(best_of, 6 * best_of)
 
 
 @dataclass
@@ -166,7 +169,9 @@ def reserved(tournament: Tournament, people: set) -> list[Busy]:
             Busy(
                 table=reservation.table if reservation.table.venue_id == tournament.venue_id else None,
                 users={hold.user_id for hold in reservation.holds.all() if hold.active and hold.user_id},
-                until=max(now, reservation.created_at + timedelta(minutes=match_minutes(event))),
+                until=max(
+                    now, reservation.created_at + timedelta(minutes=match_minutes(event, reservation.match))
+                ),
                 rest=timedelta(minutes=event.rest_minutes),
                 label=label(reservation.match),
             )
@@ -237,6 +242,7 @@ def items_for(matches: list[Match]) -> dict:
         if match.stage == Match.Stage.GROUP:
             group_matches.setdefault((match.draw_id, match.group), []).append(match.id)
     top = top_seeds(matches)
+    formats.prime(matches)  # each match's length depends on its stage: one query for every draw
     items = {}
     for match in matches:
         event = match.draw.event
@@ -247,7 +253,7 @@ def items_for(matches: list[Match]) -> dict:
                 after += group_matches.get((match.draw_id, group), [])
         items[match.id] = Item(
             match=match,
-            minutes=match_minutes(event),
+            minutes=match_minutes(event, match),
             rest=timedelta(minutes=event.rest_minutes),
             people=people,
             maybe={},

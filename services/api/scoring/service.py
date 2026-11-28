@@ -12,7 +12,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from competitions import drawing, matchday, official, ties
+from competitions import drawing, formats, matchday, official, ties
 from competitions.models import DrawVersion, EntryPlayer, Event, Match, Rubber, RubberPlayer, Tournament
 from core.exceptions import ApiException
 from organizations.access import effective_permissions
@@ -57,7 +57,8 @@ def config_of(scorecard: Scorecard, with_carry: bool = True) -> dict:
         if scorecard.rubber_id
         else event.kind == Event.Kind.DOUBLES
     )
-    config = {"best_of": event.best_of, "doubles": doubles}
+    match = scorecard.rubber.match if scorecard.rubber_id else scorecard.match
+    config = {"best_of": formats.best_of_for(match, event), "doubles": doubles}
     if not with_carry:
         return config
     carry = scorecard.carry if scorecard.revision else incidents.carry_for(scorecard, players_of)

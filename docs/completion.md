@@ -1,14 +1,14 @@
 # Coast TT: project completion
 
-Updated 2026-11-28. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #88, TASK-082 (match-day control centre), TASK-083 (scoring incidents), TASK-084 (live score channel) and TASK-085 (results announcements), with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21, TASK-128 (next-match recommendation), TASK-133 (tournament and table umpires, added 2026-11-22) TASK-127 (order of play), TASK-107 (regional and national bodies) TASK-134 (nearby search, Tournaments tab, help centre; added and done 2026-11-25), TASK-108 (representatives), TASK-109 (meeting minutes, documents and notices), TASK-110 (events beyond the membership), TASK-130 (post-tournament review), TASK-131 (feedback form builder), TASK-125 (training rules and location check-in), TASK-126 (apologies), TASK-123 (representative squads) and TASK-129 (absence penalties), and TASK-144 (keeping clubs, teams and regions apart in the groups; moving and swapping draw entries; late entries), TASK-146 (adding members by finding a player or adding someone new), TASK-147 (joining guests to the players behind them; new links from the guest list), and TASK-148 (a player's record in a tournament), TASK-149 (setting one match's time by hand), TASK-150 (recommending within the day's hours), TASK-145 (sharing a tournament by a readable link), TASK-151 (umpires' own page and assignment alerts), TASK-152 (umpires give walkovers from the deck), TASK-153 (who umpires each match; tables set aside for queued matches), TASK-157 (who is on a table now, in the draw). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
+Updated 2026-11-28. Counted from the checkboxes in [tasks.md](../tasks.md) on `dev` after PRs #82 to #88, TASK-082 (match-day control centre), TASK-083 (scoring incidents), TASK-084 (live score channel) and TASK-085 (results announcements), with TASK-123 to TASK-131 added from the owner's requests of 2026-11-21, TASK-128 (next-match recommendation), TASK-133 (tournament and table umpires, added 2026-11-22) TASK-127 (order of play), TASK-107 (regional and national bodies) TASK-134 (nearby search, Tournaments tab, help centre; added and done 2026-11-25), TASK-108 (representatives), TASK-109 (meeting minutes, documents and notices), TASK-110 (events beyond the membership), TASK-130 (post-tournament review), TASK-131 (feedback form builder), TASK-125 (training rules and location check-in), TASK-126 (apologies), TASK-123 (representative squads) and TASK-129 (absence penalties), and TASK-144 (keeping clubs, teams and regions apart in the groups; moving and swapping draw entries; late entries), TASK-146 (adding members by finding a player or adding someone new), TASK-147 (joining guests to the players behind them; new links from the guest list), and TASK-148 (a player's record in a tournament), TASK-149 (setting one match's time by hand), TASK-150 (recommending within the day's hours), TASK-145 (sharing a tournament by a readable link), TASK-151 (umpires' own page and assignment alerts), TASK-152 (umpires give walkovers from the deck), TASK-153 (who umpires each match; tables set aside for queued matches), TASK-157 (who is on a table now, in the draw), TASK-154 (every walkover of a no-show at once; nobody decides their own match), TASK-155 (swapping in a player who leaves), TASK-156 (umpires claim the recommended next match), TASK-158 (best of by stage). Each task counts once, whatever its size, so these are task counts, not effort. Update this file whenever a task in tasks.md is ticked, added or removed.
 
 ## Summary
 
 | Scope | Done | Total | Open | Done % |
 | --- | --- | --- | --- | --- |
-| All tasks | 122 | 154 | 32 | 79% |
-| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 122 | 150 | 28 | 81% |
-| **Phase 1 launch** | **110** | **119** | **9** | **92%** |
+| All tasks | 126 | 158 | 32 | 80% |
+| Without native follow-on, future SMS and WhatsApp (TASK-069, TASK-070, TASK-118, TASK-119) | 126 | 154 | 28 | 82% |
+| **Phase 1 launch** | **114** | **123** | **9** | **93%** |
 
 Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current feature checklist, and the launch gates TASK-058, TASK-060, TASK-061, TASK-062 and TASK-063.
 
@@ -22,7 +22,7 @@ Phase 1 launch scope is Phase 0, Foundation, every Phase 1 section, the current 
 | Phase 1: competitions and operations | 23 | 24 | TASK-034 |
 | Phase 1: personal progress | 1 | 1 | — |
 | Phase 1: club life | 5 | 6 | TASK-078 |
-| Current feature checklist | 67 | 67 | — |
+| Current feature checklist | 71 | 71 | — |
 | Phase 2: reservations and finances | 8 | 8 | — |
 | Phase 3: player development | 4 | 4 | — |
 | Phase 4: recording and highlights | 0 | 6 | TASK-045 to TASK-050 |
@@ -90,4 +90,8 @@ TASK-002 (Stitch review), TASK-003 (ITTF clause review), TASK-045 (recording pol
 | 2026-11-28 | 119 | 151 | 79% | 92% (107/116) | TASK-151 added and done (umpires' page of their matches; alert when given or taken off a match) |
 | 2026-11-28 | 120 | 152 | 79% | 92% (108/117) | TASK-152 added and done (umpires give walkovers from the scoring deck) |
 | 2026-11-28 | 121 | 153 | 79% | 92% (109/118) | TASK-153 added and done (staff list of who umpires each match; a table set aside for a queued match) |
-| 2026-11-28 | 122 | 154 | 79% | 92% (110/119) | TASK-157 added and done (the draw shows who is on a table now, and which) |
+| 2026-11-28 | 122 | 154 | 79% | 92% (110/119) | TASK-154 added and done (the referee gives every walkover of a no-show at once; nobody decides a match they play in) |
+| 2026-11-28 | 123 | 155 | 79% | 92% (111/120) | TASK-155 added and done (swapping in a player who leaves; the place keeps its results) |
+| 2026-11-28 | 124 | 156 | 79% | 93% (112/121) | TASK-156 added and done (umpires claim the match recommended for their table next) |
+| 2026-11-28 | 125 | 157 | 80% | 93% (113/122) | TASK-157 added and done (the draw shows who is on a table now, and which) |
+| 2026-11-28 | 126 | 158 | 80% | 93% (114/123) | TASK-158 added and done (best of by stage: longer matches later in the event) |

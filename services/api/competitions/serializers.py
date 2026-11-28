@@ -12,6 +12,7 @@ from organizations.models import Organization
 from profiles.serializers import PlayerSerializer
 from scoring.serializers import ScoringSummarySerializer
 
+from . import formats
 from .draws import MAX_SEEDS
 from .models import (
     DEFAULT_TIE_RUBBERS,
@@ -58,6 +59,13 @@ class EventSerializer(serializers.ModelSerializer):
     entry_fee = EntryFeeSerializer(source="*", required=False)
     capacity = serializers.IntegerField(min_value=2, max_value=MAX_CAPACITY, allow_null=True, required=False)
     best_of = serializers.ChoiceField(choices=BEST_OF, required=False)
+    best_of_by_stage = serializers.DictField(
+        child=serializers.ChoiceField(choices=BEST_OF),
+        required=False,
+        help_text="Longer matches as the event goes on: best of 3, 5 or 7 for any of `group`, `knockout` "
+        "(rounds before the quarter-finals), `quarter_final`, `semi_final`, `final`. A knockout stage not "
+        "given plays as the one before it; the rest play `best_of`.",
+    )
     rest_minutes = serializers.IntegerField(min_value=0, max_value=MAX_REST_MINUTES, required=False)
     call_grace_minutes = serializers.IntegerField(
         min_value=1,
@@ -99,6 +107,7 @@ class EventSerializer(serializers.ModelSerializer):
             "format",
             "capacity",
             "best_of",
+            "best_of_by_stage",
             "rest_minutes",
             "call_grace_minutes",
             "registration_opens_at",
@@ -140,9 +149,24 @@ class EventSerializer(serializers.ModelSerializer):
         counted = getattr(event, "accepted_count", None)
         return event.entries.filter(status=Entry.Status.ACCEPTED).count() if counted is None else counted
 
+    def validate_best_of_by_stage(self, value):
+        problem = formats.stage_problem(value)
+        if problem:
+            raise serializers.ValidationError(problem)
+        return value
+
     def validate(self, attrs):
         def current(name):
             return attrs[name] if name in attrs else getattr(self.instance, name, None)
+
+        # Only the stages the format has: no groups in a knockout, no knockout in a round robin.
+        if "best_of_by_stage" in attrs or "format" in attrs:
+            stages = current("best_of_by_stage") or {}
+            kept = {
+                formats.GROUP: current("format") in (Event.Format.ROUND_ROBIN, Event.Format.GROUPS_KNOCKOUT),
+                **dict.fromkeys(formats.KNOCKOUT_STAGES, current("format") != Event.Format.ROUND_ROBIN),
+            }
+            attrs["best_of_by_stage"] = {key: games for key, games in stages.items() if kept[key]}
 
         # What the caller asked to change in the structure, before the clean-up below can hide it.
         self.structure_changes = {
@@ -655,6 +679,7 @@ class MatchSerializer(serializers.Serializer):
     dispatched_at = serializers.DateTimeField(
         allow_null=True, help_text="When it was sent to its table. Null while it isn't on one."
     )
+    best_of = serializers.IntegerField(help_text="Games it is played over: 3, 5 or 7, by its stage.")
 
 
 class LineupSideSerializer(serializers.Serializer):

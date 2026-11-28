@@ -16,7 +16,7 @@ from ratings.elo import START
 from ratings.models import Discipline, Rating
 from scoring.models import EnginePhase, Scorecard
 
-from . import draws, official, signals, standings
+from . import draws, formats, official, signals, standings
 from .models import DrawPlace, DrawVersion, Entry, EntryPlayer, Event, Match, Rubber, Tournament
 from .rules import RULES_VERSION
 
@@ -559,7 +559,7 @@ def record_result(
         # Whatever wasn't needed is not played: never scored and never rated.
         match.rubbers.filter(status=Rubber.Status.SCHEDULED).update(status=Rubber.Status.NOT_PLAYED)
     else:
-        check_games(event.best_of, games, outcome, a_won=winner.id == match.entry_a_id)
+        check_games(formats.best_of_for(match, event), games, outcome, a_won=winner.id == match.entry_a_id)
     match.winner = winner
     match.status = Match.Status.COMPLETED
     match.outcome = outcome
@@ -653,7 +653,7 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
                 carried.get(str(loser), str(loser)),
                 match.outcome or Match.Outcome.PLAYED,
                 games,
-                best_of=draw.event.best_of,
+                best_of=formats.best_of_at(draw.event, formats.GROUP),
             )
         )
     complete = len(results) == len(matches)
@@ -737,7 +737,12 @@ def describe(draw: DrawVersion, staff: bool = False) -> dict:
     seeds = {place.entry_id: place.seed for place in places}
     matches = _matches_of(draw)
     shown = _match_describer(
-        matches, entries, seeds, draw.event.status == Event.Status.IN_PROGRESS, _times_shown(draw, staff)
+        matches,
+        entries,
+        seeds,
+        draw.event.status == Event.Status.IN_PROGRESS,
+        _times_shown(draw, staff),
+        draw.event,
     )
     numbers = sorted({place.group for place in places if place.group})
     # Who each entry is kept apart from, for the organizers moving entries of their preview.
@@ -803,7 +808,7 @@ def _times_shown(draw: DrawVersion, staff: bool) -> bool:
 
 
 def _match_describer(
-    matches: list[Match], entries: dict, seeds: dict, event_in_progress: bool, times: bool = True
+    matches: list[Match], entries: dict, seeds: dict, event_in_progress: bool, times: bool, event: Event
 ):
     """A function turning one of `matches` (all those of a draw) into what MatchSerializer shows.
     Without `times`, planned starts and tables are left out: the order of play isn't out yet."""
@@ -845,6 +850,9 @@ def _match_describer(
             "table": _table_label(match) if times else (match.table.label if match.table else ""),
             "dispatched_at": match.dispatched_at,
             "scheduled_at": match.scheduled_at if times else None,
+            "best_of": formats.best_of_at(
+                event, formats.knockout_stage(match.round, rounds) if knockout else formats.GROUP
+            ),
         }
 
     return shown
@@ -875,6 +883,7 @@ def describe_match(draw: DrawVersion, match_id, staff: bool = False) -> dict | N
         {place.entry_id: place.seed for place in places},
         draw.event.status == Event.Status.IN_PROGRESS,
         _times_shown(draw, staff),
+        draw.event,
     )
     # A winner of this match plays on in the match it feeds; the final feeds nothing.
     onward = next((m for m in matches if match.id in (m.feeder_a_id, m.feeder_b_id)), None)

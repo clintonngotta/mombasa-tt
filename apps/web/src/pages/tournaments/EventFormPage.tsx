@@ -53,6 +53,16 @@ const BEST_OF: { value: `${BestOf}`; label: string }[] = [
   { value: "7", label: "Best of 7" },
 ]
 
+/** Stages that can play longer matches, in playing order (user request, 2026-11-28). */
+const STAGES: { key: StageKey; label: string; formats: EventFormat[] }[] = [
+  { key: "group", label: "Groups", formats: ["groups_knockout"] },
+  { key: "knockout", label: "Knockout rounds before the quarter-finals", formats: ["knockout", "groups_knockout"] },
+  { key: "quarter_final", label: "Quarter-finals", formats: ["knockout", "groups_knockout"] },
+  { key: "semi_final", label: "Semi-finals", formats: ["knockout", "groups_knockout"] },
+  { key: "final", label: "Final", formats: ["knockout", "groups_knockout"] },
+]
+type StageKey = "group" | "knockout" | "quarter_final" | "semi_final" | "final"
+
 const SEEDINGS: { value: Seeding; label: string; description: string }[] = [
   { value: "rating", label: "By rating", description: "Highest rated first" },
   { value: "manual", label: "By staff", description: "You set the order" },
@@ -97,6 +107,11 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
   const [qualifiers, setQualifiers] = useDraftState(draft, "qualifiers", event?.qualifiers_per_group?.toString() ?? "")
   const [capacity, setCapacity] = useDraftState(draft, "capacity", event?.capacity?.toString() ?? "")
   const [bestOf, setBestOf] = useDraftState<`${BestOf}`>(draft, "bestOf", `${event?.best_of ?? 5}`)
+  const [stages, setStages] = useDraftState<Partial<Record<StageKey, `${BestOf}`>>>(
+    draft,
+    "stages",
+    Object.fromEntries(Object.entries(event?.best_of_by_stage ?? {}).map(([key, games]) => [key, `${games}`])),
+  )
   const [rest, setRest] = useDraftState(draft, "rest", (event?.rest_minutes ?? 10).toString())
   const [grace, setGrace] = useDraftState(draft, "grace", (event?.call_grace_minutes ?? 10).toString())
   const [seeding, setSeeding] = useDraftState<Seeding>(draft, "seeding", event?.seeding ?? "rating")
@@ -136,6 +151,9 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
         kind: kind as EventKind,
         format: format as EventFormat,
         best_of: Number(bestOf) as BestOf,
+        best_of_by_stage: Object.fromEntries(
+          STAGES.filter((stage) => format && stage.formats.includes(format) && stages[stage.key]).map((stage) => [stage.key, Number(stages[stage.key]) as BestOf])
+        ),
         seeding,
         ...(format === "groups_knockout" ? { group_count: whole(groups), qualifiers_per_group: whole(qualifiers) } : {}),
         ...(kind === "team" ? { tie_rubbers: rubbers, tie_wins_needed: wins } : {}),
@@ -254,6 +272,26 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
             </fieldset>
           )}
           <ChoiceGroup legend="Match length" columns={3} options={BEST_OF} value={bestOf} onChange={setBestOf} error={errors.best_of} />
+          {format && format !== "round_robin" && kind !== "jumbles" && (
+            <fieldset className="flex flex-col gap-3 rounded-lg border p-3">
+              <legend className="px-1 font-semibold">Longer matches later on</legend>
+              <p className="text-sm text-muted-foreground">
+                For example best of 3 in the groups, 5 from the quarter-finals and 7 in the final. A knockout stage left as it is plays like the one before it; the groups and the first knockout rounds play best of {bestOf} unless set.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {STAGES.filter((stage) => stage.formats.includes(format)).map((stage) => (
+                  <SelectField
+                    key={stage.key}
+                    label={stage.label}
+                    value={stages[stage.key] ?? ""}
+                    onChange={(value) => setStages({ ...stages, [stage.key]: value || undefined })}
+                    options={[{ value: "", label: "Like the stage before" }, ...BEST_OF]}
+                  />
+                ))}
+              </div>
+              {errors.best_of_by_stage && <FormAlert>{errors.best_of_by_stage}</FormAlert>}
+            </fieldset>
+          )}
           {kind !== "jumbles" && <ChoiceGroup legend="Seeding" columns={3} options={SEEDINGS} value={seeding} onChange={setSeeding} error={errors.seeding} />}
         </>
       )}
