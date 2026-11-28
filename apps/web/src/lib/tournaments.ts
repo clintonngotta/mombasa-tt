@@ -105,6 +105,8 @@ export const updateEvent = (id: string, eventId: string, body: Schemas["PatchedE
 export const deleteEvent = (id: string, eventId: string) => api<Tournament>(event(id, eventId), { method: "DELETE" })
 export const moveEvent = (id: string, eventId: string, action: EventAction) => api<Tournament>(`${event(id, eventId)}${action}/`, { body: {} })
 export const cancelEvent = (id: string, eventId: string, reason: string) => api<Tournament>(`${event(id, eventId)}cancel/`, { body: { reason } })
+/** Platform super admins only: put an event completed too early back in progress. */
+export const reopenEvent = (id: string, eventId: string, reason: string) => api<Tournament>(`${event(id, eventId)}reopen/`, { body: { reason } })
 
 /** The four views every event has (REQ-010). */
 export type EventTab = "brackets" | "groups" | "schedule" | "standings"
@@ -149,6 +151,7 @@ export const ACTION_LABEL: Record<LifecycleEntry["action"], string> = {
   cancelled: "Cancelled",
   event_started: "Event started",
   event_completed: "Event completed",
+  event_reopened: "Event reopened",
   event_cancelled: "Event cancelled",
   event_removed: "Event removed",
 }

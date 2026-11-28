@@ -18674,6 +18674,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{id}/reopen/:
+    post:
+      operationId: tournaments_events_reopen_create
+      description: |-
+        Platform super admins only: put a completed event back in progress, with the reason, when it was
+        completed before all its results were in.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{id}/start/:
     post:
       operationId: tournaments_events_start_create
@@ -25341,6 +25383,11 @@ components:
           description: Entries holding a place. Counted here when the caller didn't
             annotate it.
           readOnly: true
+        matches_left:
+          type: integer
+          readOnly: true
+          description: Matches of the published draw with no result yet. The event
+            can't be completed while any is left.
         status:
           allOf:
           - $ref: '#/components/schemas/EventStatusEnum'
@@ -25385,6 +25432,7 @@ components:
       - group_count
       - id
       - kind
+      - matches_left
       - name
       - paused_at
       - qualifiers_per_group
@@ -27637,6 +27685,7 @@ components:
       - cancelled
       - event_started
       - event_completed
+      - event_reopened
       - event_cancelled
       - event_removed
       type: string
@@ -27650,6 +27699,7 @@ components:
         * `cancelled` - Cancelled
         * `event_started` - Event Started
         * `event_completed` - Event Completed
+        * `event_reopened` - Event Reopened
         * `event_cancelled` - Event Cancelled
         * `event_removed` - Event Removed
     LineupRequestRequest:

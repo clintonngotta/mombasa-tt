@@ -85,6 +85,10 @@ class EventSerializer(serializers.ModelSerializer):
         "up, so a tie always has a winner. Null otherwise.",
     )
     accepted_count = serializers.SerializerMethodField()
+    matches_left = serializers.SerializerMethodField(
+        help_text="Matches of the published draw with no result yet. The event can't be completed while any "
+        "is left."
+    )
 
     class Meta:
         model = Event
@@ -107,6 +111,7 @@ class EventSerializer(serializers.ModelSerializer):
             "tie_rubbers",
             "tie_wins_needed",
             "accepted_count",
+            "matches_left",
             "status",
             "revision",
             "paused_at",
@@ -125,6 +130,10 @@ class EventSerializer(serializers.ModelSerializer):
             "cancelled_at",
             "cancel_reason",
         ]
+
+    def get_matches_left(self, event) -> int:
+        counted = getattr(event, "matches_left", None)
+        return event.count_matches_left() if counted is None else counted
 
     def get_accepted_count(self, event) -> int:
         """Entries holding a place. Counted here when the caller didn't annotate it."""
