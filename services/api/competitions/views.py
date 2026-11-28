@@ -25,7 +25,7 @@ from organizations.access import (
 from organizations.models import BODY_KINDS, Membership, Organization
 from organizations.permissions import Permission
 
-from . import drawing, entries, lifecycle, matchday, official, player_record, ties
+from . import drawing, entries, lifecycle, matchday, official, player_record, substitutes, ties
 from .emails import send_entry_news
 from .models import MAX_EVENTS, SLUG_MAX_LENGTH, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
@@ -42,6 +42,7 @@ from .serializers import (
     OptionalReasonSerializer,
     ReasonSerializer,
     StandingsSerializer,
+    SubstituteSerializer,
     TournamentPlayerSerializer,
     TournamentSerializer,
 )
@@ -167,7 +168,8 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     )
     referees_only = (Match.Outcome.WALKOVER, Match.Outcome.DISQUALIFIED)
     referee_decided = standing is not None and standing["outcome"] in referees_only
-    may_record = referee or (staff and not referee_decided)
+    # Nobody records or changes the result of a match they play in.
+    may_record = (referee or (staff and not referee_decided)) and not official.plays_in(match, request.user)
     shown["can_record_result"] = may_record and not closed and draw.status == DrawVersion.Status.PUBLISHED
     shown["can_award_walkover"] = shown["can_record_result"] and referee
     shown["held_for_correction"] = match.resolutions.filter(resolved_at__isnull=True).exists()
@@ -734,6 +736,38 @@ class EntryViewSet(viewsets.GenericViewSet):
             return "withdrawn"
 
         return self._staff_change(request, tournament_pk, event_pk, pk, change)
+
+    @extend_schema(request=SubstituteSerializer, responses={200: EntrySerializer})
+    def substitute(self, request, tournament_pk, event_pk, pk):
+        """A player of the entry leaves and someone else plays in their place (TASK-155). The place
+        carries on: its results so far stay with it, and the matches already played stay with whoever
+        played them. Singles and doubles answer with the new entry that holds the place now (the old
+        one is `replaced`); a team keeps its entry with the new player on its roster. Refused while one
+        of the entry's matches is being played."""
+        serializer = SubstituteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            entry = get_object_or_404(entry_list(), pk=pk, event_id=event_pk, event__tournament=tournament)
+            leaving = get_object_or_404(User, pk=asked["leaving_user_id"])
+            # Like the entry desk: verified players, or the host's own unclaimed guests (REQ-003).
+            enterable = VERIFIED | Q(
+                guest__organization_id=tournament.organization_id, guest__claimed_by__isnull=True
+            )
+            joining = User.objects.filter(enterable, pk=asked["joining_user_id"], is_active=True).first()
+            if joining is None:
+                raise ValidationError({"joining_user_id": "We don't know this player."})
+            taking = substitutes.substitute(entry, leaving, joining, request.user, asked["reason"])
+            matchday.log(
+                tournament,
+                matchday.Action.PLAYER_SWAPPED,
+                f"{entry.event.name}: {joining.display_name} plays in place of {leaving.display_name}",
+                actor=request.user,
+                reason=asked["reason"],
+            )
+        send_entry_news(taking, "swapped", request.user)
+        return self._reply(taking)
 
     @extend_schema(request=None, responses={200: EntrySerializer})
     def check_in(self, request, tournament_pk, event_pk, pk):

@@ -1,11 +1,11 @@
 import { byRound, roundHeading, sideWon, type Draw, type DrawMatch, type DrawSide } from "@/lib/draws"
 import { EntryNames } from "@/components/tournaments/PlayerNames"
 
-function Side({ side, won }: { side: DrawSide; won: boolean }) {
+function Side({ side, won, matchId }: { side: DrawSide; won: boolean; matchId: string }) {
   if (!side.entry) return <span className="text-muted-foreground italic">{side.awaiting}</span>
   return (
     <span className={won ? "font-bold" : undefined}>
-      <EntryNames entry={side.entry} />
+      <EntryNames entry={side.entry} exceptMatch={matchId} />
       {side.seed && <span className="ml-1 text-sm font-normal text-muted-foreground">[{side.seed}]</span>}
       {won && <span className="sr-only"> (winner)</span>}
     </span>
@@ -18,11 +18,11 @@ function MatchLine({ match }: { match: DrawMatch }) {
   return (
     <li className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border bg-card px-3 py-2">
       <span className="min-w-0 break-words">
-        <Side side={match.a} won={won(match.a)} />
+        <Side side={match.a} won={won(match.a)} matchId={match.id} />
       </span>
       <span className="text-sm text-muted-foreground">{match.b ? "v" : "–"}</span>
       <span className="min-w-0 text-right break-words">
-        {match.b ? <Side side={match.b} won={won(match.b)} /> : <span className="font-semibold text-muted-foreground">Bye</span>}
+        {match.b ? <Side side={match.b} won={won(match.b)} matchId={match.id} /> : <span className="font-semibold text-muted-foreground">Bye</span>}
       </span>
     </li>
   )

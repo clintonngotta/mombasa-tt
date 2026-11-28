@@ -166,9 +166,35 @@ export function formatFee(fee: Money) {
   return `${fee.currency} ${amount.toLocaleString("en-KE", { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2 })}`
 }
 
+const STAGE_WORDS: Record<string, string> = {
+  group: "in the groups",
+  knockout: "in the knockout",
+  quarter_final: "from the quarter-finals",
+  semi_final: "from the semi-finals",
+  final: "in the final",
+}
+const STAGE_ORDER = ["group", "knockout", "quarter_final", "semi_final", "final"]
+
+/** "best of 3, 5 from the quarter-finals, 7 in the final": the default, then each stage that changes it. The
+ * groups and the first knockout rounds play the default unless set; a later knockout stage plays like the one before. */
+export function matchLengths(e: Pick<TournamentEvent, "best_of" | "best_of_by_stage">) {
+  const stages = e.best_of_by_stage ?? {}
+  const changes: string[] = []
+  if (stages.group && stages.group !== e.best_of) changes.push(`${stages.group} ${STAGE_WORDS.group}`)
+  let current = e.best_of
+  for (const key of STAGE_ORDER.slice(1)) {
+    const games = stages[key]
+    if (games && games !== current) {
+      changes.push(`${games} ${STAGE_WORDS[key]}`)
+      current = games
+    }
+  }
+  return [`best of ${e.best_of}`, ...changes].join(", ")
+}
+
 /** One line about how an event is played. */
 export function eventSummary(e: TournamentEvent) {
-  const parts = [KIND_LABEL[e.kind], FORMAT_LABEL[e.format], `best of ${e.best_of}`]
+  const parts = [KIND_LABEL[e.kind], FORMAT_LABEL[e.format], matchLengths(e)]
   if (e.kind === "team" && e.tie_wins_needed) parts.push(`ties of ${tieSummary(e.tie_rubbers, e.tie_wins_needed)}`)
   if (e.format === "groups_knockout" && e.group_count && e.qualifiers_per_group) {
     parts.push(`${e.group_count} groups, ${e.qualifiers_per_group} through from each`)

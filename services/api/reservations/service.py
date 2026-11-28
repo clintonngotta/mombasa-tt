@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from competitions import jumbles
@@ -558,3 +559,43 @@ def tables_of(tournament: Tournament) -> list[dict]:
             }
         )
     return rows
+
+
+def playing_now(tournament_id) -> dict:
+    """Who is on a table in the tournament right now, by user id: the table, the match and its event,
+    and whether play there has begun (`live`) or the players are still being called or warming up.
+    One query for the holds and one for the sheets, whatever the number of players."""
+    from scoring.models import Scorecard  # scoring builds on reservations' tables
+
+    held = list(
+        Hold.objects.filter(
+            active=True,
+            user__isnull=False,
+            reservation__status=Reservation.Status.ACTIVE,
+            reservation__match__draw__event__tournament_id=tournament_id,
+        ).values(
+            "user_id",
+            "reservation__table__label",
+            "reservation__match_id",
+            "reservation__match__draw__event_id",
+            "reservation__match__draw__event__name",
+        )
+    )
+    if not held:
+        return {}
+    matches = {row["reservation__match_id"] for row in held}
+    begun = set(
+        Scorecard.objects.filter(Q(match_id__in=matches) | Q(rubber__match_id__in=matches), revision__gt=0)
+        .annotate(on=Coalesce("match_id", "rubber__match_id"))
+        .values_list("on", flat=True)
+    )
+    return {
+        row["user_id"]: {
+            "table": row["reservation__table__label"],
+            "match_id": row["reservation__match_id"],
+            "event_id": row["reservation__match__draw__event_id"],
+            "event_name": row["reservation__match__draw__event__name"],
+            "live": row["reservation__match_id"] in begun,
+        }
+        for row in held
+    }

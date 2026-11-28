@@ -12,6 +12,7 @@ from organizations.models import Organization
 from profiles.serializers import PlayerSerializer
 from scoring.serializers import ScoringSummarySerializer
 
+from . import formats
 from .draws import MAX_SEEDS
 from .models import (
     DEFAULT_TIE_RUBBERS,
@@ -58,6 +59,13 @@ class EventSerializer(serializers.ModelSerializer):
     entry_fee = EntryFeeSerializer(source="*", required=False)
     capacity = serializers.IntegerField(min_value=2, max_value=MAX_CAPACITY, allow_null=True, required=False)
     best_of = serializers.ChoiceField(choices=BEST_OF, required=False)
+    best_of_by_stage = serializers.DictField(
+        child=serializers.ChoiceField(choices=BEST_OF),
+        required=False,
+        help_text="Longer matches as the event goes on: best of 3, 5 or 7 for any of `group`, `knockout` "
+        "(rounds before the quarter-finals), `quarter_final`, `semi_final`, `final`. A knockout stage not "
+        "given plays as the one before it; the rest play `best_of`.",
+    )
     rest_minutes = serializers.IntegerField(min_value=0, max_value=MAX_REST_MINUTES, required=False)
     call_grace_minutes = serializers.IntegerField(
         min_value=1,
@@ -99,6 +107,7 @@ class EventSerializer(serializers.ModelSerializer):
             "format",
             "capacity",
             "best_of",
+            "best_of_by_stage",
             "rest_minutes",
             "call_grace_minutes",
             "registration_opens_at",
@@ -140,9 +149,24 @@ class EventSerializer(serializers.ModelSerializer):
         counted = getattr(event, "accepted_count", None)
         return event.entries.filter(status=Entry.Status.ACCEPTED).count() if counted is None else counted
 
+    def validate_best_of_by_stage(self, value):
+        problem = formats.stage_problem(value)
+        if problem:
+            raise serializers.ValidationError(problem)
+        return value
+
     def validate(self, attrs):
         def current(name):
             return attrs[name] if name in attrs else getattr(self.instance, name, None)
+
+        # Only the stages the format has: no groups in a knockout, no knockout in a round robin.
+        if "best_of_by_stage" in attrs or "format" in attrs:
+            stages = current("best_of_by_stage") or {}
+            kept = {
+                formats.GROUP: current("format") in (Event.Format.ROUND_ROBIN, Event.Format.GROUPS_KNOCKOUT),
+                **dict.fromkeys(formats.KNOCKOUT_STAGES, current("format") != Event.Format.ROUND_ROBIN),
+            }
+            attrs["best_of_by_stage"] = {key: games for key, games in stages.items() if kept[key]}
 
         # What the caller asked to change in the structure, before the clean-up below can hide it.
         self.structure_changes = {
@@ -438,12 +462,25 @@ class EntryPlayerSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class SubstituteSerializer(serializers.Serializer):
+    """A player of the entry leaves and someone else plays in their place from now on (TASK-155)."""
+
+    leaving_user_id = serializers.UUIDField()
+    joining_user_id = serializers.UUIDField()
+    reason = serializers.CharField(
+        max_length=300, trim_whitespace=True, allow_blank=True, required=False, default=""
+    )
+
+
 class EntrySerializer(serializers.ModelSerializer):
     """An entry as its players, staff and (once accepted) everybody else see it. Deliberately nothing
     about payment: accepted means a place in the event, not a paid fee (REQ-008)."""
 
     players = EntryPlayerSerializer(many=True, read_only=True)
     captain_id = serializers.UUIDField(read_only=True, allow_null=True)
+    replaced_by_id = serializers.UUIDField(
+        read_only=True, allow_null=True, help_text="For a replaced entry: the entry that took its place."
+    )
     mine = serializers.SerializerMethodField()
     my_check_in_at = serializers.SerializerMethodField()
 
@@ -463,6 +500,7 @@ class EntrySerializer(serializers.ModelSerializer):
             "checked_in_at",
             "my_check_in_at",
             "mine",
+            "replaced_by_id",
         ]
         read_only_fields = fields
 
@@ -529,17 +567,50 @@ class OptionalReasonSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=300, trim_whitespace=True, allow_blank=True, required=False)
 
 
+class PlayingNowSerializer(serializers.Serializer):
+    """Where the entry is playing right now, in any event of the tournament (user request, 2026-11-28)."""
+
+    table = serializers.CharField()
+    match_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    live = serializers.BooleanField(help_text="Scoring has begun; false while being called or warming up.")
+
+
 class DrawEntrySerializer(serializers.ModelSerializer):
     """An accepted entry as a draw shows it: its name and players."""
 
     title = serializers.SerializerMethodField()
     players = EntryPlayerSerializer(many=True, read_only=True)
     mine = serializers.SerializerMethodField()
+    playing = serializers.SerializerMethodField()
 
     class Meta:
         model = Entry
-        fields = ["id", "title", "pool", "players", "mine"]
+        fields = ["id", "title", "pool", "players", "mine", "playing"]
         read_only_fields = fields
+
+    @extend_schema_field(PlayingNowSerializer(allow_null=True))
+    def get_playing(self, entry):
+        """The table one of its players is on now, or null. Worked out once per request and tournament."""
+        from reservations import service as reservations  # reservations builds on competitions
+
+        request = self.context["request"]
+        cache = getattr(request, "_playing_now", None)
+        if cache is None:
+            cache = request._playing_now = {"events": {}, "tournaments": {}}
+        tournament_id = cache["events"].get(entry.event_id)
+        if tournament_id is None:
+            tournament_id = cache["events"][entry.event_id] = (
+                Event.objects.filter(pk=entry.event_id).values_list("tournament_id", flat=True).first()
+            )
+        found = cache["tournaments"].get(tournament_id)
+        if found is None:
+            found = cache["tournaments"][tournament_id] = reservations.playing_now(tournament_id)
+        for place in entry.players.all():
+            if place.user_id in found:
+                return PlayingNowSerializer(found[place.user_id]).data
+        return None
 
     def get_mine(self, entry) -> bool:
         """Whether the caller plays in it, so screens can point out their own matches."""
@@ -608,6 +679,7 @@ class MatchSerializer(serializers.Serializer):
     dispatched_at = serializers.DateTimeField(
         allow_null=True, help_text="When it was sent to its table. Null while it isn't on one."
     )
+    best_of = serializers.IntegerField(help_text="Games it is played over: 3, 5 or 7, by its stage.")
 
 
 class LineupSideSerializer(serializers.Serializer):
@@ -726,6 +798,35 @@ class ResultEntrySerializer(serializers.Serializer):
         default="",
         help_text="Why, kept in the match-day log: for a walkover, a no-show after the grace period, a "
         "withdrawal or an injury before the start (REQ-043).",
+    )
+
+
+class EntryWalkoverSerializer(serializers.Serializer):
+    """The referee gives an entry's opponents every match it has left in the event by walkover."""
+
+    reason = serializers.CharField(
+        max_length=300,
+        trim_whitespace=True,
+        allow_blank=True,
+        required=False,
+        default="",
+        help_text="Why, kept in the match-day log for each match: a no-show after the grace period, a "
+        "withdrawal or an injury before the start (REQ-043).",
+    )
+
+
+class WalkedOverMatchSerializer(serializers.Serializer):
+    match_id = serializers.UUIDField()
+    label = serializers.CharField(help_text='Where it sits in the draw: "Group A", "Knockout round 2".')
+    opponent = serializers.CharField(allow_blank=True)
+    code = serializers.CharField(allow_blank=True, help_text="Why it was left out; empty when awarded.")
+    message = serializers.CharField(allow_blank=True)
+
+
+class EntryWalkoversSerializer(serializers.Serializer):
+    awarded = WalkedOverMatchSerializer(many=True, help_text="Matches the opponent now wins by walkover.")
+    skipped = WalkedOverMatchSerializer(
+        many=True, help_text="Matches left as they were: play had begun, the opponent isn't known yet, …"
     )
 
 

@@ -12,8 +12,8 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from competitions import drawing, matchday, official, ties
-from competitions.models import DrawVersion, Event, Match, Rubber, RubberPlayer, Tournament
+from competitions import drawing, formats, matchday, official, ties
+from competitions.models import DrawVersion, EntryPlayer, Event, Match, Rubber, RubberPlayer, Tournament
 from core.exceptions import ApiException
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
@@ -57,7 +57,8 @@ def config_of(scorecard: Scorecard, with_carry: bool = True) -> dict:
         if scorecard.rubber_id
         else event.kind == Event.Kind.DOUBLES
     )
-    config = {"best_of": event.best_of, "doubles": doubles}
+    match = scorecard.rubber.match if scorecard.rubber_id else scorecard.match
+    config = {"best_of": formats.best_of_for(match, event), "doubles": doubles}
     if not with_carry:
         return config
     carry = scorecard.carry if scorecard.revision else incidents.carry_for(scorecard, players_of)
@@ -79,6 +80,13 @@ def players_of(scorecard: Scorecard) -> dict[str, list]:
         "a": [place.user for place in match.entry_a.players.select_related("user")],
         "b": [place.user for place in match.entry_b.players.select_related("user")],
     }
+
+
+def _plays_on(scorecard: Scorecard, user) -> bool:
+    if scorecard.rubber_id:
+        return scorecard.rubber.players.filter(user_id=user.pk).exists()
+    sides = [entry_id for entry_id in (scorecard.match.entry_a_id, scorecard.match.entry_b_id) if entry_id]
+    return EntryPlayer.objects.filter(entry_id__in=sides, user_id=user.pk).exists()
 
 
 def label_of(scorecard: Scorecard) -> str:
@@ -275,7 +283,11 @@ def take_device(scorecard: Scorecard, actor, device_id, label: str, take_over: b
 def is_umpire_of(scorecard: Scorecard, user) -> bool:
     """The user is assigned to the sheet and still holds a role that lets them score here. Losing the
     role or the membership takes the sheet away at once, not at the next assignment."""
-    return scorecard.umpire_id == user.id and can_umpire(user, event_of(scorecard))
+    if scorecard.umpire_id != user.id or not can_umpire(user, event_of(scorecard)):
+        return False
+    # Assigning refuses the match's own players; this keeps it so if they become one afterwards
+    # (put in a rubber's lineup, say), since an umpire never scores their own match.
+    return not _plays_on(scorecard, user)
 
 
 def locked(scorecard_id, user) -> Scorecard:

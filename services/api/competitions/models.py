@@ -218,6 +218,7 @@ class Event(models.Model):
         "kind",
         "format",
         "best_of",
+        "best_of_by_stage",
         "seeding",
         "group_count",
         "qualifiers_per_group",
@@ -233,6 +234,10 @@ class Event(models.Model):
     format = models.CharField(max_length=16, choices=Format.choices)
     capacity = models.PositiveSmallIntegerField(null=True, blank=True)  # entries; null = no limit
     best_of = models.PositiveSmallIntegerField(default=5)
+    # Longer matches as the event goes on (user request, 2026-11-28): {stage: 3 | 5 | 7} for any of
+    # STAGE_KEYS. A stage not given plays as the one before it; groups and the first knockout rounds
+    # fall back to `best_of`. See `competitions.formats`.
+    best_of_by_stage = models.JSONField(default=dict, blank=True)
     rest_minutes = models.PositiveSmallIntegerField(default=10)
     # How long a called player has to report at the table before they are flagged (REQ-043).
     call_grace_minutes = models.PositiveSmallIntegerField(default=10)
@@ -352,6 +357,9 @@ class Entry(models.Model):
         WITHDRAWN = "withdrawn"
         # A Jumbles round's pair, made by the draw: a man and a woman who play one match together.
         PAIRING = "pairing"
+        # A player left part-way and someone took their place: `replaced_by` plays the matches left,
+        # carrying on with this entry's results; the matches it played stay its own (TASK-155).
+        REPLACED = "replaced"
 
     class Pool(models.TextChoices):
         MEN = "men", "Men"
@@ -383,6 +391,9 @@ class Entry(models.Model):
     # Why staff rejected or withdrew it; shown to the entry's players and to staff only.
     reason = models.CharField(max_length=300, blank=True)
     withdrawn_at = models.DateTimeField(null=True, blank=True)
+    replaced_by = models.OneToOneField(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="replaces"
+    )
     checked_in_at = models.DateTimeField(null=True, blank=True)
     checked_in_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
@@ -1029,6 +1040,7 @@ class MatchDayLog(models.Model):
         NOT_BEFORE = "not_before", "Player's start time set"
         MATCH_MOVED = "match_moved", "Match moved later"
         MATCH_TIMED = "match_timed", "Match time set"
+        PLAYER_SWAPPED = "player_swapped", "Player swapped in"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")

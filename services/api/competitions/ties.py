@@ -11,7 +11,7 @@ Callers hold the tournament row lock, like every other change to a tournament.
 
 from core.exceptions import ApiException
 
-from . import drawing, official, signals, standings
+from . import drawing, formats, official, signals, standings
 from .models import DrawVersion, Entry, Event, Lineup, Match, Rubber, RubberPlayer
 
 R = Rubber.Status
@@ -151,7 +151,7 @@ def record_rubber(
         raise _conflict("not_in_match", "The winner is one of the two teams of the tie.")
     official.ensure_not_held(match)
     games = [list(game) for game in games]
-    drawing.check_games(match.draw.event.best_of, games, outcome, a_won=winner.id == match.entry_a_id)
+    drawing.check_games(formats.best_of_for(match), games, outcome, a_won=winner.id == match.entry_a_id)
     rubber.winner = winner
     rubber.status = R.COMPLETED
     rubber.outcome = outcome
@@ -188,7 +188,7 @@ def result_of(match: Match) -> standings.Result:
                 "l",
                 rubber.outcome or standings.PLAYED,
                 tuple((a, b) if rubber_a_won else (b, a) for a, b in rubber.games),
-                best_of=event.best_of,
+                best_of=formats.best_of_for(match, event),
             )
         )
         # `credited` is from the rubber's winner; `games` is kept from the tie winner's side.
@@ -198,13 +198,13 @@ def result_of(match: Match) -> standings.Result:
         # still needed, each in straight games to nil.
         missing = max(event.tie_wins_needed - won, 0)
         won += missing
-        games += [(standings.GAME_POINTS, 0)] * (missing * (event.best_of // 2 + 1))
+        games += [(standings.GAME_POINTS, 0)] * (missing * (formats.best_of_for(match, event) // 2 + 1))
     return standings.Result(
         str(match.winner_id),
         str(loser),
         match.outcome or standings.PLAYED,
         tuple(games),
-        best_of=event.best_of,
+        best_of=formats.best_of_for(match, event),
         rubbers=(won, lost),
     )
 

@@ -7,12 +7,13 @@ or decided), nobody is replaced silently: the event is paused and a `Resolution`
 organizers to choose between keeping the later match as played and putting the right entry in.
 """
 
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from core.exceptions import ApiException
 
-from . import drawing, official, signals
+from . import drawing, formats, official, signals, substitutes
 from .models import DrawVersion, Entry, Event, Match, Resolution, Rubber, Tournament
 
 Source = official.Source
@@ -92,12 +93,12 @@ def correct(
     a_won = winner.id == match.entry_a_id
     if rubber is not None:
         _ensure_tie_ends_the_same(match, rubber, winner)
-        drawing.check_games(event.best_of, games, outcome, a_won=a_won)
+        drawing.check_games(formats.best_of_for(match, event), games, outcome, a_won=a_won)
         target = rubber
     elif event.is_team:
         raise _conflict("correct_the_rubbers", "A tie is corrected through its rubbers.")
     else:
-        drawing.check_games(event.best_of, games, outcome, a_won=a_won)
+        drawing.check_games(formats.best_of_for(match, event), games, outcome, a_won=a_won)
         target = match
     winner_changed = target.winner_id != winner.id
     target.winner, target.outcome, target.games = winner, outcome, games
@@ -230,7 +231,8 @@ def _move_on(match: Match, winner: Entry | None, cause) -> list[Resolution]:
     opened = []
     for side in ("a", "b"):
         for later in Match.objects.filter(**{f"feeder_{side}": match}).select_related("draw__event"):
-            opened += _set_sides(later, {side: winner}, cause)
+            # A winner replaced by a swapped-in player since is followed by their place (TASK-155).
+            opened += _set_sides(later, {side: substitutes.current(winner)}, cause)
     return opened
 
 
@@ -357,3 +359,69 @@ def _replace(resolutions: list[Resolution], match: Match, actor) -> list[Resolut
     _drop_lineups(match)
     resolutions[0].struck_out = struck
     return opened
+
+
+def walk_over_entry(
+    event: Event, entry: Entry, actor, reason: str = ""
+) -> tuple[list[tuple[Match, object]], list[dict]]:
+    """An entry that doesn't turn up loses every match it has left in the event by walkover, in one
+    go, instead of one match at a time. Each match goes through `enter` as if the referee had given
+    that walkover alone, so the winners move on and tables and players are freed. A match is left out
+    when play there has begun, its opponent isn't known yet, or it can't be decided now (held for a
+    correction, a tie with a rubber decided); the reply says which and why. A knockout match the entry
+    reaches while this runs (a group it still qualifies from) is walked over too. A match the referee
+    plays in is left for someone else. Returns each match
+    awarded with the table it was on, and those left out."""
+    from scoring.models import Scorecard  # scoring builds on competitions
+
+    if event.tournament.status != Tournament.Status.IN_PROGRESS or event.status != Event.Status.IN_PROGRESS:
+        raise _conflict("not_in_play", "Start the tournament and the event before recording results.")
+    if event.is_closed or event.tournament.is_closed:
+        raise _conflict("event_closed", "This event is over, so its results can't change here.")
+
+    awarded: list[tuple[Match, object]] = []
+    skipped: list[dict] = []
+    seen: set = set()
+    while True:
+        left = list(
+            Match.objects.select_for_update(of=("self",))
+            .select_related("draw__event__tournament", "entry_a", "entry_b")
+            .filter(
+                draw__event=event, draw__status=DrawVersion.Status.PUBLISHED, status=Match.Status.SCHEDULED
+            )
+            .filter(Q(entry_a=entry) | Q(entry_b=entry))
+            .exclude(id__in=seen)
+            .order_by("stage", "group", "round", "position")
+        )
+        if not left:
+            return awarded, skipped
+        for match in left:
+            seen.add(match.id)
+            opponent = match.entry_b if match.entry_a_id == entry.id else match.entry_a
+            if opponent is None:
+                skipped.append(
+                    {"match": match, "code": "match_not_ready", "message": "The opponent isn't known yet."}
+                )
+                continue
+            if official.plays_in(match, actor):
+                skipped.append(
+                    {"match": match, "code": "plays_in_match", "message": "You play in this match."}
+                )
+                continue
+            scored = Scorecard.objects.filter(
+                Q(match=match) | Q(rubber__match=match), revision__gt=0
+            ).exists()
+            if scored or match.rubbers.exclude(status=Rubber.Status.SCHEDULED).exists():
+                skipped.append(
+                    {"match": match, "code": "already_started", "message": "Play has begun in this match."}
+                )
+                continue
+            table = match.table  # read before the result frees it
+            try:
+                with transaction.atomic():  # a refusal undoes only this match
+                    enter(match, None, opponent, Match.Outcome.WALKOVER, [], actor, reason)
+            except ApiException as refused:
+                code = getattr(refused.detail, "code", "refused")
+                skipped.append({"match": match, "code": code, "message": str(refused.detail)})
+                continue
+            awarded.append((match, table))

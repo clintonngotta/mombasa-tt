@@ -58,8 +58,9 @@ type Journey = {
   onChange: (entryId: string | null) => void
 }
 
-function SideName({ side, won, align, highlighted, onJourneyChange }: {
+function SideName({ side, won, align, highlighted, onJourneyChange, matchId }: {
   side: DrawSide
+  matchId: string
   won: boolean
   align: "left" | "right"
   highlighted: boolean
@@ -75,7 +76,7 @@ function SideName({ side, won, align, highlighted, onJourneyChange }: {
           onMouseEnter={onJourneyChange && (() => onJourneyChange(entry.id))}
           onMouseLeave={onJourneyChange && (() => onJourneyChange(null))}
         >
-          <EntryNames entry={entry} />
+          <EntryNames entry={entry} exceptMatch={matchId} />
           {side.seed && <span className={cn("ml-1 text-sm font-normal", !highlighted && "text-muted-foreground")}>[{side.seed}]</span>}
           {entry.mine && <YouBadge />}
           {won && <WinnerMark highlighted={highlighted} />}
@@ -103,12 +104,12 @@ export function MatchCard({ match, to, heading, timeZone, compact = false, journ
       {heading && <span className={cn("text-sm font-semibold", secondaryText)}>{heading}</span>}
       {live && <span className="self-start rounded-sm bg-destructive px-1.5 py-0.5 text-xs font-bold text-white">Live</span>}
       <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <SideName side={match.a} won={sideWon(match, match.a)} align="left" highlighted={highlighted} onJourneyChange={journey?.onChange} />
+        <SideName matchId={match.id} side={match.a} won={sideWon(match, match.a)} align="left" highlighted={highlighted} onJourneyChange={journey?.onChange} />
         <span className={cn("font-display text-xl font-bold tabular-nums", !score && "text-sm font-normal", !score && secondaryText)}>
           <span aria-hidden>{match.b ? (score ?? "v") : "–"}</span>
           <span className="sr-only">{match.b ? `, ${spokenScore(match)}, ` : ", "}</span>
         </span>
-        {match.b ? <SideName side={match.b} won={sideWon(match, match.b)} align="right" highlighted={highlighted} onJourneyChange={journey?.onChange} /> : <span className={cn("text-right font-semibold", secondaryText)}>Bye</span>}
+        {match.b ? <SideName matchId={match.id} side={match.b} won={sideWon(match, match.b)} align="right" highlighted={highlighted} onJourneyChange={journey?.onChange} /> : <span className={cn("text-right font-semibold", secondaryText)}>Bye</span>}
       </span>
       {match.b && (!compact || detail) && (
         <span className={cn("flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm", secondaryText)}>
