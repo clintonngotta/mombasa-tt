@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from core.exceptions import ApiException
 
-from . import drawing, official, signals, substitutes
+from . import drawing, formats, official, signals, substitutes
 from .models import DrawVersion, Entry, Event, Match, Resolution, Rubber, Tournament
 
 Source = official.Source
@@ -93,12 +93,12 @@ def correct(
     a_won = winner.id == match.entry_a_id
     if rubber is not None:
         _ensure_tie_ends_the_same(match, rubber, winner)
-        drawing.check_games(event.best_of, games, outcome, a_won=a_won)
+        drawing.check_games(formats.best_of_for(match, event), games, outcome, a_won=a_won)
         target = rubber
     elif event.is_team:
         raise _conflict("correct_the_rubbers", "A tie is corrected through its rubbers.")
     else:
-        drawing.check_games(event.best_of, games, outcome, a_won=a_won)
+        drawing.check_games(formats.best_of_for(match, event), games, outcome, a_won=a_won)
         target = match
     winner_changed = target.winner_id != winner.id
     target.winner, target.outcome, target.games = winner, outcome, games

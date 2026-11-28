@@ -10905,6 +10905,10 @@ export interface components {
             format: components["schemas"]["EventFormatEnum"];
             capacity: number | null;
             best_of: components["schemas"]["BestOfEnum"];
+            /** @description Longer matches as the event goes on: best of 3, 5 or 7 for any of `group`, `knockout` (rounds before the quarter-finals), `quarter_final`, `semi_final`, `final`. A knockout stage not given plays as the one before it; the rest play `best_of`. */
+            best_of_by_stage: {
+                [key: string]: 3 | 5 | 7;
+            };
             rest_minutes: number;
             /** @description Minutes a called player has to report at the table before the control centre flags them as a no-show (REQ-043). Only the referee then awards a walkover. */
             call_grace_minutes: number;
@@ -10976,6 +10980,10 @@ export interface components {
             format: components["schemas"]["EventFormatEnum"];
             capacity?: number | null;
             best_of?: components["schemas"]["BestOfEnum"];
+            /** @description Longer matches as the event goes on: best of 3, 5 or 7 for any of `group`, `knockout` (rounds before the quarter-finals), `quarter_final`, `semi_final`, `final`. A knockout stage not given plays as the one before it; the rest play `best_of`. */
+            best_of_by_stage?: {
+                [key: string]: 3 | 5 | 7;
+            };
             rest_minutes?: number;
             /** @description Minutes a called player has to report at the table before the control centre flags them as a no-show (REQ-043). Only the referee then awards a walkover. */
             call_grace_minutes?: number;
@@ -12020,6 +12028,8 @@ export interface components {
              * @description When it was sent to its table. Null while it isn't on one.
              */
             dispatched_at: string | null;
+            /** @description Games it is played over: 3, 5 or 7, by its stage. */
+            best_of: number;
         };
         /** @description Where the call of the match on a table stands (REQ-043). */
         MatchCallState: {
@@ -12098,6 +12108,8 @@ export interface components {
              * @description When it was sent to its table. Null while it isn't on one.
              */
             dispatched_at: string | null;
+            /** @description Games it is played over: 3, 5 or 7, by its stage. */
+            best_of: number;
             /** @description Empty for a knockout match. */
             group_name: string;
             /** @description The round its winner goes on to; empty when nothing follows. */
@@ -14043,6 +14055,10 @@ export interface components {
             format?: components["schemas"]["EventFormatEnum"];
             capacity?: number | null;
             best_of?: components["schemas"]["BestOfEnum"];
+            /** @description Longer matches as the event goes on: best of 3, 5 or 7 for any of `group`, `knockout` (rounds before the quarter-finals), `quarter_final`, `semi_final`, `final`. A knockout stage not given plays as the one before it; the rest play `best_of`. */
+            best_of_by_stage?: {
+                [key: string]: 3 | 5 | 7;
+            };
             rest_minutes?: number;
             /** @description Minutes a called player has to report at the table before the control centre flags them as a no-show (REQ-043). Only the referee then awards a walkover. */
             call_grace_minutes?: number;
@@ -14756,6 +14772,8 @@ export interface components {
              * @description When it was sent to its table. Null while it isn't on one.
              */
             dispatched_at: string | null;
+            /** @description Games it is played over: 3, 5 or 7, by its stage. */
+            best_of: number;
             side: components["schemas"]["SideEnum"];
             /**
              * @description For the player: won or lost; empty while it isn't decided, and for a bye.

@@ -109,6 +109,7 @@ def _in_draw(draw: DrawVersion, own: Entry | None, mine: set, event: Event, staf
         {p.entry_id: p.seed for p in places},
         event.status == Event.Status.IN_PROGRESS,
         drawing._times_shown(draw, staff),
+        event,
     )
     theirs = [
         {**shown(match), "side": "a" if match.entry_a_id in mine else "b", "result": _result(match, mine)}

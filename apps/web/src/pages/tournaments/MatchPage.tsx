@@ -94,7 +94,7 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
   const decided = m.status === "completed"
   // A tie under way already has rubbers won to show.
   const counted = decided ? m.outcome !== "walkover" : !!m.tie_score
-  const round = [m.group_name, m.round_name].filter(Boolean).join(" · ")
+  const round = [m.group_name, m.round_name, m.status !== "bye" && !m.tie ? `Best of ${m.best_of}` : ""].filter(Boolean).join(" · ")
   const names = { a: m.a.entry?.title ?? "First side", b: b.entry?.title ?? "Second side" }
   const facts: [string, string][] = [
     ["Event", event.name],
