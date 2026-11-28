@@ -6566,11 +6566,35 @@ export interface paths {
         };
         /**
          * @description After confirming: the match that takes this table next (REQ-053). The match already sent
-         *     there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned.
+         *     there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned
+         *     unless the umpire claims it.
          */
         get: operations["scorecards_next_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/next/claim/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The umpire takes the match recommended for their table next (user request, 2026-11-28),
+         *     once they have confirmed the one they scored. They become its umpire, and a match still in the
+         *     queue waits for their table. Refused when somebody already umpires it (`has_umpire`), when there
+         *     is none (`no_next_match`), and by every rule of assigning an umpire (one of its players, playing
+         *     right now, no longer an umpire here).
+         */
+        post: operations["scorecards_next_claim_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16962,6 +16986,10 @@ export interface components {
              * @description Set when the next match is already this umpire's to score.
              */
             scorecard_id: string | null;
+            /** @description Who else umpires the next match, if anyone. */
+            umpire: string;
+            /** @description Nobody umpires the next match yet and this umpire may take it (claim-next). */
+            can_claim: boolean;
         };
         /** @description One of the tournament's umpires. */
         UmpireRoster: {
@@ -31916,6 +31944,36 @@ export interface operations {
         };
     };
     scorecards_next_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpireNext"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    scorecards_next_claim_create: {
         parameters: {
             query?: never;
             header?: never;

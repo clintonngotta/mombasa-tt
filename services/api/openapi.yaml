@@ -15510,7 +15510,41 @@ paths:
       operationId: scorecards_next_retrieve
       description: |-
         After confirming: the match that takes this table next (REQ-053). The match already sent
-        there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned.
+        there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned
+        unless the umpire claims it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - scorecards
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UmpireNext'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/scorecards/{id}/next/claim/:
+    post:
+      operationId: scorecards_next_claim_create
+      description: |-
+        The umpire takes the match recommended for their table next (user request, 2026-11-28),
+        once they have confirmed the one they scored. They become its umpire, and a match still in the
+        queue waits for their table. Refused when somebody already umpires it (`has_umpire`), when there
+        is none (`no_next_match`), and by every rule of assigning an umpire (one of its players, playing
+        right now, no longer an umpire here).
       parameters:
       - in: path
         name: id
@@ -40052,10 +40086,19 @@ components:
           format: uuid
           nullable: true
           description: Set when the next match is already this umpire's to score.
+        umpire:
+          type: string
+          description: Who else umpires the next match, if anyone.
+        can_claim:
+          type: boolean
+          description: Nobody umpires the next match yet and this umpire may take
+            it (claim-next).
       required:
+      - can_claim
       - next
       - on_table
       - scorecard_id
+      - umpire
     UmpireRoster:
       type: object
       description: One of the tournament's umpires.
