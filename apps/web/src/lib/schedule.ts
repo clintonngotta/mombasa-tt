@@ -11,6 +11,7 @@ export type SessionInput = Schemas["SessionRequest"]
 export type ScheduleVersion = Schemas["ScheduleVersion"]
 export type ScheduleVersionSummary = Schemas["ScheduleVersionSummary"]
 export type DelayReason = Schemas["DelayReasonEnum"]
+export type PlannedDay = Schemas["PlannedDay"]
 
 export const DELAY_REASON_LABEL: Record<DelayReason, string> = {
   late_start: "Late start",
@@ -30,7 +31,8 @@ const base = (tournamentId: string) => `/tournaments/${tournamentId}/schedule/`
 /** Every match still to be played and not on a table, as it is planned now; competition staff only. */
 export const getSchedule = (tournamentId: string) => api<Schedule>(base(tournamentId))
 
-export type RecommendOptions = { day_starts: string; day_ends: string; table_ids: string[] }
+/** `use_sessions` false plans within the day's hours on every day, setting the sessions aside. */
+export type RecommendOptions = { day_starts: string; day_ends: string; table_ids: string[]; use_sessions: boolean }
 /** A start and table for every match. Nothing is kept until `keepSchedule`. */
 export const recommendSchedule = (tournamentId: string, options: RecommendOptions) =>
   api<Recommendation>(`${base(tournamentId)}recommend/`, { body: options })

@@ -214,6 +214,12 @@ class RecommendRequestSerializer(serializers.Serializer):
     starts_at = serializers.DateTimeField(required=False, help_text="Not before; defaults to now.")
     day_starts = serializers.TimeField(required=False, default=scheduling.DAY_STARTS)
     day_ends = serializers.TimeField(required=False, default=scheduling.DAY_ENDS)
+    use_sessions = serializers.BooleanField(
+        required=False,
+        default=True,
+        help_text="Plan inside the sessions (when there are any); false plans within the day's hours on "
+        "every day of the tournament instead.",
+    )
     table_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, help_text="Defaults to every table in use."
     )
@@ -224,10 +230,18 @@ class RecommendRequestSerializer(serializers.Serializer):
         return attrs
 
 
+class PlannedDaySerializer(serializers.Serializer):
+    day = serializers.DateField()
+    matches = serializers.IntegerField()
+    first_start = serializers.DateTimeField(allow_null=True)
+    last_end = serializers.DateTimeField(allow_null=True)
+
+
 class RecommendationSerializer(serializers.Serializer):
     slots = RecommendedSlotSerializer(
         many=True, help_text="A match no session can hold has neither table nor start."
     )
+    days = PlannedDaySerializer(many=True, help_text="How the tournament's days are filled.")
     conflicts = ProblemSerializer(many=True)
     warnings = ProblemSerializer(many=True)
 
@@ -306,6 +320,7 @@ class ScheduleViewSet(viewsets.GenericViewSet):
             starts_at=options.get("starts_at"),
             day_starts=options["day_starts"],
             day_ends=options["day_ends"],
+            use_sessions=options["use_sessions"],
         )
         by_id = {table.id: table for table in tables}
         chosen = {
@@ -314,7 +329,13 @@ class ScheduleViewSet(viewsets.GenericViewSet):
             if slot["table_id"] is not None
         }
         return Response(
-            RecommendationSerializer({"slots": slots, **_checked(*scheduling.check(tournament, chosen))}).data
+            RecommendationSerializer(
+                {
+                    "slots": slots,
+                    "days": scheduling.days_of(tournament, slots),
+                    **_checked(*scheduling.check(tournament, chosen)),
+                }
+            ).data
         )
 
     @extend_schema(request=SlotsSerializer, responses={200: CheckedSerializer})
