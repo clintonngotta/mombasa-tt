@@ -127,6 +127,39 @@ def move(match: Match, table: Table, actor, reason: str) -> Reservation:
     return new
 
 
+def hold_table(match: Match, table: Table | None, actor) -> None:
+    """Set a table aside for a match still in the queue, or with `table=None` let it go to any table
+    again (TASK-153). The match waits for that table even while it is busy, and no other match in the
+    queue takes it. It takes the table's umpire now unless it already has one, so the umpire sees it on
+    their page before it goes out. Call inside a transaction, with the tournament row locked."""
+    if match.status != Match.Status.SCHEDULED:
+        raise ApiException("match_decided", "This match is already decided.", 409)
+    if table is not None and match.dispatched_at is not None:
+        raise ApiException("already_on_table", "This match is already on a table: move it instead.", 409)
+    tournament = match.draw.event.tournament
+    if table is not None and (not table.active or table.venue_id != tournament.venue_id):
+        raise ApiException(
+            "table_unavailable", "That table isn't one of this tournament's tables in use.", 409
+        )
+    if match.held_table_id == (table.id if table else None):
+        return
+    match.held_table = table
+    match.save(update_fields=["held_table"])
+    title = matchday.match_title(match)
+    matchday.log(
+        tournament,
+        Action.TABLE_HELD,
+        f"{title}: waits for {table.label}" if table else f"{title}: goes to any free table",
+        actor=actor,
+        match=match,
+        table=table,
+    )
+    if table is not None:
+        from . import umpires
+
+        umpires.take_table_umpire(match, umpires._current_rubber(match), table, actor)
+
+
 def block(tournament: Tournament, table: Table, reason: str, note: str, actor) -> TableBlock:
     """Take a free table out of use. A table with a match on it is freed first (recall or move)."""
     service.lock()

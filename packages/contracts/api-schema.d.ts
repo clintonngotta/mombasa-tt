@@ -7700,6 +7700,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/hold-table/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Set a table aside for a match still in the queue, or let it go to any table again (null).
+         *     It waits for that table even while the table is busy, no other match takes it, and it takes
+         *     the table's umpire now unless it has one (TASK-153).
+         */
+        post: operations["tournaments_events_matches_hold_table_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/": {
         parameters: {
             query?: never;
@@ -8735,6 +8756,27 @@ export interface paths {
          *     20 by name.
          */
         get: operations["tournaments_umpires_candidates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/umpiring/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Every match and rubber still to be played that can be given an umpire, soonest first, with
+         *     its umpire if it has one. `umpire=unassigned` lists those still waiting for one. `totals`
+         *     counts both, whatever the filter.
+         */
+        get: operations["tournaments_umpiring_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11405,6 +11447,13 @@ export interface components {
          * @enum {string}
          */
         HitterEnum: "you" | "partner";
+        HoldTableRequest: {
+            /**
+             * Format: uuid
+             * @description The table to set aside for the match; null lets it go to any table.
+             */
+            table_id: string | null;
+        };
         /** @description Who holds a position: display name only. */
         Holder: {
             /** Format: uuid */
@@ -14875,6 +14924,14 @@ export interface components {
             /** Format: uuid */
             suggested_table_id: string | null;
             suggested_table: string;
+            /**
+             * Format: uuid
+             * @description The table staff set aside for it: it goes to no other (TASK-153).
+             */
+            held_table_id: string | null;
+            held_table: string;
+            /** @description Who umpires it; empty while nobody does. */
+            umpire: string;
         };
         /**
          * @description * `ready` - ready
@@ -16894,6 +16951,42 @@ export interface components {
             playing_on: string;
             /** @description They play in this tournament too. */
             entered: boolean;
+        };
+        UmpiringCounts: {
+            assigned: number;
+            unassigned: number;
+        };
+        UmpiringPage: {
+            count: number;
+            next: string | null;
+            previous: string | null;
+            totals: components["schemas"]["UmpiringCounts"];
+            results: components["schemas"]["UmpiringRow"][];
+        };
+        /** @description A match still to be played, or a rubber of a tie, and who umpires it (TASK-153). */
+        UmpiringRow: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            rubber_id: string | null;
+            rubber_position: number | null;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            label: string;
+            a: string;
+            b: string;
+            /** Format: date-time */
+            scheduled_at: string | null;
+            /** @description The table it is on now. */
+            table: string;
+            held_table: string;
+            planned_table: string;
+            /** Format: uuid */
+            umpire_id: string | null;
+            umpire_name: string;
+            /** @description unassigned, assigned, in_progress or finished (waiting to be confirmed). */
+            status: string;
         };
         Unread: {
             unread: number;
@@ -33937,6 +34030,42 @@ export interface operations {
             };
         };
     };
+    tournaments_events_matches_hold_table_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldTableRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Board"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_events_matches_lineup_create: {
         parameters: {
             query?: never;
@@ -35956,6 +36085,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UmpireCandidate"][];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_umpiring_retrieve: {
+        parameters: {
+            query?: {
+                /** @description A page number, from 1. */
+                page?: number;
+                /** @description Rows per page, at most 100 (default 20). */
+                page_size?: number;
+                /**
+                 * @description assigned: matches with an umpire; unassigned: those still waiting for one.
+                 *
+                 *     * `all` - all
+                 *     * `assigned` - assigned
+                 *     * `unassigned` - unassigned
+                 */
+                umpire?: "all" | "assigned" | "unassigned";
+            };
+            header?: never;
+            path: {
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpiringPage"];
                 };
             };
             /** @description Error envelope */

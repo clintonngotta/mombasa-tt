@@ -17975,6 +17975,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/hold-table/:
+    post:
+      operationId: tournaments_events_matches_hold_table_create
+      description: |-
+        Set a table aside for a match still in the queue, or let it go to any table again (null).
+        It waits for that table even while the table is busy, no other match takes it, and it takes
+        the table's umpire now unless it has one (TASK-153).
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HoldTableRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/matches/{id}/lineup/:
     post:
       operationId: tournaments_events_matches_lineup_create
@@ -20275,6 +20324,63 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UmpireCandidate'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/umpiring/:
+    get:
+      operationId: tournaments_umpiring_retrieve
+      description: |-
+        Every match and rubber still to be played that can be given an umpire, soonest first, with
+        its umpire if it has one. `umpire=unassigned` lists those still waiting for one. `totals`
+        counts both, whatever the filter.
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: A page number, from 1.
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: Rows per page, at most 100 (default 20).
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: umpire
+        schema:
+          enum:
+          - all
+          - assigned
+          - unassigned
+          type: string
+          default: all
+          minLength: 1
+        description: |-
+          assigned: matches with an umpire; unassigned: those still waiting for one.
+
+          * `all` - all
+          * `assigned` - assigned
+          * `unassigned` - unassigned
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UmpiringPage'
           description: ''
         4XX:
           description: Error envelope
@@ -26903,6 +27009,17 @@ components:
       description: |-
         * `you` - you
         * `partner` - partner
+    HoldTableRequest:
+      type: object
+      properties:
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The table to set aside for the match; null lets it go to any
+            table.
+      required:
+      - table_id
     Holder:
       type: object
       description: 'Who holds a position: display name only.'
@@ -35052,11 +35169,23 @@ components:
           nullable: true
         suggested_table:
           type: string
+        held_table_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'The table staff set aside for it: it goes to no other (TASK-153).'
+        held_table:
+          type: string
+        umpire:
+          type: string
+          description: Who umpires it; empty while nobody does.
       required:
       - a
       - b
       - event_id
       - event_name
+      - held_table
+      - held_table_id
       - label
       - match_id
       - planned_at
@@ -35066,6 +35195,7 @@ components:
       - state
       - suggested_table
       - suggested_table_id
+      - umpire
     QueuedMatchStateEnum:
       enum:
       - ready
@@ -39902,6 +40032,102 @@ components:
       - table
       - table_id
       - user_id
+    UmpiringCounts:
+      type: object
+      properties:
+        assigned:
+          type: integer
+        unassigned:
+          type: integer
+      required:
+      - assigned
+      - unassigned
+    UmpiringPage:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        totals:
+          $ref: '#/components/schemas/UmpiringCounts'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UmpiringRow'
+      required:
+      - count
+      - next
+      - previous
+      - results
+      - totals
+    UmpiringRow:
+      type: object
+      description: A match still to be played, or a rubber of a tie, and who umpires
+        it (TASK-153).
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        rubber_id:
+          type: string
+          format: uuid
+          nullable: true
+        rubber_position:
+          type: integer
+          nullable: true
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        label:
+          type: string
+        a:
+          type: string
+        b:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        table:
+          type: string
+          description: The table it is on now.
+        held_table:
+          type: string
+        planned_table:
+          type: string
+        umpire_id:
+          type: string
+          format: uuid
+          nullable: true
+        umpire_name:
+          type: string
+        status:
+          type: string
+          description: unassigned, assigned, in_progress or finished (waiting to be
+            confirmed).
+      required:
+      - a
+      - b
+      - event_id
+      - event_name
+      - held_table
+      - label
+      - match_id
+      - planned_table
+      - rubber_id
+      - rubber_position
+      - scheduled_at
+      - status
+      - table
+      - umpire_id
+      - umpire_name
     Unread:
       type: object
       properties:

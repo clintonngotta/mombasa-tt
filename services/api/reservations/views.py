@@ -12,9 +12,10 @@ from competitions.models import DrawVersion, Match, Tournament
 from competitions.serializers import MatchDetailSerializer
 from competitions.views import match_reply, require_staff, staff_tournament
 from core.exceptions import ApiException
+from core.pagination import StandardPagination
 from facilities.models import Table
 
-from . import board, control, service, umpires
+from . import board, control, service, umpires, umpiring
 from .models import TournamentUmpire
 from .serializers import (
     AddUmpireSerializer,
@@ -24,6 +25,7 @@ from .serializers import (
     BoardSerializer,
     DeskEntrySerializer,
     DispatchSerializer,
+    HoldTableSerializer,
     MatchDayLogSerializer,
     MoveSerializer,
     RecallSerializer,
@@ -32,6 +34,9 @@ from .serializers import (
     TableUmpireSerializer,
     UmpireCandidateSerializer,
     UmpireRosterSerializer,
+    UmpiringPageSerializer,
+    UmpiringQuerySerializer,
+    UmpiringRowSerializer,
 )
 
 
@@ -185,6 +190,23 @@ class ControlViewSet(TournamentTables, viewsets.GenericViewSet):
             control.move(match, table, request.user, asked["reason"])
         return self._board(tournament)
 
+    @extend_schema(request=HoldTableSerializer, responses={200: BoardSerializer})
+    def hold_table(self, request, tournament_pk, event_pk, pk):
+        """Set a table aside for a match still in the queue, or let it go to any table again (null).
+        It waits for that table even while the table is busy, no other match takes it, and it takes
+        the table's umpire now unless it has one (TASK-153)."""
+        serializer = HoldTableSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        asked = serializer.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            match = self._match(tournament, event_pk, pk)
+            table = None
+            if asked["table_id"] is not None:
+                table = get_object_or_404(control.tables_in_use(tournament), pk=asked["table_id"])
+            control.hold_table(match, table, request.user)
+        return self._board(tournament)
+
     @extend_schema(request=BlockSerializer, responses={200: BoardSerializer})
     def block(self, request, tournament_pk, table_pk):
         """Take a free table out of use, with a reason. Nothing is sent to it until it is unblocked."""
@@ -308,3 +330,32 @@ class UmpireListViewSet(TournamentTables, viewsets.GenericViewSet):
             found = found.filter(display_name__icontains=term)
         people = found.order_by("display_name", "id")[:20]
         return Response(UmpireCandidateSerializer(people, many=True).data)
+
+
+class UmpiringViewSet(TournamentTables, viewsets.GenericViewSet):
+    """Who umpires each match still to be played (TASK-153), for the host's competition staff."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = UmpiringRowSerializer
+    pagination_class = StandardPagination
+
+    @extend_schema(
+        parameters=[
+            UmpiringQuerySerializer,
+            OpenApiParameter("page", int, description="A page number, from 1."),
+            OpenApiParameter("page_size", int, description="Rows per page, at most 100 (default 20)."),
+        ],
+        responses={200: UmpiringPageSerializer},
+    )
+    def overview(self, request, tournament_pk):
+        """Every match and rubber still to be played that can be given an umpire, soonest first, with
+        its umpire if it has one. `umpire=unassigned` lists those still waiting for one. `totals`
+        counts both, whatever the filter."""
+        asked = UmpiringQuerySerializer(data=request.query_params)
+        asked.is_valid(raise_exception=True)
+        tournament = self._tournament(request, tournament_pk)
+        found = umpiring.rows(tournament)
+        page = self.paginate_queryset(umpiring.filtered(found, asked.validated_data["umpire"]))
+        response = self.get_paginated_response(UmpiringRowSerializer(page, many=True).data)
+        response.data["totals"] = umpiring.totals(found)
+        return response
