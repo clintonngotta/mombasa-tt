@@ -14454,6 +14454,15 @@ export interface components {
             completed?: boolean;
             activities?: components["schemas"]["ActivityRequest"][];
         };
+        PlannedDay: {
+            /** Format: date */
+            day: string;
+            matches: number;
+            /** Format: date-time */
+            first_start: string | null;
+            /** Format: date-time */
+            last_end: string | null;
+        };
         PlatformCity: {
             readonly id: number;
             readonly name: string;
@@ -15039,12 +15048,19 @@ export interface components {
              * @default 21:00:00
              */
             day_ends: string;
+            /**
+             * @description Plan inside the sessions (when there are any); false plans within the day's hours on every day of the tournament instead.
+             * @default true
+             */
+            use_sessions: boolean;
             /** @description Defaults to every table in use. */
             table_ids?: string[];
         };
         Recommendation: {
             /** @description A match no session can hold has neither table nor start. */
             slots: components["schemas"]["RecommendedSlot"][];
+            /** @description How the tournament's days are filled. */
+            days: components["schemas"]["PlannedDay"][];
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
         };

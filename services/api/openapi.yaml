@@ -34057,6 +34057,27 @@ components:
           maxItems: 20
       required:
       - kind
+    PlannedDay:
+      type: object
+      properties:
+        day:
+          type: string
+          format: date
+        matches:
+          type: integer
+        first_start:
+          type: string
+          format: date-time
+          nullable: true
+        last_end:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - day
+      - first_start
+      - last_end
+      - matches
     PlatformCity:
       type: object
       properties:
@@ -35391,6 +35412,11 @@ components:
           type: string
           format: time
           default: '21:00:00'
+        use_sessions:
+          type: boolean
+          default: true
+          description: Plan inside the sessions (when there are any); false plans
+            within the day's hours on every day of the tournament instead.
         table_ids:
           type: array
           items:
@@ -35405,6 +35431,11 @@ components:
           items:
             $ref: '#/components/schemas/RecommendedSlot'
           description: A match no session can hold has neither table nor start.
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlannedDay'
+          description: How the tournament's days are filled.
         conflicts:
           type: array
           items:
@@ -35415,6 +35446,7 @@ components:
             $ref: '#/components/schemas/Problem'
       required:
       - conflicts
+      - days
       - slots
       - warnings
     RecommendedSlot:
