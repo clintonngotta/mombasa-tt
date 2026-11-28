@@ -20,9 +20,10 @@ KINDS = {
     "expedite": Kind.EXPEDITE,
     "retire": Kind.RETIRED,
     "disqualify": Kind.DISQUALIFIED,
+    "walkover": Kind.WALKOVER,
 }
 MAX_NOTE = 200
-WITH_REASON = (Kind.CARD, Kind.ADVISER_CARD)  # the engine checks a reason on these alone
+WITH_REASON = (Kind.CARD, Kind.ADVISER_CARD, Kind.WALKOVER)  # the engine checks a reason on these alone
 
 
 def user_at(players: dict[str, list], slot: str):

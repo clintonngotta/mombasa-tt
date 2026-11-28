@@ -19,6 +19,7 @@ PLAYERS = ("a1", "a2", "b1", "b2")
 SIDES = ("a", "b")
 ENDS = ("left", "right")
 CARD_REASONS = ("bad_behaviour", "racket_abuse", "illegal_advice", "delay", "other")
+WALKOVER_REASONS = ("no_show", "withdrawal", "injury")
 LADDER_MAX = 3  # a fourth offence is the referee's to decide (3.5.2.4)
 
 
@@ -352,6 +353,19 @@ def _end_early(outcome: str):
     return handler
 
 
+def _walkover(config: dict, state: dict, event: dict) -> dict:
+    """The side doesn't play: before the start, the match goes to the opponent with no games (REQ-043)."""
+    if state["status"] != "not_started":
+        raise ScoringError("already_started")
+    side = event.get("side")
+    if side not in SIDES:
+        raise ScoringError("unknown_event")
+    if event.get("reason") not in WALKOVER_REASONS:
+        raise ScoringError("invalid_walkover")
+    state.update(status="completed", winner=_other(side), outcome="walkover")
+    return state
+
+
 _HANDLERS = {
     "start": _start,
     "point": _point,
@@ -365,6 +379,7 @@ _HANDLERS = {
     "expedite": _expedite,
     "retire": _end_early("retired"),
     "disqualify": _end_early("disqualified"),
+    "walkover": _walkover,
 }
 
 

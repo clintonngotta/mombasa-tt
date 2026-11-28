@@ -1,6 +1,6 @@
 import { api } from "@/lib/api"
 import type { Schemas } from "@/lib/schema"
-import type { CardReason, Config, Player, ScoreEvent, Side, State } from "@scoring"
+import type { CardReason, Config, Player, ScoreEvent, Side, State, WalkoverReason } from "@scoring"
 
 export type Scorecard = Schemas["Scorecard"]
 export type MyScorecard = Schemas["MyScorecard"]
@@ -104,6 +104,13 @@ export const SCORING_STATUS_LABEL: Record<ScoringStatus, string> = {
 export const configOf = (card: Pick<Scorecard, "config">) => card.config as Config
 export const stateOf = (card: Pick<Scorecard, "state">) => card.state as unknown as State
 
+/** Why a side isn't playing, in the umpire's words (REQ-043). */
+export const WALKOVER_REASON_LABEL: Record<WalkoverReason, string> = {
+  no_show: "No-show after the grace period",
+  withdrawal: "Withdrew before the start",
+  injury: "Injured before the start",
+}
+
 /** What the rules refused, in the umpire's words. */
 export const REFUSAL: Record<string, string> = {
   already_started: "The match has already started.",
@@ -124,6 +131,7 @@ export const REFUSAL: Record<string, string> = {
   not_between_rallies: "A time-out is called between rallies in a game, once the game's first rally is played.",
   invalid_note: "Keep the note to 200 characters.",
   referee_only: "Only the referee disqualifies.",
+  invalid_walkover: "Choose why the side isn't playing.",
   nothing_to_undo: "There is nothing to undo.",
   sequence_gap: "Some points didn't reach the server in order.",
   sequence_conflict: "The server already holds a different action at that place.",
