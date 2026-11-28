@@ -86,7 +86,19 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+          cache-dependency-glob: services/api/uv.lock
       - run: uv sync --locked
+      # The test database is thrown away with the runner: skip writing it safely to disk. Almost every
+      # test writes, so this alone takes a good part off the run.
+      - name: Fast throwaway database
+        env:
+          PGPASSWORD: ci-only
+        run: |
+          psql -h 127.0.0.1 -U mombasa -d mombasa_tt -v ON_ERROR_STOP=1 \
+            -c "ALTER SYSTEM SET fsync = off" \
+            -c "ALTER SYSTEM SET synchronous_commit = off" \
+            -c "ALTER SYSTEM SET full_page_writes = off" \
+            -c "SELECT pg_reload_conf()"
       - name: Lint
         run: uv run ruff check .
       - name: Format
@@ -98,7 +110,11 @@ jobs:
           uv run manage.py spectacular --fail-on-warn --file openapi.yaml
           git diff --exit-code -- openapi.yaml || { echo "::error::openapi.yaml is stale; regenerate it (see README)"; exit 1; }
       - name: Tests
-        run: uv run pytest
+        # In parallel, each worker with its own test database (pytest-django names them _gw0, _gw1...).
+        # The tests mostly wait on the database, so more workers than cores still pays; worksteal moves
+        # tests to idle workers so one long file (the privacy matrix) doesn't hold up the end.
+        run: uv run pytest -n 4 --dist worksteal
+        timeout-minutes: 15
       - name: Dependency audit
         run: uv export --locked --no-dev --no-hashes --format requirements-txt > /tmp/requirements.txt && uvx pip-audit --strict --no-deps --disable-pip -r /tmp/requirements.txt
 
