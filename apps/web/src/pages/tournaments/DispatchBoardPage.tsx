@@ -13,6 +13,7 @@ import { formatInstant } from "@/lib/dates"
 import { drawKeys, getMatch } from "@/lib/draws"
 import { UmpireControl } from "@/components/tournaments/UmpireControl"
 import { UmpiresPanel } from "@/components/tournaments/UmpiresPanel"
+import { UmpiringList } from "@/components/tournaments/UmpiringList"
 import {
   blockTable,
   callAgain,
@@ -21,6 +22,7 @@ import {
   getBoard,
   getDesk,
   getMatchDayLog,
+  holdTable,
   moveMatch,
   recallMatch,
   reportSide,
@@ -144,6 +146,7 @@ export function DispatchBoardPage() {
         ))}
       </div>
       {view === "umpires" && data && <UmpiresPanel tournamentId={id} tables={data.tables} />}
+      {view === "umpires" && t && <UmpiringList tournamentId={id} timeZone={t.timezone} />}
       {view === "desk" && t && <CheckInDesk tournamentId={id} timeZone={t.timezone} />}
       {view === "log" && t && <MatchDayLog tournamentId={id} timeZone={t.timezone} />}
       {(board.isPending || (tournament.isPending && !board.isError)) && <p className="text-muted-foreground">Loading…</p>}
@@ -210,7 +213,7 @@ export function DispatchBoardPage() {
             ) : (
               <ol className="flex flex-col gap-3">
                 {data.queue.map((row) => (
-                  <QueueRow key={row.match_id} tournamentId={id} row={row} timeZone={t.timezone} />
+                  <QueueRow key={row.match_id} tournamentId={id} row={row} tables={data.tables} timeZone={t.timezone} />
                 ))}
               </ol>
             )}
@@ -649,9 +652,21 @@ function MatchDayLog({ tournamentId, timeZone }: { tournamentId: string; timeZon
   )
 }
 
-function QueueRow({ tournamentId, row, timeZone }: { tournamentId: string; row: QueuedMatch; timeZone: string }) {
+function QueueRow({ tournamentId, row, tables, timeZone }: { tournamentId: string; row: QueuedMatch; tables: BoardTable[]; timeZone: string }) {
   const state = STATE[row.state]
   const Icon = state.icon
+  const queryClient = useQueryClient()
+  const [choosing, setChoosing] = useState(false)
+  const [target, setTarget] = useState(row.held_table_id ?? "")
+  const hold = useMutation({
+    mutationFn: (tableId: string | null) => holdTable(tournamentId, row.event_id, row.match_id, tableId),
+    onSuccess: (fresh: Board) => {
+      queryClient.setQueryData(reservationKeys.board(tournamentId), fresh)
+      void queryClient.invalidateQueries({ queryKey: reservationKeys.umpiring(tournamentId) })
+      void queryClient.invalidateQueries({ queryKey: scoringKeys.overview(tournamentId) })
+      setChoosing(false)
+    },
+  })
   return (
     <li className="flex flex-col gap-2 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -671,6 +686,16 @@ function QueueRow({ tournamentId, row, timeZone }: { tournamentId: string; row: 
           {row.planned_at && `Planned for ${formatInstant(row.planned_at, timeZone)}. `}Waiting since {formatInstant(row.ready_since, timeZone)}.
         </span>
       </p>
+      <p className="text-sm">
+        <span className="text-muted-foreground">Umpire: </span>
+        {row.umpire || <span className="font-semibold text-warning">no umpire yet</span>}
+        {row.held_table && (
+          <>
+            <span className="text-muted-foreground"> · Table set aside: </span>
+            <span className="font-semibold">{row.held_table}</span>
+          </>
+        )}
+      </p>
       {row.reasons.length > 0 && (
         <ul className="flex flex-col gap-1 text-sm">
           {row.reasons.map((reason) => (
@@ -681,9 +706,42 @@ function QueueRow({ tournamentId, row, timeZone }: { tournamentId: string; row: 
           ))}
         </ul>
       )}
-      <Link to={matchPath(tournamentId, row)} className={buttonVariants({ variant: "outline", className: "self-start" })}>
-        Open the match
-      </Link>
+      {choosing && (
+        <div className="flex flex-col gap-2 rounded-lg border p-3">
+          <SelectField
+            label="Set a table aside for this match"
+            hint="It waits for this table, even while it is busy, and no other match takes it. It takes the table's umpire now if it has none."
+            value={target}
+            onChange={setTarget}
+            options={[{ value: "", label: "Choose a table" }, ...tables.filter((table) => table.state !== "blocked").map((table) => ({ value: table.id, label: table.state === "free" ? `${table.label} (free)` : table.label }))]}
+          />
+          {hold.isError && <FormAlert>{errorMessage(hold.error)}</FormAlert>}
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={!target || hold.isPending || target === row.held_table_id} onClick={() => hold.mutate(target)}>
+              {hold.isPending ? "Saving…" : "Set aside"}
+            </Button>
+            <Button variant="ghost" onClick={() => setChoosing(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Link to={matchPath(tournamentId, row)} className={buttonVariants({ variant: "outline" })}>
+          Open the match
+        </Link>
+        {!choosing && (
+          <Button variant="outline" onClick={() => setChoosing(true)}>
+            {row.held_table ? "Change the table" : "Set a table aside"}
+          </Button>
+        )}
+        {row.held_table && !choosing && (
+          <Button variant="ghost" disabled={hold.isPending} onClick={() => hold.mutate(null)}>
+            Any free table
+          </Button>
+        )}
+      </div>
+      {hold.isError && !choosing && <FormAlert>{errorMessage(hold.error)}</FormAlert>}
     </li>
   )
 }

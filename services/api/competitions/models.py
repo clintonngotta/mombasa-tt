@@ -519,6 +519,10 @@ class Match(models.Model):
     planned_table = models.ForeignKey(
         Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
+    # The table staff set aside for it on the control centre before it goes out (TASK-153): it waits for
+    # this table, no other match in the queue takes it, and it takes the table's umpire at once. Cleared
+    # when it is sent to a table, this one or another.
+    held_table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     # The organizers' working plan (TASK-081): edited freely, and copied into `planned_table` and
     # `scheduled_at`, which everybody else sees, only when they publish the schedule.
     draft_table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -994,6 +998,7 @@ class MatchDayLog(models.Model):
         AUTO_OFF = "auto_off", "Automatic dispatch switched off"
         UMPIRE_LISTED = "umpire_listed", "Added to the umpires"
         UMPIRE_UNLISTED = "umpire_unlisted", "Taken off the umpires"
+        TABLE_HELD = "table_held", "Table held for a match"
         TABLE_UMPIRE = "table_umpire", "Table umpire changed"
         ORDER_CHANGED = "order_changed", "Order of play changed"
         NOT_BEFORE = "not_before", "Player's start time set"

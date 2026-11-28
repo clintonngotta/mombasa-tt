@@ -40,6 +40,8 @@ class Row:
     state: str = READY
     position: int | None = None  # its rank among the matches that can be played now
     table: Table | None = None  # the free table suggested for it
+    held: Table | None = None  # the table staff set aside for it: it waits for this one (TASK-153)
+    rubber: object = None  # a tie's rubber whose turn it is
     called_back: bool = False  # staff took it off a table: only a person sends it out again
     umpire: object = None  # whoever scores it, who can't be playing at the same time
     stage_rank: int = 0  # its stage's place in the order of play (REQ-053); 0 for all without one
@@ -76,7 +78,7 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
             status=Match.Status.SCHEDULED,
             dispatched_at__isnull=True,
         )
-        .select_related("draw__event__tournament", "entry_a", "entry_b", "table")
+        .select_related("draw__event__tournament", "entry_a", "entry_b", "table", "held_table")
         .prefetch_related("entry_a__players__user", "entry_b__players__user")
     )
     called_back = set(
@@ -100,7 +102,15 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
         except service.Blocked as blocked:  # a tie without its lineups
             reasons = [_reason(blocked.blocker, blocked.message)]
             rows.append(
-                Row(match, [], since, reasons, BLOCKED, stage_rank=order_of_play.rank_of(ranks, match))
+                Row(
+                    match,
+                    [],
+                    since,
+                    reasons,
+                    BLOCKED,
+                    held=match.held_table,
+                    stage_rank=order_of_play.rank_of(ranks, match),
+                )
             )
             continue
         people, rubber = service.people_to_hold(match)
@@ -110,6 +120,8 @@ def _rows(tournament: Tournament) -> tuple[list[Row], int]:
         ]
         row = Row(match, people, since, reasons, BLOCKED if reasons else READY)
         row.called_back = match.id in called_back
+        row.held = match.held_table
+        row.rubber = rubber
         row.umpire = service._umpire_of(match, rubber) if not reasons else None
         row.stage_rank = order_of_play.rank_of(ranks, match)
         rows.append(row)
@@ -130,7 +142,9 @@ def _free_tables(tournament: Tournament) -> list[Table]:
 
 def _suggest(rows: list[Row], free: list[Table]) -> None:
     """Give the free tables to the ready matches, in queue order. A match that shares a player with
-    one ahead of it waits for that one; a match with no table left waits for a table."""
+    one ahead of it waits for that one; a match with no table left waits for a table. A match staff set
+    a table aside for waits for that table, and no other match takes it (TASK-153)."""
+    set_aside = {row.match.held_table_id for row in rows if row.match.held_table_id}
     free = list(free)
     going: dict = {}  # person or team id -> the row they are about to play in
     rank = 0
@@ -163,12 +177,24 @@ def _suggest(rows: list[Row], free: list[Table]) -> None:
                 )
             ]
             continue
-        if not free:
+        if row.held is not None:
+            table = next((table for table in free if table.id == row.held.id), None)
+            if table is None:
+                row.state = WAITING
+                row.reasons = [_reason("held_table_busy", f"It waits for {row.held.label}.")]
+                continue
+            row.table = table
+            free.remove(table)
+            for key, _ in needed:
+                going[key] = row
+            continue
+        open_tables = [table for table in free if table.id not in set_aside]
+        if not open_tables:
             row.state = WAITING
             row.reasons = [_reason("no_free_table", "Every table is in use.")]
             continue
-        planned = next((table for table in free if table.id == row.match.planned_table_id), None)
-        row.table = planned or free[0]
+        planned = next((table for table in open_tables if table.id == row.match.planned_table_id), None)
+        row.table = planned or open_tables[0]
         free.remove(row.table)
         for key, _ in needed:
             going[key] = row
@@ -265,6 +291,18 @@ def table_use(tournament: Tournament, now: datetime) -> tuple[datetime | None, d
     }
 
 
+def _umpire_names(rows: list[Row]) -> dict:
+    """Who umpires each queued match (or its tie's rubber due next), by match or rubber id, in one query."""
+    from scoring.models import Scorecard
+
+    matches = [row.match.id for row in rows if row.rubber is None]
+    rubbers = [row.rubber.id for row in rows if row.rubber is not None]
+    cards = Scorecard.objects.filter(Q(match_id__in=matches) | Q(rubber_id__in=rubbers), umpire__isnull=False)
+    return {
+        card.rubber_id or card.match_id: card.umpire.display_name for card in cards.select_related("umpire")
+    }
+
+
 def build(tournament: Tournament) -> dict:
     """The board as BoardSerializer shows it."""
     from .models import TableUmpire
@@ -284,6 +322,7 @@ def build(tournament: Tournament) -> dict:
         .annotate(rounds=Max("round", filter=knockout), groups=Max("group"))
     }
     suggested = {row.table.id: row for row in rows if row.table}
+    umpire_names = _umpire_names(rows)
     on_tables = {held.table_id: held for held in service.active_for(tournament)}
     idle = _idle(tournament, rows, to_come)
     blocks = control.blocks_at(tournament.venue_id) if tournament.venue_id else {}
@@ -352,6 +391,9 @@ def build(tournament: Tournament) -> dict:
                 "reasons": row.reasons,
                 "suggested_table_id": row.table.id if row.table else None,
                 "suggested_table": row.table.label if row.table else "",
+                "held_table_id": row.held.id if row.held else None,
+                "held_table": row.held.label if row.held else "",
+                "umpire": umpire_names.get(row.rubber.id if row.rubber else row.match.id, ""),
             }
             for row in rows
         ],

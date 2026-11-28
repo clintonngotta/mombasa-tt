@@ -211,7 +211,8 @@ def dispatch(
         raise Blocked("resource_busy", "The table or one of the players was taken a moment ago.") from error
     match.table = table
     match.dispatched_at = reservation.created_at
-    match.save(update_fields=["table", "dispatched_at"])
+    match.held_table = None  # it has gone out: whatever table was set aside for it is free for others
+    match.save(update_fields=["table", "dispatched_at", "held_table"])
     from . import umpires
 
     umpires.take_table_umpire(match, rubber, table, actor)

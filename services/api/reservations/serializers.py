@@ -72,6 +72,11 @@ class QueuedMatchSerializer(serializers.Serializer):
     reasons = ReasonSerializer(many=True)
     suggested_table_id = serializers.UUIDField(allow_null=True)
     suggested_table = serializers.CharField(allow_blank=True)
+    held_table_id = serializers.UUIDField(
+        allow_null=True, help_text="The table staff set aside for it: it goes to no other (TASK-153)."
+    )
+    held_table = serializers.CharField(allow_blank=True)
+    umpire = serializers.CharField(allow_blank=True, help_text="Who umpires it; empty while nobody does.")
 
 
 class TableBlockSerializer(serializers.Serializer):
@@ -204,6 +209,55 @@ class AutoDispatchSerializer(serializers.Serializer):
 class ArrivalSerializer(serializers.Serializer):
     side = serializers.ChoiceField(choices=control.SIDES)
     undo = serializers.BooleanField(default=False)
+
+
+class HoldTableSerializer(serializers.Serializer):
+    table_id = serializers.UUIDField(
+        allow_null=True, help_text="The table to set aside for the match; null lets it go to any table."
+    )
+
+
+class UmpiringQuerySerializer(serializers.Serializer):
+    umpire = serializers.ChoiceField(
+        choices=["all", "assigned", "unassigned"],
+        default="all",
+        help_text="assigned: matches with an umpire; unassigned: those still waiting for one.",
+    )
+
+
+class UmpiringRowSerializer(serializers.Serializer):
+    """A match still to be played, or a rubber of a tie, and who umpires it (TASK-153)."""
+
+    match_id = serializers.UUIDField()
+    rubber_id = serializers.UUIDField(allow_null=True)
+    rubber_position = serializers.IntegerField(allow_null=True)
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    label = serializers.CharField()
+    a = serializers.CharField()
+    b = serializers.CharField()
+    scheduled_at = serializers.DateTimeField(allow_null=True)
+    table = serializers.CharField(allow_blank=True, help_text="The table it is on now.")
+    held_table = serializers.CharField(allow_blank=True)
+    planned_table = serializers.CharField(allow_blank=True)
+    umpire_id = serializers.UUIDField(allow_null=True)
+    umpire_name = serializers.CharField(allow_blank=True)
+    status = serializers.CharField(
+        help_text="unassigned, assigned, in_progress or finished (waiting to be confirmed)."
+    )
+
+
+class UmpiringCountsSerializer(serializers.Serializer):
+    assigned = serializers.IntegerField()
+    unassigned = serializers.IntegerField()
+
+
+class UmpiringPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_null=True)
+    previous = serializers.CharField(allow_null=True)
+    totals = UmpiringCountsSerializer()
+    results = UmpiringRowSerializer(many=True)
 
 
 class MoveSerializer(serializers.Serializer):
