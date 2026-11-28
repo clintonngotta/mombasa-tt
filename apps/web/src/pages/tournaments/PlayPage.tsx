@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { CalendarRange, CupSoda, Medal, NotebookPen, Timer, Trophy, Warehouse } from "lucide-react"
+import { CalendarRange, CupSoda, Gavel, Medal, NotebookPen, Timer, Trophy, Warehouse } from "lucide-react"
 import { NavCard } from "@/components/layout/NavCard"
 import { MyEntries } from "@/components/tournaments/TournamentLists"
 import { listMyScorecards, SCORING_STATUS_LABEL, scoringKeys } from "@/lib/scoring"
@@ -18,6 +18,7 @@ export function PlayPage() {
         <NavCard to="/facilities" icon={Warehouse} title="Find a place to play" description="Halls with tables near you: hours, open now and what a visit includes" />
         <NavCard to="/play/soda" icon={CupSoda} title="Soda games" description="Challenge a friend to a friendly match: unrated, no booking" />
         <NavCard to="/quick-score" icon={Timer} title="Quick Score" description="Score a casual game on this phone: no rating, no booking" />
+        <NavCard to="/umpiring" icon={Gavel} title="Your umpiring" description="Every match you're given to umpire, with its time and table, and the results you confirmed" />
         <NavCard to="/matches" icon={NotebookPen} title="Your match log" description="Matches you recorded yourself, with your progress" />
         <NavCard to="/events" icon={CalendarRange} title="Events calendar" description="Tournaments across the country, here and elsewhere, with live links" />
         <NavCard to="/rankings" icon={Trophy} title="Rankings" description="Singles and doubles ratings from tournament matches" />
@@ -28,14 +29,19 @@ export function PlayPage() {
 
 /** Matches the player is assigned to umpire and hasn't confirmed. Shown only when there are some. */
 function MyScorecards() {
-  const cards = useQuery({ queryKey: scoringKeys.mine, queryFn: listMyScorecards, staleTime: 30_000 })
+  const cards = useQuery({ queryKey: scoringKeys.mineIn("open"), queryFn: () => listMyScorecards("open"), staleTime: 30_000 })
   const items = cards.data?.results ?? []
   if (items.length === 0) return null
   return (
     <section aria-labelledby="scorecards-heading" className="flex flex-col gap-3 rounded-xl border border-brand-blue/30 bg-surface-selected p-4">
-      <h2 id="scorecards-heading" className="text-2xl font-bold">
-        Matches you umpire
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="scorecards-heading" className="text-2xl font-bold">
+          Matches you umpire
+        </h2>
+        <Link to="/umpiring" className="font-semibold text-brand-blue">
+          See all
+        </Link>
+      </div>
       <ul className="flex flex-col gap-2">
         {items.map((card) => (
           <li key={card.id}>

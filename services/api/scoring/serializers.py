@@ -302,16 +302,36 @@ class ScorecardSerializer(serializers.ModelSerializer):
         return table.label if table else ""
 
 
+class MyScorecardsQuerySerializer(serializers.Serializer):
+    state = serializers.ChoiceField(choices=["open", "done"], default="open")
+
+
 class MyScorecardSerializer(ScorecardSerializer):
-    """One of the caller's assignments in a list: the sheet without its event log."""
+    """One of the caller's assignments in a list: the sheet without its event log, with when and where
+    the match is planned once the schedule is published."""
+
+    scheduled_at = serializers.SerializerMethodField()
+    planned_table = serializers.SerializerMethodField()
+    timezone = serializers.SerializerMethodField()
 
     class Meta(ScorecardSerializer.Meta):
         fields = [
             name
             for name in ScorecardSerializer.Meta.fields
             if name not in ("events", "incidents", "can_disqualify")
-        ]
+        ] + ["scheduled_at", "planned_table", "timezone"]
         read_only_fields = fields
+
+    def get_scheduled_at(self, scorecard) -> serializers.DateTimeField(allow_null=True):
+        return scorecard.tie_or_match.scheduled_at
+
+    def get_timezone(self, scorecard) -> str:
+        """The venue's, in which the time is shown (REQ-007)."""
+        return service.event_of(scorecard).tournament.timezone
+
+    def get_planned_table(self, scorecard) -> str:
+        table = scorecard.tie_or_match.planned_table
+        return table.label if table else ""
 
     def get_config(self, scorecard) -> ScoringConfigSerializer:
         # The list needs the format alone; what a rubber carries in is read on its sheet.

@@ -191,6 +191,7 @@ def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
         from reservations import service as reservations  # it builds on scoring's sheets in turn
 
         reservations.ensure_umpire_free(match, umpire)
+    before = scorecard.umpire_id
     scorecard.umpire = umpire
     scorecard.assignment_id = uuid.uuid4()
     scorecard.assigned_by = actor
@@ -200,7 +201,28 @@ def assign(match: Match, rubber: Rubber | None, umpire, actor) -> Scorecard:
     scorecard.save()
     kind = ScoreAssignment.Kind.ASSIGNED if umpire else ScoreAssignment.Kind.UNASSIGNED
     _log(scorecard, kind, actor)
+    if before != scorecard.umpire_id:
+        _tell_umpires(scorecard, before, actor)
     return scorecard
+
+
+def _tell_umpires(scorecard: Scorecard, before, actor) -> None:
+    """The new umpire is told they have the match, the one it was taken from that it is gone. Nobody is
+    told what they just did themselves."""
+    from notifications import triggers  # notifications are told about scoring, not the other way round
+
+    sides = players_of(scorecard)
+    names = [" / ".join(user.display_name for user in sides[side]) or "To be decided" for side in "ab"]
+    event = event_of(scorecard)
+    where = " · ".join(part for part in (event.tournament.name, event.name, label_of(scorecard)) if part)
+    what = {"subject": f"scorecard:{scorecard.id}", "version": str(scorecard.assignment_id)}
+    if before is not None and before != getattr(actor, "pk", None):
+        triggers.umpire_unassigned(before, f"{names[0]} v {names[1]}", where, event, **what)
+    if scorecard.umpire_id is not None and scorecard.umpire_id != getattr(actor, "pk", None):
+        match = scorecard.tie_or_match
+        triggers.umpire_assigned(
+            scorecard.umpire_id, f"{names[0]} v {names[1]}", where, event, match.table, **what
+        )
 
 
 def _log(scorecard: Scorecard, kind: str, actor) -> None:
