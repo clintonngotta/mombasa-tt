@@ -626,6 +626,7 @@ ACCESS: dict[str, dict[str, str]] = {
     # Results entered or corrected by the organizers, and what a correction leaves to decide.
     "tournament-event-match-result": {"post": STAFF},
     "tournament-event-match-result-correct": {"post": STAFF},
+    "tournament-event-entry-walkovers": {"post": STAFF},
     "tournament-corrections": {"get": STAFF},
     "tournament-correction-resolve": {"post": STAFF},
     # Scoring: staff say who umpires; the sheet, its events and its confirmation exist only for the
@@ -1065,6 +1066,7 @@ BODIES = {
     ("tournament-event-match-move", "post"): {"table_id": MOVE_TABLE, "reason": "Light out"},
     ("tournament-table-block", "post"): {"reason": "out_of_service"},
     ("tournament-event-match-result", "post"): {"winner_entry_id": ENTERED_WINNER, "outcome": "walkover"},
+    ("tournament-event-entry-walkovers", "post"): {"reason": "No-show after the grace period"},
     ("tournament-event-match-result-correct", "post"): {
         "winner_entry_id": CORRECTED_WINNER,
         "outcome": "walkover",
@@ -1639,6 +1641,7 @@ class World:
         # For the result routes: a match to enter a result for, a decided one to correct, and a later
         # match a correction has put in question.
         self.result_cup, self.to_decide = under_way("Result Cup", ("e1", "e2"), ENTERED_WINNER)
+        self.walkover_cup, self.walked_over = under_way("Walkover Cup", ("w1", "w2"))
         self.corrected_cup, self.decided = under_way("Corrected Cup", ("c1", "c2"), CORRECTED_WINNER)
         first = next(e for e in (self.decided.entry_a, self.decided.entry_b) if str(e.id) != CORRECTED_WINNER)
         drawing.record_result(self.decided, first, outcome="walkover")
@@ -2320,6 +2323,10 @@ class World:
         }
         if name in results:
             found["event_pk"], found["tournament_pk"] = results[name].event.id, results[name].id
+            return found
+        if name == "tournament-event-entry-walkovers":
+            found["event_pk"], found["tournament_pk"] = self.walkover_cup.event.id, self.walkover_cup.id
+            found["entry_pk"] = self.walked_over.entry_a_id
             return found
         if name in ("tournament-corrections", "tournament-correction-resolve"):
             found["tournament_pk"] = self.question_cup.id

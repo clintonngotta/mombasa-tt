@@ -317,6 +317,11 @@ urlpatterns = [
         name="tournament-event-match-result-correct",
     ),
     path(
+        "<uuid:tournament_pk>/events/<uuid:event_pk>/entries/<uuid:entry_pk>/walkovers/",
+        ResultViewSet.as_view({"post": "walkovers"}),
+        name="tournament-event-entry-walkovers",
+    ),
+    path(
         "<uuid:tournament_pk>/corrections/",
         ResultViewSet.as_view({"get": "resolutions"}),
         name="tournament-corrections",

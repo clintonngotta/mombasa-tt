@@ -729,6 +729,35 @@ class ResultEntrySerializer(serializers.Serializer):
     )
 
 
+class EntryWalkoverSerializer(serializers.Serializer):
+    """The referee gives an entry's opponents every match it has left in the event by walkover."""
+
+    reason = serializers.CharField(
+        max_length=300,
+        trim_whitespace=True,
+        allow_blank=True,
+        required=False,
+        default="",
+        help_text="Why, kept in the match-day log for each match: a no-show after the grace period, a "
+        "withdrawal or an injury before the start (REQ-043).",
+    )
+
+
+class WalkedOverMatchSerializer(serializers.Serializer):
+    match_id = serializers.UUIDField()
+    label = serializers.CharField(help_text='Where it sits in the draw: "Group A", "Knockout round 2".')
+    opponent = serializers.CharField(allow_blank=True)
+    code = serializers.CharField(allow_blank=True, help_text="Why it was left out; empty when awarded.")
+    message = serializers.CharField(allow_blank=True)
+
+
+class EntryWalkoversSerializer(serializers.Serializer):
+    awarded = WalkedOverMatchSerializer(many=True, help_text="Matches the opponent now wins by walkover.")
+    skipped = WalkedOverMatchSerializer(
+        many=True, help_text="Matches left as they were: play had begun, the opponent isn't known yet, …"
+    )
+
+
 class ResultCorrectionSerializer(ResultEntrySerializer):
     reason = serializers.CharField(max_length=300, trim_whitespace=True)
 
