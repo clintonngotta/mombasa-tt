@@ -35,6 +35,7 @@ const ENTRY_LOOK: Record<EntryStatus, Look> = {
   rejected: { icon: Ban, className: "border-destructive/30 bg-destructive/5 text-destructive" },
   withdrawn: { icon: LogOut, className: "border-border bg-muted text-muted-foreground" },
   pairing: { icon: CircleCheck, className: "border-border bg-muted text-muted-foreground" },
+  replaced: { icon: LogOut, className: "border-border bg-muted text-muted-foreground" },
 }
 
 export const EntryStatusChip = ({ status }: { status: EntryStatus }) => <Chip look={ENTRY_LOOK[status]}>{ENTRY_STATUS_LABEL[status]}</Chip>

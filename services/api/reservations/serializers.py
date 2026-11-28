@@ -165,6 +165,10 @@ class UmpireNextSerializer(serializers.Serializer):
     scorecard_id = serializers.UUIDField(
         allow_null=True, help_text="Set when the next match is already this umpire's to score."
     )
+    umpire = serializers.CharField(allow_blank=True, help_text="Who else umpires the next match, if anyone.")
+    can_claim = serializers.BooleanField(
+        help_text="Nobody umpires the next match yet and this umpire may take it (claim-next)."
+    )
 
 
 class UmpireRosterSerializer(serializers.Serializer):

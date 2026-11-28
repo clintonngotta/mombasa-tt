@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { UpdateBanner } from "@/components/layout/UpdateBanner"
 import { CardBadges, ExpediteBar, IncidentMenu, SuspensionBanner, TimeoutBanner } from "@/components/scoring/Incidents"
 import { useAppUpdate } from "@/lib/pwa"
-import { getNextOnTable, umpireKeys } from "@/lib/reservations"
+import { claimNextOnTable, getNextOnTable, umpireKeys } from "@/lib/reservations"
 
 const deckButton =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-4 text-base font-semibold text-white outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-brand-cyan disabled:opacity-40"
@@ -480,7 +480,13 @@ function Confirmed({ card, state, back }: { card: Scorecard; state: State; back:
 /** What takes this table next (REQ-053): the match already sent here, or the one recommended. */
 function NextOnTable({ scorecardId }: { scorecardId: string }) {
   // Asked again now and then: automatic dispatch may send the next match a moment after the result.
+  const queryClient = useQueryClient()
   const next = useQuery({ queryKey: umpireKeys.next(scorecardId), queryFn: () => getNextOnTable(scorecardId), refetchInterval: 15_000, staleTime: 0 })
+  // Nobody umpires it yet: the umpire may take it, and it then waits for this table (user request, 2026-11-28).
+  const claim = useMutation({
+    mutationFn: () => claimNextOnTable(scorecardId),
+    onSuccess: (fresh) => queryClient.setQueryData(umpireKeys.next(scorecardId), fresh),
+  })
   const shown = next.data?.next
   if (!shown) return null
   return (
@@ -495,8 +501,18 @@ function NextOnTable({ scorecardId }: { scorecardId: string }) {
         <Link to={`/score/${next.data.scorecard_id}`} className={cn(primaryButton, "self-start")}>
           Score the next match
         </Link>
+      ) : next.data?.can_claim ? (
+        <>
+          <button type="button" className={cn(primaryButton, "self-start")} disabled={claim.isPending} onClick={() => claim.mutate()}>
+            {claim.isPending ? "Taking it…" : "Umpire this match"}
+          </button>
+          <p className="text-sm text-white/70">{next.data.on_table ? "Nobody umpires it yet." : "Nobody umpires it yet. It then waits for this table; the organizers still send it."}</p>
+          {claim.isError && <p role="alert" className="text-brand-gold">{errorMessage(claim.error)}</p>}
+        </>
       ) : (
-        <p className="text-sm text-white/70">{next.data?.on_table ? "The organizers will give it an umpire." : "The organizers send it to the table: nothing is sent yet."}</p>
+        <p className="text-sm text-white/70">
+          {next.data?.umpire ? `${next.data.umpire} umpires it.` : next.data?.on_table ? "The organizers will give it an umpire." : "The organizers send it to the table: nothing is sent yet."}
+        </p>
       )}
     </div>
   )

@@ -6566,11 +6566,35 @@ export interface paths {
         };
         /**
          * @description After confirming: the match that takes this table next (REQ-053). The match already sent
-         *     there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned.
+         *     there, or else the one dispatch would send. Only a recommendation: nothing is sent or assigned
+         *     unless the umpire claims it.
          */
         get: operations["scorecards_next_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scorecards/{id}/next/claim/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The umpire takes the match recommended for their table next (user request, 2026-11-28),
+         *     once they have confirmed the one they scored. They become its umpire, and a match still in the
+         *     queue waits for their table. Refused when somebody already umpires it (`has_umpire`), when there
+         *     is none (`no_next_match`), and by every rule of assigning an umpire (one of its players, playing
+         *     right now, no longer an umpire here).
+         */
+        post: operations["scorecards_next_claim_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7447,6 +7471,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{entry_pk}/walkovers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The referee gives walkovers in every match an entry has left in the event, when a player
+         *     doesn't turn up, instead of one match at a time. Matches where play has begun, or whose
+         *     opponent isn't known yet, are left as they are and listed with the reason.
+         */
+        post: operations["tournaments_events_entries_walkovers_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/accept/": {
         parameters: {
             query?: never;
@@ -7536,6 +7581,29 @@ export interface paths {
          *     automatically.
          */
         post: operations["tournaments_events_entries_staff_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/substitute/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description A player of the entry leaves and someone else plays in their place (TASK-155). The place
+         *     carries on: its results so far stay with it, and the matches already played stay with whoever
+         *     played them. Singles and doubles answer with the new entry that holds the place now (the old
+         *     one is `replaced`); a team keeps its entry with the new player on its roster. Refused while one
+         *     of the entry's matches is being played.
+         */
+        post: operations["tournaments_events_entries_substitute_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10740,6 +10808,11 @@ export interface components {
             readonly my_check_in_at: string | null;
             /** @description Whether the caller plays in it, so may withdraw it. */
             readonly mine: boolean;
+            /**
+             * Format: uuid
+             * @description For a replaced entry: the entry that took its place.
+             */
+            readonly replaced_by_id: string | null;
         };
         EntryCounts: {
             /** @description Waiting for staff to accept or decline. */
@@ -10783,9 +10856,10 @@ export interface components {
          *     * `rejected` - Rejected
          *     * `withdrawn` - Withdrawn
          *     * `pairing` - Pairing
+         *     * `replaced` - Replaced
          * @enum {string}
          */
-        EntryStatusEnum: "pending" | "accepted" | "waitlisted" | "rejected" | "withdrawn" | "pairing";
+        EntryStatusEnum: "pending" | "accepted" | "waitlisted" | "rejected" | "withdrawn" | "pairing" | "replaced";
         EntryTournament: {
             /** Format: uuid */
             readonly id: string;
@@ -10796,6 +10870,20 @@ export interface components {
             readonly ends_on: string;
             readonly timezone: string;
             readonly status: components["schemas"]["TournamentStatusEnum"];
+        };
+        /** @description The referee gives an entry's opponents every match it has left in the event by walkover. */
+        EntryWalkoverRequest: {
+            /**
+             * @description Why, kept in the match-day log for each match: a no-show after the grace period, a withdrawal or an injury before the start (REQ-043).
+             * @default
+             */
+            reason: string;
+        };
+        EntryWalkovers: {
+            /** @description Matches the opponent now wins by walkover. */
+            awarded: components["schemas"]["WalkedOverMatch"][];
+            /** @description Matches left as they were: play had begun, the opponent isn't known yet, … */
+            skipped: components["schemas"]["WalkedOverMatch"][];
         };
         Equipment: {
             blade: string;
@@ -12518,6 +12606,11 @@ export interface components {
             readonly my_check_in_at: string | null;
             /** @description Whether the caller plays in it, so may withdraw it. */
             readonly mine: boolean;
+            /**
+             * Format: uuid
+             * @description For a replaced entry: the entry that took its place.
+             */
+            readonly replaced_by_id: string | null;
             readonly event: components["schemas"]["EntryEvent"];
             readonly tournament: components["schemas"]["EntryTournament"];
         };
@@ -16434,6 +16527,15 @@ export interface components {
             status: components["schemas"]["ScoringStatusEnum"];
             state: components["schemas"]["ScoringState"];
         };
+        /** @description A player of the entry leaves and someone else plays in their place from now on (TASK-155). */
+        SubstituteRequest: {
+            /** Format: uuid */
+            leaving_user_id: string;
+            /** Format: uuid */
+            joining_user_id: string;
+            /** @default  */
+            reason: string;
+        };
         Table: {
             /** Format: uuid */
             readonly id: string;
@@ -16974,6 +17076,10 @@ export interface components {
              * @description Set when the next match is already this umpire's to score.
              */
             scorecard_id: string | null;
+            /** @description Who else umpires the next match, if anyone. */
+            umpire: string;
+            /** @description Nobody umpires the next match yet and this umpire may take it (claim-next). */
+            can_claim: boolean;
         };
         /** @description One of the tournament's umpires. */
         UmpireRoster: {
@@ -17194,6 +17300,16 @@ export interface components {
         /** @description Refuses fields it doesn't know. */
         WaiveRequest: {
             reason: string;
+        };
+        WalkedOverMatch: {
+            /** Format: uuid */
+            match_id: string;
+            /** @description Where it sits in the draw: "Group A", "Knockout round 2". */
+            label: string;
+            opponent: string;
+            /** @description Why it was left out; empty when awarded. */
+            code: string;
+            message: string;
         };
         /**
          * @description * `monday` - monday
@@ -31957,6 +32073,36 @@ export interface operations {
             };
         };
     };
+    scorecards_next_claim_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UmpireNext"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_list: {
         parameters: {
             query?: {
@@ -33573,7 +33719,7 @@ export interface operations {
                 page_size?: number;
                 /** @description Part of a team's or a player's name. */
                 search?: string;
-                status?: "accepted" | "pairing" | "pending" | "rejected" | "waitlisted" | "withdrawn";
+                status?: "accepted" | "pairing" | "pending" | "rejected" | "replaced" | "waitlisted" | "withdrawn";
             };
             header?: never;
             path: {
@@ -33625,6 +33771,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_walkovers_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_pk: string;
+                event_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EntryWalkoverRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryWalkovers"];
                 };
             };
             /** @description Error envelope */
@@ -33784,6 +33966,42 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["OptionalReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_entries_substitute_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_pk: string;
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstituteRequest"];
             };
         };
         responses: {

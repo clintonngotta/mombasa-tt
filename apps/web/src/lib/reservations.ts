@@ -102,6 +102,8 @@ export const setTableUmpire = (tournamentId: string, tableId: string, userId: st
   api<Board>(`/tournaments/${tournamentId}/tables/${tableId}/umpire/`, { method: "PUT", body: { user_id: userId } })
 /** After confirming: the match that takes the umpire's table next (only a recommendation). */
 export const getNextOnTable = (scorecardId: string) => api<UmpireNext>(`/scorecards/${scorecardId}/next/`)
+/** The umpire takes the recommended next match: it becomes theirs and waits for their table. */
+export const claimNextOnTable = (scorecardId: string) => api<UmpireNext>(`/scorecards/${scorecardId}/next/claim/`, { body: {} })
 
 export type UmpiringRow = Schemas["UmpiringRow"]
 export type UmpiringPage = Schemas["UmpiringPage"]

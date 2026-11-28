@@ -7,7 +7,7 @@ log with the reason. No referee role is needed for it.
 
 import pytest
 
-from competitions.models import Match, MatchDayLog, OfficialResult
+from competitions.models import EntryPlayer, Match, MatchDayLog, OfficialResult
 from outbox import service as outbox
 from ratings.models import RatingEvent
 from scoring.models import MatchIncident
@@ -61,3 +61,15 @@ def test_an_undone_walkover_leaves_the_match_to_be_played(staff, club, final):  
     deck.confirm()
     assert Match.objects.get(pk=final["match"].pk).outcome == "played"
     assert not MatchDayLog.objects.filter(action="result_entered").exists()
+
+
+def test_an_umpire_who_turns_out_to_play_in_the_match_loses_the_sheet(staff, club, final):  # noqa: F811
+    umpire = umpire_with(club, "zuri@example.com", scorers(club))
+    deck = deck_for(staff, club, final, umpire)
+    assert deck.client.get(deck.path).status_code == 200
+    # Put on one of the sides afterwards: an umpire never scores, or gives a walkover in, their own match.
+    entry = final["match"].entry_a
+    EntryPlayer.objects.create(entry=entry, event_id=entry.event_id, user=umpire)
+    assert deck.client.get(deck.path).status_code == 404
+    deck.send(walkover("b"), expect=404)
+    assert Match.objects.get(pk=final["match"].pk).status == Match.Status.SCHEDULED
