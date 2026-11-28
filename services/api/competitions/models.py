@@ -546,6 +546,9 @@ class Match(models.Model):
     # How a completed match ended, and the points of each game as [a, b] pairs in playing order.
     outcome = models.CharField(max_length=12, choices=Outcome.choices, blank=True)
     games = models.JSONField(default=list, blank=True)
+    # The games it is played over once that can no longer change: set on matches already decided or
+    # being scored when an event's match lengths change part-way (TASK-158). Null: the event's rule.
+    best_of = models.PositiveSmallIntegerField(null=True, blank=True)
     # Where and when it is expected to be played; both empty until the organizers schedule it. The time
     # is an estimate, never a promise (REQ-014).
     table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -1041,6 +1044,7 @@ class MatchDayLog(models.Model):
         MATCH_MOVED = "match_moved", "Match moved later"
         MATCH_TIMED = "match_timed", "Match time set"
         PLAYER_SWAPPED = "player_swapped", "Player swapped in"
+        MATCH_LENGTH = "match_length", "Match length changed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")

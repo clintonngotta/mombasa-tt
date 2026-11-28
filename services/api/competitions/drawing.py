@@ -653,7 +653,7 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
                 carried.get(str(loser), str(loser)),
                 match.outcome or Match.Outcome.PLAYED,
                 games,
-                best_of=formats.best_of_at(draw.event, formats.GROUP),
+                best_of=formats.best_of_for(match, draw.event),
             )
         )
     complete = len(results) == len(matches)
@@ -850,7 +850,8 @@ def _match_describer(
             "table": _table_label(match) if times else (match.table.label if match.table else ""),
             "dispatched_at": match.dispatched_at,
             "scheduled_at": match.scheduled_at if times else None,
-            "best_of": formats.best_of_at(
+            "best_of": match.best_of
+            or formats.best_of_at(
                 event, formats.knockout_stage(match.round, rounds) if knockout else formats.GROUP
             ),
         }

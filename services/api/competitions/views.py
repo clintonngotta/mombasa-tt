@@ -25,7 +25,7 @@ from organizations.access import (
 from organizations.models import BODY_KINDS, Membership, Organization
 from organizations.permissions import Permission
 
-from . import drawing, entries, lifecycle, matchday, official, player_record, substitutes, ties
+from . import drawing, entries, formats, lifecycle, matchday, official, player_record, substitutes, ties
 from .emails import send_entry_news
 from .models import MAX_EVENTS, SLUG_MAX_LENGTH, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
@@ -474,15 +474,21 @@ class EventViewSet(viewsets.GenericViewSet):
                 accepted = event.entries.filter(status=Entry.Status.ACCEPTED).count()
                 if new["capacity"] < accepted:
                     raise ValidationError({"capacity": f"{accepted} entries are already accepted."})
-            if event.status != E.SCHEDULED and serializer.structure_changes:
+            # Match lengths may change part-way through a live event (user request, 2026-11-28); the
+            # rest of the structure is fixed once it starts.
+            lengths = serializer.structure_changes & formats.MATCH_LENGTH_FIELDS
+            if event.status != E.SCHEDULED and serializer.structure_changes - formats.MATCH_LENGTH_FIELDS:
                 raise ApiException(
                     "structure_frozen",
-                    "This event has started, so its format, best of, seeding, groups, qualifiers and "
-                    "the make-up of a tie can't change.",
+                    "This event has started, so its format, seeding, groups, qualifiers and the make-up "
+                    "of a tie can't change. Match lengths still can, for matches not yet started.",
                     409,
                 )
-            # A lineup names players for the rubbers as they stood when it was handed in.
-            if serializer.structure_changes & ties.LINEUP_FIELDS and ties.has_lineups(event):
+            # A lineup names players for the rubbers as they stood when it was handed in. How many
+            # games those rubbers are played over doesn't change who plays them.
+            if (serializer.structure_changes - formats.MATCH_LENGTH_FIELDS) & ties.LINEUP_FIELDS and (
+                ties.has_lineups(event)
+            ):
                 raise ApiException(
                     "lineups_in",
                     "A team has handed in a lineup for this event, so the make-up of a tie and the match "
@@ -490,8 +496,20 @@ class EventViewSet(viewsets.GenericViewSet):
                     409,
                 )
             if changed:
+                if lengths and event.status != E.SCHEDULED:
+                    # Matches already decided or being scored keep the length they are played over.
+                    kept = formats.freeze_started(event)
                 serializer.save(revision=event.revision + 1)
                 lifecycle.reset_pending_approval(tournament)
+                if lengths and event.status != E.SCHEDULED:
+                    event.refresh_from_db()
+                    matchday.log(
+                        tournament,
+                        matchday.Action.MATCH_LENGTH,
+                        f"{event.name}: {formats.describe(event)}; {kept} match(es) already started keep "
+                        "their length",
+                        actor=request.user,
+                    )
         return reply(tournament)
 
     @extend_schema(responses={200: TournamentSerializer})

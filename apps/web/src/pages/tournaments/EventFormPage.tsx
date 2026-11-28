@@ -145,20 +145,23 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
         registration_opens_at: fromZonedInput(opens, t.timezone),
         registration_closes_at: fromZonedInput(closes, t.timezone),
       }
-      // A started event's structure is fixed, so it isn't sent at all.
-      const structure = {
-        admission,
-        kind: kind as EventKind,
-        format: format as EventFormat,
+      // Match lengths may still change once it has started; the rest of the structure is fixed then.
+      const matchLength = {
         best_of: Number(bestOf) as BestOf,
         best_of_by_stage: Object.fromEntries(
           STAGES.filter((stage) => format && stage.formats.includes(format) && stages[stage.key]).map((stage) => [stage.key, Number(stages[stage.key]) as BestOf])
         ),
+      }
+      const structure = {
+        admission,
+        kind: kind as EventKind,
+        format: format as EventFormat,
+        ...matchLength,
         seeding,
         ...(format === "groups_knockout" ? { group_count: whole(groups), qualifiers_per_group: whole(qualifiers) } : {}),
         ...(kind === "team" ? { tie_rubbers: rubbers, tie_wins_needed: wins } : {}),
       }
-      if (event) return updateEvent(t.id, event.id, frozen ? details : { ...details, ...structure })
+      if (event) return updateEvent(t.id, event.id, frozen ? { ...details, ...matchLength } : { ...details, ...structure })
       return createEvent(t.id, { ...details, ...structure })
     },
     onSuccess: (fresh) => {
@@ -175,14 +178,45 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
 
   const errors = save.error instanceof ApiError ? save.error.fieldErrors() : {}
 
+  // Match lengths, which may still change once the event has started (user request, 2026-11-28).
+  const lengths = (
+    <>
+      <ChoiceGroup legend="Match length" columns={3} options={BEST_OF} value={bestOf} onChange={setBestOf} error={errors.best_of} />
+      {format && format !== "round_robin" && kind !== "jumbles" && (
+        <fieldset className="flex flex-col gap-3 rounded-lg border p-3">
+          <legend className="px-1 font-semibold">Longer matches later on</legend>
+          <p className="text-sm text-muted-foreground">
+            For example best of 3 in the groups, 5 from the quarter-finals and 7 in the final. A knockout stage left as it is plays like the one before it; the groups and the first knockout rounds play best of {bestOf} unless set.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {STAGES.filter((stage) => stage.formats.includes(format)).map((stage) => (
+              <SelectField
+                key={stage.key}
+                label={stage.label}
+                value={stages[stage.key] ?? ""}
+                onChange={(value) => setStages({ ...stages, [stage.key]: value || undefined })}
+                options={[{ value: "", label: "Like the stage before" }, ...BEST_OF]}
+              />
+            ))}
+          </div>
+          {errors.best_of_by_stage && <FormAlert>{errors.best_of_by_stage}</FormAlert>}
+        </fieldset>
+      )}
+    </>
+  )
+
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
       <Field label="Name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} hint="For example Men's singles or Open doubles" />
 
       {frozen ? (
-        <p role="status" className="rounded-lg border bg-muted p-3 text-sm">
-          This event has started, so admission, who enters, the format, best of, seeding, groups, qualifiers and the make-up of a tie are fixed. You can still change the details below.
-        </p>
+        <>
+          <p role="status" className="rounded-lg border bg-muted p-3 text-sm">
+            This event has started, so admission, who enters, the format, seeding, groups, qualifiers and the make-up of a tie are fixed. Match lengths and the details below can still change.
+          </p>
+          {lengths}
+          <p className="text-sm text-muted-foreground">A new match length applies to matches not yet started. Matches already decided, on a table or being scored keep the length they are played over.</p>
+        </>
       ) : (
         <>
           <SelectField
@@ -271,27 +305,7 @@ function EventForm({ tournament: t, event }: { tournament: Tournament; event?: T
               />
             </fieldset>
           )}
-          <ChoiceGroup legend="Match length" columns={3} options={BEST_OF} value={bestOf} onChange={setBestOf} error={errors.best_of} />
-          {format && format !== "round_robin" && kind !== "jumbles" && (
-            <fieldset className="flex flex-col gap-3 rounded-lg border p-3">
-              <legend className="px-1 font-semibold">Longer matches later on</legend>
-              <p className="text-sm text-muted-foreground">
-                For example best of 3 in the groups, 5 from the quarter-finals and 7 in the final. A knockout stage left as it is plays like the one before it; the groups and the first knockout rounds play best of {bestOf} unless set.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {STAGES.filter((stage) => stage.formats.includes(format)).map((stage) => (
-                  <SelectField
-                    key={stage.key}
-                    label={stage.label}
-                    value={stages[stage.key] ?? ""}
-                    onChange={(value) => setStages({ ...stages, [stage.key]: value || undefined })}
-                    options={[{ value: "", label: "Like the stage before" }, ...BEST_OF]}
-                  />
-                ))}
-              </div>
-              {errors.best_of_by_stage && <FormAlert>{errors.best_of_by_stage}</FormAlert>}
-            </fieldset>
-          )}
+          {lengths}
           {kind !== "jumbles" && <ChoiceGroup legend="Seeding" columns={3} options={SEEDINGS} value={seeding} onChange={setSeeding} error={errors.seeding} />}
         </>
       )}
