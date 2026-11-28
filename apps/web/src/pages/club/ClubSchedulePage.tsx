@@ -12,6 +12,7 @@ import { useActiveMembership } from "@/lib/clubs"
 import { ROW } from "@/lib/clubAdmin"
 import { DEFAULT_TIME_ZONE, formatInstant } from "@/lib/dates"
 import { cn } from "@/lib/utils"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 const KINDS: { value: ScheduleKind; label: string }[] = [
   { value: "activity", label: "Activities" },
@@ -35,7 +36,7 @@ export function ClubSchedulePage() {
       <BackLink to="/club">Club</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Club schedule</h1>
-        {active && <p className="text-muted-foreground">{active.organization.name} · times in {timeZone}</p>}
+        {active && <p className="flex flex-wrap items-center gap-x-1 text-muted-foreground"><OrganizationName organization={active.organization} /> · times in {timeZone}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <div role="group" aria-label="Which dates" className="flex rounded-lg border bg-card p-1">

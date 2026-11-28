@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 /** The Club tab, and with `side="team"` the Team tab (REQ-057): the organization the player is acting
  * for when it is on this side, or the way to one. */
@@ -78,7 +79,7 @@ export function ClubPage({ side = "club" }: { side?: Side }) {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-[32px] leading-9 font-bold">{active?.organization.name ?? title}</h1>
+        <h1 className="text-[32px] leading-9 font-bold">{active ? <OrganizationName organization={active.organization} /> : title}</h1>
         {(active || mine.length > 1) && actions(false)}
       </div>
 

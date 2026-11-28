@@ -18,6 +18,7 @@ import { clashesOf, clubSessionKeys, createClubSession, listClubSessions, type C
 import { DEFAULT_TIME_ZONE, formatInstant, fromZonedInput } from "@/lib/dates"
 import { listVenues, runsFacility, venueKeys } from "@/lib/venues"
 import { cn } from "@/lib/utils"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 /**
  * Club training sessions (REQ-027) for the club's training staff: schedule a session on the club's tables,
@@ -39,7 +40,7 @@ export function ClubSessionsPage() {
       <BackLink to="/club">Club</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Training sessions</h1>
-        {active && <p className="text-muted-foreground">{active.organization.name}</p>}
+        {active && <p className="text-muted-foreground"><OrganizationName organization={active.organization} /></p>}
       </div>
       {memberships.isSuccess && (!allowed || accessLost) && <AccessLost />}
       {allowed && !accessLost && (

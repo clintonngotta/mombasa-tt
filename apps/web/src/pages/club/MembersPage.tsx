@@ -32,6 +32,7 @@ import { AccessLost } from "@/components/clubs/AccessLost"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
 import { AdminPanel } from "@/components/clubs/AdminPanel"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 /** Members of the active organization, their roles and, for member managers, their custom field values (REQ-005).
  * Never contact details. */
@@ -60,7 +61,7 @@ function MemberList({ membership }: { membership: Membership }) {
 
   return (
     <>
-      <p className="text-muted-foreground">{membership.organization.name}</p>
+      <p className="text-muted-foreground"><OrganizationName organization={membership.organization} /></p>
       <AdminPanel membership={membership} />
       {can(membership, "members.manage") && <AddMember membership={membership} members={new Set(items.map((member) => member.user))} />}
       <Field label="Search members" type="search" value={term} onChange={(e) => setTerm(e.target.value)} hint="By display name" />

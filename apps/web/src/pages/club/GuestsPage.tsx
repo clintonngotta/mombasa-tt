@@ -25,6 +25,7 @@ import {
   type GuestClaim,
   type InvitedGuest,
 } from "@/lib/guests"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
 
@@ -49,7 +50,7 @@ export function GuestsPage() {
       <BackLink to="/club">Club</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-[32px] leading-9 font-bold">Guests</h1>
-        {active && <p className="text-muted-foreground">{active.organization.name}</p>}
+        {active && <p className="text-muted-foreground"><OrganizationName organization={active.organization} /></p>}
       </div>
       <p className="text-muted-foreground">
         Players you enter before they have a Coast TT account. Invite them by email or phone, or make a link to share: it lets them join with their own details, and their entries and matches become theirs.
