@@ -498,6 +498,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-guest-detail": {"patch": STAFF},
     "organization-guest-invite": {"post": STAFF},
     "organization-guest-revoke-invitation": {"post": STAFF},
+    "organization-guest-new-link": {"post": STAFF},
+    "organization-guest-link-player": {"post": STAFF},
     "organization-guest-claim-list": {"get": STAFF},
     "organization-guest-claim-retry": {"post": STAFF},
     "organization-guest-claim-reject": {"post": STAFF},
@@ -794,6 +796,9 @@ BODIES = {
     ("organization-guest-list", "post"): {"display_name": "Walk-in Guest"},
     ("organization-guest-detail", "patch"): {"display_name": "Kassim the Guest"},
     ("organization-guest-invite", "post"): {"email": "kassim@example.com"},
+    ("organization-guest-link-player", "post"): lambda: {
+        "player_id": str(User.objects.get(email="faith.listed@coast.example").id)
+    },
     ("organization-guest-claim-retry", "post"): {"note": "Checked again"},
     ("organization-guest-claim-reject", "post"): {"note": "Not the same player"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
@@ -1969,6 +1974,8 @@ class World:
             "organization-guest-detail": self.guest.user_id,
             "organization-guest-invite": self.guest.user_id,
             "organization-guest-revoke-invitation": self.guest.user_id,
+            "organization-guest-new-link": self.guest.user_id,
+            "organization-guest-link-player": self.guest.user_id,
             "organization-guest-claim-retry": self.claim_to_retry.id,
             "organization-guest-claim-reject": self.claim_to_reject.id,
             "me-membership-leave": self.baraka_membership.id,

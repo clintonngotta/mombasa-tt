@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_protect
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -20,6 +21,7 @@ from core.pagination import StandardPagination, search_term
 from organizations.access import require_permission
 from organizations.models import Membership, Organization
 from organizations.permissions import Permission
+from profiles.models import listed_profiles
 
 from . import service
 from .models import Guest, GuestClaim, GuestClaimEvent, GuestInvitation
@@ -28,6 +30,7 @@ from .serializers import (
     GuestClaimSerializer,
     GuestCreateSerializer,
     GuestInviteSerializer,
+    GuestLinkPlayerSerializer,
     GuestSerializer,
     GuestWriteSerializer,
     InvitationDetailSerializer,
@@ -69,7 +72,10 @@ class GuestViewSet(_ClubScoped, viewsets.GenericViewSet):
             Guest.objects.filter(organization=self.organization())
             .select_related("user", "claimed_by")
             .prefetch_related(
-                Prefetch("invitations", queryset=GuestInvitation.objects.filter(status="pending"))
+                Prefetch(
+                    "invitations",
+                    queryset=GuestInvitation.objects.filter(status="pending").select_related("invitee"),
+                )
             )
             .annotate(entries=Count("user__entry_places", filter=Q(user__entry_places__live=True)))
             .order_by("user__display_name", "created_at", "pk")  # an aggregate drops Meta.ordering
@@ -142,6 +148,39 @@ class GuestViewSet(_ClubScoped, viewsets.GenericViewSet):
             _, token = service.invite(guest, data.get("email"), request.user, data.get("phone") or "")
         return Response(self._invited(guest, token), status=status.HTTP_201_CREATED)
 
+    @extend_schema(request=None, responses={201: InvitedGuestSerializer})
+    @action(detail=True, methods=["post"], url_path="new-link")
+    def new_link(self, request, organization_pk, pk):
+        """A fresh invitation link to share, to the email and phone last invited (if any); nothing is
+        emailed. The old link stops working. `invite_link` is shown this once."""
+        with transaction.atomic():
+            guest = self._locked(pk)
+            _, token = service.new_link(guest, request.user)
+        return Response(self._invited(guest, token), status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=GuestLinkPlayerSerializer, responses={201: GuestSerializer})
+    @action(detail=True, methods=["post"], url_path="link-player")
+    def link_player(self, request, organization_pk, pk):
+        """Ask a player found in the player directory whether they are this guest. They accept or
+        decline in the app; nothing moves until they accept."""
+        body = GuestLinkPlayerSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        with transaction.atomic():
+            guest = self._locked(pk)
+            # Only players who chose to be found in the directory, as the search that found them.
+            profile = (
+                listed_profiles()
+                .filter(user_id=body.validated_data["player_id"])
+                .select_related("user")
+                .first()
+            )
+            if profile is None:
+                raise ValidationError({"player_id": "Choose a player from the search."})
+            service.link_player(guest, profile.user, request.user)
+        return Response(
+            GuestSerializer(self.get_queryset().get(pk=guest.pk)).data, status=status.HTTP_201_CREATED
+        )
+
     @extend_schema(request=None, responses={200: GuestSerializer})
     @action(detail=True, methods=["post"], url_path="revoke-invitation")
     def revoke_invitation(self, request, organization_pk, pk):
@@ -164,7 +203,7 @@ class GuestClaimViewSet(_ClubScoped, mixins.ListModelMixin, viewsets.GenericView
             return GuestClaim.objects.none()
         claims = (
             GuestClaim.objects.filter(guest__organization=self.organization())
-            .select_related("guest__user", "claimant", "invitation")
+            .select_related("guest__user", "claimant", "invitation__invitee")
             .prefetch_related(Prefetch("events", queryset=GuestClaimEvent.objects.select_related("actor")))
         )
         wanted = self.request.query_params.get("status")
@@ -196,7 +235,10 @@ class GuestClaimViewSet(_ClubScoped, mixins.ListModelMixin, viewsets.GenericView
 
 
 class MyGuestInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Open guest invitations to the signed-in player's verified address."""
+    """Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+    the directory, while open, and those to their verified email. An email one stays here after its link
+    has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+    are never matched."""
 
     serializer_class = MyGuestInvitationSerializer
     permission_classes = [IsAuthenticated]
@@ -206,11 +248,16 @@ class MyGuestInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if getattr(self, "swagger_fake_view", False):
             return GuestInvitation.objects.none()
         user = self.request.user
-        if not user.email_verified_at:  # an unverified address proves nothing about who owns it
-            return GuestInvitation.objects.none()
-        return GuestInvitation.objects.filter(
-            email__iexact=user.email, status=GuestInvitation.Status.PENDING, expires_at__gt=timezone.now()
-        ).select_related("guest__user", "guest__organization", "invited_by")
+        mine = Q(invitee=user, expires_at__gt=timezone.now())
+        if user.email and user.email_verified_at:  # an unverified address proves nothing about who owns it
+            mine |= Q(email__iexact=user.email, invitee__isnull=True)
+        return (
+            GuestInvitation.objects.filter(
+                mine, status=GuestInvitation.Status.PENDING, guest__claimed_by__isnull=True
+            )
+            .exclude(guest__user=user)
+            .select_related("guest__user", "guest__organization", "invited_by")
+        )
 
     @extend_schema(request=None, responses={200: MyClaimSerializer})
     @action(detail=True, methods=["post"])

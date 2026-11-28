@@ -2479,7 +2479,11 @@ paths:
   /api/v1/me/guest-invitations/:
     get:
       operationId: me_guest_invitations_list
-      description: Open guest invitations to the signed-in player's verified address.
+      description: |-
+        Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+        the directory, while open, and those to their verified email. An email one stays here after its link
+        has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+        are never matched.
       parameters:
       - name: page
         required: false
@@ -2513,7 +2517,11 @@ paths:
   /api/v1/me/guest-invitations/{id}/accept/:
     post:
       operationId: me_guest_invitations_accept_create
-      description: Open guest invitations to the signed-in player's verified address.
+      description: |-
+        Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+        the directory, while open, and those to their verified email. An email one stays here after its link
+        has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+        are never matched.
       parameters:
       - in: path
         name: id
@@ -2542,7 +2550,11 @@ paths:
   /api/v1/me/guest-invitations/{id}/decline/:
     post:
       operationId: me_guest_invitations_decline_create
-      description: Open guest invitations to the signed-in player's verified address.
+      description: |-
+        Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+        the directory, while open, and those to their verified email. An email one stays here after its link
+        has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+        are never matched.
       parameters:
       - in: path
         name: id
@@ -10137,6 +10149,84 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/GuestInviteRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitedGuest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/{id}/link-player/:
+    post:
+      operationId: organizations_guests_link_player_create
+      description: |-
+        Ask a player found in the player directory whether they are this guest. They accept or
+        decline in the app; nothing moves until they accept.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this guest.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestLinkPlayerRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/{id}/new-link/:
+    post:
+      operationId: organizations_guests_new_link_create
+      description: |-
+        A fresh invitation link to share, to the email and phone last invited (if any); nothing is
+        emailed. The old link stops working. `invite_link` is shown this once.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this guest.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
       security:
       - sessionAuth: []
       responses:
@@ -26506,6 +26596,9 @@ components:
           type: string
           format: email
           readOnly: true
+        invited_player_name:
+          type: string
+          readOnly: true
         status:
           $ref: '#/components/schemas/GuestClaimStatusEnum'
         clashes:
@@ -26535,6 +26628,7 @@ components:
       - guest_name
       - id
       - invited_email
+      - invited_player_name
       - resolved_at
       - status
     GuestClaimActionEnum:
@@ -26583,6 +26677,8 @@ components:
       - display_name
     GuestInvitation:
       type: object
+      description: '`invitee_name`: the player found in the directory it was sent
+        to, if it went to one.'
       properties:
         id:
           type: string
@@ -26598,6 +26694,9 @@ components:
         phone:
           type: string
           maxLength: 16
+        invitee_name:
+          type: string
+          readOnly: true
         status:
           $ref: '#/components/schemas/InvitationStatusEnum'
         created_at:
@@ -26612,6 +26711,7 @@ components:
       - email
       - expires_at
       - id
+      - invitee_name
       - phone
       - status
     GuestInviteRequest:
@@ -26629,6 +26729,15 @@ components:
           type: string
           nullable: true
           maxLength: 32
+    GuestLinkPlayerRequest:
+      type: object
+      description: A player found in the player directory who may be this guest.
+      properties:
+        player_id:
+          type: string
+          format: uuid
+      required:
+      - player_id
     HandEnum:
       enum:
       - right

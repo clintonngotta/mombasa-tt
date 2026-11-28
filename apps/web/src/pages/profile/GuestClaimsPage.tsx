@@ -8,7 +8,8 @@ import { useMe } from "@/lib/session"
 
 /**
  * A club entered you as a guest before you had an account (REQ-003): accept, and that guest's entries
- * and matches become yours. Only invitations to your verified address appear, and each works once.
+ * and matches become yours. Invitations to your verified address appear, also after their link lapsed,
+ * and so do requests from club staff who found you in the player directory. Each works once.
  */
 export function GuestClaimsPage() {
   const me = useMe()

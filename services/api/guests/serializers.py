@@ -11,9 +11,13 @@ from .models import Guest, GuestClaim, GuestClaimEvent, GuestInvitation
 
 
 class GuestInvitationSerializer(serializers.ModelSerializer):
+    """`invitee_name`: the player found in the directory it was sent to, if it went to one."""
+
+    invitee_name = serializers.CharField(source="invitee.display_name", read_only=True, default=None)
+
     class Meta:
         model = GuestInvitation
-        fields = ["id", "email", "phone", "status", "created_at", "expires_at"]
+        fields = ["id", "email", "phone", "invitee_name", "status", "created_at", "expires_at"]
 
 
 class GuestSerializer(serializers.ModelSerializer):
@@ -60,6 +64,12 @@ class GuestInviteSerializer(serializers.Serializer):
         return attrs
 
 
+class GuestLinkPlayerSerializer(serializers.Serializer):
+    """A player found in the player directory who may be this guest."""
+
+    player_id = serializers.UUIDField()
+
+
 class GuestCreateSerializer(GuestWriteSerializer):
     """A new guest; with an email or phone, they are invited at once."""
 
@@ -92,6 +102,10 @@ class GuestClaimSerializer(serializers.ModelSerializer):
     claimant_name = serializers.CharField(source="claimant.display_name", read_only=True)
     # The address staff invited, not the account's own: staff learn nothing they didn't already know.
     invited_email = serializers.EmailField(source="invitation.email", read_only=True)
+    # Or the player staff found in the directory and asked.
+    invited_player_name = serializers.CharField(
+        source="invitation.invitee.display_name", read_only=True, default=None
+    )
     events = ClaimEventSerializer(many=True, read_only=True)
     clashes = serializers.ListField(child=serializers.CharField(), read_only=True)
 
@@ -103,6 +117,7 @@ class GuestClaimSerializer(serializers.ModelSerializer):
             "guest_name",
             "claimant_name",
             "invited_email",
+            "invited_player_name",
             "status",
             "clashes",
             "created_at",

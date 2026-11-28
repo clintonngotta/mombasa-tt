@@ -3,6 +3,7 @@ import { ChevronRight, CircleHelp, Medal, Plus, Trophy, Users, Warehouse, type L
 import { LiveNow, MyEntries } from "@/components/tournaments/TournamentLists"
 import { can, sideOf, useActiveMembership } from "@/lib/clubs"
 import { AddEmailPrompt } from "@/components/profile/AddEmailPrompt"
+import { GuestMatchesPrompt } from "@/components/guests/GuestMatchesPrompt"
 import { useMe } from "@/lib/session"
 import { EventsForYou } from "@/pages/club/InvitedEventsPage"
 import { SquadPlacesToAnswer } from "@/pages/club/SquadPages"
@@ -64,6 +65,7 @@ export function HomePage() {
       </nav>
 
       <AddEmailPrompt />
+      {me.isSuccess && <GuestMatchesPrompt />}
       {me.isSuccess && <SquadPlacesToAnswer />}
       {me.isSuccess && <FeedbackAsked />}
       {me.isSuccess && <EventsForYou />}
