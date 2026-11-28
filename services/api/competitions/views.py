@@ -167,7 +167,8 @@ def match_reply(request, draw: DrawVersion | None, pk) -> Response:
     )
     referees_only = (Match.Outcome.WALKOVER, Match.Outcome.DISQUALIFIED)
     referee_decided = standing is not None and standing["outcome"] in referees_only
-    may_record = referee or (staff and not referee_decided)
+    # Nobody records or changes the result of a match they play in.
+    may_record = (referee or (staff and not referee_decided)) and not official.plays_in(match, request.user)
     shown["can_record_result"] = may_record and not closed and draw.status == DrawVersion.Status.PUBLISHED
     shown["can_award_walkover"] = shown["can_record_result"] and referee
     shown["held_for_correction"] = match.resolutions.filter(resolved_at__isnull=True).exists()

@@ -10,7 +10,7 @@ from core.exceptions import ApiException
 from outbox import service as outbox
 from realtime import broadcast
 
-from .models import Entry, Event, Match, OfficialResult, Resolution, Rubber
+from .models import Entry, EntryPlayer, Event, Match, OfficialResult, Resolution, Rubber
 
 Source = OfficialResult.Source
 
@@ -104,6 +104,20 @@ def ensure_not_held(match: Match) -> None:
             "An earlier result was corrected, and the organizers haven't yet decided what happens to this "
             "match.",
             409,
+        )
+
+
+def plays_in(match: Match, user) -> bool:
+    """The user is one of the players of either side (for a tie, on either team). Nobody decides the
+    result of a match they play in: not as umpire, not as referee, not at the results desk."""
+    sides = [entry_id for entry_id in (match.entry_a_id, match.entry_b_id) if entry_id]
+    return bool(sides) and EntryPlayer.objects.filter(entry_id__in=sides, user_id=user.pk).exists()
+
+
+def ensure_not_playing(match: Match, user) -> None:
+    if plays_in(match, user):
+        raise ApiException(
+            "plays_in_match", "You play in this match, so someone else records or changes its result.", 403
         )
 
 
