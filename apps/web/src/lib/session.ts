@@ -1,13 +1,22 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import type { User } from "@/lib/auth"
+import { checkSession } from "@/lib/sessionCheck"
 
 export const meQueryKey = ["auth", "me"] as const
 
 export const getMe = () => api<User>("/auth/me/")
 
+/** Who is signed in. Offline, or while the server can't answer, the account this device knew stays
+ * signed in, so the saved screens keep working; only the server saying the session ended signs out. */
 export function useMe() {
-  return useQuery({ queryKey: meQueryKey, queryFn: getMe, retry: false, staleTime: 60_000 })
+  const queryClient = useQueryClient()
+  return useQuery({
+    queryKey: meQueryKey,
+    queryFn: () => checkSession(getMe, queryClient.getQueryData<User>(meQueryKey)),
+    retry: false,
+    staleTime: 60_000,
+  })
 }
 
 /**

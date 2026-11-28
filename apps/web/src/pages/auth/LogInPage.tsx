@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { AuthLayout } from "@/components/layout/AuthLayout"
 import { Field, FormAlert, PasswordField } from "@/components/forms/Field"
 import { ApiError, errorMessage } from "@/lib/api"
-import { logIn } from "@/lib/auth"
+import { logIn, type User } from "@/lib/auth"
 import { meQueryKey, safeNext } from "@/lib/session"
+import { sessionEnded } from "@/lib/sessionCheck"
 import { getProfile, profileKeys } from "@/lib/profile"
 
 export function LogInPage() {
@@ -39,6 +40,12 @@ export function LogInPage() {
     if (!incomplete) mutation.mutate({ login: email.trim(), password })
   }
 
+  // Offline, logging in can't work, but an account this device already knows is still signed in here:
+  // its saved screens open without a connection (REQ-035).
+  // Not after the server said the session ended: the account it knew is no longer signed in.
+  const known = sessionEnded(queryClient.getQueryState(meQueryKey)?.error) ? undefined : queryClient.getQueryData<User>(meQueryKey)
+  const offline = mutation.error instanceof TypeError || (typeof navigator !== "undefined" && !navigator.onLine)
+
   // The API already returns one message for an unknown email or phone and a wrong password (no enumeration).
   const unverified = mutation.error instanceof ApiError && mutation.error.code === "email_unverified"
   const failure = mutation.error && !unverified ? errorMessage(mutation.error) : undefined
@@ -57,6 +64,14 @@ export function LogInPage() {
     >
       <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
         {failure && <FormAlert>{failure}</FormAlert>}
+        {known && offline && (
+          <p role="status" className="rounded-lg bg-secondary px-3 py-2 text-sm">
+            You're offline, and still signed in on this device as {known.email || "you"}.{" "}
+            <Link to={safeNext(requested)} replace className="font-semibold text-brand-blue underline underline-offset-4">
+              Carry on offline
+            </Link>
+          </p>
+        )}
         {unverified && (
           <FormAlert>
             Verify your email before logging in.{" "}
