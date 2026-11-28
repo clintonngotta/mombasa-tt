@@ -11,6 +11,7 @@ export type SessionInput = Schemas["SessionRequest"]
 export type ScheduleVersion = Schemas["ScheduleVersion"]
 export type ScheduleVersionSummary = Schemas["ScheduleVersionSummary"]
 export type DelayReason = Schemas["DelayReasonEnum"]
+export type PlannedDay = Schemas["PlannedDay"]
 
 export const DELAY_REASON_LABEL: Record<DelayReason, string> = {
   late_start: "Late start",
@@ -30,7 +31,8 @@ const base = (tournamentId: string) => `/tournaments/${tournamentId}/schedule/`
 /** Every match still to be played and not on a table, as it is planned now; competition staff only. */
 export const getSchedule = (tournamentId: string) => api<Schedule>(base(tournamentId))
 
-export type RecommendOptions = { day_starts: string; day_ends: string; table_ids: string[] }
+/** `use_sessions` false plans within the day's hours on every day, setting the sessions aside. */
+export type RecommendOptions = { day_starts: string; day_ends: string; table_ids: string[]; use_sessions: boolean }
 /** A start and table for every match. Nothing is kept until `keepSchedule`. */
 export const recommendSchedule = (tournamentId: string, options: RecommendOptions) =>
   api<Recommendation>(`${base(tournamentId)}recommend/`, { body: options })
@@ -40,6 +42,11 @@ export const checkSchedule = (tournamentId: string, slots: Slot[]) =>
 /** Keep these slots. Refused with `schedule_conflicts` (and a `conflicts` list) when one can't work. */
 export const keepSchedule = (tournamentId: string, slots: Slot[]) =>
   api<Schedule>(base(tournamentId), { method: "PUT", body: { slots } })
+
+/** Set one match's table and start by hand and publish it now, without the plan. Refused with
+ * `schedule_conflicts` only for conflicts this change makes; warnings come back without stopping it. */
+export const setMatchTime = (tournamentId: string, matchId: string, body: Schemas["SetTimeRequest"]) =>
+  api<Schemas["TimeSet"]>(`${base(tournamentId)}matches/${matchId}/`, { body })
 
 /** Days are built of sessions: hours, tables and (optionally) events. The recommendation fills them. */
 export const addSession = (tournamentId: string, body: SessionInput) => api<Session>(`${base(tournamentId)}sessions/`, { body })

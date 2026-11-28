@@ -37,6 +37,7 @@ import {
   type Membership,
   type PastHolder,
 } from "@/lib/clubs"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 const dateLabel = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })
 
@@ -80,7 +81,7 @@ function CommitteeView({ membership }: { membership: Membership }) {
 
   return (
     <>
-      <p className="text-muted-foreground">{membership.organization.name}</p>
+      <p className="text-muted-foreground"><OrganizationName organization={membership.organization} /></p>
       {accessLost && <AccessLost />}
       {committee.isPending && <p className="text-muted-foreground">Loading the committee…</p>}
       {committee.isError && !accessLost && <FormAlert>{errorMessage(committee.error, "We couldn't load the committee.")}</FormAlert>}

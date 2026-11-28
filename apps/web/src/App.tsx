@@ -105,6 +105,7 @@ import { EntriesPage } from "@/pages/tournaments/EntriesPage"
 import { DrawPage } from "@/pages/tournaments/DrawPage"
 import { EventPage } from "@/pages/tournaments/EventPage"
 import { MatchPage } from "@/pages/tournaments/MatchPage"
+import { TournamentPlayerPage } from "@/pages/tournaments/TournamentPlayerPage"
 import { ScoringOverviewPage } from "@/pages/tournaments/ScoringOverviewPage"
 import { DispatchBoardPage } from "@/pages/tournaments/DispatchBoardPage"
 import { SchedulePage } from "@/pages/tournaments/SchedulePage"
@@ -164,6 +165,7 @@ function App() {
             <Route path="/tournaments/:id/events/:eventId/schedule" element={<EventPage tab="schedule" />} />
             <Route path="/tournaments/:id/events/:eventId/standings" element={<EventPage tab="standings" />} />
             <Route path="/tournaments/:id/events/:eventId/matches/:matchId" element={<MatchPage />} />
+            <Route path="/tournaments/:id/players/:playerId" element={<TournamentPlayerPage />} />
             <Route path="/tournaments/:id/ceremony" element={<CeremonyPage />} />
             <Route path="/tournaments/:id/live" element={<LivePage />} />
             <Route path="/tournaments/:id/order-of-play" element={<OrderOfPlayPage />} />

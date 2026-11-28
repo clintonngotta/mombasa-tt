@@ -1,7 +1,9 @@
 import { useDeferredValue, useState } from "react"
 import { Link } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Search, UserPlus } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
+import { InvitePlayer } from "@/components/clubs/InvitePlayer"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { ChoiceGroup } from "@/components/forms/ChoiceGroup"
@@ -30,6 +32,7 @@ import { AccessLost } from "@/components/clubs/AccessLost"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
 import { AdminPanel } from "@/components/clubs/AdminPanel"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 /** Members of the active organization, their roles and, for member managers, their custom field values (REQ-005).
  * Never contact details. */
@@ -37,7 +40,7 @@ export function MembersPage() {
   const { memberships, active } = useActiveMembership()
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <BackLink to="/club">Club</BackLink>
+      <BackLink to={active?.organization.kind === "team" ? "/team" : "/club"}>{active?.organization.kind === "team" ? "Team" : "Club"}</BackLink>
       <h1 className="text-[32px] leading-9 font-bold">Members</h1>
       {memberships.isPending && <p className="text-muted-foreground">Loading…</p>}
       {memberships.isSuccess && !can(active, "members.manage", "roles.manage") && <AccessLost />}
@@ -58,9 +61,9 @@ function MemberList({ membership }: { membership: Membership }) {
 
   return (
     <>
-      <p className="text-muted-foreground">{membership.organization.name}</p>
+      <p className="text-muted-foreground"><OrganizationName organization={membership.organization} /></p>
       <AdminPanel membership={membership} />
-      {can(membership, "members.manage") && <AddMember membership={membership} />}
+      {can(membership, "members.manage") && <AddMember membership={membership} members={new Set(items.map((member) => member.user))} />}
       <Field label="Search members" type="search" value={term} onChange={(e) => setTerm(e.target.value)} hint="By display name" />
       {accessLost && <AccessLost />}
       {members.isPending && <p className="text-muted-foreground">Loading members…</p>}
@@ -82,10 +85,13 @@ function MemberList({ membership }: { membership: Membership }) {
 
 /** Add someone to the club directly. They are a member at once and get a link to set a password and sign
  * in; somebody already on Coast TT uses the same link to sign in and take the membership. */
-function AddMember({ membership }: { membership: Membership }) {
+function AddMember({ membership, members }: { membership: Membership; members: Set<string> }) {
   const orgId = membership.organization.id
+  const noun = membership.organization.kind === "team" ? "team" : "club"
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
+  // Somebody already on Coast TT is found and invited; somebody new is added with a link to join.
+  const [mode, setMode] = useState<"find" | "new">("find")
   const [form, setForm] = useState({ display_name: "", email: "", phone: "" })
   const add = useMutation({
     mutationFn: (sent: typeof form) => addMember(orgId, { display_name: sent.display_name, email: sent.email, phone: sent.phone || null }),
@@ -117,16 +123,33 @@ function AddMember({ membership }: { membership: Membership }) {
           Add a member
         </Button>
       ) : (
+        <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+          <h2 className="text-lg font-bold">Add a member</h2>
+          <div role="group" aria-label="Find or add" className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant={mode === "find" ? "default" : "outline"} aria-pressed={mode === "find"} onClick={() => setMode("find")}>
+              <Search aria-hidden className="size-4" /> Find a player on Coast TT
+            </Button>
+            <Button type="button" size="sm" variant={mode === "new" ? "default" : "outline"} aria-pressed={mode === "new"} onClick={() => setMode("new")}>
+              <UserPlus aria-hidden className="size-4" /> Add someone new
+            </Button>
+          </div>
+          {mode === "find" ? (
+            <>
+              <InvitePlayer orgId={orgId} noun={noun} members={members} />
+              <Button type="button" variant="ghost" className="self-start" onClick={() => setOpen(false)}>
+                Done
+              </Button>
+            </>
+          ) : (
         <form
-          className="flex flex-col gap-3 rounded-xl border bg-card p-4"
+          className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault()
             add.mutate({ display_name: form.display_name.trim(), email: form.email.trim(), phone: form.phone.trim() })
           }}
         >
-          <h2 className="text-lg font-bold">Add a member</h2>
           <p className="text-sm text-muted-foreground">
-            They join the club now and get a link to set a password and sign in. If they already use Coast TT, the same link
+            They join the {noun} now and get a link to set a password and sign in. If they already use Coast TT, the same link
             signs them in and adds the membership to their account.
           </p>
           <Field label="Name" required maxLength={80} value={form.display_name} onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))} error={fieldErrors.display_name} />
@@ -144,6 +167,8 @@ function AddMember({ membership }: { membership: Membership }) {
             </Button>
           </div>
         </form>
+          )}
+        </div>
       )}
     </>
   )

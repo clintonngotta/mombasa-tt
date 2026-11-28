@@ -13,6 +13,7 @@ import { KIND_LABEL, SIDE, clubKeys, getClubProfile, requestToJoin, sideOf, useJ
 import { WEEKDAYS } from "@/lib/coaching"
 import { countryName } from "@/lib/geography"
 import { SCOPE_LABEL } from "@/lib/tournaments"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 const dateLabel = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
@@ -57,7 +58,7 @@ export function ClubProfilePage({ side: from = "club" }: { side?: Side }) {
           {side === "team" ? <UsersRound aria-hidden className="size-7 text-brand-blue" /> : <Building2 aria-hidden className="size-7 text-brand-blue" />}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="text-[32px] leading-9 font-bold">{club.name}</h1>
+          <h1 className="text-[32px] leading-9 font-bold"><OrganizationName organization={club} /></h1>
           <p className="flex items-center gap-1 text-muted-foreground">
             <MapPin aria-hidden className="size-4" /> {place} · {KIND_LABEL[club.kind]}
           </p>

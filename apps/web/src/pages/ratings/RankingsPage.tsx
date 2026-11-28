@@ -217,14 +217,25 @@ function Row({ row, discipline }: { row: RankingRow; discipline: Discipline }) {
   const [open, setOpen] = useState(false)
   return (
     <li className={cn("rounded-xl border bg-card", row.is_me && "border-brand-blue")}>
-      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-12 w-full items-center gap-3 rounded-xl p-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+      {/* The row opens the rating history; the name leads to the player (a button can't hold a link, so
+          the button lies under the row and the name sits above it). */}
+      <div className="relative flex min-h-12 w-full items-center gap-3 rounded-xl p-3 text-left has-[>button:focus-visible]:ring-3 has-[>button:focus-visible]:ring-ring/50">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={`${row.display_name}, rank ${row.rank}: ${open ? "hide" : "show"} rating history`}
+          onClick={() => setOpen(!open)}
+          className="absolute inset-0 rounded-xl outline-none"
+        />
         <span className="w-8 shrink-0 text-center text-lg font-bold tabular-nums" aria-label={`Rank ${row.rank}`}>
           {row.rank}
         </span>
         <Avatar link={row.avatar} className="size-10" />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="font-semibold break-words">
-            {row.display_name}
+            <Link to={row.listed ? `/players/${row.user_id}` : `/ratings/${row.user_id}?discipline=${discipline}`} className="relative z-10 underline-offset-2 hover:underline">
+              {row.display_name}
+            </Link>
             {row.is_me && <span className="font-normal text-muted-foreground"> (you)</span>}
           </span>
           {row.clubs.length > 0 && <span className="text-sm break-words text-muted-foreground">{row.clubs.join(", ")}</span>}
@@ -245,7 +256,7 @@ function Row({ row, discipline }: { row: RankingRow; discipline: Discipline }) {
           )}
         </span>
         <ChevronDown aria-hidden className={cn("size-5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
+      </div>
       {open && (
         <div className="flex flex-col gap-3 border-t p-3">
           <RatingHistory userId={row.user_id} discipline={discipline} limit={5} />

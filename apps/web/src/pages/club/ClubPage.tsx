@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { AccessLost } from "@/components/clubs/AccessLost"
 import { MemberFieldValuesForm } from "@/components/clubs/MemberFieldValuesForm"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 /** The Club tab, and with `side="team"` the Team tab (REQ-057): the organization the player is acting
  * for when it is on this side, or the way to one. */
@@ -78,7 +79,7 @@ export function ClubPage({ side = "club" }: { side?: Side }) {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-[32px] leading-9 font-bold">{active?.organization.name ?? title}</h1>
+        <h1 className="text-[32px] leading-9 font-bold">{active ? <OrganizationName organization={active.organization} /> : title}</h1>
         {(active || mine.length > 1) && actions(false)}
       </div>
 
@@ -428,14 +429,14 @@ function InvitationsPanel({ orgId }: { orgId: string }) {
           {items.map((invitation) => (
             <li key={invitation.id} className={ROW}>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-semibold">{invitation.email}</span>
+                <span className="truncate font-semibold">{invitation.invitee_name ?? invitation.email}</span>
                 <span className="text-sm text-muted-foreground">
                   Pending · expires {new Date(invitation.expires_at).toLocaleDateString("en-KE", { day: "numeric", month: "short" })}
                 </span>
               </span>
               <Button
                 variant="outline"
-                aria-label={`Revoke invitation to ${invitation.email}`}
+                aria-label={`Revoke invitation to ${invitation.invitee_name ?? invitation.email}`}
                 disabled={revoke.isPending && revoke.variables === invitation.id}
                 onClick={() => revoke.mutate(invitation.id)}
               >

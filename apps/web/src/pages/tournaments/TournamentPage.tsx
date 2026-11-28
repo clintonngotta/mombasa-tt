@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, Clock, Globe, LayoutDashboard, ListOrdered, MapPin, Pencil, Plus, Users } from "lucide-react"
+import { CalendarDays, Clock, Copy, Globe, LayoutDashboard, ListOrdered, MapPin, Pencil, Plus, Share2, Users } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { CeremonyLink } from "@/components/ceremony/CeremonyLink"
 import { SponsorsPanel } from "@/components/region/SponsorsPanel"
@@ -32,13 +32,16 @@ import {
   firstTab,
   formatFee,
   getTournament,
+  getTournamentBySlug,
   getTournamentHistory,
+  isTournamentId,
   moveEvent,
   moveTournament,
   rejectTournamentApproval,
   SEEDING_LABEL,
   SCOPE_LABEL,
   tournamentKeys,
+  tournamentShareLink,
   type EventAction,
   type Tournament,
   type TournamentAction,
@@ -46,9 +49,37 @@ import {
   isClosed,
 } from "@/lib/tournaments"
 
-/** One tournament (REQ-007): what everyone sees, plus the controls of the host's competition staff. */
+/** One tournament (REQ-007), reached by its id or by the slug of its public link. */
 export function TournamentPage() {
   const { id = "" } = useParams()
+  return isTournamentId(id) ? <TournamentView id={id} /> : <TournamentBySlug slug={id} />
+}
+
+/** A public link: find the tournament by its slug, then show it as by id, keeping the slug address. */
+function TournamentBySlug({ slug }: { slug: string }) {
+  const queryClient = useQueryClient()
+  const found = useQuery({
+    queryKey: tournamentKeys.bySlug(slug),
+    queryFn: async () => {
+      const t = await getTournamentBySlug(slug)
+      queryClient.setQueryData(tournamentKeys.detail(t.id), t)
+      return t
+    },
+  })
+  if (found.data) return <TournamentView id={found.data.id} />
+  const missing = found.error instanceof ApiError && found.error.status === 404
+  return (
+    <div className="flex max-w-[720px] flex-col gap-6">
+      <BackLink to="/tournaments">Tournaments</BackLink>
+      {found.isPending && <p className="text-muted-foreground">Loading tournament…</p>}
+      {missing && <FormAlert>This tournament doesn't exist or hasn't been published.</FormAlert>}
+      {found.isError && !missing && <FormAlert>{errorMessage(found.error, "We couldn't load this tournament.")}</FormAlert>}
+    </div>
+  )
+}
+
+/** What everyone sees, plus the controls of the host's competition staff. */
+function TournamentView({ id }: { id: string }) {
   const socketOpen = useLiveTournament(id)
   const { results: memberships } = useMemberships()
   const tournament = useQuery({ queryKey: tournamentKeys.detail(id), queryFn: () => getTournament(id) })
@@ -93,6 +124,7 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
         <h1 className="min-w-0 text-[32px] leading-9 font-bold break-words">{t.name}</h1>
         <TournamentStatusChip status={t.status} />
       </div>
+      {t.status !== "draft" && <ShareTournament tournament={t} />}
       <dl className="flex flex-col gap-2">
         <Fact icon={<CalendarDays aria-hidden className="size-5" />} label="Dates">
           {formatDayRange(t.starts_on, t.ends_on)}
@@ -125,6 +157,45 @@ function Overview({ tournament: t }: { tournament: Tournament }) {
       <p className="text-sm text-muted-foreground">Dates and times are venue local ({t.timezone}).</p>
       <TournamentDocuments tournament={t} />
     </header>
+  )
+}
+
+/** Share the tournament's public link: the phone's share sheet where there is one, else copy it. */
+function ShareTournament({ tournament: t }: { tournament: Tournament }) {
+  const [said, setSaid] = useState("")
+  const link = tournamentShareLink(t)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link)
+      setSaid("Link copied.")
+    } catch {
+      setSaid(`Copying isn't allowed here. The link is ${link}`)
+    }
+  }
+  const share = async () => {
+    setSaid("")
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t.name, text: `${t.name}, ${formatDayRange(t.starts_on, t.ends_on)}`, url: link })
+      } catch {
+        // closed without sharing
+      }
+      return
+    }
+    await copy()
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type="button" variant="outline" onClick={share}>
+        <Share2 aria-hidden /> Share
+      </Button>
+      <Button type="button" variant="ghost" onClick={copy}>
+        <Copy aria-hidden /> Copy link
+      </Button>
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground break-all">
+        {said}
+      </p>
+    </div>
   )
 }
 

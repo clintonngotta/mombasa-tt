@@ -1255,7 +1255,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Open guest invitations to the signed-in player's verified address. */
+        /**
+         * @description Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+         *     the directory, while open, and those to their verified email. An email one stays here after its link
+         *     has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+         *     are never matched.
+         */
         get: operations["me_guest_invitations_list"];
         put?: never;
         post?: never;
@@ -1274,7 +1279,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open guest invitations to the signed-in player's verified address. */
+        /**
+         * @description Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+         *     the directory, while open, and those to their verified email. An email one stays here after its link
+         *     has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+         *     are never matched.
+         */
         post: operations["me_guest_invitations_accept_create"];
         delete?: never;
         options?: never;
@@ -1291,7 +1301,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open guest invitations to the signed-in player's verified address. */
+        /**
+         * @description Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+         *     the directory, while open, and those to their verified email. An email one stays here after its link
+         *     has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+         *     are never matched.
+         */
         post: operations["me_guest_invitations_decline_create"];
         delete?: never;
         options?: never;
@@ -1323,7 +1338,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        /**
+         * @description Open invitations addressed to the signed-in player's verified email, or to them as a player found
+         *     in the directory; they accept or decline.
+         */
         get: operations["me_invitations_list"];
         put?: never;
         post?: never;
@@ -1342,7 +1360,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        /**
+         * @description Open invitations addressed to the signed-in player's verified email, or to them as a player found
+         *     in the directory; they accept or decline.
+         */
         post: operations["me_invitations_accept_create"];
         delete?: never;
         options?: never;
@@ -1359,7 +1380,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open invitations addressed to the signed-in player's verified email; they accept or decline. */
+        /**
+         * @description Open invitations addressed to the signed-in player's verified email, or to them as a player found
+         *     in the directory; they accept or decline.
+         */
         post: operations["me_invitations_decline_create"];
         delete?: never;
         options?: never;
@@ -4386,6 +4410,46 @@ export interface paths {
         put?: never;
         /** @description Invite by email (we send the link), phone (share `invite_link` yourself) or both. */
         post: operations["organizations_guests_invite_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/link-player/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Ask a player found in the player directory whether they are this guest. They accept or
+         *     decline in the app; nothing moves until they accept.
+         */
+        post: operations["organizations_guests_link_player_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/new-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description A fresh invitation link to share, to the email and phone last invited (if any); nothing is
+         *     emailed. The old link stops working. `invite_link` is shown this once.
+         */
+        post: operations["organizations_guests_new_link_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8068,6 +8132,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/players/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One player in one tournament (TASK-148): their profile as the reader may see it, and their
+         *     entries, draw places, matches and placings there. A draft tournament, a player with no part in it
+         *     and a player whose only entries the reader may not see are all "not found".
+         */
+        get: operations["tournaments_players_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/reservations/": {
         parameters: {
             query?: never;
@@ -8206,6 +8291,27 @@ export interface paths {
          *     a version of its own, with the same notices as publishing.
          */
         post: operations["tournaments_schedule_delay_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournament_pk}/schedule/matches/{match_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Set one match's table and start by hand and publish it now, without the working plan.
+         *     Refused with `schedule_conflicts` only for conflicts this change makes; its players and
+         *     umpire are told when a published time or table changes.
+         */
+        post: operations["tournaments_schedule_matches_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8645,6 +8751,23 @@ export interface paths {
          *     platform super admin, otherwise those in the caller's jurisdiction and tier.
          */
         get: operations["tournaments_awaiting_approval_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/by-slug/{slug}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The tournament a public link names, as `retrieve` shows it: a draft only to its staff. */
+        get: operations["tournaments_by_slug_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11201,6 +11324,7 @@ export interface components {
             readonly claimant_name: string;
             /** Format: email */
             readonly invited_email: string;
+            readonly invited_player_name: string;
             status: components["schemas"]["GuestClaimStatusEnum"];
             readonly clashes: string[];
             /** Format: date-time */
@@ -11231,11 +11355,13 @@ export interface components {
             email?: string;
             phone?: string | null;
         };
+        /** @description `invitee_name`: the player found in the directory it was sent to, if it went to one. */
         GuestInvitation: {
             /** Format: uuid */
             readonly id: string;
             email: string;
             phone: string;
+            readonly invitee_name: string;
             status: components["schemas"]["InvitationStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
@@ -11246,6 +11372,11 @@ export interface components {
         GuestInviteRequest: {
             email?: string;
             phone?: string | null;
+        };
+        /** @description A player found in the player directory who may be this guest. */
+        GuestLinkPlayerRequest: {
+            /** Format: uuid */
+            player_id: string;
         };
         /**
          * @description * `right` - Right
@@ -11338,12 +11469,13 @@ export interface components {
             total_minor: number;
             by_source: components["schemas"]["SourceTotal"][];
         };
-        /** @description Staff view of an invitation they sent. */
+        /** @description Staff view of an invitation they sent. An invited player is shown by name; their email isn't. */
         Invitation: {
             /** Format: uuid */
             readonly id: string;
             /** Format: email */
             readonly email: string;
+            readonly invitee_name: string;
             readonly status: components["schemas"]["InvitationStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
@@ -11352,9 +11484,12 @@ export interface components {
             /** Format: date-time */
             readonly decided_at: string | null;
         };
+        /** @description Invite by email, or a player found in the player directory: one of the two. */
         InvitationCreateRequest: {
             /** Format: email */
-            email: string;
+            email?: string;
+            /** Format: uuid */
+            player_id?: string;
         };
         /**
          * @description What an invitation link shows the person who opens it: who they were entered as, where, by whom,
@@ -14336,6 +14471,15 @@ export interface components {
             completed?: boolean;
             activities?: components["schemas"]["ActivityRequest"][];
         };
+        PlannedDay: {
+            /** Format: date */
+            day: string;
+            matches: number;
+            /** Format: date-time */
+            first_start: string | null;
+            /** Format: date-time */
+            last_end: string | null;
+        };
         PlatformCity: {
             readonly id: number;
             readonly name: string;
@@ -14382,6 +14526,73 @@ export interface components {
             readonly experience: (components["schemas"]["ExperienceEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly bio: string | null;
         };
+        /** @description The player's part in one event: their entry, where the published draw put them, and their matches. */
+        PlayerEvent: {
+            event: components["schemas"]["EntryEvent"];
+            entry: components["schemas"]["DrawEntry"];
+            entry_status: components["schemas"]["EntryStatusEnum"];
+            seed: number | null;
+            /** @description Empty in a knockout or a single group. */
+            group_name: string;
+            /** @description Their rank in the group (or pool) now. */
+            group_rank: number | null;
+            /** @description What the event has decided about them, e.g. "Winner"; empty until then. */
+            placement: string;
+            won: number;
+            lost: number;
+            matches: components["schemas"]["PlayerMatch"][];
+        };
+        /** @description One of the player's matches, from the published draw. `side` says which of `a` and `b` is theirs. */
+        PlayerMatch: {
+            /** Format: uuid */
+            id: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            group: number | null;
+            round: number;
+            round_name: string;
+            position: number;
+            a: components["schemas"]["MatchSide"];
+            /** @description Null is a bye: `a` goes through without playing. */
+            b: components["schemas"]["MatchSide"] | null;
+            status: components["schemas"]["MatchStatusEnum"];
+            /** @description A match or team rubber is currently being scored. */
+            is_live: boolean;
+            /** Format: uuid */
+            winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description Points of each game as [a, b], in playing order. */
+            games: number[][];
+            /** @description Team ties that have begun: rubbers won as [a, b]. Null otherwise. */
+            tie_score: number[] | null;
+            /** @description The table's label; empty until one is given. */
+            table: string;
+            /**
+             * Format: date-time
+             * @description When it is expected to start: an estimate. Null until it is scheduled.
+             */
+            scheduled_at: string | null;
+            /**
+             * Format: date-time
+             * @description When it was sent to its table. Null while it isn't on one.
+             */
+            dispatched_at: string | null;
+            side: components["schemas"]["SideEnum"];
+            /**
+             * @description For the player: won or lost; empty while it isn't decided, and for a bye.
+             *
+             *     * `won` - won
+             *     * `lost` - lost
+             *     * `` -
+             */
+            result: components["schemas"]["PlayerMatchResultEnum"] | components["schemas"]["BlankEnum"];
+        };
+        /**
+         * @description * `won` - won
+         *     * `lost` - lost
+         *     * `` -
+         * @enum {string}
+         */
+        PlayerMatchResultEnum: "won" | "lost";
         PlayerRatings: {
             /** Format: uuid */
             user_id: string;
@@ -14854,12 +15065,19 @@ export interface components {
              * @default 21:00:00
              */
             day_ends: string;
+            /**
+             * @description Plan inside the sessions (when there are any); false plans within the day's hours on every day of the tournament instead.
+             * @default true
+             */
+            use_sessions: boolean;
             /** @description Defaults to every table in use. */
             table_ids?: string[];
         };
         Recommendation: {
             /** @description A match no session can hold has neither table nor start. */
             slots: components["schemas"]["RecommendedSlot"][];
+            /** @description How the tournament's days are filled. */
+            days: components["schemas"]["PlannedDay"][];
             conflicts: components["schemas"]["Problem"][];
             warnings: components["schemas"]["Problem"][];
         };
@@ -15418,9 +15636,10 @@ export interface components {
          * @description * `published` - Published
          *     * `delay` - Delay
          *     * `moved` - Moved
+         *     * `set` - Set
          * @enum {string}
          */
-        ScheduleVersionKindEnum: "published" | "delay" | "moved";
+        ScheduleVersionKindEnum: "published" | "delay" | "moved" | "set";
         ScheduleVersionSummary: {
             readonly number: number;
             readonly kind: components["schemas"]["ScheduleVersionKindEnum"];
@@ -15717,6 +15936,15 @@ export interface components {
              * @default true
              */
             move: boolean;
+        };
+        /** @description One match's table and start, published at once. A null start takes the time away. */
+        SetTimeRequest: {
+            /** Format: uuid */
+            table_id: string | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+            /** @default  */
+            note: string;
         };
         /** @description An amount each, or a total split evenly among those going (rounded up to whole units). */
         ShareCostRequest: {
@@ -16294,6 +16522,11 @@ export interface components {
             measure: components["schemas"]["MeasureEnum"];
             value: string;
         };
+        TimeSet: {
+            version: components["schemas"]["ScheduleVersion"];
+            /** @description For this match only: they didn't stop it. */
+            warnings: components["schemas"]["Problem"][];
+        };
         TokenRequest: {
             token: string;
         };
@@ -16304,6 +16537,8 @@ export interface components {
         Tournament: {
             /** Format: uuid */
             readonly id: string;
+            /** @description The public link's name: /tournaments/<slug>. */
+            readonly slug: string;
             readonly organization: components["schemas"]["OrganizationSummary"];
             readonly organizer: components["schemas"]["Organizer"];
             /**
@@ -16364,6 +16599,15 @@ export interface components {
             title: string;
             /** Format: binary */
             file: string;
+        };
+        /** @description One player in one tournament: the profile the reader may see, and their record there. */
+        TournamentPlayer: {
+            readonly player: components["schemas"]["Player"];
+            /** @description The reader may open the player's own page (a listed player, to a signed-in reader). */
+            has_player_page: boolean;
+            won: number;
+            lost: number;
+            events: components["schemas"]["PlayerEvent"][];
         };
         /**
          * @description * `coach` - The coach
@@ -26752,6 +26996,74 @@ export interface operations {
             };
         };
     };
+    organizations_guests_link_player_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestLinkPlayerRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_new_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitedGuest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     organizations_guests_revoke_invitation_create: {
         parameters: {
             query?: never;
@@ -26923,7 +27235,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["InvitationCreateRequest"];
             };
@@ -34413,6 +34725,37 @@ export interface operations {
             };
         };
     };
+    tournaments_players_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentPlayer"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     tournaments_reservations_list: {
         parameters: {
             query?: never;
@@ -34688,6 +35031,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Delayed"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_matches_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                match_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetTimeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeSet"];
                 };
             };
             /** @description Error envelope */
@@ -35596,6 +35974,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedTournamentList"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_by_slug_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
                 };
             };
             /** @description Error envelope */

@@ -1,8 +1,10 @@
+import secrets
 import uuid
 
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
-from django.db import models
+from django.db import IntegrityError, models, transaction
+from django.utils.text import slugify
 
 from attachments.models import Attachment
 from facilities.models import Table, Venue
@@ -13,6 +15,27 @@ MAX_TIE_RUBBERS = 9
 # The usual club tie: four singles around a doubles, first team to three.
 DEFAULT_TIE_RUBBERS = ["singles", "singles", "doubles", "singles", "singles"]
 DEFAULT_TIE_WINS = 3
+SLUG_MAX_LENGTH = 80
+
+
+def tournament_slug_base(name: str, starts_on) -> str:
+    """The readable part of a tournament's public link: its name, then its year unless the name has it."""
+    base = slugify(name)[:60].strip("-") or "tournament"
+    year = str(starts_on)[:4]  # a date, or its ISO text before the model has cleaned it
+    return base if year in base.split("-") else f"{base}-{year}"
+
+
+def free_tournament_slug(base: str, exclude=None) -> str:
+    """`base`, or `base-2`, `base-3`… while those are taken; a random tail after that."""
+    taken = Tournament.objects.filter(slug__startswith=base)
+    if exclude is not None:
+        taken = taken.exclude(pk=exclude)
+    used = set(taken.values_list("slug", flat=True))
+    for n in range(1, 20):
+        candidate = base if n == 1 else f"{base}-{n}"
+        if candidate not in used:
+            return candidate
+    return f"{base}-{secrets.token_hex(3)}"
 
 
 class TournamentQuerySet(models.QuerySet):
@@ -63,6 +86,10 @@ class Tournament(models.Model):
         Venue, on_delete=models.PROTECT, null=True, blank=True, related_name="tournaments"
     )
     name = models.CharField(max_length=120)
+    # The tournament's public link (/tournaments/<slug>), set once from its name and year so a shared
+    # link keeps working when the name changes later. Always set on save; nullable in the database only
+    # so the previous release, which doesn't set it, can still create tournaments during a deploy.
+    slug = models.SlugField(max_length=SLUG_MAX_LENGTH, unique=True, null=True, editable=False)  # noqa: DJ001
     description = models.TextField(max_length=2000, blank=True)
     # Only for a tournament hosted from a coach's organizing desk; blank for every other host.
     presented_as = models.CharField(max_length=5, choices=PresentedAs.choices, blank=True)
@@ -110,6 +137,21 @@ class Tournament(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.slug:
+            return super().save(*args, **kwargs)
+        base = tournament_slug_base(self.name, self.starts_on)
+        self.slug = free_tournament_slug(base, exclude=self.pk)
+        try:
+            # A savepoint, so a clash with a tournament saved at the same moment can be retried.
+            with transaction.atomic():
+                return super().save(*args, **kwargs)
+        except IntegrityError:
+            if not Tournament.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+                raise
+            self.slug = f"{base}-{secrets.token_hex(3)}"
+            return super().save(*args, **kwargs)
 
     @property
     def is_closed(self) -> bool:
@@ -698,6 +740,7 @@ class ScheduleVersion(models.Model):
         PUBLISHED = "published"  # the organizers published their plan
         DELAY = "delay"  # a table started late or went out of service
         MOVED = "moved"  # a match, or a player's matches, moved later
+        SET = "set"  # staff set one match's table and start by hand, published at once
 
     class Reason(models.TextChoices):
         LATE_START = "late_start", "Late start"
@@ -955,6 +998,7 @@ class MatchDayLog(models.Model):
         ORDER_CHANGED = "order_changed", "Order of play changed"
         NOT_BEFORE = "not_before", "Player's start time set"
         MATCH_MOVED = "match_moved", "Match moved later"
+        MATCH_TIMED = "match_timed", "Match time set"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")

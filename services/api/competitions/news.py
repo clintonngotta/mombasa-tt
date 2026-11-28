@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core import brand, pdf
+from core.downloads import file_name, named
 from core.exceptions import ApiException
 from core.pagination import StandardPagination
 from core.permissions import PublicReads
@@ -330,8 +331,9 @@ class AnnouncementCardView(APIView):
         tournament = _tournament(tournament_pk)
         announcement = _one(tournament, pk, _visible(request, tournament))
         response = HttpResponse(card_png(announcement), content_type="image/png")
-        response["Content-Disposition"] = 'inline; filename="coast-tt-results.png"'
-        return response
+        return named(
+            response, file_name(tournament.name, announcement.title, extension="png"), attachment=False
+        )
 
 
 MAX_PDF_POSTS = 200
@@ -374,10 +376,9 @@ def announcements_pdf(tournament: Tournament, posts, single: bool = False) -> by
     )
 
 
-def _pdf_response(content: bytes, name: str) -> HttpResponse:
+def _pdf_response(content: bytes, *parts: str) -> HttpResponse:
     response = HttpResponse(content, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{name}.pdf"'
-    return response
+    return named(response, file_name(*parts, extension="pdf"), attachment=True)
 
 
 class AnnouncementPdfView(APIView):
@@ -391,7 +392,9 @@ class AnnouncementPdfView(APIView):
     def get(self, request, tournament_pk, pk):
         tournament = _tournament(tournament_pk)
         announcement = _one(tournament, pk, _visible(request, tournament))
-        return _pdf_response(announcements_pdf(tournament, [announcement], single=True), "coast-tt-results")
+        return _pdf_response(
+            announcements_pdf(tournament, [announcement], single=True), tournament.name, announcement.title
+        )
 
 
 class AnnouncementsPdfView(APIView):
@@ -406,7 +409,7 @@ class AnnouncementsPdfView(APIView):
         tournament = _tournament(tournament_pk)
         _visible(request, tournament)
         posts = list(_feed(tournament, staff=False).order_by("published_at", "id")[:MAX_PDF_POSTS])
-        return _pdf_response(announcements_pdf(tournament, posts), "coast-tt-results")
+        return _pdf_response(announcements_pdf(tournament, posts), tournament.name, "Results")
 
 
 class ResultsSheetView(APIView):
@@ -425,6 +428,7 @@ class ResultsSheetView(APIView):
         _visible(request, tournament)
         if self.kind == "png":
             response = HttpResponse(results_sheet.as_image(tournament), content_type="image/png")
-            response["Content-Disposition"] = 'inline; filename="coast-tt-final-results.png"'
-            return response
-        return _pdf_response(results_sheet.as_pdf(tournament), "coast-tt-final-results")
+            return named(
+                response, file_name(tournament.name, "Final results", extension="png"), attachment=False
+            )
+        return _pdf_response(results_sheet.as_pdf(tournament), tournament.name, "Final results")

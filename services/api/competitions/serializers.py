@@ -9,6 +9,7 @@ from core.timezones import validate_timezone
 from facilities.models import Venue
 from facilities.serializers import VenueSummarySerializer
 from organizations.models import Organization
+from profiles.serializers import PlayerSerializer
 from scoring.serializers import ScoringSummarySerializer
 
 from .draws import MAX_SEEDS
@@ -315,10 +316,13 @@ class TournamentSerializer(serializers.ModelSerializer):
         help_text="A published match moved by more than this, or to another table, is news for its people.",
     )
 
+    slug = serializers.CharField(read_only=True, help_text="The public link's name: /tournaments/<slug>.")
+
     class Meta:
         model = Tournament
         fields = [
             "id",
+            "slug",
             "organization",
             "organizer",
             "presented_as",
@@ -345,6 +349,7 @@ class TournamentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "slug",
             "approval_status",
             "status",
             "published_at",
@@ -939,3 +944,47 @@ class StandingsSerializer(serializers.Serializer):
     rules_version = serializers.CharField(allow_blank=True)
     groups = GroupStandingSerializer(many=True)
     placements = PlacementSerializer(many=True)
+
+
+class PlayerMatchSerializer(MatchSerializer):
+    """One of the player's matches, from the published draw. `side` says which of `a` and `b` is theirs."""
+
+    side = serializers.ChoiceField(choices=[("a", "a"), ("b", "b")])
+    result = serializers.ChoiceField(
+        choices=[("won", "won"), ("lost", "lost"), ("", "")],
+        allow_blank=True,
+        help_text="For the player: won or lost; empty while it isn't decided, and for a bye.",
+    )
+
+
+class PlayerEventSerializer(serializers.Serializer):
+    """The player's part in one event: their entry, where the published draw put them, and their matches."""
+
+    event = EntryEventSerializer()
+    entry = DrawEntrySerializer()
+    entry_status = serializers.ChoiceField(choices=Entry.Status.choices, source="entry.status")
+    seed = serializers.IntegerField(allow_null=True)
+    group_name = serializers.CharField(allow_blank=True, help_text="Empty in a knockout or a single group.")
+    group_rank = serializers.IntegerField(allow_null=True, help_text="Their rank in the group (or pool) now.")
+    placement = serializers.CharField(
+        allow_blank=True, help_text='What the event has decided about them, e.g. "Winner"; empty until then.'
+    )
+    won = serializers.IntegerField()
+    lost = serializers.IntegerField()
+    matches = PlayerMatchSerializer(many=True)
+
+
+class TournamentPlayerSerializer(serializers.Serializer):
+    """One player in one tournament: the profile the reader may see, and their record there."""
+
+    player = serializers.SerializerMethodField()
+    has_player_page = serializers.BooleanField(
+        help_text="The reader may open the player's own page (a listed player, to a signed-in reader)."
+    )
+    won = serializers.IntegerField()
+    lost = serializers.IntegerField()
+    events = PlayerEventSerializer(many=True)
+
+    @extend_schema_field(PlayerSerializer)
+    def get_player(self, shown) -> dict:
+        return shown["player"]

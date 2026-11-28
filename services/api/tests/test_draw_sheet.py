@@ -28,7 +28,8 @@ def test_a_knockout_draw_downloads_with_its_rounds_and_scores(knockout):  # noqa
 
     response = anyone.get(sheet_url(knockout["cup"], knockout["event"], "pdf"))
     assert response.status_code == 200 and response["Content-Type"] == "application/pdf"
-    assert "attachment" in response["Content-Disposition"]
+    host, event = knockout["cup"]["name"], knockout["event"]["name"]
+    assert response["Content-Disposition"] == f'attachment; filename="{host} - {event} - Draw.pdf"'
     text = pdf_text(response.content)
     assert "DRAW: SINGLES" in text and knockout["cup"]["name"] in text
     assert "SEMI-FINALS" in text.upper() and "Final" in text and "KNOCKOUT" in text

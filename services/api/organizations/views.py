@@ -16,6 +16,7 @@ from core.nearby import MAX_RESULTS, NearbySearchSerializer, within
 from core.pagination import StandardPagination, search_term
 from core.permissions import is_platform_super_admin
 from guests import service as guest_service
+from profiles.models import listed_profiles
 
 from . import representatives
 from .access import (
@@ -305,14 +306,25 @@ class InvitationViewSet(viewsets.GenericViewSet):
         organization = self.get_organization()
         serializer = InvitationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data["email"]
+        email = serializer.validated_data.get("email", "")
+        player_id = serializer.validated_data.get("player_id")
 
         with transaction.atomic():
             lock_organization(organization)  # ordered after concurrent role changes
             require_permission(request.user, organization, MANAGE_MEMBERS)
+            invitee = None
+            if player_id is not None:
+                # Only players who chose to be found in the directory, as the search that found them.
+                profile = listed_profiles().filter(user_id=player_id).select_related("user").first()
+                if profile is None:
+                    raise ValidationError({"player_id": "Choose a player from the search."})
+                invitee = profile.user
+                if Membership.objects.active().filter(organization=organization, user=invitee).exists():
+                    raise ApiException("already_member", f"{invitee.display_name} is already a member.", 409)
+            addressed = {"invitee": invitee} if invitee else {"email": email}
             invitation = (
                 Invitation.objects.select_for_update()
-                .filter(organization=organization, email=email, status=Invitation.Status.PENDING)
+                .filter(organization=organization, status=Invitation.Status.PENDING, **addressed)
                 .first()
             )
             created = invitation is None
@@ -320,11 +332,11 @@ class InvitationViewSet(viewsets.GenericViewSet):
                 try:
                     with transaction.atomic():
                         invitation = Invitation.objects.create(
-                            organization=organization, email=email, invited_by=request.user
+                            organization=organization, invited_by=request.user, **addressed
                         )
-                except IntegrityError:  # a concurrent invite to the same address won the race
+                except IntegrityError:  # a concurrent invite to the same person won the race
                     invitation = Invitation.objects.get(
-                        organization=organization, email=email, status=Invitation.Status.PENDING
+                        organization=organization, status=Invitation.Status.PENDING, **addressed
                     )
                     created = False
             elif not invitation.is_open:  # inviting again renews a lapsed invitation
@@ -352,7 +364,8 @@ class InvitationViewSet(viewsets.GenericViewSet):
 
 
 class MyInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Open invitations addressed to the signed-in player's verified email; they accept or decline."""
+    """Open invitations addressed to the signed-in player's verified email, or to them as a player found
+    in the directory; they accept or decline."""
 
     serializer_class = MyInvitationSerializer
     permission_classes = [IsAuthenticated]
@@ -362,10 +375,11 @@ class MyInvitationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if getattr(self, "swagger_fake_view", False):
             return Invitation.objects.none()
         user = self.request.user
-        if not user.email_verified_at:  # an unverified address proves nothing about who owns it
-            return Invitation.objects.none()
+        mine = Q(invitee=user)
+        if user.email_verified_at and user.email:  # an unverified address proves nothing about who owns it
+            mine |= Q(email__iexact=user.email, invitee__isnull=True)
         return Invitation.objects.filter(
-            email__iexact=user.email, status=Invitation.Status.PENDING, expires_at__gt=timezone.now()
+            mine, status=Invitation.Status.PENDING, expires_at__gt=timezone.now()
         ).select_related("organization", "invited_by")
 
     def _answer(self, pk, outcome):

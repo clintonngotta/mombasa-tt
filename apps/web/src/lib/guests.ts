@@ -35,6 +35,10 @@ export const createGuest = (orgId: string, displayName: string, contact: Contact
 export const renameGuest = (orgId: string, id: string, displayName: string) =>
   api<Guest>(`${club(orgId)}${id}/`, { method: "PATCH", body: { display_name: displayName } })
 export const inviteGuest = (orgId: string, id: string, contact: Contact) => api<InvitedGuest>(`${club(orgId)}${id}/invite/`, { body: contact })
+/** A fresh link to share, to the address and phone last invited; nothing is emailed. The old link stops working. */
+export const newGuestLink = (orgId: string, id: string) => api<InvitedGuest>(`${club(orgId)}${id}/new-link/`, { body: {} })
+/** Ask a player found in the directory whether they are this guest; they accept or decline in the app. */
+export const askPlayerForGuest = (orgId: string, id: string, playerId: string) => api<Guest>(`${club(orgId)}${id}/link-player/`, { body: { player_id: playerId } })
 export const revokeGuestInvitation = (orgId: string, id: string) => api<Guest>(`${club(orgId)}${id}/revoke-invitation/`, { body: {} })
 
 export const listGuestClaims = (orgId: string) => api<Schemas["PaginatedGuestClaimList"]>(claimsOf(orgId))

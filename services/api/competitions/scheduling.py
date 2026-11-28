@@ -189,13 +189,19 @@ def sessions(tournament: Tournament) -> list[ScheduleSession]:
 
 
 def windows(
-    tournament: Tournament, tables: list[Table], day_starts: time, day_ends: time, extra_days: int = 60
+    tournament: Tournament,
+    tables: list[Table],
+    day_starts: time,
+    day_ends: time,
+    extra_days: int = 60,
+    use_sessions: bool = True,
 ) -> list[Window]:
-    """The organizers' sessions, on the tables chosen; without any, every day from the first day on
-    (past the last as well, so that what doesn't fit is still placed and flagged) on those tables."""
+    """The organizers' sessions, on the tables chosen. Without any, or when the organizers plan by the
+    day's hours instead (`use_sessions` False): those hours on every day from the first day on, past
+    the last as well, so that what doesn't fit is still placed and flagged."""
     zone = ZoneInfo(tournament.timezone)
     allowed = {table.id for table in tables}
-    made = sessions(tournament)
+    made = sessions(tournament) if use_sessions else []
     if made:
         found = []
         for session in made:
@@ -336,9 +342,13 @@ def recommend(
     starts_at: datetime | None = None,
     day_starts: time = DAY_STARTS,
     day_ends: time = DAY_ENDS,
+    use_sessions: bool = True,
 ) -> list[dict]:
-    """A start and table for every plannable match, earliest first, inside the sessions (or the day
-    hours). A match no session can hold comes back without either. Nothing is saved."""
+    """A start and table for every plannable match, earliest first, inside the sessions (or the day's
+    hours, every day). Earliest first fills the first day before the next: a one-day tournament plays
+    everything that day if it fits, a longer one plays as much as it can on its first days. What
+    doesn't fit in the tournament's days is placed after them and flagged; a match no session can hold
+    comes back without table or start. Nothing is saved."""
     from . import order_of_play
 
     zone = ZoneInfo(tournament.timezone)
@@ -348,7 +358,11 @@ def recommend(
     if not tables:
         return []
     order = _seeds_later(_in_order(items, order_of_play.ranks(tournament)), seeds_wait(tables))
-    spans = [w for w in windows(tournament, tables, day_starts, day_ends) if w.end > start]
+    spans = [
+        w
+        for w in windows(tournament, tables, day_starts, day_ends, use_sessions=use_sessions)
+        if w.end > start
+    ]
 
     table_free = {table.id: start for table in tables}
     # A player who can't play before a time is free from then (REQ-053).
@@ -409,6 +423,28 @@ def recommend(
             }
         )
     return slots
+
+
+def days_of(tournament: Tournament, slots: list[dict]) -> list[dict]:
+    """How a recommendation fills each of the tournament's days: matches, first start and last end."""
+    zone = ZoneInfo(tournament.timezone)
+    lengths = {pk: item.length for pk, item in items_for(plannable(tournament)).items()}
+    found = {
+        tournament.starts_on + timedelta(days=n): {"matches": 0, "first_start": None, "last_end": None}
+        for n in range((tournament.ends_on - tournament.starts_on).days + 1)
+    }
+    for slot in slots:
+        at = slot["scheduled_at"]
+        if at is None:
+            continue
+        day = found.get(_local(at, zone).date())
+        if day is None:
+            continue
+        end = at + lengths.get(slot["match_id"], timedelta(0))
+        day["matches"] += 1
+        day["first_start"] = min(filter(None, (day["first_start"], at)))
+        day["last_end"] = max(filter(None, (day["last_end"], end)))
+    return [{"day": day, **numbers} for day, numbers in sorted(found.items())]
 
 
 def _in_order(items: dict, ranks: dict | None) -> list[Item]:

@@ -94,7 +94,7 @@ export function EventPage({ tab }: { tab: EventTab }) {
                   <a href={drawSheetUrl(id, eventId, "pdf")} className={buttonVariants({ variant: "outline" })}>
                     <FileDown aria-hidden /> Draw (PDF)
                   </a>
-                  <a href={drawSheetUrl(id, eventId, "png")} download="coast-tt-draw.png" className={buttonVariants({ variant: "outline" })}>
+                  <a href={drawSheetUrl(id, eventId, "png")} download className={buttonVariants({ variant: "outline" })}>
                     <ImageDown aria-hidden /> Draw image
                   </a>
                 </>

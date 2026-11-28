@@ -498,6 +498,8 @@ ACCESS: dict[str, dict[str, str]] = {
     "organization-guest-detail": {"patch": STAFF},
     "organization-guest-invite": {"post": STAFF},
     "organization-guest-revoke-invitation": {"post": STAFF},
+    "organization-guest-new-link": {"post": STAFF},
+    "organization-guest-link-player": {"post": STAFF},
     "organization-guest-claim-list": {"get": STAFF},
     "organization-guest-claim-retry": {"post": STAFF},
     "organization-guest-claim-reject": {"post": STAFF},
@@ -568,6 +570,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-schedule-check": {"post": STAFF},
     "tournament-schedule-publish": {"post": STAFF},
     "tournament-schedule-delay": {"post": STAFF},
+    "tournament-schedule-set-time": {"post": STAFF},
     "tournament-schedule-versions": {"get": STAFF},
     "tournament-schedule-version": {"get": STAFF},
     "tournament-schedule-sessions": {"get": STAFF, "post": STAFF},
@@ -575,6 +578,8 @@ ACCESS: dict[str, dict[str, str]] = {
     # Lists only the drafts the caller may approve; see test_authority.
     "tournament-awaiting-approval": {"get": SIGNED_IN},
     "tournament-detail": {"get": PUBLIC, "patch": STAFF, "delete": STAFF},
+    # A tournament's public link (/tournaments/<slug>): shown as tournament-detail shows it.
+    "tournament-by-slug": {"get": PUBLIC},
     "tournament-publish": {"post": STAFF},
     "tournament-request-approval": {"post": STAFF},
     "tournament-reject-approval": {"post": APPROVER},
@@ -601,6 +606,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-entries": {"get": OWNER},
     # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
     "tournament-event-draw": {"get": PUBLIC},
+    "tournament-player": {
+        "get": PUBLIC
+    },  # an entered player's record; entries others may not see stay hidden
     # The published draw as a PDF and a PNG (not found until one is published).
     "tournament-event-draw-pdf": {"get": PUBLIC},
     "tournament-event-draw-png": {"get": PUBLIC},
@@ -794,6 +802,9 @@ BODIES = {
     ("organization-guest-list", "post"): {"display_name": "Walk-in Guest"},
     ("organization-guest-detail", "patch"): {"display_name": "Kassim the Guest"},
     ("organization-guest-invite", "post"): {"email": "kassim@example.com"},
+    ("organization-guest-link-player", "post"): lambda: {
+        "player_id": str(User.objects.get(email="faith.listed@coast.example").id)
+    },
     ("organization-guest-claim-retry", "post"): {"note": "Checked again"},
     ("organization-guest-claim-reject", "post"): {"note": "Not the same player"},
     ("organization-roles", "post"): {"name": "Scorers", "permissions": []},
@@ -1037,6 +1048,10 @@ BODIES = {
     ("tournament-order-of-play-release", "put"): {"release_at": None},
     ("tournament-order-of-play-player", "put"): lambda: {"at": order_time(13).isoformat(), "move": True},
     ("tournament-order-of-play-move", "post"): lambda: {"scheduled_at": order_time(15).isoformat()},
+    ("tournament-schedule-set-time", "post"): lambda: {
+        "table_id": None,
+        "scheduled_at": order_time(16).isoformat(),
+    },
     ("tournament-table-umpire", "put"): {"user_id": None},
     ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
@@ -1969,6 +1984,8 @@ class World:
             "organization-guest-detail": self.guest.user_id,
             "organization-guest-invite": self.guest.user_id,
             "organization-guest-revoke-invitation": self.guest.user_id,
+            "organization-guest-new-link": self.guest.user_id,
+            "organization-guest-link-player": self.guest.user_id,
             "organization-guest-claim-retry": self.claim_to_retry.id,
             "organization-guest-claim-reject": self.claim_to_reject.id,
             "me-membership-leave": self.baraka_membership.id,
@@ -2110,6 +2127,7 @@ class World:
             "organization-detail": self.coast.id,
             "organization-profile": self.coast.id,
             "player-detail": self.baraka.id,
+            "tournament-player": self.faith.id,
             "player-ratings": self.baraka.id,
             "tournament-schedule-session": self.session.id,
             "organization-club-session": self.club_session.id,
@@ -2194,6 +2212,8 @@ class World:
             found["code"] = "KE"
         if "token" in names:
             found["token"] = self.guest_link
+        if "slug" in names:
+            found["slug"] = self.draft.slug
         if "organization_pk" in names:
             found["organization_pk"] = self.coast.id
         if "pk" in names:
@@ -2226,6 +2246,9 @@ class World:
         if name == "tournament-review":
             found["tournament_pk"] = self.reviewed.id
             return found
+        if name == "tournament-player":
+            found["tournament_pk"] = self.entered.id
+            return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
             found["organization_pk"] = self.body.id
         if name in BODY_SIDE:
@@ -2240,7 +2263,7 @@ class World:
         if name == "tournament-umpire":
             found["tournament_pk"], found["user_pk"] = self.scored_cup.id, UMPIRE_USER
             return found
-        if name.startswith("tournament-order-of-play"):
+        if name.startswith("tournament-order-of-play") or name == "tournament-schedule-set-time":
             found["tournament_pk"] = self.order_cup.id
             if "user_pk" in names:
                 found["user_pk"] = self.order_player.id
@@ -2944,6 +2967,7 @@ def test_views_of_other_people_carry_only_allowlisted_fields(world):
     cup = viewer.get(f"/api/v1/tournaments/{world.published.id}/").json()
     assert set(cup) == {
         "id",
+        "slug",  # the public link, made from the tournament's own name and year
         "organization",
         "organizer",
         "presented_as",

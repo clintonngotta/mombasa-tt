@@ -41,7 +41,11 @@ class Guest(models.Model):
 class GuestInvitation(models.Model):
     """Staff ask the person behind a guest to claim it (REQ-003), by email, phone or both. It carries a
     single-use link (only its hash is kept): whoever opens it creates their account from the guest, or
-    signs in and claims it. An account signed in with the verified email also sees it in its inbox.
+    signs in and claims it. An account signed in with the verified email also sees it in its inbox, also
+    after the link has lapsed, so someone who joins on their own later still finds their matches.
+
+    Or staff address it to a player already on Coast TT, found in the player directory (`invitee`): no
+    link and no address, it waits in that player's inbox. Either way nothing moves until it is accepted.
     It is answered once: accepted, declined, revoked or lapsed."""
 
     class Status(models.TextChoices):
@@ -54,6 +58,13 @@ class GuestInvitation(models.Model):
     guest = models.ForeignKey(Guest, on_delete=models.CASCADE, related_name="invitations")
     email = models.EmailField(blank=True)  # stored lower-cased; blank for a phone-only invitation
     phone = models.CharField(max_length=16, blank=True)  # E.164, where staff will share the link
+    invitee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="guest_invitations",
+    )
     # Null for invitations made before links existed: unique, so they can't share a blank value.
     token_hash = models.CharField(max_length=64, unique=True, null=True, editable=False)  # noqa: DJ001
     invited_by = models.ForeignKey(
@@ -69,11 +80,18 @@ class GuestInvitation(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["guest"], condition=models.Q(status="pending"), name="one_open_guest_invitation"
-            )
+            ),
+            # A player found in the directory is reached in the app only: no address and no link.
+            models.CheckConstraint(
+                condition=models.Q(invitee__isnull=True)
+                | models.Q(email="", phone="", token_hash__isnull=True),
+                name="guest_invitation_player_has_no_link",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.email or self.phone} for {self.guest_id} ({self.status})"
+        to = self.email or self.phone or (self.invitee_id and f"player {self.invitee_id}") or "link"
+        return f"{to} for {self.guest_id} ({self.status})"
 
     @property
     def is_open(self) -> bool:

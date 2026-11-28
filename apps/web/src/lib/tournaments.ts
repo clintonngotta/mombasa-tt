@@ -48,6 +48,7 @@ export const tournamentKeys = {
   list: (when: When, term: string, scope: TournamentScope | "") => ["tournaments", "list", when, term, scope] as const,
   hosted: (orgId: string) => ["tournaments", "hosted", orgId] as const,
   detail: (id: string) => ["tournaments", "detail", id] as const,
+  bySlug: (slug: string) => ["tournaments", "slug", slug] as const,
   history: (id: string) => ["tournaments", "history", id] as const,
   dashboard: (id: string) => ["tournaments", "dashboard", id] as const,
 }
@@ -61,6 +62,13 @@ export const listTournaments = (when: When, term: string, scope: TournamentScope
 /** Every tournament the organization hosts, drafts included; needs competitions.manage. */
 export const listHostedTournaments = (orgId: string) => api<Schemas["PaginatedTournamentList"]>(`/organizations/${orgId}/tournaments/?page_size=100`)
 export const getTournament = (id: string) => api<Tournament>(one(id))
+/** The tournament a public link names (/tournaments/<slug>). */
+export const getTournamentBySlug = (slug: string) => api<Tournament>(`${BASE}by-slug/${encodeURIComponent(slug)}/`)
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** Whether a /tournaments/:id address holds an id rather than a public link's slug. */
+export const isTournamentId = (value: string) => UUID.test(value)
+/** The public link to share: the tournament's slug on this site. */
+export const tournamentShareLink = (t: Pick<Tournament, "slug">) => `${window.location.origin}/tournaments/${t.slug}`
 export const createTournament = (orgId: string, body: TournamentInput) => api<Tournament>(`/organizations/${orgId}/tournaments/`, { body })
 export const updateTournament = (id: string, body: Schemas["PatchedTournamentRequest"]) => api<Tournament>(one(id), { method: "PATCH", body })
 export const deleteTournament = (id: string) => api<void>(one(id), { method: "DELETE" })

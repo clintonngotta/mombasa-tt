@@ -10,6 +10,7 @@ import { can, useActiveMembership } from "@/lib/clubs"
 import { ROW, useAdminAccessLost } from "@/lib/clubAdmin"
 import { cn } from "@/lib/utils"
 import { listVenues, tableCount, venueKeys, type Venue } from "@/lib/venues"
+import { OrganizationName } from "@/components/clubs/KindBadge"
 
 /** The organization's venues and how many tables each has (REQ-007), for its facility staff. */
 export function VenuesPage() {
@@ -28,7 +29,7 @@ export function VenuesPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-[32px] leading-9 font-bold">Venues and tables</h1>
-          {active && <p className="text-muted-foreground">{active.organization.name}</p>}
+          {active && <p className="text-muted-foreground"><OrganizationName organization={active.organization} /></p>}
         </div>
         {allowed && (
           <Link to="/club/venues/new" className={buttonVariants({ variant: "outline" })}>

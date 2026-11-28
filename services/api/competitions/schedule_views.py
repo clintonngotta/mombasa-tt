@@ -180,6 +180,21 @@ class TableDelaySerializer(PublishNoteSerializer):
     )
 
 
+class SetTimeSerializer(serializers.Serializer):
+    """One match's table and start, published at once. A null start takes the time away."""
+
+    table_id = serializers.UUIDField(allow_null=True)
+    scheduled_at = serializers.DateTimeField(allow_null=True)
+    note = serializers.CharField(
+        max_length=300, allow_blank=True, required=False, default="", trim_whitespace=True
+    )
+
+
+class TimeSetSerializer(serializers.Serializer):
+    version = ScheduleVersionSerializer()
+    warnings = ProblemSerializer(many=True, help_text="For this match only: they didn't stop it.")
+
+
 class DelayedSerializer(serializers.Serializer):
     version = ScheduleVersionSerializer()
     conflicts = ProblemSerializer(many=True, help_text="What the published schedule still has wrong.")
@@ -199,6 +214,12 @@ class RecommendRequestSerializer(serializers.Serializer):
     starts_at = serializers.DateTimeField(required=False, help_text="Not before; defaults to now.")
     day_starts = serializers.TimeField(required=False, default=scheduling.DAY_STARTS)
     day_ends = serializers.TimeField(required=False, default=scheduling.DAY_ENDS)
+    use_sessions = serializers.BooleanField(
+        required=False,
+        default=True,
+        help_text="Plan inside the sessions (when there are any); false plans within the day's hours on "
+        "every day of the tournament instead.",
+    )
     table_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, help_text="Defaults to every table in use."
     )
@@ -209,10 +230,18 @@ class RecommendRequestSerializer(serializers.Serializer):
         return attrs
 
 
+class PlannedDaySerializer(serializers.Serializer):
+    day = serializers.DateField()
+    matches = serializers.IntegerField()
+    first_start = serializers.DateTimeField(allow_null=True)
+    last_end = serializers.DateTimeField(allow_null=True)
+
+
 class RecommendationSerializer(serializers.Serializer):
     slots = RecommendedSlotSerializer(
         many=True, help_text="A match no session can hold has neither table nor start."
     )
+    days = PlannedDaySerializer(many=True, help_text="How the tournament's days are filled.")
     conflicts = ProblemSerializer(many=True)
     warnings = ProblemSerializer(many=True)
 
@@ -291,6 +320,7 @@ class ScheduleViewSet(viewsets.GenericViewSet):
             starts_at=options.get("starts_at"),
             day_starts=options["day_starts"],
             day_ends=options["day_ends"],
+            use_sessions=options["use_sessions"],
         )
         by_id = {table.id: table for table in tables}
         chosen = {
@@ -299,7 +329,13 @@ class ScheduleViewSet(viewsets.GenericViewSet):
             if slot["table_id"] is not None
         }
         return Response(
-            RecommendationSerializer({"slots": slots, **_checked(*scheduling.check(tournament, chosen))}).data
+            RecommendationSerializer(
+                {
+                    "slots": slots,
+                    "days": scheduling.days_of(tournament, slots),
+                    **_checked(*scheduling.check(tournament, chosen)),
+                }
+            ).data
         )
 
     @extend_schema(request=SlotsSerializer, responses={200: CheckedSerializer})
@@ -335,6 +371,26 @@ class ScheduleViewSet(viewsets.GenericViewSet):
                 match.draft_table, match.draft_at = table, at
                 match.save(update_fields=["draft_table", "draft_at"])
         return self.retrieve(request, tournament_pk)
+
+    @extend_schema(request=SetTimeSerializer, responses={200: TimeSetSerializer})
+    def set_time(self, request, tournament_pk, match_pk):
+        """Set one match's table and start by hand and publish it now, without the working plan.
+        Refused with `schedule_conflicts` only for conflicts this change makes; its players and
+        umpire are told when a published time or table changes."""
+        asked = SetTimeSerializer(data=request.data)
+        asked.is_valid(raise_exception=True)
+        data = asked.validated_data
+        with transaction.atomic():
+            tournament = staff_tournament(request.user, tournament_pk)
+            table = None
+            if data["table_id"] is not None:
+                table = next((t for t in _tables(tournament) if t.id == data["table_id"]), None)
+                if table is None:
+                    raise serializers.ValidationError({"table_id": "Choose a table in use at the venue."})
+            done = publication.set_time(
+                tournament, request.user, match_pk, table, data["scheduled_at"], data["note"]
+            )
+        return Response(TimeSetSerializer(done).data)
 
     @extend_schema(request=PublishNoteSerializer, responses={200: ScheduleVersionSerializer})
     def publish(self, request, tournament_pk):

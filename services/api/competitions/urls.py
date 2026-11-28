@@ -11,6 +11,7 @@ from .views import (
     EventViewSet,
     MyEntriesViewSet,
     OrganizationTournamentViewSet,
+    TournamentPlayerView,
     TournamentViewSet,
 )
 
@@ -29,6 +30,11 @@ urlpatterns = [
         ReportStreamView.as_view(),
         name="tournament-stream-report",
     ),
+    path(
+        "<uuid:tournament_pk>/players/<uuid:pk>/",
+        TournamentPlayerView.as_view(),
+        name="tournament-player",
+    ),
     path("<uuid:tournament_pk>/cover/", media.TournamentCoverView.as_view(), name="tournament-cover"),
     path(
         "<uuid:tournament_pk>/documents/",
@@ -41,6 +47,11 @@ urlpatterns = [
         name="tournament-document",
     ),
     path("overseen/", TournamentViewSet.as_view({"get": "overseen"}), name="tournament-overseen"),
+    path(
+        "by-slug/<slug:slug>/",
+        TournamentViewSet.as_view({"get": "by_slug"}),
+        name="tournament-by-slug",
+    ),
     path(
         "awaiting-approval/",
         TournamentViewSet.as_view({"get": "awaiting_approval"}),
@@ -172,6 +183,11 @@ urlpatterns = [
         "<uuid:tournament_pk>/schedule/publish/",
         action(ScheduleViewSet, "publish"),
         name="tournament-schedule-publish",
+    ),
+    path(
+        "<uuid:tournament_pk>/schedule/matches/<uuid:match_pk>/",
+        action(ScheduleViewSet, "set_time"),
+        name="tournament-schedule-set-time",
     ),
     path(
         "<uuid:tournament_pk>/schedule/delay/",

@@ -30,7 +30,8 @@ function Frame({ id, label, hint, error, optional, children }: Shared & { id: st
 
 const describedBy = (id: string, hint: ReactNode, error?: string) => [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined
 
-type SelectOption = { value: string; label: string; disabled?: boolean }
+/** `badge` is a short word shown beside the label (a club or a team, say); searching uses the label. */
+type SelectOption = { value: string; label: string; disabled?: boolean; badge?: ReactNode }
 
 type SearchSelectProps = Pick<ComponentProps<"button">, "id" | "aria-label" | "aria-describedby" | "aria-invalid" | "className" | "disabled"> & {
   options: SelectOption[]
@@ -41,6 +42,7 @@ type SearchSelectProps = Pick<ComponentProps<"button">, "id" | "aria-label" | "a
 
 /** A select whose open list can be searched with the keyboard or pointer. */
 export function SearchSelect({ options, value, onChange, placeholder = "Choose an option", disabled, className, ...triggerProps }: SearchSelectProps) {
+  const chosen = options.find((option) => option.value === value)
   return (
     <Combobox.Root
       items={options}
@@ -50,7 +52,10 @@ export function SearchSelect({ options, value, onChange, placeholder = "Choose a
       autoHighlight
     >
       <Combobox.Trigger type="button" className={cn(CONTROL, "flex h-12 min-w-0 items-center justify-between gap-2 text-left", className)} {...triggerProps}>
-        <span className="truncate"><Combobox.Value placeholder={placeholder} /></span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate"><Combobox.Value placeholder={placeholder} /></span>
+          {chosen?.badge}
+        </span>
         <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </Combobox.Trigger>
       <Combobox.Portal>
@@ -70,7 +75,10 @@ export function SearchSelect({ options, value, onChange, placeholder = "Choose a
                   disabled={option.disabled}
                   className="flex min-h-10 cursor-default items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-50"
                 >
-                  <span className="min-w-0 break-words">{option.label}</span>
+                  <span className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="min-w-0 break-words">{option.label}</span>
+                    {option.badge}
+                  </span>
                   <Combobox.ItemIndicator><Check aria-hidden className="size-4" /></Combobox.ItemIndicator>
                 </Combobox.Item>
               )}

@@ -10,7 +10,7 @@ import { PublishPanel } from "@/components/schedule/PublishPanel"
 import { SessionsPanel } from "@/components/schedule/SessionsPanel"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant, fromZonedInput, toZonedInput } from "@/lib/dates"
-import { checkSchedule, conflictsOf, getSchedule, keepSchedule, recommendSchedule, scheduleKeys, type Problem, type Schedule, type Slot } from "@/lib/schedule"
+import { checkSchedule, conflictsOf, getSchedule, keepSchedule, recommendSchedule, scheduleKeys, setMatchTime, type PlannedDay, type Problem, type Schedule, type Slot } from "@/lib/schedule"
 import { getTournament, tournamentKeys } from "@/lib/tournaments"
 
 type Draft = { table_id: string; local: string }
@@ -18,6 +18,16 @@ type Drafts = Record<string, Draft>
 
 const fromRows = (schedule: Schedule, timeZone: string): Drafts =>
   Object.fromEntries(schedule.rows.map((row) => [row.match_id, { table_id: row.table_id ?? "", local: toZonedInput(row.scheduled_at, timeZone) }]))
+
+const dayLabel = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+const clock = (iso: string | null, timeZone: string) => (iso ? new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone }) : "")
+
+/** What the plan aims for, from the tournament's days. */
+function daysNote(startsOn: string, endsOn: string) {
+  const count = Math.round((Date.parse(endsOn) - Date.parse(startsOn)) / 86_400_000) + 1
+  if (count <= 1) return `One day, ${dayLabel(startsOn)}: every match is planned to finish that day.`
+  return `${count} days, ${dayLabel(startsOn)} to ${dayLabel(endsOn)}: earliest first, so the first days hold as many matches as fit and the rest follow.`
+}
 
 /**
  * The day schedule for a tournament's competition staff (TASK-099, TASK-081). The app recommends a
@@ -43,6 +53,9 @@ export function SchedulePage() {
   const [notice, setNotice] = useState("")
   const [beyond, setBeyond] = useState(0)
   const [unplaced, setUnplaced] = useState(0)
+  // Plan within the day's hours on every day (the default), or inside the sessions set above.
+  const [planBy, setPlanBy] = useState<"hours" | "sessions">("hours")
+  const [days, setDays] = useState<PlannedDay[]>([])
 
   const data = schedule.data
   const tables = useMemo(() => data?.tables ?? [], [data])
@@ -55,7 +68,8 @@ export function SchedulePage() {
     .map(([pk, draft]) => ({ match_id: pk, table_id: draft.table_id || null, scheduled_at: fromZonedInput(draft.local, timeZone) }))
 
   const recommend = useMutation({
-    mutationFn: () => recommendSchedule(id, { day_starts: dayStarts, day_ends: dayEnds, table_ids: chosenTables }),
+    mutationFn: () =>
+      recommendSchedule(id, { day_starts: dayStarts, day_ends: dayEnds, table_ids: chosenTables, use_sessions: planBy === "sessions" && (data?.sessions.length ?? 0) > 0 }),
     onSuccess: (made) => {
       setEdits((now) => {
         const next = { ...now }
@@ -65,6 +79,7 @@ export function SchedulePage() {
       setProblems({ conflicts: made.conflicts, warnings: made.warnings })
       setBeyond(made.slots.filter((slot) => slot.beyond_last_day && slot.scheduled_at).length)
       setUnplaced(made.slots.filter((slot) => !slot.scheduled_at).length)
+      setDays(made.days)
       setNotice("Recommended. Change anything you need, then keep the plan.")
     },
   })
@@ -83,10 +98,30 @@ export function SchedulePage() {
       setProblems({ conflicts: fresh.conflicts, warnings: fresh.warnings })
       setBeyond(0)
       setUnplaced(0)
+      setDays([])
       setNotice("Plan kept. Publish it below when players should see it.")
     },
     onError: (error) => {
       if (error instanceof ApiError && error.code === "schedule_conflicts") setProblems({ conflicts: conflictsOf(error.body), warnings: [] })
+    },
+  })
+
+  // Set time: one match published now, for organizers who schedule match by match.
+  const [setFor, setSetFor] = useState<Record<string, { ok?: string; error?: string; warnings?: Problem[] }>>({})
+  const publishOne = useMutation({
+    mutationFn: (pk: string) => {
+      const draft = drafts[pk]
+      return setMatchTime(id, pk, { table_id: draft.table_id || null, scheduled_at: fromZonedInput(draft.local, timeZone), note: "" })
+    },
+    onSuccess: (done, pk) => {
+      setEdits(({ [pk]: _, ...rest }) => rest)
+      setSetFor((now) => ({ ...now, [pk]: { ok: done.version.changes.some((c) => c.notify) ? "Published. Its players and umpire are told." : "Published.", warnings: done.warnings } }))
+      void queryClient.invalidateQueries({ queryKey: scheduleKeys.detail(id) })
+      void queryClient.invalidateQueries({ queryKey: scheduleKeys.versions(id) })
+    },
+    onError: (error, pk) => {
+      const conflicts = error instanceof ApiError && error.code === "schedule_conflicts" ? conflictsOf(error.body) : []
+      setSetFor((now) => ({ ...now, [pk]: { error: conflicts.length ? conflicts.map((c) => c.message).join(" ") : errorMessage(error) } }))
     },
   })
 
@@ -114,7 +149,7 @@ export function SchedulePage() {
         <h1 className="text-[32px] leading-9 font-bold">Schedule</h1>
         <p className="text-muted-foreground">
           When and on which table each match is planned, in the venue's time ({timeZone}). Times are estimates from each event's best-of. Keep the plan as you work;
-          players, umpires and the tables board see it once you publish it.
+          players, umpires and the tables board see it once you publish it. Or choose a match's table and start and press <span className="font-semibold">Set time</span> to publish that match now.
         </p>
       </header>
 
@@ -133,13 +168,27 @@ export function SchedulePage() {
               Every match gets the earliest start and table where nobody plays twice at once or without their rest, and no match comes before the ones it waits for.
               Nothing is kept until you keep it.
             </p>
-            {data.sessions.length > 0 ? (
-              <p className="text-sm text-muted-foreground">The sessions above set the hours; only their tables that are also ticked below are used.</p>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Day starts" type="time" value={dayStarts} onChange={(e) => setDayStarts(e.target.value)} />
-                <Field label="Day ends" type="time" value={dayEnds} onChange={(e) => setDayEnds(e.target.value)} />
-              </div>
+            {data.sessions.length > 0 && (
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-2 text-sm font-semibold">Plan within</legend>
+                <label className="flex min-h-11 items-center gap-2">
+                  <input type="radio" name="plan-by" checked={planBy === "hours"} onChange={() => setPlanBy("hours")} />
+                  The hours below, every day of the tournament
+                </label>
+                <label className="flex min-h-11 items-center gap-2">
+                  <input type="radio" name="plan-by" checked={planBy === "sessions"} onChange={() => setPlanBy("sessions")} />
+                  The sessions above (only their tables that are also ticked below)
+                </label>
+              </fieldset>
+            )}
+            {(planBy === "hours" || data.sessions.length === 0) && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Play starts each day" type="time" value={dayStarts} onChange={(e) => setDayStarts(e.target.value)} />
+                  <Field label="Last match ends by" type="time" value={dayEnds} onChange={(e) => setDayEnds(e.target.value)} />
+                </div>
+                {tournament.data && <p className="text-sm text-muted-foreground">{daysNote(tournament.data.starts_on, tournament.data.ends_on)}</p>}
+              </>
             )}
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 text-sm font-semibold">Tables to use</legend>
@@ -161,16 +210,29 @@ export function SchedulePage() {
             <Button className="self-start" onClick={() => recommend.mutate()} disabled={recommend.isPending || chosenTables.length === 0 || rows.length === 0}>
               {recommend.isPending ? "Recommending…" : "Recommend times and tables"}
             </Button>
+            {days.length > 0 && (
+              <ul className="flex flex-col gap-1 text-sm" aria-label="How the days are filled">
+                {days.map((day) => (
+                  <li key={day.day}>
+                    <span className="font-semibold">{dayLabel(day.day)}</span>:{" "}
+                    {day.matches === 0
+                      ? "no matches"
+                      : `${day.matches} ${day.matches === 1 ? "match" : "matches"}, ${clock(day.first_start, timeZone)} to about ${clock(day.last_end, timeZone)}`}
+                  </li>
+                ))}
+              </ul>
+            )}
             {beyond > 0 && (
               <p className="flex items-center gap-2 text-sm text-warning">
-                <TriangleAlert className="size-4" aria-hidden />
-                {beyond} {beyond === 1 ? "match doesn't" : "matches don't"} fit in the tournament's days. Use more tables or longer days.
+                <TriangleAlert className="size-4 shrink-0" aria-hidden />
+                {beyond} {beyond === 1 ? "match doesn't" : "matches don't"} fit by {dayEnds} on the tournament's last day: they are planned after it. Tick more tables, start
+                earlier or end later{planBy === "sessions" ? ", or plan within the hours instead of the sessions" : ""}.
               </p>
             )}
             {unplaced > 0 && (
               <p className="flex items-center gap-2 text-sm text-warning">
                 <TriangleAlert className="size-4" aria-hidden />
-                {unplaced} {unplaced === 1 ? "match fits" : "matches fit"} in no session. Add a session, or more tables or events to one.
+                {unplaced} {unplaced === 1 ? "match fits" : "matches fit"} in no session. Plan within the day's hours instead, or add a session, or more tables or events to one.
               </p>
             )}
           </section>
@@ -186,6 +248,10 @@ export function SchedulePage() {
                 {rows.map((row) => {
                   const draft = drafts[row.match_id] ?? { table_id: "", local: "" }
                   const own = problemsOf(row.match_id)
+                  const result = setFor[row.match_id]
+                  const published = row.published_at ? toZonedInput(row.published_at, timeZone) : ""
+                  const same = draft.local === published && (draft.table_id || null) === (row.published_table_id ?? null)
+                  const busy = publishOne.isPending && publishOne.variables === row.match_id
                   return (
                     <li key={row.match_id} className={`flex flex-col gap-3 rounded-xl border bg-card p-4 ${own.conflicts.length ? "border-destructive" : ""}`}>
                       <div className="flex flex-col gap-0.5">
@@ -228,6 +294,35 @@ export function SchedulePage() {
                           />
                         </label>
                       </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy || same}
+                          onClick={() => {
+                            setSetFor(({ [row.match_id]: _, ...rest }) => rest)
+                            publishOne.mutate(row.match_id)
+                          }}
+                          aria-label={`Set time for ${row.label} and publish it now`}
+                        >
+                          {busy ? "Setting…" : "Set time"}
+                        </Button>
+                        {result?.ok && (
+                          <span role="status" className="text-sm text-success">
+                            {result.ok}
+                          </span>
+                        )}
+                      </div>
+                      {result?.error && (
+                        <p className="text-sm font-semibold text-destructive" role="alert">
+                          {result.error}
+                        </p>
+                      )}
+                      {result?.warnings?.map((p) => (
+                        <p key={`set-${p.code}`} className="text-sm text-warning">
+                          {p.message}
+                        </p>
+                      ))}
                       {own.conflicts.map((p) => (
                         <p key={p.code + p.message} className="text-sm font-semibold text-destructive" role="alert">
                           {p.message}
@@ -269,6 +364,7 @@ export function SchedulePage() {
                     setProblems(null)
                     setBeyond(0)
                     setUnplaced(0)
+                    setDays([])
                     setNotice("")
                   }}
                   disabled={changed.length === 0}

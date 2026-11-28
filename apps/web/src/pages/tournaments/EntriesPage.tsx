@@ -34,6 +34,7 @@ import {
 } from "@/lib/entries"
 import { useMe } from "@/lib/session"
 import { canManageTournament, eventSummary, formatFee, getTournament, isClosed, tournamentKeys, type Tournament, type TournamentEvent } from "@/lib/tournaments"
+import { EntryNames, PlayerName } from "@/components/tournaments/PlayerNames"
 
 /** Entries of one event (REQ-008): enter or withdraw, see who is in, and the organizers' entry desk. */
 export function EntriesPage() {
@@ -150,7 +151,7 @@ function Players({ entry }: { entry: Entry }) {
       {entry.players.map((player) => (
         <li key={player.id} className="flex items-center gap-1">
           {player.id === entry.captain_id && <Crown aria-label="Captain" className="size-4" />}
-          {player.display_name}
+          <PlayerName player={player} />
         </li>
       ))}
     </ul>
@@ -483,7 +484,9 @@ function DeskRow({
 
   return (
     <article aria-label={title} className="flex flex-col gap-2 rounded-lg border bg-card p-3">
-      <p className="font-semibold break-words">{title}</p>
+      <p className="font-semibold break-words">
+        <EntryNames entry={{ title, players: entry.players }} />
+      </p>
       <Players entry={entry} />
       <CheckedIn entry={entry} zone={t.timezone} />
       {entry.reason && <p className="text-sm">Reason given: {entry.reason}</p>}

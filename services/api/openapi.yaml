@@ -2479,7 +2479,11 @@ paths:
   /api/v1/me/guest-invitations/:
     get:
       operationId: me_guest_invitations_list
-      description: Open guest invitations to the signed-in player's verified address.
+      description: |-
+        Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+        the directory, while open, and those to their verified email. An email one stays here after its link
+        has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+        are never matched.
       parameters:
       - name: page
         required: false
@@ -2513,7 +2517,11 @@ paths:
   /api/v1/me/guest-invitations/{id}/accept/:
     post:
       operationId: me_guest_invitations_accept_create
-      description: Open guest invitations to the signed-in player's verified address.
+      description: |-
+        Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+        the directory, while open, and those to their verified email. An email one stays here after its link
+        has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+        are never matched.
       parameters:
       - in: path
         name: id
@@ -2542,7 +2550,11 @@ paths:
   /api/v1/me/guest-invitations/{id}/decline/:
     post:
       operationId: me_guest_invitations_decline_create
-      description: Open guest invitations to the signed-in player's verified address.
+      description: |-
+        Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+        the directory, while open, and those to their verified email. An email one stays here after its link
+        has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+        are never matched.
       parameters:
       - in: path
         name: id
@@ -2591,8 +2603,9 @@ paths:
   /api/v1/me/invitations/:
     get:
       operationId: me_invitations_list
-      description: Open invitations addressed to the signed-in player's verified email;
-        they accept or decline.
+      description: |-
+        Open invitations addressed to the signed-in player's verified email, or to them as a player found
+        in the directory; they accept or decline.
       parameters:
       - name: page
         required: false
@@ -2626,8 +2639,9 @@ paths:
   /api/v1/me/invitations/{id}/accept/:
     post:
       operationId: me_invitations_accept_create
-      description: Open invitations addressed to the signed-in player's verified email;
-        they accept or decline.
+      description: |-
+        Open invitations addressed to the signed-in player's verified email, or to them as a player found
+        in the directory; they accept or decline.
       parameters:
       - in: path
         name: id
@@ -2656,8 +2670,9 @@ paths:
   /api/v1/me/invitations/{id}/decline/:
     post:
       operationId: me_invitations_decline_create
-      description: Open invitations addressed to the signed-in player's verified email;
-        they accept or decline.
+      description: |-
+        Open invitations addressed to the signed-in player's verified email, or to them as a player found
+        in the directory; they accept or decline.
       parameters:
       - in: path
         name: id
@@ -10149,6 +10164,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/{id}/link-player/:
+    post:
+      operationId: organizations_guests_link_player_create
+      description: |-
+        Ask a player found in the player directory whether they are this guest. They accept or
+        decline in the app; nothing moves until they accept.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this guest.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestLinkPlayerRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/organizations/{organization_pk}/guests/{id}/new-link/:
+    post:
+      operationId: organizations_guests_new_link_create
+      description: |-
+        A fresh invitation link to share, to the email and phone last invited (if any); nothing is
+        emailed. The old link stops working. `invite_link` is shown this once.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this guest.
+        required: true
+      - in: path
+        name: organization_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - sessionAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitedGuest'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/organizations/{organization_pk}/guests/{id}/revoke-invitation/:
     post:
       operationId: organizations_guests_revoke_invitation_create
@@ -10347,7 +10440,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/InvitationCreateRequest'
-        required: true
       security:
       - sessionAuth: []
       responses:
@@ -18847,6 +18939,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/players/{id}/:
+    get:
+      operationId: tournaments_players_retrieve
+      description: |-
+        One player in one tournament (TASK-148): their profile as the reader may see it, and their
+        entries, draw places, matches and placings there. A draft tournament, a player with no part in it
+        and a player whose only entries the reader may not see are all "not found".
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentPlayer'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/reservations/:
     get:
       operationId: tournaments_reservations_list
@@ -19142,6 +19271,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Delayed'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/matches/{match_pk}/:
+    post:
+      operationId: tournaments_schedule_matches_create
+      description: |-
+        Set one match's table and start by hand and publish it now, without the working plan.
+        Refused with `schedule_conflicts` only for conflicts this change makes; its players and
+        umpire are told when a published time or table changes.
+      parameters:
+      - in: path
+        name: match_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetTimeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSet'
           description: ''
         4XX:
           description: Error envelope
@@ -20128,6 +20300,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedTournamentList'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/by-slug/{slug}/:
+    get:
+      operationId: tournaments_by_slug_retrieve
+      description: 'The tournament a public link names, as `retrieve` shows it: a
+        draft only to its staff.'
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tournament'
           description: ''
         4XX:
           description: Error envelope
@@ -26504,6 +26704,9 @@ components:
           type: string
           format: email
           readOnly: true
+        invited_player_name:
+          type: string
+          readOnly: true
         status:
           $ref: '#/components/schemas/GuestClaimStatusEnum'
         clashes:
@@ -26533,6 +26736,7 @@ components:
       - guest_name
       - id
       - invited_email
+      - invited_player_name
       - resolved_at
       - status
     GuestClaimActionEnum:
@@ -26581,6 +26785,8 @@ components:
       - display_name
     GuestInvitation:
       type: object
+      description: '`invitee_name`: the player found in the directory it was sent
+        to, if it went to one.'
       properties:
         id:
           type: string
@@ -26596,6 +26802,9 @@ components:
         phone:
           type: string
           maxLength: 16
+        invitee_name:
+          type: string
+          readOnly: true
         status:
           $ref: '#/components/schemas/InvitationStatusEnum'
         created_at:
@@ -26610,6 +26819,7 @@ components:
       - email
       - expires_at
       - id
+      - invitee_name
       - phone
       - status
     GuestInviteRequest:
@@ -26627,6 +26837,15 @@ components:
           type: string
           nullable: true
           maxLength: 32
+    GuestLinkPlayerRequest:
+      type: object
+      description: A player found in the player directory who may be this guest.
+      properties:
+        player_id:
+          type: string
+          format: uuid
+      required:
+      - player_id
     HandEnum:
       enum:
       - right
@@ -26842,7 +27061,8 @@ components:
       - total_minor
     Invitation:
       type: object
-      description: Staff view of an invitation they sent.
+      description: Staff view of an invitation they sent. An invited player is shown
+        by name; their email isn't.
       properties:
         id:
           type: string
@@ -26851,6 +27071,9 @@ components:
         email:
           type: string
           format: email
+          readOnly: true
+        invitee_name:
+          type: string
           readOnly: true
         status:
           allOf:
@@ -26875,16 +27098,20 @@ components:
       - email
       - expires_at
       - id
+      - invitee_name
       - status
     InvitationCreateRequest:
       type: object
+      description: 'Invite by email, or a player found in the player directory: one
+        of the two.'
       properties:
         email:
           type: string
           format: email
           minLength: 1
-      required:
-      - email
+        player_id:
+          type: string
+          format: uuid
     InvitationDetail:
       type: object
       description: |-
@@ -33858,6 +34085,27 @@ components:
           maxItems: 20
       required:
       - kind
+    PlannedDay:
+      type: object
+      properties:
+        day:
+          type: string
+          format: date
+        matches:
+          type: integer
+        first_start:
+          type: string
+          format: date-time
+          nullable: true
+        last_end:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - day
+      - first_start
+      - last_end
+      - matches
     PlatformCity:
       type: object
       properties:
@@ -34016,6 +34264,154 @@ components:
       - id
       - nickname
       - style
+    PlayerEvent:
+      type: object
+      description: 'The player''s part in one event: their entry, where the published
+        draw put them, and their matches.'
+      properties:
+        event:
+          $ref: '#/components/schemas/EntryEvent'
+        entry:
+          $ref: '#/components/schemas/DrawEntry'
+        entry_status:
+          $ref: '#/components/schemas/EntryStatusEnum'
+        seed:
+          type: integer
+          nullable: true
+        group_name:
+          type: string
+          description: Empty in a knockout or a single group.
+        group_rank:
+          type: integer
+          nullable: true
+          description: Their rank in the group (or pool) now.
+        placement:
+          type: string
+          description: What the event has decided about them, e.g. "Winner"; empty
+            until then.
+        won:
+          type: integer
+        lost:
+          type: integer
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerMatch'
+      required:
+      - entry
+      - entry_status
+      - event
+      - group_name
+      - group_rank
+      - lost
+      - matches
+      - placement
+      - seed
+      - won
+    PlayerMatch:
+      type: object
+      description: One of the player's matches, from the published draw. `side` says
+        which of `a` and `b` is theirs.
+      properties:
+        id:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+        group:
+          type: integer
+          nullable: true
+        round:
+          type: integer
+        round_name:
+          type: string
+        position:
+          type: integer
+        a:
+          $ref: '#/components/schemas/MatchSide'
+        b:
+          allOf:
+          - $ref: '#/components/schemas/MatchSide'
+          nullable: true
+          description: 'Null is a bye: `a` goes through without playing.'
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        is_live:
+          type: boolean
+          description: A match or team rubber is currently being scored.
+        winner_id:
+          type: string
+          format: uuid
+          nullable: true
+        outcome:
+          oneOf:
+          - $ref: '#/components/schemas/MatchOutcomeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+          description: Points of each game as [a, b], in playing order.
+        tie_score:
+          type: array
+          items:
+            type: integer
+          nullable: true
+          description: 'Team ties that have begun: rubbers won as [a, b]. Null otherwise.'
+          maxItems: 2
+          minItems: 2
+        table:
+          type: string
+          description: The table's label; empty until one is given.
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'When it is expected to start: an estimate. Null until it is
+            scheduled.'
+        dispatched_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When it was sent to its table. Null while it isn't on one.
+        side:
+          $ref: '#/components/schemas/SideEnum'
+        result:
+          description: "For the player: won or lost; empty while it isn't decided,
+            and for a bye.\n\n* `won` - won\n* `lost` - lost\n* `` - "
+          oneOf:
+          - $ref: '#/components/schemas/PlayerMatchResultEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+      required:
+      - a
+      - b
+      - dispatched_at
+      - games
+      - group
+      - id
+      - is_live
+      - outcome
+      - position
+      - result
+      - round
+      - round_name
+      - scheduled_at
+      - side
+      - stage
+      - status
+      - table
+      - tie_score
+      - winner_id
+    PlayerMatchResultEnum:
+      enum:
+      - won
+      - lost
+      type: string
+      description: "* `won` - won\n* `lost` - lost\n* `` - "
     PlayerRatings:
       type: object
       properties:
@@ -35044,6 +35440,11 @@ components:
           type: string
           format: time
           default: '21:00:00'
+        use_sessions:
+          type: boolean
+          default: true
+          description: Plan inside the sessions (when there are any); false plans
+            within the day's hours on every day of the tournament instead.
         table_ids:
           type: array
           items:
@@ -35058,6 +35459,11 @@ components:
           items:
             $ref: '#/components/schemas/RecommendedSlot'
           description: A match no session can hold has neither table nor start.
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlannedDay'
+          description: How the tournament's days are filled.
         conflicts:
           type: array
           items:
@@ -35068,6 +35474,7 @@ components:
             $ref: '#/components/schemas/Problem'
       required:
       - conflicts
+      - days
       - slots
       - warnings
     RecommendedSlot:
@@ -36373,11 +36780,13 @@ components:
       - published
       - delay
       - moved
+      - set
       type: string
       description: |-
         * `published` - Published
         * `delay` - Delay
         * `moved` - Moved
+        * `set` - Set
     ScheduleVersionSummary:
       type: object
       properties:
@@ -37106,6 +37515,26 @@ components:
             people.
       required:
       - at
+    SetTimeRequest:
+      type: object
+      description: One match's table and start, published at once. A null start takes
+        the time away.
+      properties:
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - scheduled_at
+      - table_id
     ShareCostRequest:
       type: object
       description: An amount each, or a total split evenly among those going (rounded
@@ -38529,6 +38958,19 @@ components:
       - among
       - measure
       - value
+    TimeSet:
+      type: object
+      properties:
+        version:
+          $ref: '#/components/schemas/ScheduleVersion'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+          description: 'For this match only: they didn''t stop it.'
+      required:
+      - version
+      - warnings
     TokenRequest:
       type: object
       properties:
@@ -38547,6 +38989,10 @@ components:
           type: string
           format: uuid
           readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          description: 'The public link''s name: /tournaments/<slug>.'
         organization:
           allOf:
           - $ref: '#/components/schemas/OrganizationSummary'
@@ -38658,6 +39104,7 @@ components:
       - registration_fee
       - schedule_notice_minutes
       - scope
+      - slug
       - started_at
       - starts_on
       - status
@@ -38731,6 +39178,33 @@ components:
       required:
       - file
       - title
+    TournamentPlayer:
+      type: object
+      description: 'One player in one tournament: the profile the reader may see,
+        and their record there.'
+      properties:
+        player:
+          allOf:
+          - $ref: '#/components/schemas/Player'
+          readOnly: true
+        has_player_page:
+          type: boolean
+          description: The reader may open the player's own page (a listed player,
+            to a signed-in reader).
+        won:
+          type: integer
+        lost:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerEvent'
+      required:
+      - events
+      - has_player_page
+      - lost
+      - player
+      - won
     TournamentPresentedAsEnum:
       enum:
       - coach

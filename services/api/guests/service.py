@@ -55,22 +55,27 @@ def by_token(token: str, lock: bool = False) -> GuestInvitation | None:
 MEMBER = "member"  # the guest was added as a club member, not (only) entered in a tournament
 
 
-def invite(
-    guest: Guest, email: str, actor, phone: str = "", purpose: str = ""
-) -> tuple[GuestInvitation, str]:
-    """Ask the person behind the guest to claim it, by email, phone or both. A new invitation replaces
-    any still open. `purpose` MEMBER words the email for someone added to the club. Returns the
-    invitation and its link's secret, which is shown to staff once (to
-    share by WhatsApp or SMS) and never stored."""
+def _replace_open(guest: Guest) -> None:
+    """Before a new invitation: the guest must still be one, with no clash waiting for staff, and any
+    invitation still open is withdrawn (one open invitation per guest)."""
     still_a_guest(guest)
     if guest.claims.filter(status=GuestClaim.Status.CONFLICT).exists():
         raise ApiException(
             "claim_open", "A claim for this guest is waiting for you to resolve it first.", 409
         )
-    now = timezone.now()
     guest.invitations.filter(status=GuestInvitation.Status.PENDING).update(
-        status=GuestInvitation.Status.REVOKED, decided_at=now
+        status=GuestInvitation.Status.REVOKED, decided_at=timezone.now()
     )
+
+
+def invite(
+    guest: Guest, email: str, actor, phone: str = "", purpose: str = "", send: bool = True
+) -> tuple[GuestInvitation, str]:
+    """Ask the person behind the guest to claim it, by email, phone or both. A new invitation replaces
+    any still open. `purpose` MEMBER words the email for someone added to the club; `send` False makes
+    the link without emailing it. Returns the invitation and its link's secret, which is shown to staff
+    once (to share by WhatsApp or SMS) and never stored."""
+    _replace_open(guest)
     token = secrets.token_urlsafe(32)
     invitation = GuestInvitation.objects.create(
         guest=guest,
@@ -79,9 +84,57 @@ def invite(
         invited_by=actor,
         token_hash=_hash(token),
     )
-    if invitation.email:
+    if invitation.email and send:
         transaction.on_commit(lambda: _send_invitation(invitation, token, purpose))
     return invitation, token
+
+
+def new_link(guest: Guest, actor) -> tuple[GuestInvitation, str]:
+    """A fresh link for staff to share, when the last one was lost, used up or lapsed. It goes to the
+    email and phone staff last invited, if any (an invitation to a player found in the directory has
+    neither), and nothing is emailed: staff share it themselves. The old link stops working."""
+    last = (
+        guest.invitations.filter(invitee__isnull=True)
+        .exclude(email="", phone="")
+        .order_by("-created_at")
+        .first()
+    )
+    return invite(guest, last.email if last else "", actor, last.phone if last else "", send=False)
+
+
+def link_player(guest: Guest, player: User, actor) -> GuestInvitation:
+    """Ask a player already on Coast TT whether they are this guest. It waits in their inbox, and they
+    get an email at their own verified address if they have one. Nothing moves until they accept, and
+    staff learn nothing about their account from it."""
+    if player.pk == guest.user_id:
+        raise ApiException("not_allowed", "Choose the player this guest is.", 400)
+    _replace_open(guest)
+    invitation = GuestInvitation.objects.create(guest=guest, invitee=player, invited_by=actor)
+    transaction.on_commit(lambda: _send_player_notice(invitation))
+    return invitation
+
+
+def _send_player_notice(invitation: GuestInvitation) -> None:
+    player = invitation.invitee
+    if not (player.email and player.email_verified_at):
+        return
+    guest = invitation.guest
+    club = guest.organization.name
+    inviter = invitation.invited_by.display_name if invitation.invited_by else "Club staff"
+    try:
+        send_mail(
+            f"Are these your matches at {club}?",
+            f'{inviter} at {club} entered a player as "{guest.user.display_name}" before they were on '
+            "Coast TT, and thinks it was you. If it was, claim them under Profile, Matches entered for "
+            "you, and the entries and results become yours.\n\n"
+            f"Open: {settings.FRONTEND_URL}/profile/claims\n\n"
+            f"The request expires on {invitation.expires_at:%d %b %Y}. If it wasn't you, decline it there "
+            "or ignore this email.",
+            None,
+            [player.email],
+        )
+    except Exception:  # the request still waits in the app
+        pass
 
 
 def _send_invitation(invitation: GuestInvitation, token: str, purpose: str = "") -> None:
