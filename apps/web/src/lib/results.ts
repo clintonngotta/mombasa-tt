@@ -4,6 +4,7 @@ import type { Schemas } from "@/lib/schema"
 export type OfficialResult = Schemas["OfficialResult"]
 export type Resolution = Schemas["Resolution"]
 export type Outcome = OfficialResult["outcome"]
+export type EntryWalkovers = Schemas["EntryWalkovers"]
 export type ResultBody = { winner_entry_id: string; outcome: Outcome; games: number[][]; rubber_id: string | null; reason?: string }
 
 export const resultKeys = {
@@ -14,6 +15,9 @@ const match = (tournamentId: string, eventId: string, matchId: string) => `/tour
 
 /** Competition staff record a result themselves; official at once. */
 export const enterResult = (tournamentId: string, eventId: string, matchId: string, body: ResultBody) => api<Schemas["MatchDetail"]>(`${match(tournamentId, eventId, matchId)}result/`, { body })
+/** The referee gives walkovers in every match an entry has left in the event (a no-show), in one go. */
+export const walkOverEntry = (tournamentId: string, eventId: string, entryId: string, reason: string) =>
+  api<EntryWalkovers>(`/tournaments/${tournamentId}/events/${eventId}/entries/${entryId}/walkovers/`, { body: { reason } })
 /** Replace a decided result, with a reason. The earlier one is kept. */
 export const correctResult = (tournamentId: string, eventId: string, matchId: string, body: ResultBody & { reason: string }) =>
   api<Schemas["MatchDetail"]>(`${match(tournamentId, eventId, matchId)}result/correct/`, { body })

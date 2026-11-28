@@ -24,6 +24,11 @@ NEWS = {
         "Your entry in {event} was not accepted",
         "Your entry in {event} at {tournament} was not accepted.",
     ),
+    "swapped": (
+        "You're in {event}",
+        "{actor} put a new player into your place in {event} at {tournament}, in place of one who left. "
+        "The place keeps its results so far and plays the matches it has left.",
+    ),
     "withdrawn": (
         "Your entry in {event} was withdrawn",
         "{actor} withdrew your entry in {event} at {tournament}.",

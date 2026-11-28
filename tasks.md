@@ -397,7 +397,7 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-005](spec.md#req-005) | [EVAL-005](test.md#eval-005) | TASK-013, TASK-014 |
 | [REQ-006](spec.md#req-006) | [EVAL-006](test.md#eval-006) | TASK-015, TASK-148 |
 | [REQ-007](spec.md#req-007) | [EVAL-007](test.md#eval-007) | TASK-017, TASK-117, TASK-145 |
-| [REQ-008](spec.md#req-008) | [EVAL-008](test.md#eval-008) | TASK-018 |
+| [REQ-008](spec.md#req-008) | [EVAL-008](test.md#eval-008) | TASK-018, TASK-155 |
 | [REQ-009](spec.md#req-009) | [EVAL-009](test.md#eval-009) | TASK-003, TASK-019, TASK-144 |
 | [REQ-010](spec.md#req-010) | [EVAL-010](test.md#eval-010) | TASK-003, TASK-020, TASK-021 |
 | [REQ-011](spec.md#req-011) | [EVAL-011](test.md#eval-011) | TASK-022 |
@@ -432,7 +432,7 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-040](spec.md#req-040) | [EVAL-040](test.md#eval-040) | TASK-076, TASK-077, TASK-078 |
 | [REQ-041](spec.md#req-041) | [EVAL-041](test.md#eval-041) | TASK-079 |
 | [REQ-042](spec.md#req-042) | [EVAL-042](test.md#eval-042) | TASK-080, TASK-115 |
-| [REQ-043](spec.md#req-043) | [EVAL-043](test.md#eval-043) | TASK-003, TASK-081, TASK-082, TASK-083, TASK-084, TASK-085, TASK-152, TASK-153 |
+| [REQ-043](spec.md#req-043) | [EVAL-043](test.md#eval-043) | TASK-003, TASK-081, TASK-082, TASK-083, TASK-084, TASK-085, TASK-152, TASK-153, TASK-154 |
 | [REQ-044](spec.md#req-044) | [EVAL-044](test.md#eval-044) | TASK-101, TASK-102, TASK-103, TASK-104 |
 | [REQ-045](spec.md#req-045) | [EVAL-045](test.md#eval-045) | TASK-105, TASK-106, TASK-107, TASK-108, TASK-139 |
 | [REQ-046](spec.md#req-046) | [EVAL-046](test.md#eval-046) | TASK-109, TASK-110, TASK-121, TASK-126 |

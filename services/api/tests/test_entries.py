@@ -113,6 +113,7 @@ def test_a_player_enters_and_staff_accept(staff, cup, singles):
         "checked_in_at",
         "my_check_in_at",
         "mine",
+        "replaced_by_id",
     }
     assert set(seen[0]["players"][0]) == {"id", "display_name"}
     event = logged_in(kofi).get(url(cup)).json()["events"][0]

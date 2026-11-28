@@ -17379,6 +17379,7 @@ paths:
           - pairing
           - pending
           - rejected
+          - replaced
           - waitlisted
           - withdrawn
       - in: path
@@ -17437,6 +17438,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{entry_pk}/walkovers/:
+    post:
+      operationId: tournaments_events_entries_walkovers_create
+      description: |-
+        The referee gives walkovers in every match an entry has left in the event, when a player
+        doesn't turn up, instead of one match at a time. Matches where play has begun, or whose
+        opponent isn't known yet, are left as they are and listed with the reason.
+      parameters:
+      - in: path
+        name: entry_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryWalkoverRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntryWalkovers'
           description: ''
         4XX:
           description: Error envelope
@@ -17648,6 +17697,57 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/OptionalReasonRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entry'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/substitute/:
+    post:
+      operationId: tournaments_events_entries_substitute_create
+      description: |-
+        A player of the entry leaves and someone else plays in their place (TASK-155). The place
+        carries on: its results so far stay with it, and the matches already played stay with whoever
+        played them. Singles and doubles answer with the new entry that holds the place now (the old
+        one is `replaced`); a team keeps its entry with the new player on its roster. Refused while one
+        of the entry's matches is being played.
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstituteRequest'
+        required: true
       security:
       - sessionAuth: []
       responses:
@@ -25165,6 +25265,12 @@ components:
           type: boolean
           description: Whether the caller plays in it, so may withdraw it.
           readOnly: true
+        replaced_by_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: 'For a replaced entry: the entry that took its place.'
       required:
       - captain_id
       - checked_in_at
@@ -25176,6 +25282,7 @@ components:
       - players
       - pool
       - reason
+      - replaced_by_id
       - status
       - team_name
       - withdrawn_at
@@ -25269,6 +25376,7 @@ components:
       - rejected
       - withdrawn
       - pairing
+      - replaced
       type: string
       description: |-
         * `pending` - Pending
@@ -25277,6 +25385,7 @@ components:
         * `rejected` - Rejected
         * `withdrawn` - Withdrawn
         * `pairing` - Pairing
+        * `replaced` - Replaced
     EntryTournament:
       type: object
       properties:
@@ -25309,6 +25418,34 @@ components:
       - starts_on
       - status
       - timezone
+    EntryWalkoverRequest:
+      type: object
+      description: The referee gives an entry's opponents every match it has left
+        in the event by walkover.
+      properties:
+        reason:
+          type: string
+          default: ''
+          description: 'Why, kept in the match-day log for each match: a no-show after
+            the grace period, a withdrawal or an injury before the start (REQ-043).'
+          maxLength: 300
+    EntryWalkovers:
+      type: object
+      properties:
+        awarded:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalkedOverMatch'
+          description: Matches the opponent now wins by walkover.
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalkedOverMatch'
+          description: 'Matches left as they were: play had begun, the opponent isn''t
+            known yet, …'
+      required:
+      - awarded
+      - skipped
     Equipment:
       type: object
       properties:
@@ -29670,6 +29807,12 @@ components:
           type: boolean
           description: Whether the caller plays in it, so may withdraw it.
           readOnly: true
+        replaced_by_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: 'For a replaced entry: the entry that took its place.'
         event:
           allOf:
           - $ref: '#/components/schemas/EntryEvent'
@@ -29690,6 +29833,7 @@ components:
       - players
       - pool
       - reason
+      - replaced_by_id
       - status
       - team_name
       - tournament
@@ -38727,6 +38871,24 @@ components:
       - revision
       - state
       - status
+    SubstituteRequest:
+      type: object
+      description: A player of the entry leaves and someone else plays in their place
+        from now on (TASK-155).
+      properties:
+        leaving_user_id:
+          type: string
+          format: uuid
+        joining_user_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - joining_user_id
+      - leaving_user_id
     Table:
       type: object
       properties:
@@ -40719,6 +40881,28 @@ components:
           maxLength: 300
       required:
       - reason
+    WalkedOverMatch:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          description: 'Where it sits in the draw: "Group A", "Knockout round 2".'
+        opponent:
+          type: string
+        code:
+          type: string
+          description: Why it was left out; empty when awarded.
+        message:
+          type: string
+      required:
+      - code
+      - label
+      - match_id
+      - message
+      - opponent
     WeekdayEnum:
       enum:
       - monday

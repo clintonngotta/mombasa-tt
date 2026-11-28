@@ -438,12 +438,25 @@ class EntryPlayerSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class SubstituteSerializer(serializers.Serializer):
+    """A player of the entry leaves and someone else plays in their place from now on (TASK-155)."""
+
+    leaving_user_id = serializers.UUIDField()
+    joining_user_id = serializers.UUIDField()
+    reason = serializers.CharField(
+        max_length=300, trim_whitespace=True, allow_blank=True, required=False, default=""
+    )
+
+
 class EntrySerializer(serializers.ModelSerializer):
     """An entry as its players, staff and (once accepted) everybody else see it. Deliberately nothing
     about payment: accepted means a place in the event, not a paid fee (REQ-008)."""
 
     players = EntryPlayerSerializer(many=True, read_only=True)
     captain_id = serializers.UUIDField(read_only=True, allow_null=True)
+    replaced_by_id = serializers.UUIDField(
+        read_only=True, allow_null=True, help_text="For a replaced entry: the entry that took its place."
+    )
     mine = serializers.SerializerMethodField()
     my_check_in_at = serializers.SerializerMethodField()
 
@@ -463,6 +476,7 @@ class EntrySerializer(serializers.ModelSerializer):
             "checked_in_at",
             "my_check_in_at",
             "mine",
+            "replaced_by_id",
         ]
         read_only_fields = fields
 
@@ -726,6 +740,35 @@ class ResultEntrySerializer(serializers.Serializer):
         default="",
         help_text="Why, kept in the match-day log: for a walkover, a no-show after the grace period, a "
         "withdrawal or an injury before the start (REQ-043).",
+    )
+
+
+class EntryWalkoverSerializer(serializers.Serializer):
+    """The referee gives an entry's opponents every match it has left in the event by walkover."""
+
+    reason = serializers.CharField(
+        max_length=300,
+        trim_whitespace=True,
+        allow_blank=True,
+        required=False,
+        default="",
+        help_text="Why, kept in the match-day log for each match: a no-show after the grace period, a "
+        "withdrawal or an injury before the start (REQ-043).",
+    )
+
+
+class WalkedOverMatchSerializer(serializers.Serializer):
+    match_id = serializers.UUIDField()
+    label = serializers.CharField(help_text='Where it sits in the draw: "Group A", "Knockout round 2".')
+    opponent = serializers.CharField(allow_blank=True)
+    code = serializers.CharField(allow_blank=True, help_text="Why it was left out; empty when awarded.")
+    message = serializers.CharField(allow_blank=True)
+
+
+class EntryWalkoversSerializer(serializers.Serializer):
+    awarded = WalkedOverMatchSerializer(many=True, help_text="Matches the opponent now wins by walkover.")
+    skipped = WalkedOverMatchSerializer(
+        many=True, help_text="Matches left as they were: play had begun, the opponent isn't known yet, …"
     )
 
 
