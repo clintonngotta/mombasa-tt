@@ -76,6 +76,7 @@ import { ReviewPage } from "@/pages/tournaments/ReviewPage"
 import { AnnouncementsPage } from "@/pages/tournaments/AnnouncementsPage"
 import { LivePage } from "@/pages/tournaments/LivePage"
 import { OrderOfPlayPage } from "@/pages/tournaments/OrderOfPlayPage"
+import { UmpiringPage } from "@/pages/scoring/UmpiringPage"
 import { ArticlePage, RegionPage } from "@/pages/region/RegionPage"
 import { InvitedEventsPage } from "@/pages/club/InvitedEventsPage"
 import { ActionItemsPage } from "@/pages/region/MeetingMinutes"
@@ -178,6 +179,7 @@ function App() {
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route element={<PersonOnly />}>
                 <Route path="/play" element={<PlayPage />} />
+                <Route path="/umpiring" element={<UmpiringPage />} />
                 <Route path="/play/soda" element={<SodaGamesPage />} />
                 <Route path="/training" element={<TrainingPage />} />
                 <Route path="/training/plans/:id" element={<PlanPage />} />

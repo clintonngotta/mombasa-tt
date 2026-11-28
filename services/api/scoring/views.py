@@ -1,10 +1,11 @@
 import uuid
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
+from django.db.models.functions import Coalesce
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -31,6 +32,7 @@ from .serializers import (
     ConflictReportSerializer,
     LiveMatchSerializer,
     MyScorecardSerializer,
+    MyScorecardsQuerySerializer,
     ResolveConflictSerializer,
     ScorecardSerializer,
     ScoringOverviewSerializer,
@@ -47,10 +49,12 @@ def scorecards():
         "match__entry_a",
         "match__entry_b",
         "match__table",
+        "match__planned_table",
         "rubber__match__draw__event__tournament",
         "rubber__match__entry_a",
         "rubber__match__entry_b",
         "rubber__match__table",
+        "rubber__match__planned_table",
     )
 
 
@@ -174,9 +178,27 @@ class ScorecardViewSet(viewsets.GenericViewSet):
     serializer_class = ScorecardSerializer
     pagination_class = StandardPagination
 
-    @extend_schema(responses={200: MyScorecardSerializer(many=True)})
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "state",
+                enum=["open", "done"],
+                required=False,
+                description="open (default): to score, soonest first. done: confirmed, latest first.",
+            )
+        ],
+        responses={200: MyScorecardSerializer(many=True)},
+    )
     def list(self, request):
-        """Matches the caller is assigned to score and hasn't confirmed, in tournaments still running."""
+        """The matches the caller umpires. `open`: assigned and not confirmed, in tournaments still
+        running, by published time. `done`: the sheets they confirmed, latest first, kept as a record
+        even after they stop umpiring there."""
+        asked = MyScorecardsQuerySerializer(data=request.query_params)
+        asked.is_valid(raise_exception=True)
+        if asked.validated_data["state"] == "done":
+            done = scorecards().filter(umpire=request.user, confirmed_at__isnull=False)
+            page = self.paginate_queryset(done.order_by("-confirmed_at", "id"))
+            return self.get_paginated_response(MyScorecardSerializer(page, many=True).data)
         running = [Tournament.Status.PUBLISHED, Tournament.Status.IN_PROGRESS]
         mine = (
             scorecards()
@@ -193,7 +215,8 @@ class ScorecardViewSet(viewsets.GenericViewSet):
                     rubber__status=Rubber.Status.SCHEDULED,
                 )
             )
-            .order_by("assigned_at", "id")
+            .annotate(due=Coalesce("match__scheduled_at", "rubber__match__scheduled_at"))
+            .order_by(F("due").asc(nulls_last=True), "assigned_at", "id")
         )
         page = [card for card in self.paginate_queryset(mine) if service.is_umpire_of(card, request.user)]
         return self.get_paginated_response(MyScorecardSerializer(page, many=True).data)

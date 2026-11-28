@@ -30,6 +30,7 @@ class Category(models.TextChoices):
     FEEDBACK = "feedback", "Feedback forms"
     SQUAD = "squad", "Squads and selection"
     PENALTY = "penalty", "Penalties"
+    UMPIRING = "umpiring", "Matches to umpire"
 
 
 # What a player can't switch off: being called to a table is how match day works.

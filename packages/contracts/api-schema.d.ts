@@ -1854,7 +1854,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Matches the caller is assigned to score and hasn't confirmed, in tournaments still running. */
+        /**
+         * @description The matches the caller umpires. `open`: assigned and not confirmed, in tournaments still
+         *     running, by published time. `done`: the sheets they confirmed, latest first, kept as a record
+         *     even after they stop umpiring there.
+         */
         get: operations["me_scorecards_list"];
         put?: never;
         post?: never;
@@ -12506,7 +12510,10 @@ export interface components {
             /** Format: date-time */
             readonly decided_at: string | null;
         };
-        /** @description One of the caller's assignments in a list: the sheet without its event log. */
+        /**
+         * @description One of the caller's assignments in a list: the sheet without its event log, with when and where
+         *     the match is planned once the schedule is published.
+         */
         MyScorecard: {
             /** Format: uuid */
             readonly id: string;
@@ -12531,6 +12538,11 @@ export interface components {
             /** Format: date-time */
             readonly confirmed_at: string | null;
             readonly device: components["schemas"]["Device"];
+            /** Format: date-time */
+            readonly scheduled_at: string | null;
+            readonly planned_table: string;
+            /** @description The venue's, in which the time is shown (REQ-007). */
+            readonly timezone: string;
         };
         MySession: {
             /** Format: uuid */
@@ -12770,9 +12782,10 @@ export interface components {
          *     * `feedback` - Feedback forms
          *     * `squad` - Squads and selection
          *     * `penalty` - Penalties
+         *     * `umpiring` - Matches to umpire
          * @enum {string}
          */
-        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting" | "feedback" | "squad" | "penalty";
+        NotificationCategoryEnum: "up_next" | "table_call" | "assignment" | "registration" | "announcement" | "training" | "activity" | "soda" | "booking" | "dues" | "events" | "governance" | "meeting" | "feedback" | "squad" | "penalty" | "umpiring";
         /** @enum {unknown} */
         NullEnum: null;
         Offences: {
@@ -21040,6 +21053,8 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                /** @description open (default): to score, soonest first. done: confirmed, latest first. */
+                state?: "done" | "open";
             };
             header?: never;
             path?: never;

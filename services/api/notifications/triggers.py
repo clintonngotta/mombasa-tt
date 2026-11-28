@@ -66,6 +66,37 @@ def called_to_table(match, reservation, players, version: str | None = None) -> 
     )
 
 
+UMPIRING_LINK = "/umpiring"
+
+
+def umpire_assigned(user_id, sides: str, where: str, event, table, *, subject: str, version: str) -> None:
+    """Staff gave the user a match to umpire, by hand, as the table's umpire or by dispatch."""
+    notify(
+        [user_id],
+        Category.UMPIRING,
+        f"You're umpiring {sides}",
+        body=f"{where}{f'. Go to {table.label}.' if table else '.'}",
+        subject=subject,
+        version=f"on:{version}",
+        link=UMPIRING_LINK,
+        organization=event.tournament.organization,
+    )
+
+
+def umpire_unassigned(user_id, sides: str, where: str, event, *, subject: str, version: str) -> None:
+    """The match the user was umpiring went to someone else or back to nobody."""
+    notify(
+        [user_id],
+        Category.UMPIRING,
+        f"You no longer umpire {sides}",
+        body=f"{where}. Staff took the match off you.",
+        subject=subject,
+        version=f"off:{version}",
+        link=UMPIRING_LINK,
+        organization=event.tournament.organization,
+    )
+
+
 def taken_off_table(match, players, reason: str) -> None:
     supersede(f"match:{match.id}", Category.TABLE_CALL)
     notify(
