@@ -10,6 +10,7 @@ from rest_framework import status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from accounts.models import VERIFIED, User
 from core.exceptions import ApiException
@@ -24,7 +25,7 @@ from organizations.access import (
 from organizations.models import BODY_KINDS, Membership, Organization
 from organizations.permissions import Permission
 
-from . import drawing, entries, lifecycle, matchday, official, ties
+from . import drawing, entries, lifecycle, matchday, official, player_record, ties
 from .emails import send_entry_news
 from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
@@ -41,6 +42,7 @@ from .serializers import (
     OptionalReasonSerializer,
     ReasonSerializer,
     StandingsSerializer,
+    TournamentPlayerSerializer,
     TournamentSerializer,
 )
 
@@ -984,3 +986,24 @@ class DrawViewSet(viewsets.GenericViewSet):
             drawing.ensure_drawable(tournament, event)
             drawing.publish(event, request.user)
         return self._shown(event, staff=True)
+
+
+class TournamentPlayerView(APIView):
+    """One player in one tournament (TASK-148): their profile as the reader may see it, and their
+    entries, draw places, matches and placings there. A draft tournament, a player with no part in it
+    and a player whose only entries the reader may not see are all "not found"."""
+
+    permission_classes = [PublicReads]
+    public_actions = ("get",)  # published tournaments are public (TASK-035)
+
+    @extend_schema(responses={200: TournamentPlayerSerializer})
+    def get(self, request, tournament_pk, pk):
+        tournament = get_object_or_404(Tournament.objects.select_related("organization"), pk=tournament_pk)
+        staff = manages(request.user, tournament.organization)
+        if tournament.status == T.DRAFT and not staff:
+            raise Http404
+        player = get_object_or_404(User, pk=pk)
+        shown = player_record.record(tournament, player, request.user, staff)
+        if shown is None:
+            raise Http404
+        return Response(TournamentPlayerSerializer(shown, context={"request": request}).data)

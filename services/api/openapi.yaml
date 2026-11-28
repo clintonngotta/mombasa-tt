@@ -18939,6 +18939,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/players/{id}/:
+    get:
+      operationId: tournaments_players_retrieve
+      description: |-
+        One player in one tournament (TASK-148): their profile as the reader may see it, and their
+        entries, draw places, matches and placings there. A draft tournament, a player with no part in it
+        and a player whose only entries the reader may not see are all "not found".
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentPlayer'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/reservations/:
     get:
       operationId: tournaments_reservations_list
@@ -34135,6 +34172,154 @@ components:
       - id
       - nickname
       - style
+    PlayerEvent:
+      type: object
+      description: 'The player''s part in one event: their entry, where the published
+        draw put them, and their matches.'
+      properties:
+        event:
+          $ref: '#/components/schemas/EntryEvent'
+        entry:
+          $ref: '#/components/schemas/DrawEntry'
+        entry_status:
+          $ref: '#/components/schemas/EntryStatusEnum'
+        seed:
+          type: integer
+          nullable: true
+        group_name:
+          type: string
+          description: Empty in a knockout or a single group.
+        group_rank:
+          type: integer
+          nullable: true
+          description: Their rank in the group (or pool) now.
+        placement:
+          type: string
+          description: What the event has decided about them, e.g. "Winner"; empty
+            until then.
+        won:
+          type: integer
+        lost:
+          type: integer
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerMatch'
+      required:
+      - entry
+      - entry_status
+      - event
+      - group_name
+      - group_rank
+      - lost
+      - matches
+      - placement
+      - seed
+      - won
+    PlayerMatch:
+      type: object
+      description: One of the player's matches, from the published draw. `side` says
+        which of `a` and `b` is theirs.
+      properties:
+        id:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/MatchStageEnum'
+        group:
+          type: integer
+          nullable: true
+        round:
+          type: integer
+        round_name:
+          type: string
+        position:
+          type: integer
+        a:
+          $ref: '#/components/schemas/MatchSide'
+        b:
+          allOf:
+          - $ref: '#/components/schemas/MatchSide'
+          nullable: true
+          description: 'Null is a bye: `a` goes through without playing.'
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        is_live:
+          type: boolean
+          description: A match or team rubber is currently being scored.
+        winner_id:
+          type: string
+          format: uuid
+          nullable: true
+        outcome:
+          oneOf:
+          - $ref: '#/components/schemas/MatchOutcomeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        games:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+            maxItems: 2
+            minItems: 2
+          description: Points of each game as [a, b], in playing order.
+        tie_score:
+          type: array
+          items:
+            type: integer
+          nullable: true
+          description: 'Team ties that have begun: rubbers won as [a, b]. Null otherwise.'
+          maxItems: 2
+          minItems: 2
+        table:
+          type: string
+          description: The table's label; empty until one is given.
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'When it is expected to start: an estimate. Null until it is
+            scheduled.'
+        dispatched_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When it was sent to its table. Null while it isn't on one.
+        side:
+          $ref: '#/components/schemas/SideEnum'
+        result:
+          description: "For the player: won or lost; empty while it isn't decided,
+            and for a bye.\n\n* `won` - won\n* `lost` - lost\n* `` - "
+          oneOf:
+          - $ref: '#/components/schemas/PlayerMatchResultEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+      required:
+      - a
+      - b
+      - dispatched_at
+      - games
+      - group
+      - id
+      - is_live
+      - outcome
+      - position
+      - result
+      - round
+      - round_name
+      - scheduled_at
+      - side
+      - stage
+      - status
+      - table
+      - tie_score
+      - winner_id
+    PlayerMatchResultEnum:
+      enum:
+      - won
+      - lost
+      type: string
+      description: "* `won` - won\n* `lost` - lost\n* `` - "
     PlayerRatings:
       type: object
       properties:
@@ -38850,6 +39035,33 @@ components:
       required:
       - file
       - title
+    TournamentPlayer:
+      type: object
+      description: 'One player in one tournament: the profile the reader may see,
+        and their record there.'
+      properties:
+        player:
+          allOf:
+          - $ref: '#/components/schemas/Player'
+          readOnly: true
+        has_player_page:
+          type: boolean
+          description: The reader may open the player's own page (a listed player,
+            to a signed-in reader).
+        won:
+          type: integer
+        lost:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerEvent'
+      required:
+      - events
+      - has_player_page
+      - lost
+      - player
+      - won
     TournamentPresentedAsEnum:
       enum:
       - coach

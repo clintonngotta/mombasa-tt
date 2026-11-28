@@ -8132,6 +8132,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/players/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One player in one tournament (TASK-148): their profile as the reader may see it, and their
+         *     entries, draw places, matches and placings there. A draft tournament, a player with no part in it
+         *     and a player whose only entries the reader may not see are all "not found".
+         */
+        get: operations["tournaments_players_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/reservations/": {
         parameters: {
             query?: never;
@@ -14458,6 +14479,73 @@ export interface components {
             readonly experience: (components["schemas"]["ExperienceEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly bio: string | null;
         };
+        /** @description The player's part in one event: their entry, where the published draw put them, and their matches. */
+        PlayerEvent: {
+            event: components["schemas"]["EntryEvent"];
+            entry: components["schemas"]["DrawEntry"];
+            entry_status: components["schemas"]["EntryStatusEnum"];
+            seed: number | null;
+            /** @description Empty in a knockout or a single group. */
+            group_name: string;
+            /** @description Their rank in the group (or pool) now. */
+            group_rank: number | null;
+            /** @description What the event has decided about them, e.g. "Winner"; empty until then. */
+            placement: string;
+            won: number;
+            lost: number;
+            matches: components["schemas"]["PlayerMatch"][];
+        };
+        /** @description One of the player's matches, from the published draw. `side` says which of `a` and `b` is theirs. */
+        PlayerMatch: {
+            /** Format: uuid */
+            id: string;
+            stage: components["schemas"]["MatchStageEnum"];
+            group: number | null;
+            round: number;
+            round_name: string;
+            position: number;
+            a: components["schemas"]["MatchSide"];
+            /** @description Null is a bye: `a` goes through without playing. */
+            b: components["schemas"]["MatchSide"] | null;
+            status: components["schemas"]["MatchStatusEnum"];
+            /** @description A match or team rubber is currently being scored. */
+            is_live: boolean;
+            /** Format: uuid */
+            winner_id: string | null;
+            outcome: components["schemas"]["MatchOutcomeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description Points of each game as [a, b], in playing order. */
+            games: number[][];
+            /** @description Team ties that have begun: rubbers won as [a, b]. Null otherwise. */
+            tie_score: number[] | null;
+            /** @description The table's label; empty until one is given. */
+            table: string;
+            /**
+             * Format: date-time
+             * @description When it is expected to start: an estimate. Null until it is scheduled.
+             */
+            scheduled_at: string | null;
+            /**
+             * Format: date-time
+             * @description When it was sent to its table. Null while it isn't on one.
+             */
+            dispatched_at: string | null;
+            side: components["schemas"]["SideEnum"];
+            /**
+             * @description For the player: won or lost; empty while it isn't decided, and for a bye.
+             *
+             *     * `won` - won
+             *     * `lost` - lost
+             *     * `` -
+             */
+            result: components["schemas"]["PlayerMatchResultEnum"] | components["schemas"]["BlankEnum"];
+        };
+        /**
+         * @description * `won` - won
+         *     * `lost` - lost
+         *     * `` -
+         * @enum {string}
+         */
+        PlayerMatchResultEnum: "won" | "lost";
         PlayerRatings: {
             /** Format: uuid */
             user_id: string;
@@ -16440,6 +16528,15 @@ export interface components {
             title: string;
             /** Format: binary */
             file: string;
+        };
+        /** @description One player in one tournament: the profile the reader may see, and their record there. */
+        TournamentPlayer: {
+            readonly player: components["schemas"]["Player"];
+            /** @description The reader may open the player's own page (a listed player, to a signed-in reader). */
+            has_player_page: boolean;
+            won: number;
+            lost: number;
+            events: components["schemas"]["PlayerEvent"][];
         };
         /**
          * @description * `coach` - The coach
@@ -34544,6 +34641,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderOfPlay"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_players_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentPlayer"];
                 };
             };
             /** @description Error envelope */

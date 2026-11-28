@@ -1,6 +1,7 @@
 import { CircleCheck } from "lucide-react"
 import { MatchCard, YouBadge } from "@/components/tournaments/MatchCard"
 import { byRound, type Draw, type Standings } from "@/lib/draws"
+import { EntryNames } from "@/components/tournaments/PlayerNames"
 
 /** Each group (REQ-010): who is in it, its fixtures round by round, and who has qualified so far. */
 export function GroupsView({ draw, single = draw.groups.length === 1, standings, matchPath, timeZone }: { draw: Draw; single?: boolean; standings?: Standings; matchPath: (matchId: string) => string; timeZone: string }) {
@@ -21,7 +22,7 @@ export function GroupsView({ draw, single = draw.groups.length === 1, standings,
                 <li key={place.entry.id} className="flex min-h-12 items-center gap-2 border-t px-3 py-2 first:border-t-0">
                   <span className="w-6 shrink-0 font-semibold tabular-nums text-muted-foreground">{place.group_position}</span>
                   <span className="min-w-0 flex-1 break-words">
-                    {place.entry.title}
+                    <EntryNames entry={place.entry} />
                     {place.seed && <span className="ml-1 text-sm text-muted-foreground">[{place.seed}]</span>}
                     {place.entry.mine && <YouBadge />}
                   </span>

@@ -1,5 +1,6 @@
 import { CircleCheck } from "lucide-react"
 import type { Schemas } from "@/lib/schema"
+import { EntryNames } from "@/components/tournaments/PlayerNames"
 
 type Standings = Schemas["Standings"]
 type Group = Schemas["GroupStanding"]
@@ -59,7 +60,7 @@ function GroupTable({ group, single }: { group: Group; single: boolean }) {
               <tr key={row.entry.id} className="border-t">
                 <td className="px-3 py-2 font-semibold">{row.level ? "=" : row.rank}</td>
                 <th scope="row" className="px-1 py-2 font-normal break-words">
-                  {row.entry.title}{" "}
+                  <EntryNames entry={row.entry} />{" "}
                   {row.qualified && (
                     <span className="ml-2 inline-flex items-center gap-1 text-sm font-semibold text-success">
                       <CircleCheck aria-hidden className="size-4" /> Qualified
@@ -105,7 +106,14 @@ export function StandingsView({ standings, single = standings.groups.length === 
           {standings.placements.map((placement) => (
             <div key={placement.label} className="flex flex-wrap gap-x-2">
               <dt className="font-semibold">{placement.label}:</dt>
-              <dd>{placement.entries.map((entry) => entry.title).join(", ")}</dd>
+              <dd>
+                {placement.entries.map((entry, index) => (
+                  <span key={entry.id}>
+                    {index > 0 && ", "}
+                    <EntryNames entry={entry} />
+                  </span>
+                ))}
+              </dd>
             </div>
           ))}
         </dl>

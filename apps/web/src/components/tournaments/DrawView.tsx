@@ -1,10 +1,11 @@
 import { byRound, roundHeading, sideWon, type Draw, type DrawMatch, type DrawSide } from "@/lib/draws"
+import { EntryNames } from "@/components/tournaments/PlayerNames"
 
 function Side({ side, won }: { side: DrawSide; won: boolean }) {
   if (!side.entry) return <span className="text-muted-foreground italic">{side.awaiting}</span>
   return (
     <span className={won ? "font-bold" : undefined}>
-      {side.entry.title}
+      <EntryNames entry={side.entry} />
       {side.seed && <span className="ml-1 text-sm font-normal text-muted-foreground">[{side.seed}]</span>}
       {won && <span className="sr-only"> (winner)</span>}
     </span>
@@ -61,7 +62,7 @@ export function DrawView({ draw }: { draw: Draw }) {
                 <li key={place.entry.id} className="flex gap-2">
                   <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-muted-foreground">{place.group_position}</span>
                   <span className="min-w-0 break-words">
-                    {place.entry.title}
+                    <EntryNames entry={place.entry} />
                     {place.seed && <span className="ml-1 text-sm text-muted-foreground">[{place.seed}]</span>}
                   </span>
                 </li>

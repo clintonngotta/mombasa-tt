@@ -19,6 +19,7 @@ import { useMemberships } from "@/lib/clubs"
 import { cn } from "@/lib/utils"
 import { pollUnless, useLiveTournament } from "@/lib/live"
 import { LiveScoreboard, type CardShown } from "@/components/tournaments/LiveScore"
+import { EntryNames } from "@/components/tournaments/PlayerNames"
 
 /**
  * One match of a published draw (REQ-010): the two sides left and right, the games, and where and when
@@ -71,7 +72,9 @@ function Name({ side, won, align }: { side: DrawSide; won: boolean; align: "left
     <div className={cn("flex min-w-0 flex-col gap-1", align === "right" && "items-end text-right")}>
       {side.entry ? (
         <>
-          <span className={cn("text-xl leading-6 break-words", won && "font-bold")}>{side.entry.title}</span>
+          <span className={cn("text-xl leading-6 break-words", won && "font-bold")}>
+            <EntryNames entry={side.entry} />
+          </span>
           <span className="flex flex-wrap gap-1 text-sm text-muted-foreground">
             {side.seed && <span>Seed {side.seed}</span>}
             {side.entry.mine && <YouBadge />}

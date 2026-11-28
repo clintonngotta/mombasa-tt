@@ -603,6 +603,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "me-entries": {"get": OWNER},
     # Draws: the published draw is for every signed-in player; previews and drawing are for staff.
     "tournament-event-draw": {"get": PUBLIC},
+    "tournament-player": {
+        "get": PUBLIC
+    },  # an entered player's record; entries others may not see stay hidden
     # The published draw as a PDF and a PNG (not found until one is published).
     "tournament-event-draw-pdf": {"get": PUBLIC},
     "tournament-event-draw-png": {"get": PUBLIC},
@@ -2117,6 +2120,7 @@ class World:
             "organization-detail": self.coast.id,
             "organization-profile": self.coast.id,
             "player-detail": self.baraka.id,
+            "tournament-player": self.faith.id,
             "player-ratings": self.baraka.id,
             "tournament-schedule-session": self.session.id,
             "organization-club-session": self.club_session.id,
@@ -2232,6 +2236,9 @@ class World:
             return found
         if name == "tournament-review":
             found["tournament_pk"] = self.reviewed.id
+            return found
+        if name == "tournament-player":
+            found["tournament_pk"] = self.entered.id
             return found
         if name.startswith(("organization-region", "organization-agenda", "organization-article")):
             found["organization_pk"] = self.body.id
