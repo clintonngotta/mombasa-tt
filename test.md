@@ -78,6 +78,7 @@ Hand-worked from the clauses in spec.md, not taken from the code under test. The
 | F-SC17 | Disqualification before the start; 2–1; DQ of an unknown side; DQ of b | b disqualified: a wins, outcome `disqualified`, 2–1 kept; nothing after it. |
 | F-SC18 | A rubber whose config carries a1's two offences, b2's one and a's adviser warning | Those counts are the starting state; a1's next offence is the third (2 points); a fourth is refused; a's adviser is sent away at the next card. |
 | F-SC19 | Expedite at 8-8, undone; 9-9; expedite | At an even score the server is unchanged; at 18 points it is refused (`expedite_too_late`, 2.15.1). |
+| F-SC20 | Walkover with an unknown reason; of an unknown side; of b for a no-show; a point; undo; start; walkover of a | `invalid_walkover`, `unknown_event`; then a wins by `walkover` with no games and nothing after it; the undo leaves it to be played; once started a walkover is refused (`already_started`). |
 
 ## Foundation and Phase 1 evaluations
 

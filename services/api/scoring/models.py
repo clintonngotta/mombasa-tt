@@ -199,6 +199,7 @@ class MatchIncident(models.Model):
         EXPEDITE = "expedite"
         RETIRED = "retired"
         DISQUALIFIED = "disqualified"
+        WALKOVER = "walkover"
 
     class Card(models.TextChoices):
         YELLOW = "yellow"  # a warning

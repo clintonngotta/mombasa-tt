@@ -399,7 +399,7 @@ Each row links an authoritative requirement to its minimum evaluation and primar
 | [REQ-009](spec.md#req-009) | [EVAL-009](test.md#eval-009) | TASK-003, TASK-019, TASK-144 |
 | [REQ-010](spec.md#req-010) | [EVAL-010](test.md#eval-010) | TASK-003, TASK-020, TASK-021 |
 | [REQ-011](spec.md#req-011) | [EVAL-011](test.md#eval-011) | TASK-022 |
-| [REQ-012](spec.md#req-012) | [EVAL-012](test.md#eval-012) | TASK-003, TASK-023, TASK-024, TASK-151 |
+| [REQ-012](spec.md#req-012) | [EVAL-012](test.md#eval-012) | TASK-003, TASK-023, TASK-024, TASK-151, TASK-152 |
 | [REQ-013](spec.md#req-013) | [EVAL-013](test.md#eval-013) | TASK-025, TASK-026 |
 | [REQ-014](spec.md#req-014) | [EVAL-014](test.md#eval-014) | TASK-027, TASK-028, TASK-153 |
 | [REQ-015](spec.md#req-015) | [EVAL-015](test.md#eval-015) | TASK-026, TASK-029 |

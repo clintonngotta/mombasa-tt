@@ -27153,6 +27153,7 @@ components:
       - expedite
       - retired
       - disqualified
+      - walkover
       type: string
       description: |-
         * `timeout` - Timeout
@@ -27164,6 +27165,7 @@ components:
         * `expedite` - Expedite
         * `retired` - Retired
         * `disqualified` - Disqualified
+        * `walkover` - Walkover
     IncomeTotals:
       type: object
       description: 'Money received in the period, per currency: from members, from
