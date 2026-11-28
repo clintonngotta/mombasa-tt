@@ -47,6 +47,8 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
   const [games, setGames] = useState("")
   const [reason, setReason] = useState("")
   const [why, setWhy] = useState(WALKOVER_REASONS[0])
+  // A platform super admin may say the match was really played over another length (user request, 2026-11-28).
+  const [bestOf, setBestOf] = useState(`${m.best_of}`)
   // A no-show loses every match they have left in the event, not only this one (user request, 2026-11-28).
   const [everyMatch, setEveryMatch] = useState(false)
   const [given, setGiven] = useState<EntryWalkovers | null>(null)
@@ -79,7 +81,8 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
 
   const save = useMutation({
     mutationFn: () => {
-      const body = { winner_entry_id: (winner === "a" ? m.a.entry?.id : m.b?.entry?.id) ?? "", outcome, games: parsed ?? [], rubber_id: target.rubberId }
+      const changedLength = m.can_change_best_of && bestOf !== `${m.best_of}` ? { best_of: Number(bestOf) as 3 | 5 | 7 } : {}
+      const body = { winner_entry_id: (winner === "a" ? m.a.entry?.id : m.b?.entry?.id) ?? "", outcome, games: parsed ?? [], rubber_id: target.rubberId, ...changedLength }
       return target.decided
         ? correctResult(ids.tournamentId, ids.eventId, ids.matchId, { ...body, reason: reason.trim() })
         : enterResult(ids.tournamentId, ids.eventId, ids.matchId, { ...body, reason: outcome === "walkover" ? why : "" })
@@ -199,6 +202,15 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
             options={outcomes.map((value) => ({ value, label: OUTCOME_LABEL[value] }))}
             hint={m.can_award_walkover ? undefined : "Only the referee awards a walkover or a disqualification."}
           />
+          {m.can_change_best_of && !m.tie && (
+            <SelectField
+              label="Played over"
+              value={bestOf}
+              onChange={setBestOf}
+              options={["3", "5", "7"].map((value) => ({ value, label: `Best of ${value}` }))}
+              hint={`Set to best of ${m.best_of}. Change it only if the match was really played over another length; the games are checked against it. Platform super admins only.`}
+            />
+          )}
           {outcome === "walkover" && !target.decided && (
             <SelectField label="Why a walkover" value={why} onChange={setWhy} options={WALKOVER_REASONS.map((value) => ({ value, label: value }))} hint="Kept in the match-day log. A walkover records no game scores." />
           )}
