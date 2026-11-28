@@ -24692,10 +24692,16 @@ components:
           description: Whether the caller plays in it, so screens can point out their
             own matches.
           readOnly: true
+        playing:
+          allOf:
+          - $ref: '#/components/schemas/PlayingNow'
+          nullable: true
+          readOnly: true
       required:
       - id
       - mine
       - players
+      - playing
       - pool
       - title
     DrawEnum:
@@ -34673,6 +34679,30 @@ components:
         * `all` - all
         * `won` - won
         * `lost` - lost
+    PlayingNow:
+      type: object
+      description: Where the entry is playing right now, in any event of the tournament
+        (user request, 2026-11-28).
+      properties:
+        table:
+          type: string
+        match_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        live:
+          type: boolean
+          description: Scoring has begun; false while being called or warming up.
+      required:
+      - event_id
+      - event_name
+      - live
+      - match_id
+      - table
     Policy:
       type: object
       properties:

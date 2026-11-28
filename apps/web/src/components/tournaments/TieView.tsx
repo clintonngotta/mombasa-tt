@@ -48,7 +48,7 @@ export function TieView({ match, second, ids }: { match: MatchDetail; second: Dr
           <ul className="grid grid-cols-2 gap-3">
             {sides.map(({ key, side }) => (
               <li key={key} className={cn("flex flex-col gap-1 rounded-xl border bg-card p-3", key === "b" && "items-end text-right")}>
-                <span className="font-semibold break-words">{side.entry ? <EntryNames entry={side.entry} /> : side.awaiting}</span>
+                <span className="font-semibold break-words">{side.entry ? <EntryNames entry={side.entry} exceptMatch={match.id} /> : side.awaiting}</span>
                 <span className={cn("inline-flex items-center gap-1 text-sm font-semibold", tie[key].submitted ? "text-success" : "text-muted-foreground")}>
                   {tie[key].submitted ? <CircleCheck aria-hidden className="size-4" /> : <Hourglass aria-hidden className="size-4" />}
                   {tie[key].submitted ? "Lineup handed in" : "No lineup yet"}

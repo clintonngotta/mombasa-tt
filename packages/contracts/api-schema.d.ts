@@ -10569,6 +10569,7 @@ export interface components {
             readonly players: components["schemas"]["EntryPlayer"][];
             /** @description Whether the caller plays in it, so screens can point out their own matches. */
             readonly mine: boolean;
+            readonly playing: components["schemas"]["PlayingNow"] | null;
         };
         /**
          * @description * `none` - none
@@ -14713,6 +14714,17 @@ export interface components {
          * @enum {string}
          */
         PlayerRatingsResultEnum: "all" | "won" | "lost";
+        /** @description Where the entry is playing right now, in any event of the tournament (user request, 2026-11-28). */
+        PlayingNow: {
+            table: string;
+            /** Format: uuid */
+            match_id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            /** @description Scoring has begun; false while being called or warming up. */
+            live: boolean;
+        };
         Policy: {
             games_enabled: boolean;
             stakes_enabled: boolean;

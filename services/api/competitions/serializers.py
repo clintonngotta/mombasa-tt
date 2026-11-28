@@ -529,17 +529,50 @@ class OptionalReasonSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=300, trim_whitespace=True, allow_blank=True, required=False)
 
 
+class PlayingNowSerializer(serializers.Serializer):
+    """Where the entry is playing right now, in any event of the tournament (user request, 2026-11-28)."""
+
+    table = serializers.CharField()
+    match_id = serializers.UUIDField()
+    event_id = serializers.UUIDField()
+    event_name = serializers.CharField()
+    live = serializers.BooleanField(help_text="Scoring has begun; false while being called or warming up.")
+
+
 class DrawEntrySerializer(serializers.ModelSerializer):
     """An accepted entry as a draw shows it: its name and players."""
 
     title = serializers.SerializerMethodField()
     players = EntryPlayerSerializer(many=True, read_only=True)
     mine = serializers.SerializerMethodField()
+    playing = serializers.SerializerMethodField()
 
     class Meta:
         model = Entry
-        fields = ["id", "title", "pool", "players", "mine"]
+        fields = ["id", "title", "pool", "players", "mine", "playing"]
         read_only_fields = fields
+
+    @extend_schema_field(PlayingNowSerializer(allow_null=True))
+    def get_playing(self, entry):
+        """The table one of its players is on now, or null. Worked out once per request and tournament."""
+        from reservations import service as reservations  # reservations builds on competitions
+
+        request = self.context["request"]
+        cache = getattr(request, "_playing_now", None)
+        if cache is None:
+            cache = request._playing_now = {"events": {}, "tournaments": {}}
+        tournament_id = cache["events"].get(entry.event_id)
+        if tournament_id is None:
+            tournament_id = cache["events"][entry.event_id] = (
+                Event.objects.filter(pk=entry.event_id).values_list("tournament_id", flat=True).first()
+            )
+        found = cache["tournaments"].get(tournament_id)
+        if found is None:
+            found = cache["tournaments"][tournament_id] = reservations.playing_now(tournament_id)
+        for place in entry.players.all():
+            if place.user_id in found:
+                return PlayingNowSerializer(found[place.user_id]).data
+        return None
 
     def get_mine(self, entry) -> bool:
         """Whether the caller plays in it, so screens can point out their own matches."""
