@@ -647,6 +647,9 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-dispatch-run": {"post": STAFF},
     "tournament-event-match-dispatch": {"post": STAFF},
     "tournament-event-match-recall": {"post": STAFF},
+    # A table set aside for a queued match, and who umpires each match (TASK-153).
+    "tournament-event-match-hold-table": {"post": STAFF},
+    "tournament-umpiring": {"get": STAFF},
     # The match-day control centre (REQ-043, TASK-082).
     "tournament-event-match-call": {"post": STAFF},
     "tournament-event-match-report": {"post": STAFF},
@@ -1055,6 +1058,7 @@ BODIES = {
     ("tournament-table-umpire", "put"): {"user_id": None},
     ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
+    ("tournament-event-match-hold-table", "post"): {"table_id": None},
     ("tournament-event-match-report", "post"): {"side": "a"},
     ("tournament-event-match-move", "post"): {"table_id": MOVE_TABLE, "reason": "Light out"},
     ("tournament-table-block", "post"): {"reason": "out_of_service"},
@@ -2111,6 +2115,7 @@ class World:
             "tournament-event-match-umpire": self.scored_match.id,
             "tournament-event-match-dispatch": self.to_dispatch.id,
             "tournament-event-match-recall": self.on_table.id,
+            "tournament-event-match-hold-table": self.to_dispatch.id,
             "tournament-event-match-call": self.called.id,
             "tournament-event-match-report": self.called.id,
             "tournament-event-match-move": self.called.id,
@@ -2278,6 +2283,7 @@ class World:
             "tournament-match-day-log",
             "tournament-umpires",
             "tournament-umpire-candidates",
+            "tournament-umpiring",
         ):
             found["tournament_pk"] = self.scored_cup.id
             return found
@@ -2297,6 +2303,9 @@ class World:
         whole = ("tournament-tables", "tournament-reservations")
         if name.startswith(("tournament-scoring", "tournament-dispatch")) or name in whole:
             found["tournament_pk"] = self.scored_cup.id
+            return found
+        if name == "tournament-event-match-hold-table":
+            found["event_pk"], found["tournament_pk"] = self.dispatch_cup.event.id, self.dispatch_cup.id
             return found
         if name in ("tournament-event-match-dispatch", "tournament-event-match-recall"):
             cup = self.dispatch_cup if name.endswith("dispatch") else self.recall_cup

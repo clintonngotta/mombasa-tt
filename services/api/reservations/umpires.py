@@ -132,6 +132,7 @@ def set_table(tournament: Tournament, table: Table, user: User | None, actor) ->
         return
     if not TournamentUmpire.objects.filter(tournament=tournament, user=user).exists():
         raise ApiException("not_listed", "Add them to the tournament's umpires first.", 409)
+    before = umpire_of_table(tournament, table)
     TableUmpire.objects.filter(tournament=tournament, umpire=user).exclude(table=table).delete()
     TableUmpire.objects.update_or_create(
         tournament=tournament, table=table, defaults={"umpire": user, "assigned_by": actor}
@@ -143,6 +144,7 @@ def set_table(tournament: Tournament, table: Table, user: User | None, actor) ->
         actor=actor,
         table=table,
     )
+    _follow_on_held(tournament, table, before, user, actor)
     waiting = (
         Reservation.objects.filter(
             table=table, status=Reservation.Status.ACTIVE, match__draw__event__tournament=tournament
@@ -162,6 +164,33 @@ def set_table(tournament: Tournament, table: Table, user: User | None, actor) ->
             scoring.assign(match, rubber, user, actor)
     except ApiException:
         return  # they play in it, or are playing now: staff choose for this match
+
+
+def _follow_on_held(tournament: Tournament, table: Table, before, user: User, actor) -> None:
+    """Matches waiting in the queue for this table (TASK-153) take its new umpire, unless somebody has
+    started scoring them or staff gave them someone other than the table's old umpire."""
+    from scoring import service as scoring
+
+    held = Match.objects.filter(
+        held_table=table,
+        draw__event__tournament=tournament,
+        status=Match.Status.SCHEDULED,
+        dispatched_at__isnull=True,
+    ).select_related("draw__event__tournament", "entry_a", "entry_b")
+    for match in held:
+        rubber = _current_rubber(match)
+        card = _card(match, rubber)
+        if card is not None and (
+            card.revision > 0 or card.umpire_id not in (None, getattr(before, "id", None))
+        ):
+            continue
+        if card is not None and card.umpire_id == user.id:
+            continue
+        try:
+            with transaction.atomic():
+                scoring.assign(match, rubber, user, actor)
+        except ApiException:
+            continue  # they play in it, or are playing now: staff choose for this match
 
 
 def _current_rubber(match: Match) -> Rubber | None:

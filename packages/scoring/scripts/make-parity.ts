@@ -60,6 +60,11 @@ function match(config: Config, seed: number): ParityMatch {
   }
 
   send({ type: "point", side: "a" }) // refused: not started
+  // Now and then a walkover first (sometimes with a reason that isn't one), taken back by an undo.
+  if (random() < 0.25) {
+    send({ type: "walkover", side: side(), reason: pick(["no_show", "withdrawal", "injury", "late"]) } as ScoreEvent)
+    if (scoring.state.status === "completed") send({ type: "undo" })
+  }
   begin()
   for (let sent = 0; scoring.state.status !== "completed" && sent < 2000; sent++) {
     const roll = random()
@@ -68,7 +73,9 @@ function match(config: Config, seed: number): ParityMatch {
     if (status === "not_started") {
       // Set up again after an undo took back the start; now and then wrongly first.
       if (roll < 0.3) send({ type: "start", server: "a2", receiver: "a1", a_end: "left" })
-      begin()
+      // Now and then a walkover instead, sometimes with a reason that isn't one.
+      if (roll > 0.97) send({ type: "walkover", side: side(), reason: pick(["no_show", "withdrawal", "injury", "late"]) } as ScoreEvent)
+      else begin()
     }
     // Before a later game of doubles the serving pair often names its other player to serve first.
     else if (config.doubles && server && game_number > 1 && points[0] + points[1] === 0 && roll < 0.5) {
@@ -86,6 +93,7 @@ function match(config: Config, seed: number): ParityMatch {
     else if (roll < 0.1) send({ type: "start", server: "a1", a_end: "left" })
     else if (roll < 0.105) send({ type: "bogus" } as unknown as ScoreEvent)
     else if (roll < 0.11) send({ type: "point", side: "c" } as unknown as ScoreEvent)
+    else if (roll < 0.112) send({ type: "walkover", side: side(), reason: "no_show" }) // refused: started
     // Incidents (TASK-083): cards and their penalty points, advisers, time-outs running and ending,
     // suspensions, expedite, and now and then a retirement or a disqualification that ends it all.
     else if (roll < 0.125) send({ type: "card", player: pick(PLAYERS), reason: pick(REASONS) } as ScoreEvent)

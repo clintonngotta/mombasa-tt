@@ -16,6 +16,10 @@ export type End = "left" | "right"
 export type CardReason = "bad_behaviour" | "racket_abuse" | "illegal_advice" | "delay" | "other"
 export const CARD_REASONS: CardReason[] = ["bad_behaviour", "racket_abuse", "illegal_advice", "delay", "other"]
 
+/** Why a side doesn't play (REQ-043): a no-show after the grace period, or a withdrawal or an injury before the start. */
+export type WalkoverReason = "no_show" | "withdrawal" | "injury"
+export const WALKOVER_REASONS: WalkoverReason[] = ["no_show", "withdrawal", "injury"]
+
 /** Offences each player has already committed, and the advisers' cards, carried into a match. */
 export interface Carry {
   /** Player offences so far in the tie, by position in this match. */
@@ -53,6 +57,8 @@ export type ScoreEvent =
   | { type: "retire"; side: Side }
   /** The referee disqualified the side: the match goes to the opponent with the points played (DQ). */
   | { type: "disqualify"; side: Side }
+  /** Before the start: the side doesn't play, and the match goes to the opponent with no games (W/O). */
+  | { type: "walkover"; side: Side; reason: WalkoverReason; note?: string }
   /** Takes back the last action that still stands. The undo itself stays in the stream. */
   | { type: "undo" }
 
@@ -76,8 +82,8 @@ export interface State {
   /** Whether side a and side b have used their one time-out. */
   timeouts: [boolean, boolean]
   winner: Side | null
-  /** How the match ended: played to its end, a retirement or a disqualification. Null until it ends. */
-  outcome: "played" | "retired" | "disqualified" | null
+  /** How the match ended: played to its end, a walkover, a retirement or a disqualification. Null until it ends. */
+  outcome: "played" | "walkover" | "retired" | "disqualified" | null
   /** Whose time-out is running: both sides may claim one at once (3.4.4.2.3). */
   timeout_running: [boolean, boolean]
   /** Offences each player has committed in the match (and earlier rubbers of the tie). */
@@ -100,6 +106,7 @@ export type ErrorCode =
   | "timeout_used"
   | "no_timeout"
   | "invalid_card"
+  | "invalid_walkover"
   | "refer_to_referee"
   | "adviser_sent_off"
   | "suspended"
@@ -205,6 +212,18 @@ function endEarly(state: State, loser: Side, outcome: "retired" | "disqualified"
   next.timeout_running = [false, false]
   next.suspended = null
   next.server = next.receiver = next.first_server = next.first_receiver = null
+  return next
+}
+
+/** The side doesn't play: before the start, the match goes to the opponent with no games (REQ-043). */
+function walkover(state: State, loser: Side, reason: WalkoverReason): State {
+  if (state.status !== "not_started") throw new ScoringError("already_started")
+  if (!isSide(loser)) throw new ScoringError("unknown_event")
+  if (!WALKOVER_REASONS.includes(reason)) throw new ScoringError("invalid_walkover")
+  const next = copy(state)
+  next.status = "completed"
+  next.winner = other(loser)
+  next.outcome = "walkover"
   return next
 }
 
@@ -432,6 +451,8 @@ export function apply(config: Config, state: State, event: ScoreEvent): State {
       return endEarly(state, event.side, "retired")
     case "disqualify":
       return endEarly(state, event.side, "disqualified")
+    case "walkover":
+      return walkover(state, event.side, event.reason)
     default:
       throw new ScoringError("unknown_event")
   }

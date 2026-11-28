@@ -35,7 +35,7 @@ def digest(state: dict) -> str:
 
 
 def test_the_shared_fixtures_are_there():
-    assert len(HAND_WORKED) == 25, f"expected the scoring fixtures in {FIXTURES}"
+    assert len(HAND_WORKED) == 26, f"expected the scoring fixtures in {FIXTURES}"
 
 
 @pytest.mark.parametrize("path", HAND_WORKED, ids=lambda path: path.stem)

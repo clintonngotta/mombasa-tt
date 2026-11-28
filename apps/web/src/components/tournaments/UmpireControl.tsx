@@ -29,6 +29,7 @@ export function UmpireControl({ scoring, ids, rubberId, what }: { scoring: Scori
       void queryClient.invalidateQueries({ queryKey: scoringKeys.mine })
       // The control centre shows the umpire on each table: read it again.
       void queryClient.invalidateQueries({ queryKey: reservationKeys.board(ids.tournamentId) })
+      void queryClient.invalidateQueries({ queryKey: reservationKeys.umpiring(ids.tournamentId) })
       setChoosing(false)
     },
   })

@@ -12,7 +12,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from competitions import drawing, official, ties
+from competitions import drawing, matchday, official, ties
 from competitions.models import DrawVersion, Event, Match, Rubber, RubberPlayer, Tournament
 from core.exceptions import ApiException
 from organizations.access import effective_permissions
@@ -30,6 +30,12 @@ MAX_CONFLICT_EVENTS = 500
 # One person can't fill the organizers' page: this many reported events per sheet, then no more.
 MAX_REPORTED_PER_SHEET = 2000
 EVENT_TYPES = {"start", "point", "choose_server", "timeout", "undo"}
+# Why a side didn't play, as the match-day log says it (REQ-043).
+WALKOVER_REASONS = {
+    "no_show": "No-show after the grace period",
+    "withdrawal": "Withdrew before the start",
+    "injury": "Injured before the start",
+}
 # Events that change the incidents: every incident kind, and an undo that may take one back.
 INCIDENT_TYPES = set(incidents.KINDS) | {"undo"}
 
@@ -429,6 +435,7 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
     games = [list(game) for game in state["games"]]
     if outcome != Match.Outcome.PLAYED and sum(state["points"]):
         games.append(list(state["points"]))
+    table = match.table  # read before the result frees it
     if scorecard.rubber_id:
         ties.record_rubber(scorecard.rubber, winner, outcome=outcome, games=games, actor=actor)
     else:
@@ -438,6 +445,21 @@ def confirm(scorecard: Scorecard, actor, assignment_id, revision: int, device_id
     scorecard.confirmed_by = actor
     scorecard.save(update_fields=["state", "confirmed_at", "confirmed_by"])
     event = event_of(scorecard)
+    if outcome == Match.Outcome.WALKOVER:
+        # The umpire gave it, so it is audited like a walkover entered at the results desk.
+        given = scorecard.incidents.filter(kind=incidents.Kind.WALKOVER).first()
+        reason = WALKOVER_REASONS.get(given.reason, "") if given else ""
+        if given and given.note:
+            reason = f"{reason}: {given.note}"
+        matchday.log(
+            event.tournament,
+            matchday.Action.RESULT_ENTERED,
+            matchday.result_summary(match, scorecard.rubber, winner, outcome, []),
+            actor=actor,
+            match=match,
+            table=table,
+            reason=reason,
+        )
     live.forget(event.tournament_id)
     broadcast.tournament_changed(event.tournament_id, "results", event_id=event.id)
 

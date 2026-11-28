@@ -5,7 +5,7 @@ import { Scoring, type ScoreEvent, type State } from "@scoring"
 import { ApiError } from "@/lib/api"
 import { Journal } from "@/lib/deck/journal"
 import { DeckStore, HEARTBEAT_MS, type DeckView, type Transport } from "@/lib/deck/store"
-import { CARD_REASON_LABEL, configOf, getScorecard, REFUSAL, reportConflict, sendEvents, takeDevice, type Names, type Scorecard } from "@/lib/scoring"
+import { CARD_REASON_LABEL, configOf, getScorecard, REFUSAL, reportConflict, sendEvents, takeDevice, WALKOVER_REASON_LABEL, type Names, type Scorecard } from "@/lib/scoring"
 
 export type { Sync } from "@/lib/deck/store"
 
@@ -68,6 +68,8 @@ function describe(event: ScoreEvent, before: State, after: State, names: Names):
       return `${names[event.side]} retired. Match to ${names[event.side === "a" ? "b" : "a"]}.`
     case "disqualify":
       return `${names[event.side]} disqualified by the referee. Match to ${names[event.side === "a" ? "b" : "a"]}.`
+    case "walkover":
+      return `${names[event.side]} not playing (${(WALKOVER_REASON_LABEL[event.reason] ?? event.reason).toLowerCase()}). Match to ${names[event.side === "a" ? "b" : "a"]} by walkover.${event.note ? ` ${event.note}` : ""}`
     case "undo":
       return "Undo: the last action was taken back."
   }

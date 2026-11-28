@@ -13,6 +13,8 @@ export type QueuedMatch = Schemas["QueuedMatch"]
 export const reservationKeys = {
   tables: (tournamentId: string) => ["reservations", "tables", tournamentId] as const,
   board: (tournamentId: string) => ["reservations", "board", tournamentId] as const,
+  umpiring: (tournamentId: string) => ["reservations", "umpiring", tournamentId] as const,
+  umpiringIn: (tournamentId: string, which: UmpiringFilter) => ["reservations", "umpiring", tournamentId, which] as const,
 }
 
 /** The dispatch board: tables, the ready queue in its fixed order and what is suggested; staff only. */
@@ -29,6 +31,9 @@ export const listTables = (tournamentId: string) => api<TableState[]>(`/tourname
 /** Send the match to a table: the table and its players are held until the result is official. */
 export const dispatchMatch = (tournamentId: string, eventId: string, matchId: string, tableId: string, overrides: Override[], reason: string) =>
   api<Schemas["MatchDetail"]>(`${match(tournamentId, eventId, matchId)}dispatch/`, { body: { table_id: tableId, overrides, reason } })
+/** Set a table aside for a queued match (null: any table again). It waits for that table and takes its umpire. */
+export const holdTable = (tournamentId: string, eventId: string, matchId: string, tableId: string | null) =>
+  api<Board>(`${match(tournamentId, eventId, matchId)}hold-table/`, { body: { table_id: tableId } })
 export const recallMatch = (tournamentId: string, eventId: string, matchId: string, reason: string) => api<Schemas["MatchDetail"]>(`${match(tournamentId, eventId, matchId)}recall/`, { body: { reason } })
 
 /** Which check a refusal is about, when it is one staff may set aside. */
@@ -97,3 +102,11 @@ export const setTableUmpire = (tournamentId: string, tableId: string, userId: st
   api<Board>(`/tournaments/${tournamentId}/tables/${tableId}/umpire/`, { method: "PUT", body: { user_id: userId } })
 /** After confirming: the match that takes the umpire's table next (only a recommendation). */
 export const getNextOnTable = (scorecardId: string) => api<UmpireNext>(`/scorecards/${scorecardId}/next/`)
+
+export type UmpiringRow = Schemas["UmpiringRow"]
+export type UmpiringPage = Schemas["UmpiringPage"]
+export type UmpiringFilter = "all" | "assigned" | "unassigned"
+
+/** Every match still to be played and who umpires it, soonest first; competition staff only (TASK-153). */
+export const getUmpiring = (tournamentId: string, which: UmpiringFilter, page: number) =>
+  api<UmpiringPage>(`/tournaments/${tournamentId}/umpiring/?umpire=${which}&page=${page}`)
