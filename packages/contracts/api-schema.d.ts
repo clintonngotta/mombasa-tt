@@ -1255,7 +1255,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Open guest invitations to the signed-in player's verified address. */
+        /**
+         * @description Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+         *     the directory, while open, and those to their verified email. An email one stays here after its link
+         *     has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+         *     are never matched.
+         */
         get: operations["me_guest_invitations_list"];
         put?: never;
         post?: never;
@@ -1274,7 +1279,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open guest invitations to the signed-in player's verified address. */
+        /**
+         * @description Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+         *     the directory, while open, and those to their verified email. An email one stays here after its link
+         *     has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+         *     are never matched.
+         */
         post: operations["me_guest_invitations_accept_create"];
         delete?: never;
         options?: never;
@@ -1291,7 +1301,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Open guest invitations to the signed-in player's verified address. */
+        /**
+         * @description Guest invitations waiting for the signed-in player: those addressed to them as a player found in
+         *     the directory, while open, and those to their verified email. An email one stays here after its link
+         *     has lapsed, so a player who joins on their own later still finds what they played as a guest. Names
+         *     are never matched.
+         */
         post: operations["me_guest_invitations_decline_create"];
         delete?: never;
         options?: never;
@@ -4395,6 +4410,46 @@ export interface paths {
         put?: never;
         /** @description Invite by email (we send the link), phone (share `invite_link` yourself) or both. */
         post: operations["organizations_guests_invite_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/link-player/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Ask a player found in the player directory whether they are this guest. They accept or
+         *     decline in the app; nothing moves until they accept.
+         */
+        post: operations["organizations_guests_link_player_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organization_pk}/guests/{id}/new-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description A fresh invitation link to share, to the email and phone last invited (if any); nothing is
+         *     emailed. The old link stops working. `invite_link` is shown this once.
+         */
+        post: operations["organizations_guests_new_link_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11210,6 +11265,7 @@ export interface components {
             readonly claimant_name: string;
             /** Format: email */
             readonly invited_email: string;
+            readonly invited_player_name: string;
             status: components["schemas"]["GuestClaimStatusEnum"];
             readonly clashes: string[];
             /** Format: date-time */
@@ -11240,11 +11296,13 @@ export interface components {
             email?: string;
             phone?: string | null;
         };
+        /** @description `invitee_name`: the player found in the directory it was sent to, if it went to one. */
         GuestInvitation: {
             /** Format: uuid */
             readonly id: string;
             email: string;
             phone: string;
+            readonly invitee_name: string;
             status: components["schemas"]["InvitationStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
@@ -11255,6 +11313,11 @@ export interface components {
         GuestInviteRequest: {
             email?: string;
             phone?: string | null;
+        };
+        /** @description A player found in the player directory who may be this guest. */
+        GuestLinkPlayerRequest: {
+            /** Format: uuid */
+            player_id: string;
         };
         /**
          * @description * `right` - Right
@@ -26745,6 +26808,74 @@ export interface operations {
                 "application/json": components["schemas"]["GuestInviteRequest"];
             };
         };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitedGuest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_link_player_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestLinkPlayerRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guest"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    organizations_guests_new_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this guest. */
+                id: number;
+                organization_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             201: {
                 headers: {

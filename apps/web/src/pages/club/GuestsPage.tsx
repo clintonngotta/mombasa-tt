@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Mail, TriangleAlert, UserPlus } from "lucide-react"
+import { Link2, Mail, TriangleAlert, UserCheck, UserPlus } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { AccessLost } from "@/components/clubs/AccessLost"
+import { AskPlayer } from "@/components/guests/AskPlayer"
 import { InviteLink } from "@/components/guests/InviteLink"
 import { ApiError, errorMessage } from "@/lib/api"
 import { can, useActiveMembership } from "@/lib/clubs"
@@ -16,6 +17,7 @@ import {
   inviteGuest,
   listGuestClaims,
   listGuests,
+  newGuestLink,
   rejectGuestClaim,
   retryGuestClaim,
   revokeGuestInvitation,
@@ -50,8 +52,8 @@ export function GuestsPage() {
         {active && <p className="text-muted-foreground">{active.organization.name}</p>}
       </div>
       <p className="text-muted-foreground">
-        Players you enter before they have a Coast TT account. Invite them by email or phone: the link lets them join with their own details, and their entries and matches become theirs.
-        Names alone never join two players.
+        Players you enter before they have a Coast TT account. Invite them by email or phone, or make a link to share: it lets them join with their own details, and their entries and matches become theirs.
+        If they have joined since, find them on Coast TT and they confirm it was them. Someone who joins with the email you invited finds the invitation waiting. Names alone never join two players.
       </p>
       {memberships.isSuccess && (!allowed || accessLost) && <AccessLost />}
       {allowed && !accessLost && (
@@ -129,9 +131,11 @@ function NewGuest({ orgId, club }: { orgId: string; club: string }) {
 function GuestRow({ orgId, guest, club }: { orgId: string; guest: Guest; club: string }) {
   const queryClient = useQueryClient()
   const [inviting, setInviting] = useState(false)
+  const [asking, setAsking] = useState(false)
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [sent, setSent] = useState<InvitedGuest | null>(null)
+  const [emailed, setEmailed] = useState(false) // a fresh link is never emailed, whatever the invitation holds
   const refresh = () => queryClient.invalidateQueries({ queryKey: guestKeys.all })
   const invite = useMutation({
     mutationFn: () => inviteGuest(orgId, guest.id, { email: email.trim(), phone: phone.trim() }),
@@ -140,6 +144,15 @@ function GuestRow({ orgId, guest, club }: { orgId: string; guest: Guest; club: s
       setEmail("")
       setPhone("")
       setSent(invited)
+      setEmailed(!!invited.invitation?.email)
+      void refresh()
+    },
+  })
+  const fresh = useMutation({
+    mutationFn: () => newGuestLink(orgId, guest.id),
+    onSuccess: (invited) => {
+      setSent(invited)
+      setEmailed(false)
       void refresh()
     },
   })
@@ -154,8 +167,10 @@ function GuestRow({ orgId, guest, club }: { orgId: string; guest: Guest; club: s
         <span className="text-sm text-muted-foreground">
           {claimed
             ? `Claimed by ${guest.claimed_by_name ?? "a player"} on ${when(guest.claimed_at!)}`
-            : guest.invitation
-              ? `Invited ${[guest.invitation.email, guest.invitation.phone].filter(Boolean).join(" and ")} · open until ${when(guest.invitation.expires_at)}`
+            : guest.invitation?.invitee_name
+              ? `Asked ${guest.invitation.invitee_name} on Coast TT · open until ${when(guest.invitation.expires_at)}`
+              : guest.invitation
+              ? `${guest.invitation.email || guest.invitation.phone ? `Invited ${[guest.invitation.email, guest.invitation.phone].filter(Boolean).join(" and ")}` : "Link made"} · open until ${when(guest.invitation.expires_at)}`
               : `Added ${when(guest.created_at)} · not invited yet`}
           {!claimed && ` · ${guest.entries} ${guest.entries === 1 ? "entry" : "entries"}`}
         </span>
@@ -166,10 +181,39 @@ function GuestRow({ orgId, guest, club }: { orgId: string; guest: Guest; club: s
         </Button>
       )}
       {!claimed && (
-        <Button variant="outline" size="sm" aria-expanded={inviting} onClick={() => setInviting(!inviting)} aria-label={`Invite ${guest.display_name} to claim`}>
+        <Button variant="outline" size="sm" disabled={fresh.isPending} onClick={() => fresh.mutate()} aria-label={`New invitation link for ${guest.display_name}`}>
+          <Link2 aria-hidden className="size-4" /> {fresh.isPending ? "Making link…" : "New link"}
+        </Button>
+      )}
+      {!claimed && (
+        <Button
+          variant="outline"
+          size="sm"
+          aria-expanded={asking}
+          onClick={() => {
+            setAsking(!asking)
+            setInviting(false)
+          }}
+          aria-label={`Find ${guest.display_name} on Coast TT`}
+        >
+          <UserCheck aria-hidden className="size-4" /> On Coast TT
+        </Button>
+      )}
+      {!claimed && (
+        <Button
+          variant="outline"
+          size="sm"
+          aria-expanded={inviting}
+          onClick={() => {
+            setInviting(!inviting)
+            setAsking(false)
+          }}
+          aria-label={`Invite ${guest.display_name} to claim`}
+        >
           <Mail aria-hidden className="size-4" /> {guest.invitation ? "Invite again" : "Invite"}
         </Button>
       )}
+      {asking && <AskPlayer orgId={orgId} guestId={guest.id} guestName={guest.display_name} onDone={() => setAsking(false)} />}
       {inviting && (
         <form
           noValidate
@@ -188,11 +232,11 @@ function GuestRow({ orgId, guest, club }: { orgId: string; guest: Guest; club: s
         </form>
       )}
       {sent?.invite_link && (
-        <InviteLink link={sent.invite_link} name={guest.display_name} club={club} phone={sent.invitation?.phone} emailed={!!sent.invitation?.email} onDone={() => setSent(null)} />
+        <InviteLink link={sent.invite_link} name={guest.display_name} club={club} phone={sent.invitation?.phone} emailed={emailed} onDone={() => setSent(null)} />
       )}
-      {(revoke.isError || (invite.isError && !fields.email && !fields.phone)) && (
+      {(revoke.isError || fresh.isError || (invite.isError && !fields.email && !fields.phone)) && (
         <div className="basis-full">
-          <FormAlert>{errorMessage(revoke.error ?? invite.error)}</FormAlert>
+          <FormAlert>{errorMessage(revoke.error ?? fresh.error ?? invite.error)}</FormAlert>
         </div>
       )}
     </li>
@@ -213,7 +257,9 @@ function ClaimCard({ orgId, claim }: { orgId: string; claim: GuestClaim }) {
   return (
     <article className="flex flex-col gap-3 rounded-xl border bg-card p-4">
       <p>
-        <span className="font-semibold">{claim.claimant_name}</span> accepted the invitation to {claim.invited_email} for the guest <span className="font-semibold">{claim.guest_name}</span>.
+        <span className="font-semibold">{claim.claimant_name}</span>{" "}
+        {claim.invited_player_name ? "confirmed they played as" : `accepted the invitation${claim.invited_email ? ` to ${claim.invited_email}` : ""} for`} the guest{" "}
+        <span className="font-semibold">{claim.guest_name}</span>.
       </p>
       {open ? (
         <>
