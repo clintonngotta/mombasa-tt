@@ -143,7 +143,7 @@ The invitation routes are in the privacy matrix: `auth-invitation` is public (th
 
 **Tournament lifecycle — integration.** Setup: draft events in all types. Steps: configure/publish/start/complete/cancel; try changing format and qualification after start; inspect local date display. Pass: only allowed transitions/actors succeed, dates round-trip correctly, published configuration is identifiable, frozen structure cannot silently change. Evidence: state-transition assertions.
 
-Best of by stage (TASK-158): with best of 3 and 5 from the semi-finals, 7 in the final, the draw shows 3/5/7 by round; a semi-final result with two games won is refused and three is accepted; the final's scoring sheet is best of 7; an unknown stage or a best of 4 is refused, a round robin keeps only the group stage, and the setting is frozen once the event starts.
+Best of by stage (TASK-158): with best of 3 and 5 from the semi-finals, 7 in the final, the draw shows 3/5/7 by round; a semi-final result with two games won is refused and three is accepted; the final's scoring sheet is best of 7; an unknown stage or a best of 4 is refused and a round robin keeps only the group stage. On a started event, changing to best of 5 with 7 in the final leaves a decided semi-final and one on its table at best of 3 (a correction still checked as such), gives the final 7, logs the change, and still refuses other structure changes.
 
 ### EVAL-008
 
