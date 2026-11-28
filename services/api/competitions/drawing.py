@@ -599,15 +599,17 @@ def check_games(best_of: int, games, outcome: str, *, a_won: bool) -> None:
 
 
 def _send_on(match: Match) -> None:
-    from . import corrections  # corrections builds on this module
+    from . import corrections, substitutes  # both build on this module
 
     for side in ("a", "b"):
         for later in Match.objects.filter(**{f"feeder_{side}": match}).select_related("draw__event"):
             # A match played again after a correction never overwrites a later match that is in
             # question or that the organizers decided to keep as played.
-            if corrections.winner_known(later, side, match.winner):
+            # A winner who was replaced since (a correction of an old match) is followed by their place.
+            winner = substitutes.current(match.winner)
+            if corrections.winner_known(later, side, winner):
                 continue
-            setattr(later, f"entry_{side}", match.winner)
+            setattr(later, f"entry_{side}", winner)
             later.save(update_fields=[f"entry_{side}"])
 
 
@@ -630,6 +632,10 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
 
     team = draw.event.is_team
     matches = list(draw.matches.filter(stage=Match.Stage.GROUP, group=group).prefetch_related("rubbers"))
+    from . import substitutes  # substitutes builds on the models this module uses
+
+    # A player swapped in carries on the place: the results of the entry they replaced count as theirs.
+    carried = substitutes.carried(draw.event) if not team else {}
     results = []
     for match in matches:
         match.draw = draw  # the draw and its event are already loaded
@@ -643,8 +649,8 @@ def group_table(draw: DrawVersion, group: int) -> tuple[list[standings.Row], boo
         games = tuple((a, b) if a_won else (b, a) for a, b in match.games)
         results.append(
             standings.Result(
-                str(match.winner_id),
-                str(loser),
+                carried.get(str(match.winner_id), str(match.winner_id)),
+                carried.get(str(loser), str(loser)),
                 match.outcome or Match.Outcome.PLAYED,
                 games,
                 best_of=draw.event.best_of,

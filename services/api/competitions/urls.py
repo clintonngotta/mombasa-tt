@@ -377,6 +377,7 @@ urlpatterns = [
             "waitlist",
             "reject",
             "staff-withdraw",
+            "substitute",
             "check-in",
             "undo-check-in",
             "self-check-in",

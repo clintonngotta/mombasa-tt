@@ -600,6 +600,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-entry-waitlist": {"post": STAFF},
     "tournament-event-entry-reject": {"post": STAFF},
     "tournament-event-entry-staff-withdraw": {"post": STAFF},
+    "tournament-event-entry-substitute": {"post": STAFF},
     "tournament-event-entry-check-in": {"post": STAFF},
     "tournament-event-entry-self-check-in": {"post": OWNER},
     "tournament-event-entry-undo-check-in": {"post": STAFF},
@@ -691,6 +692,8 @@ FAITH_MEMBERSHIP = "00000000-0000-4000-8000-0000000000fa"  # Faith, for the admi
 UMPIRE_USER = "00000000-0000-4000-8000-0000000000c1"  # a member on the Scored Cup's umpires
 # Entries with known ids, so a result can name its winner.
 ENTERED_WINNER = "00000000-0000-4000-8000-0000000000b1"
+SWAP_LEAVING = "00000000-0000-4000-8000-0000000005a1"
+SWAP_JOINING = "00000000-0000-4000-8000-0000000005a2"
 CORRECTED_WINNER = "00000000-0000-4000-8000-0000000000b2"
 
 NYALI_CUP = "00000000-0000-4000-8000-0000000000c9"  # a published Nyali tournament Coast can sponsor
@@ -1066,7 +1069,10 @@ BODIES = {
     ("tournament-event-match-move", "post"): {"table_id": MOVE_TABLE, "reason": "Light out"},
     ("tournament-table-block", "post"): {"reason": "out_of_service"},
     ("tournament-event-match-result", "post"): {"winner_entry_id": ENTERED_WINNER, "outcome": "walkover"},
-    ("tournament-event-entry-walkovers", "post"): {"reason": "No-show after the grace period"},
+    ("tournament-event-entry-substitute", "post"): {
+        "leaving_user_id": SWAP_LEAVING,
+        "joining_user_id": SWAP_JOINING,
+    },
     ("tournament-event-match-result-correct", "post"): {
         "winner_entry_id": CORRECTED_WINNER,
         "outcome": "walkover",
@@ -1563,6 +1569,11 @@ class World:
         self.entry_to_waitlist = entry(self.imani)
         self.entry_to_reject = entry(self.hamisi)
         self.entry_to_withdraw = entry(self.grace, Entry.Status.ACCEPTED)
+        # A player who leaves, and the one who takes their place (TASK-155).
+        self.entry_to_swap = entry(
+            make_user("leaving@swap.example", id=uuid.UUID(SWAP_LEAVING)), Entry.Status.ACCEPTED
+        )
+        make_user("joining@swap.example", id=uuid.UUID(SWAP_JOINING))
         # A preview of the draw, which only staff see: its version number is the marker.
         self.entered.event.seeding = "manual"
         self.entered.event.save()
@@ -2108,6 +2119,7 @@ class World:
             "tournament-event-entry-waitlist": self.entry_to_waitlist.id,
             "tournament-event-entry-reject": self.entry_to_reject.id,
             "tournament-event-entry-staff-withdraw": self.entry_to_withdraw.id,
+            "tournament-event-entry-substitute": self.entry_to_swap.id,
             "tournament-event-entry-check-in": self.faith_entry.id,
             "tournament-event-entry-self-check-in": self.baraka_entry.id,
             "tournament-event-entry-undo-check-in": self.faith_entry.id,
