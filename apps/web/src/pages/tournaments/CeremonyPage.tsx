@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from "react"
+import { NewAward } from "@/components/tournaments/AwardForm"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowDown, ArrowUp, Check, Medal, Plus, Sparkles, Trash2, Trophy } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, Medal, Sparkles, Trash2, Trophy } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
-import { SelectField } from "@/components/forms/SelectField"
 import { ApiError, errorMessage } from "@/lib/api"
 import {
-  addAward,
   ceremonyKeys,
   deleteAward,
   generateAwards,
@@ -195,72 +194,6 @@ function AwardLine({ award }: { award: Award }) {
         )}
       </span>
     </span>
-  )
-}
-
-function NewAward({ tournamentId }: { tournamentId: string }) {
-  const set = useSet(tournamentId)
-  const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState("")
-  const [name, setName] = useState("")
-  const [prize, setPrize] = useState("")
-  const [presenter, setPresenter] = useState("")
-  const [preset, setPreset] = useState("")
-  const add = useMutation({
-    mutationFn: () => addAward(tournamentId, { title: title.trim(), recipient_name: name.trim(), prize: prize.trim(), presenter: presenter.trim() }),
-    onSuccess: async (fresh) => {
-      setTitle("")
-      setName("")
-      setPrize("")
-      setPresenter("")
-      setPreset("")
-      setOpen(false)
-      await set(fresh)
-    },
-  })
-  const fields: Record<string, string | undefined> = add.error instanceof ApiError ? add.error.fieldErrors() : {}
-  if (!open) {
-    return (
-      <Button variant="outline" className="self-start" onClick={() => setOpen(true)}>
-        <Plus aria-hidden className="size-4" /> Add an award
-      </Button>
-    )
-  }
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        add.mutate()
-      }}
-      className="flex flex-col gap-3 rounded-xl border bg-card p-4"
-    >
-      <h3 className="text-lg font-bold">Add an award</h3>
-      {add.isError && <FormAlert>{errorMessage(add.error)}</FormAlert>}
-      <SelectField
-        label="Kind"
-        optional
-        options={["", "Best player", "Most improved", "Fair play", "Best young player", "Best umpire", "Sponsor's prize"].map((v) => ({ value: v, label: v || "Something else" }))}
-        value={preset}
-        onChange={(value) => {
-          setPreset(value)
-          if (value) setTitle(value)
-        }}
-      />
-      <Field label="Award" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} error={fields.title} />
-      <Field label="Recipient" optional maxLength={120} value={name} onChange={(e) => setName(e.target.value)} hint="Leave empty to name them on the day." />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Prize" optional maxLength={200} value={prize} onChange={(e) => setPrize(e.target.value)} placeholder="Trophy, medal, KES 5,000" />
-        <Field label="Presented by" optional maxLength={120} value={presenter} onChange={(e) => setPresenter(e.target.value)} placeholder="Regional chair, sponsor" />
-      </div>
-      <div className="flex gap-2">
-        <Button type="submit" disabled={add.isPending || !title.trim()}>
-          Add
-        </Button>
-        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-          Cancel
-        </Button>
-      </div>
-    </form>
   )
 }
 

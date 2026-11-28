@@ -302,7 +302,7 @@ As built (TASK-109): a body also invites its representatives (those accepted and
 
 ### REQ-049
 
-**Award ceremonies — Phase 1 (user decision, 2026-11-19).** A published tournament has an award ceremony planned by the host's competition staff: when, where and who hosts it, and the awards in the order they are presented.
+**Award ceremonies — Phase 1 (user decision, 2026-11-19).** A published tournament has an award ceremony planned by the host's competition staff: when, where and who hosts it, and the awards in the order they are presented. The organizers' own awards (best player, best umpire, fair play and any they name) are also listed under "Awards" in a results announcement of the whole tournament, or of the event they were given in, and can be added from the announcements page; a named recipient is a player or one of the tournament's umpires (user request, 2026-11-28).
 
 *Awards.* Placement awards come from the official results of completed events: winner, runner-up and joint third (the losing semi-finalists) of a knockout or groups-to-knockout event, and the top three of a round robin or a Jumbles table, joint places sharing a place. Generating them again replaces the placements not yet presented and keeps the rest. Staff add awards of their own (best player, most improved, fair play, best umpire, a sponsor's prize) for a player of the tournament or a named person, with a prize and who presents it. A placement's recipient is whoever placed; it can't be changed by hand.
 

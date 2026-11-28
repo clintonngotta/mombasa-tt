@@ -21,6 +21,7 @@ from core.exceptions import ApiException
 from . import ceremony, drawing
 from .models import (
     Announcement,
+    Award,
     DrawVersion,
     Entry,
     Event,
@@ -214,7 +215,37 @@ def generate(selection: Selection) -> tuple[str, str, list[Match]]:
         lines.append("")
     if not matches:
         lines.append("No matches in this selection yet.")
+    awards = _awards(selection)
+    if awards:
+        lines += ["", "Awards", *awards]
     return heading[:MAX_TITLE], _fit("\n".join(lines).strip()), covered
+
+
+def _awards(selection: Selection) -> list[str]:
+    """The organizers' own awards (best player, best umpire, fair play…; user request, 2026-11-28): all of
+    them in an announcement of the whole tournament, those given in an event in one of that event.
+    Placements are left out, since the podiums already name them. In ceremony order."""
+    if selection.scope not in (Scope.TOURNAMENT, Scope.EVENT):
+        return []
+    found = Award.objects.filter(
+        ceremony__tournament=selection.tournament, kind=Award.Kind.SPECIAL
+    ).select_related("recipient", "entry")
+    if selection.scope == Scope.EVENT:
+        found = found.filter(event=selection.event)
+    lines = []
+    for award in found.prefetch_related("entry__players__user"):
+        receives = (
+            title(award.entry)
+            if award.entry_id
+            else award.recipient.display_name
+            if award.recipient_id
+            else award.recipient_name
+        )
+        line = f"{award.title}: {receives or 'to be announced'}"
+        if award.prize:
+            line += f" ({award.prize})"
+        lines.append(line)
+    return lines
 
 
 def _fit(text: str) -> str:
