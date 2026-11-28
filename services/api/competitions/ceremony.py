@@ -248,20 +248,34 @@ class GenerateAwardsView(APIView):
         return _reply(ceremony)
 
 
+def took_part(tournament: Tournament, user_id) -> bool:
+    """A player of the tournament, or one of its umpires: on its list of umpires or the umpire of one of
+    its matches (so "Best umpire" can go to their account; user request, 2026-11-28)."""
+    from reservations.models import TournamentUmpire  # reservations builds on competitions
+    from scoring.models import Scorecard
+
+    return (
+        Entry.objects.filter(event__tournament=tournament, players__user=user_id).exists()
+        or TournamentUmpire.objects.filter(tournament=tournament, user=user_id).exists()
+        or Scorecard.objects.filter(
+            Q(match__draw__event__tournament=tournament)
+            | Q(rubber__match__draw__event__tournament=tournament),
+            umpire=user_id,
+        ).exists()
+    )
+
+
 def _recipient(data, tournament: Tournament):
-    """A named recipient must be somebody who took part in the tournament."""
+    """A named recipient must be somebody who took part in the tournament: a player or an umpire."""
     if "recipient_id" not in data:
         return
     user_id = data.pop("recipient_id")
     data["recipient"] = None
     if user_id:
-        player = (
-            Entry.objects.filter(event__tournament=tournament, players__user=user_id)
-            .values_list("players__user", flat=True)
-            .first()
-        )
-        if player is None:
-            raise serializers.ValidationError({"recipient_id": "Choose a player of this tournament."})
+        if not took_part(tournament, user_id):
+            raise serializers.ValidationError(
+                {"recipient_id": "Choose a player or an umpire of this tournament."}
+            )
         data["recipient"] = get_user_model().objects.get(pk=user_id)
 
 

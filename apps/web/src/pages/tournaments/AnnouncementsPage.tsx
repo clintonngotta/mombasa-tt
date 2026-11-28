@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Megaphone, Send, Sparkles, Trash2 } from "lucide-react"
 import { BackLink } from "@/components/layout/BackLink"
+import { AwardsPanel } from "@/components/tournaments/AwardForm"
 import { Button } from "@/components/ui/button"
 import { Field, FormAlert } from "@/components/forms/Field"
 import { SelectField, TextAreaField } from "@/components/forms/SelectField"
@@ -55,6 +56,7 @@ export function AnnouncementsPage() {
             A draft lists the official results only, with walkovers, retirements and disqualifications marked and the matches still to play as pending. Edit it as you like before publishing: a
             published post can't change, but after a correction you can publish an amendment beside it.
           </p>
+          <AwardsPanel tournamentId={id} />
           <Generate tournament={t} />
           {drafts.map((post) => (
             <Draft key={post.id} post={post} tournamentId={id} />
