@@ -3,6 +3,7 @@ import { CalendarClock, CircleCheck, CircleDot, Hourglass, Radio, type LucideIco
 import { formatInstant } from "@/lib/dates"
 import { isMine, scoreLine, sideWon, spokenScore, type DrawMatch, type DrawSide } from "@/lib/draws"
 import { cn } from "@/lib/utils"
+import { EntryNames } from "@/components/tournaments/PlayerNames"
 
 type State = { label: string; icon: LucideIcon; className: string }
 
@@ -69,11 +70,12 @@ function SideName({ side, won, align, highlighted, onJourneyChange }: {
     <span className={cn("min-w-0 break-words", align === "right" && "text-right")}>
       {entry ? (
         <span
-          className={won ? "font-bold" : undefined}
+          // Above the card's own link, so each name opens the player's record (TASK-148).
+          className={cn("relative z-10", won && "font-bold")}
           onMouseEnter={onJourneyChange && (() => onJourneyChange(entry.id))}
           onMouseLeave={onJourneyChange && (() => onJourneyChange(null))}
         >
-          {entry.title}
+          <EntryNames entry={entry} />
           {side.seed && <span className={cn("ml-1 text-sm font-normal", !highlighted && "text-muted-foreground")}>[{side.seed}]</span>}
           {entry.mine && <YouBadge />}
           {won && <WinnerMark highlighted={highlighted} />}
@@ -123,12 +125,13 @@ export function MatchCard({ match, to, heading, timeZone, compact = false, journ
     live && "border-destructive ring-1 ring-destructive",
   )
   if (!to || !match.b) return <div className={className}>{body}</div>
+  // The whole card leads to the match, and the names in it to each player: a link can't hold links, so
+  // the match's link lies over the card and the names sit above it.
+  const sides = `${match.a.entry?.title ?? match.a.awaiting} v ${match.b.entry?.title ?? match.b.awaiting}`
   return (
-    <Link
-      to={to}
-      className={cn(className, "outline-none focus-visible:outline-2 focus-visible:outline-ring", !live && "hover:border-brand-blue")}
-    >
+    <div className={cn(className, "relative focus-within:outline-2 focus-within:outline-ring", !live && "hover:border-brand-blue")}>
       {body}
-    </Link>
+      <Link to={to} aria-label={`${heading ? `${heading}: ` : ""}${sides}, open the match`} className="absolute inset-0 rounded-xl outline-none" />
+    </div>
   )
 }

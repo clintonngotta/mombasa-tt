@@ -11,6 +11,7 @@ from .views import (
     EventViewSet,
     MyEntriesViewSet,
     OrganizationTournamentViewSet,
+    TournamentPlayerView,
     TournamentViewSet,
 )
 
@@ -28,6 +29,11 @@ urlpatterns = [
         "<uuid:tournament_pk>/streams/<uuid:pk>/report/",
         ReportStreamView.as_view(),
         name="tournament-stream-report",
+    ),
+    path(
+        "<uuid:tournament_pk>/players/<uuid:pk>/",
+        TournamentPlayerView.as_view(),
+        name="tournament-player",
     ),
     path("<uuid:tournament_pk>/cover/", media.TournamentCoverView.as_view(), name="tournament-cover"),
     path(
