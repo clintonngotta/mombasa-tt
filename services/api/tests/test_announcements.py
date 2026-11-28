@@ -331,7 +331,7 @@ def test_announcements_export_as_pdf_for_whoever_may_read_them(staff, knockout):
     staff.post(news_url(knockout, draft["id"], "publish"), {}, format="json")
     one = anyone.get(news_url(knockout, draft["id"], "pdf"))
     assert one.status_code == 200 and one["Content-Type"] == "application/pdf"
-    assert "attachment" in one["Content-Disposition"]
+    assert one["Content-Disposition"].startswith(f'attachment; filename="{knockout["cup"]["name"]} - ')
     text = pdf_text(one.content)
     assert "Amina 3-1 Brian" in text and "DAY ONE (RESULTS)" in text and "coastloopas.org" in text
     sheet = pdf_text(anyone.get(news_url(knockout) + "export.pdf").content)

@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.downloads import file_name, named
 from core.exceptions import ApiException
 from organizations.access import effective_permissions
 from organizations.permissions import Permission
@@ -281,6 +282,7 @@ class MatchCardView(APIView):
         match = recap.published_match(tournament_pk, event_pk, pk)
         if match is None:
             raise Http404
-        response = HttpResponse(recap.card_png(recap.recap(match)), content_type="image/png")
-        response["Content-Disposition"] = 'inline; filename="coast-tt-result.png"'
-        return response
+        shown = recap.recap(match)
+        response = HttpResponse(recap.card_png(shown), content_type="image/png")
+        name = file_name(f"{shown['side_a']} v {shown['side_b']}", extension="png")
+        return named(response, name, attachment=False)
