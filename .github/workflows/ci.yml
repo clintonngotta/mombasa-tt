@@ -2,7 +2,10 @@
 # require these checks in the branch protection rules for dev and main.
 #
 # Kept cheap (Actions minutes are billed per job, rounded up to the minute):
-# - only pull requests run it. A push to dev or main is a merge of a PR that already passed here.
+# - only pull requests run it, except a merge into dev, which runs the API tests once in full: that run
+#   records which code each test executes (pytest-testmon) and caches it, so a pull request then runs
+#   only the tests whose code it changed. A change testmon can't trace (migrations, settings, test
+#   setup, dependencies, data files, this file) runs every test.
 # - the release PR from dev into main skips the jobs: the same commits passed on their way into dev.
 #   Skipped jobs count as passed for required checks.
 # - each job runs only when files it checks changed; a docs-only PR runs the secret scan alone.
@@ -11,6 +14,8 @@ name: CI
 on:
   pull_request:
     branches: [dev, main]
+  push:
+    branches: [dev]
   workflow_dispatch:
 
 concurrency:
@@ -25,12 +30,15 @@ jobs:
     name: What changed
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: github.event_name == 'workflow_dispatch' || github.head_ref != 'dev'
+    if: github.event_name != 'pull_request' || github.head_ref != 'dev'
     permissions:
       contents: read
       pull-requests: read
     outputs:
-      api: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.api == 'true' }}
+      api: ${{ github.event_name != 'pull_request' || steps.filter.outputs.api == 'true' }}
+      # Every test, not only those testmon picks: a merge into dev (the baseline), a manual run, or
+      # a change whose effect on the tests can't be traced through the code they execute.
+      api_full: ${{ github.event_name != 'pull_request' || steps.filter.outputs.api_full == 'true' }}
       web: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.web == 'true' }}
       images: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.images == 'true' }}
     steps:
@@ -41,6 +49,16 @@ jobs:
           filters: |
             api:
               - 'services/api/**'
+              - 'packages/scoring/fixtures/**'
+              - '.github/workflows/ci.yml'
+            api_full:
+              - 'services/api/**/migrations/**'
+              - 'services/api/config/**'
+              - 'services/api/**/conftest.py'
+              - 'services/api/tests/helpers.py'
+              - 'services/api/pyproject.toml'
+              - 'services/api/uv.lock'
+              - 'services/api/**/*.{html,txt,json,svg,ttf,otf,woff,woff2,png,jpg,css,csv,xml}'
               - 'packages/scoring/fixtures/**'
               - '.github/workflows/ci.yml'
             web:
@@ -109,12 +127,31 @@ jobs:
         run: |
           uv run manage.py spectacular --fail-on-warn --file openapi.yaml
           git diff --exit-code -- openapi.yaml || { echo "::error::openapi.yaml is stale; regenerate it (see README)"; exit 1; }
+      # A pull request starts from the record of the last full run on dev (caches made on dev are
+      # readable by pull requests into dev).
+      - name: Restore which code each test runs
+        if: github.event_name == 'pull_request' && needs.changes.outputs.api_full != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: services/api/.testmondata
+          key: testmon-${{ github.sha }}
+          restore-keys: testmon-
       - name: Tests
         # In parallel, each worker with its own test database (pytest-django names them _gw0, _gw1...).
         # The tests mostly wait on the database, so more workers than cores still pays; worksteal moves
         # tests to idle workers so one long file (the privacy matrix) doesn't hold up the end.
-        run: uv run pytest -n 4 --dist worksteal
+        # --testmon runs only the tests whose code changed since the record (all of them without one);
+        # --testmon-noselect runs every test and records afresh. Exit code 5 is "nothing to run".
+        env:
+          SELECT: ${{ needs.changes.outputs.api_full == 'true' && '--testmon-noselect' || '--testmon' }}
+        run: uv run pytest -n 4 --dist worksteal $SELECT || [ $? -eq 5 ]
         timeout-minutes: 15
+      - name: Keep the record for pull requests
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: services/api/.testmondata
+          key: testmon-${{ github.sha }}
       - name: Dependency audit
         run: uv export --locked --no-dev --no-hashes --format requirements-txt > /tmp/requirements.txt && uvx pip-audit --strict --no-deps --disable-pip -r /tmp/requirements.txt
 
@@ -188,7 +225,8 @@ jobs:
 
   secrets:
     name: Secret scan
-    if: github.event_name == 'workflow_dispatch' || github.head_ref != 'dev'
+    # A merge into dev was scanned as a pull request already.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref != 'dev')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

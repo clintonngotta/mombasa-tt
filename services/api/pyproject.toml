@@ -24,6 +24,7 @@ dev = [
     "pypdf>=6",
     "pytest>=9.1.1",
     "pytest-django>=4.14.0",
+    "pytest-testmon>=2.4.1",
     "pytest-xdist>=3.8.0",
     "ruff>=0.16.10",
 ]
