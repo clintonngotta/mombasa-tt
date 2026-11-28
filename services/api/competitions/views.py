@@ -27,7 +27,7 @@ from organizations.permissions import Permission
 
 from . import drawing, entries, lifecycle, matchday, official, player_record, ties
 from .emails import send_entry_news
-from .models import MAX_EVENTS, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
+from .models import MAX_EVENTS, SLUG_MAX_LENGTH, DrawVersion, Entry, Event, LifecycleEntry, Match, Tournament
 from .serializers import (
     DrawMoveSerializer,
     DrawRequestSerializer,
@@ -196,7 +196,7 @@ class TournamentViewSet(viewsets.GenericViewSet):
 
     serializer_class = TournamentSerializer
     permission_classes = [PublicReads]
-    public_actions = ("list", "retrieve")  # published tournaments are public (TASK-035)
+    public_actions = ("list", "retrieve", "by_slug")  # published tournaments are public (TASK-035)
     pagination_class = StandardPagination
 
     @extend_schema(
@@ -280,6 +280,16 @@ class TournamentViewSet(viewsets.GenericViewSet):
 
     def retrieve(self, request, pk):
         tournament = get_object_or_404(tournaments(), pk=pk)
+        if tournament.status == T.DRAFT and not sees_draft(request.user, tournament):
+            raise Http404
+        return Response(TournamentSerializer(tournament).data)
+
+    @extend_schema(operation_id="tournaments_by_slug_retrieve", responses={200: TournamentSerializer})
+    def by_slug(self, request, slug):
+        """The tournament a public link names, as `retrieve` shows it: a draft only to its staff."""
+        if len(slug) > SLUG_MAX_LENGTH:
+            raise Http404
+        tournament = get_object_or_404(tournaments(), slug=slug)
         if tournament.status == T.DRAFT and not sees_draft(request.user, tournament):
             raise Http404
         return Response(TournamentSerializer(tournament).data)
