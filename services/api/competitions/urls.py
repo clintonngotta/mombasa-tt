@@ -180,6 +180,11 @@ urlpatterns = [
         name="tournament-schedule-publish",
     ),
     path(
+        "<uuid:tournament_pk>/schedule/matches/<uuid:match_pk>/",
+        action(ScheduleViewSet, "set_time"),
+        name="tournament-schedule-set-time",
+    ),
+    path(
         "<uuid:tournament_pk>/schedule/delay/",
         action(ScheduleViewSet, "delay"),
         name="tournament-schedule-delay",

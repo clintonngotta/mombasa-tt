@@ -122,6 +122,44 @@ def publish(tournament: Tournament, actor, note: str = "") -> ScheduleVersion:
     return record(tournament, actor, ScheduleVersion.Kind.PUBLISHED, moves, note=note)
 
 
+def set_time(tournament: Tournament, actor, match_id, table, at, note: str = "") -> dict:
+    """Set one match's table and start by hand and publish it at once, without the working plan: for
+    organizers who schedule match by match. Refused only for conflicts this change makes (a table or a
+    player taken, a match before the one it waits for, outside the dates); conflicts already in the
+    published schedule don't stop it. Warnings, such as a time outside the sessions, don't either. The
+    working plan follows, so publishing the plan later doesn't undo it. Its players and umpire are told
+    when a published time or table changes, as for any version. `at` None takes the time away."""
+    from . import matchday
+    from .models import MatchDayLog
+
+    match = next((m for m in scheduling.plannable(tournament) if m.id == match_id), None)
+    if match is None:
+        raise ApiException(
+            "not_plannable", "That match is decided, on a table, or not in this tournament.", 409
+        )
+    if (getattr(table, "id", None), at) == (match.planned_table_id, match.scheduled_at):
+        raise ApiException("nothing_to_publish", "The match already has that table and start.", 409)
+    chosen = {match.id: (table, at)}
+    before, _ = scheduling.check(tournament, {}, plan_of=scheduling.published)
+    after, warnings = scheduling.check(tournament, chosen, plan_of=scheduling.published)
+    known = {(c["match_id"], c["code"], c["message"]) for c in before}
+    _refuse_conflicts([c for c in after if (c["match_id"], c["code"], c["message"]) not in known])
+    match.draft_table, match.draft_at = table, at
+    match.save(update_fields=["draft_table", "draft_at"])
+    version = record(tournament, actor, ScheduleVersion.Kind.SET, [(match, table, at)], note=note)
+    zone = ZoneInfo(tournament.timezone)
+    when = f"{at.astimezone(zone):%a %d %b %H:%M}" if at else "no time"
+    matchday.log(
+        tournament,
+        MatchDayLog.Action.MATCH_TIMED,
+        f"{scheduling.label(match)} set to {when}, {table.label if table else 'no table'}",
+        actor=actor,
+        match=match,
+        reason=note,
+    )
+    return {"version": version, "warnings": [w for w in warnings if w["match_id"] == match.id]}
+
+
 def delay(tournament: Tournament, actor, table, minutes: int, reason: str, note: str = "") -> dict:
     """Move every published match still to play on `table` on by `minutes`, then everything that
     then clashes with them, and publish that. The working plan follows where it hadn't been changed."""

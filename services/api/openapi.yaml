@@ -19278,6 +19278,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/schedule/matches/{match_pk}/:
+    post:
+      operationId: tournaments_schedule_matches_create
+      description: |-
+        Set one match's table and start by hand and publish it now, without the working plan.
+        Refused with `schedule_conflicts` only for conflicts this change makes; its players and
+        umpire are told when a published time or table changes.
+      parameters:
+      - in: path
+        name: match_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetTimeRequest'
+        required: true
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSet'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/schedule/publish/:
     post:
       operationId: tournaments_schedule_publish_create
@@ -36677,11 +36720,13 @@ components:
       - published
       - delay
       - moved
+      - set
       type: string
       description: |-
         * `published` - Published
         * `delay` - Delay
         * `moved` - Moved
+        * `set` - Set
     ScheduleVersionSummary:
       type: object
       properties:
@@ -37410,6 +37455,26 @@ components:
             people.
       required:
       - at
+    SetTimeRequest:
+      type: object
+      description: One match's table and start, published at once. A null start takes
+        the time away.
+      properties:
+        table_id:
+          type: string
+          format: uuid
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - scheduled_at
+      - table_id
     ShareCostRequest:
       type: object
       description: An amount each, or a total split evenly among those going (rounded
@@ -38833,6 +38898,19 @@ components:
       - among
       - measure
       - value
+    TimeSet:
+      type: object
+      properties:
+        version:
+          $ref: '#/components/schemas/ScheduleVersion'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Problem'
+          description: 'For this match only: they didn''t stop it.'
+      required:
+      - version
+      - warnings
     TokenRequest:
       type: object
       properties:

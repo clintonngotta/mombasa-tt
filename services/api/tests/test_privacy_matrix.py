@@ -570,6 +570,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-schedule-check": {"post": STAFF},
     "tournament-schedule-publish": {"post": STAFF},
     "tournament-schedule-delay": {"post": STAFF},
+    "tournament-schedule-set-time": {"post": STAFF},
     "tournament-schedule-versions": {"get": STAFF},
     "tournament-schedule-version": {"get": STAFF},
     "tournament-schedule-sessions": {"get": STAFF, "post": STAFF},
@@ -1045,6 +1046,10 @@ BODIES = {
     ("tournament-order-of-play-release", "put"): {"release_at": None},
     ("tournament-order-of-play-player", "put"): lambda: {"at": order_time(13).isoformat(), "move": True},
     ("tournament-order-of-play-move", "post"): lambda: {"scheduled_at": order_time(15).isoformat()},
+    ("tournament-schedule-set-time", "post"): lambda: {
+        "table_id": None,
+        "scheduled_at": order_time(16).isoformat(),
+    },
     ("tournament-table-umpire", "put"): {"user_id": None},
     ("tournament-dispatch-auto", "post"): {"enabled": False},
     ("tournament-event-match-recall", "post"): {"reason": "Wrong table"},
@@ -2254,7 +2259,7 @@ class World:
         if name == "tournament-umpire":
             found["tournament_pk"], found["user_pk"] = self.scored_cup.id, UMPIRE_USER
             return found
-        if name.startswith("tournament-order-of-play"):
+        if name.startswith("tournament-order-of-play") or name == "tournament-schedule-set-time":
             found["tournament_pk"] = self.order_cup.id
             if "user_pk" in names:
                 found["user_pk"] = self.order_player.id

@@ -698,6 +698,7 @@ class ScheduleVersion(models.Model):
         PUBLISHED = "published"  # the organizers published their plan
         DELAY = "delay"  # a table started late or went out of service
         MOVED = "moved"  # a match, or a player's matches, moved later
+        SET = "set"  # staff set one match's table and start by hand, published at once
 
     class Reason(models.TextChoices):
         LATE_START = "late_start", "Late start"
@@ -955,6 +956,7 @@ class MatchDayLog(models.Model):
         ORDER_CHANGED = "order_changed", "Order of play changed"
         NOT_BEFORE = "not_before", "Player's start time set"
         MATCH_MOVED = "match_moved", "Match moved later"
+        MATCH_TIMED = "match_timed", "Match time set"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="match_day_log")
