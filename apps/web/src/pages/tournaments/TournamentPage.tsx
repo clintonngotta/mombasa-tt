@@ -16,6 +16,7 @@ import { ScoreStrip } from "@/components/tournaments/LiveScore"
 import { NewsFeed } from "@/components/news/NewsFeed"
 import { ApiError, errorMessage } from "@/lib/api"
 import { useMemberships, type Membership } from "@/lib/clubs"
+import { useMe } from "@/lib/session"
 import { formatDayRange, formatInstant, isAhead } from "@/lib/dates"
 import { entryBlock, placesTaken } from "@/lib/entries"
 import { countryName } from "@/lib/geography"
@@ -23,6 +24,7 @@ import {
   ACTION_LABEL,
   ADMISSION_LABEL,
   cancelEvent,
+  reopenEvent,
   cancelTournament,
   canManageTournament,
   countdown,
@@ -243,6 +245,7 @@ function useTournamentChange(id: string) {
 }
 
 function Events({ tournament: t, staff }: { tournament: Tournament; staff: boolean }) {
+  const superAdmin = !!useMe().data?.is_platform_admin
   const open = !isClosed(t)
   return (
     <section aria-labelledby="events-heading" className="flex flex-col gap-3">
@@ -267,7 +270,7 @@ function Events({ tournament: t, staff }: { tournament: Tournament; staff: boole
       <ul className="flex flex-col gap-3">
         {t.events.map((event) => (
           <li key={event.id}>
-            <EventCard tournament={t} event={event} staff={staff && open} />
+            <EventCard tournament={t} event={event} staff={staff && open} superAdmin={superAdmin} />
           </li>
         ))}
       </ul>
@@ -275,9 +278,18 @@ function Events({ tournament: t, staff }: { tournament: Tournament; staff: boole
   )
 }
 
-function EventCard({ tournament: t, event, staff }: { tournament: Tournament; event: TournamentEvent; staff: boolean }) {
+function EventCard({ tournament: t, event, staff, superAdmin }: { tournament: Tournament; event: TournamentEvent; staff: boolean; superAdmin: boolean }) {
   const onChange = useTournamentChange(t.id)
   const [cancelling, setCancelling] = useState(false)
+  const [reopening, setReopening] = useState(false)
+  const reopen = useMutation({
+    mutationFn: (reason: string) => reopenEvent(t.id, event.id, reason),
+    onSuccess: (fresh) => {
+      setReopening(false)
+      onChange(fresh)
+    },
+  })
+  const left = event.matches_left
   const move = useMutation({ mutationFn: (action: EventAction) => moveEvent(t.id, event.id, action), onSuccess: onChange })
   const cancel = useMutation({
     mutationFn: (reason: string) => cancelEvent(t.id, event.id, reason),
@@ -360,7 +372,7 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
                 </Button>
               )}
               {event.status === "in_progress" && (
-                <Button aria-label={`Complete ${event.name}`} disabled={move.isPending} onClick={() => move.mutate("complete")}>
+                <Button aria-label={`Complete ${event.name}`} disabled={move.isPending || left > 0} onClick={() => move.mutate("complete")}>
                   Complete event
                 </Button>
               )}
@@ -376,6 +388,33 @@ function EventCard({ tournament: t, event, staff }: { tournament: Tournament; ev
           )}
           {event.status === "scheduled" && t.status === "in_progress" && (
             <p className="text-sm text-muted-foreground">Starting fixes the format, best of, seeding, groups and qualifiers.</p>
+          )}
+          {event.status === "in_progress" && left > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {left} {left === 1 ? "match still needs" : "matches still need"} a result before the event can be completed.
+            </p>
+          )}
+        </div>
+      )}
+
+      {superAdmin && event.status === "completed" && t.status === "in_progress" && (
+        <div className="flex flex-col gap-2 border-t pt-3">
+          {reopening ? (
+            <ReasonForm
+              label={`Why is ${event.name} reopened?`}
+              submit="Reopen event"
+              pending={reopen.isPending}
+              error={reopen.error}
+              onSubmit={(reason) => reopen.mutate(reason)}
+              onBack={() => setReopening(false)}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" aria-label={`Reopen ${event.name}`} onClick={() => setReopening(true)}>
+                Reopen event
+              </Button>
+              <p className="text-sm text-muted-foreground">Super admin: puts the event back in progress so results can be recorded.</p>
+            </div>
           )}
         </div>
       )}

@@ -251,6 +251,11 @@ urlpatterns = [
         name="tournament-event-complete",
     ),
     path(
+        "<uuid:tournament_pk>/events/<uuid:pk>/reopen/",
+        action(EventViewSet, "reopen"),
+        name="tournament-event-reopen",
+    ),
+    path(
         "<uuid:tournament_pk>/events/<uuid:pk>/cancel/",
         action(EventViewSet, "cancel"),
         name="tournament-event-cancel",
