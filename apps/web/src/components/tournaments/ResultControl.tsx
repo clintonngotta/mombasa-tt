@@ -8,7 +8,7 @@ import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant } from "@/lib/dates"
 import { drawKeys, OUTCOME_LABEL, type MatchDetail } from "@/lib/draws"
 import { reservationKeys } from "@/lib/reservations"
-import { correctResult, enterResult, gamesText, parseGames, resultKeys, SOURCE_LABEL, type OfficialResult, type Outcome } from "@/lib/results"
+import { correctResult, enterResult, gamesText, parseGames, resultKeys, SOURCE_LABEL, walkOverEntry, type EntryWalkovers, type OfficialResult, type Outcome } from "@/lib/results"
 import { scoringKeys } from "@/lib/scoring"
 import { tournamentKeys } from "@/lib/tournaments"
 import { cn } from "@/lib/utils"
@@ -47,12 +47,35 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
   const [games, setGames] = useState("")
   const [reason, setReason] = useState("")
   const [why, setWhy] = useState(WALKOVER_REASONS[0])
+  // A no-show loses every match they have left in the event, not only this one (user request, 2026-11-28).
+  const [everyMatch, setEveryMatch] = useState(false)
+  const [given, setGiven] = useState<EntryWalkovers | null>(null)
   const parsed = outcome === "walkover" ? [] : parseGames(games)
   const wholeTie = !!m.tie && !target?.rubberId
   // Walkovers and disqualifications are the referee's alone (decision D5); the server says so too.
   const outcomes: Outcome[] = [...(wholeTie ? [] : (["played"] as const)), "retired", ...(m.can_award_walkover ? (["walkover", "disqualified"] as const) : [])]
   const names = { a: m.a.entry?.title ?? "First side", b: m.b?.entry?.title ?? "Second side" }
   const known = !!m.a.entry && !!m.b?.entry
+
+  function refresh() {
+    // A result moves the draw on, frees a table and can pause the event.
+    void queryClient.invalidateQueries({ queryKey: drawKeys.event(ids.eventId) })
+    void queryClient.invalidateQueries({ queryKey: tournamentKeys.detail(ids.tournamentId) })
+    void queryClient.invalidateQueries({ queryKey: reservationKeys.board(ids.tournamentId) })
+    void queryClient.invalidateQueries({ queryKey: scoringKeys.overview(ids.tournamentId) })
+    void queryClient.invalidateQueries({ queryKey: resultKeys.corrections(ids.tournamentId) })
+  }
+
+  const loser = winner === "a" ? m.b?.entry : winner === "b" ? m.a.entry : undefined
+  const walkAll = useMutation({
+    mutationFn: () => walkOverEntry(ids.tournamentId, ids.eventId, loser?.id ?? "", why),
+    onSuccess: (shown) => {
+      void queryClient.invalidateQueries({ queryKey: drawKeys.match(ids.matchId) })
+      refresh()
+      setGiven(shown)
+      setOpen(false)
+    },
+  })
 
   const save = useMutation({
     mutationFn: () => {
@@ -63,12 +86,7 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
     },
     onSuccess: (fresh: MatchDetail) => {
       queryClient.setQueryData(drawKeys.match(ids.matchId), fresh)
-      // A result moves the draw on, frees a table and can pause the event.
-      void queryClient.invalidateQueries({ queryKey: drawKeys.event(ids.eventId) })
-      void queryClient.invalidateQueries({ queryKey: tournamentKeys.detail(ids.tournamentId) })
-      void queryClient.invalidateQueries({ queryKey: reservationKeys.board(ids.tournamentId) })
-      void queryClient.invalidateQueries({ queryKey: scoringKeys.overview(ids.tournamentId) })
-      void queryClient.invalidateQueries({ queryKey: resultKeys.corrections(ids.tournamentId) })
+      refresh()
       setOpen(false)
       setReason("")
     },
@@ -81,16 +99,25 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
     const fallback = m.tie && !chosen.rubberId ? (m.can_award_walkover ? "walkover" : "retired") : "played"
     setOutcome(chosen.outcome || fallback)
     setGames(gamesText(chosen.games))
+    setEveryMatch(false)
+    setGiven(null)
     save.reset()
+    walkAll.reset()
   }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    save.mutate()
+    if (allOfThem) walkAll.mutate()
+    else save.mutate()
   }
 
   const result = m.result
   const ready = !!winner && parsed !== null && (!target?.decided || !!reason.trim())
+  // Only for a walkover still to give on the match (or the whole tie), not on one rubber.
+  const canWalkAll = outcome === "walkover" && !!target && !target.decided && !target.rubberId && !!loser
+  const allOfThem = canWalkAll && everyMatch
+  const pending = save.isPending || walkAll.isPending
+  const failed = save.isError ? save.error : walkAll.isError ? walkAll.error : null
   const fieldErrors = save.error instanceof ApiError ? save.error.fieldErrors() : {}
 
   return (
@@ -114,6 +141,8 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
       ) : (
         <p className="text-muted-foreground">No official result yet.</p>
       )}
+
+      {given && <WalkoversGiven given={given} />}
 
       {m.can_record_result && known && targets.length > 0 && !m.held_for_correction && !open && (
         <Button
@@ -173,6 +202,15 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
           {outcome === "walkover" && !target.decided && (
             <SelectField label="Why a walkover" value={why} onChange={setWhy} options={WALKOVER_REASONS.map((value) => ({ value, label: value }))} hint="Kept in the match-day log. A walkover records no game scores." />
           )}
+          {canWalkAll && (
+            <label className="flex items-start gap-3">
+              <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-brand-blue" checked={everyMatch} onChange={(e) => setEveryMatch(e.target.checked)} />
+              <span>
+                <span className="font-semibold">Every match {loser.title} has left in this event</span>
+                <span className="block text-sm text-muted-foreground">Each of their opponents wins by walkover, with the same reason. Matches already being scored are left as they are.</span>
+              </span>
+            </label>
+          )}
           {outcome !== "walkover" && !wholeTie && (
             <Field
               label="Games"
@@ -187,10 +225,10 @@ export function ResultControl({ match: m, ids, timeZone }: { match: MatchDetail;
             <Field label="Why is it corrected?" required maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} hint="Kept with the result. The result it replaces stays in the history." error={fieldErrors.reason} />
           )}
           {target.decided && <p className="text-sm text-muted-foreground">If this changes who goes on and their next match has already started, the event is paused until you decide what happens to that match.</p>}
-          {save.isError && <FormAlert>{errorMessage(save.error)}</FormAlert>}
+          {failed && <FormAlert>{errorMessage(failed)}</FormAlert>}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={!ready || save.isPending}>
-              {save.isPending ? "Saving…" : target.decided ? "Correct the result" : "Make it official"}
+            <Button type="submit" disabled={!ready || pending}>
+              {pending ? "Saving…" : target.decided ? "Correct the result" : allOfThem ? "Give every walkover" : "Make it official"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
@@ -247,5 +285,25 @@ function Side({ name, won, right }: { name: string; won: boolean; right?: boolea
         </span>
       )}
     </span>
+  )
+}
+
+/** What a walkover in every remaining match did: how many were given, and those left as they were. */
+function WalkoversGiven({ given }: { given: EntryWalkovers }) {
+  const count = given.awarded.length
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border bg-card p-3" role="status">
+      <p className="font-semibold">{count === 0 ? "No walkovers were given." : count === 1 ? "1 walkover given." : `${count} walkovers given.`}</p>
+      {given.awarded.length > 0 && <p className="text-sm text-muted-foreground">To {given.awarded.map((item) => `${item.opponent} (${item.label})`).join(", ")}.</p>}
+      {given.skipped.length > 0 && (
+        <ul className="text-sm text-muted-foreground">
+          {given.skipped.map((item) => (
+            <li key={item.match_id}>
+              Left as it was: {item.opponent ? `against ${item.opponent}` : "a match"} ({item.label}). {item.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

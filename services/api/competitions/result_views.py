@@ -16,6 +16,8 @@ from organizations.permissions import Permission
 from . import corrections, drawing, matchday, official, recap
 from .models import DrawVersion, Entry, Match, Resolution, Rubber, Tournament
 from .serializers import (
+    EntryWalkoverSerializer,
+    EntryWalkoversSerializer,
     MatchDetailSerializer,
     ResolutionSerializer,
     ResolveSerializer,
@@ -133,6 +135,7 @@ class ResultViewSet(viewsets.GenericViewSet):
         with transaction.atomic():
             tournament, referee = results_tournament(request.user, tournament_pk)
             match, rubber, winner = self._target(tournament, event_pk, pk, asked)
+            official.ensure_not_playing(match, request.user)
             require_referee_for(referee, match, rubber, asked["outcome"])
             table = match.table  # read before the result frees it
             corrections.enter(
@@ -161,6 +164,7 @@ class ResultViewSet(viewsets.GenericViewSet):
         with transaction.atomic():
             tournament, referee = results_tournament(request.user, tournament_pk)
             match, rubber, winner = self._target(tournament, event_pk, pk, asked)
+            official.ensure_not_playing(match, request.user)
             require_referee_for(referee, match, rubber, asked["outcome"])
             corrections.correct(
                 match, rubber, winner, asked["outcome"], asked["games"], request.user, asked["reason"]
@@ -174,6 +178,57 @@ class ResultViewSet(viewsets.GenericViewSet):
                 reason=asked["reason"],
             )
         return match_reply(request, match.draw, match.id)
+
+    @extend_schema(request=EntryWalkoverSerializer, responses={200: EntryWalkoversSerializer})
+    def walkovers(self, request, tournament_pk, event_pk, entry_pk):
+        """The referee gives walkovers in every match an entry has left in the event, when a player
+        doesn't turn up, instead of one match at a time. Matches where play has begun, or whose
+        opponent isn't known yet, are left as they are and listed with the reason."""
+        serializer = EntryWalkoverSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data["reason"]
+        with transaction.atomic():
+            tournament, referee = results_tournament(request.user, tournament_pk)
+            event = get_object_or_404(tournament.events.select_related("tournament"), pk=event_pk)
+            entry = get_object_or_404(event.entries.all(), pk=entry_pk)
+            if not referee:
+                raise ApiException(
+                    "referee_only",
+                    "Only the referee awards or changes a walkover or a disqualification.",
+                    403,
+                )
+            awarded, skipped = corrections.walk_over_entry(event, entry, request.user, reason)
+            for match, table in awarded:
+                matchday.log(
+                    tournament,
+                    matchday.Action.RESULT_ENTERED,
+                    matchday.result_summary(match, None, match.winner, Match.Outcome.WALKOVER, []),
+                    actor=request.user,
+                    match=match,
+                    table=table,
+                    reason=reason,
+                )
+
+        def shown(match: Match, code: str = "", message: str = "") -> dict:
+            opponent = match.entry_b if match.entry_a_id == entry.id else match.entry_a
+            where = (
+                drawing.group_name(match.group)
+                if match.stage == Match.Stage.GROUP
+                else f"Knockout round {match.round}"
+            )
+            return {
+                "match_id": match.id,
+                "label": where,
+                "opponent": official.title(opponent),
+                "code": code,
+                "message": message,
+            }
+
+        reply = {
+            "awarded": [shown(match) for match, _ in awarded],
+            "skipped": [shown(item["match"], item["code"], item["message"]) for item in skipped],
+        }
+        return Response(EntryWalkoversSerializer(reply).data)
 
     @extend_schema(responses={200: ResolutionSerializer(many=True)})
     def resolutions(self, request, tournament_pk):

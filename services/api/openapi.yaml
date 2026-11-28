@@ -17411,6 +17411,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{entry_pk}/walkovers/:
+    post:
+      operationId: tournaments_events_entries_walkovers_create
+      description: |-
+        The referee gives walkovers in every match an entry has left in the event, when a player
+        doesn't turn up, instead of one match at a time. Matches where play has begun, or whose
+        opponent isn't known yet, are left as they are and listed with the reason.
+      parameters:
+      - in: path
+        name: entry_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: event_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: tournament_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - tournaments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryWalkoverRequest'
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntryWalkovers'
+          description: ''
+        4XX:
+          description: Error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/tournaments/{tournament_pk}/events/{event_pk}/entries/{id}/accept/:
     post:
       operationId: tournaments_events_entries_accept_create
@@ -25336,6 +25384,34 @@ components:
       - starts_on
       - status
       - timezone
+    EntryWalkoverRequest:
+      type: object
+      description: The referee gives an entry's opponents every match it has left
+        in the event by walkover.
+      properties:
+        reason:
+          type: string
+          default: ''
+          description: 'Why, kept in the match-day log for each match: a no-show after
+            the grace period, a withdrawal or an injury before the start (REQ-043).'
+          maxLength: 300
+    EntryWalkovers:
+      type: object
+      properties:
+        awarded:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalkedOverMatch'
+          description: Matches the opponent now wins by walkover.
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalkedOverMatch'
+          description: 'Matches left as they were: play had begun, the opponent isn''t
+            known yet, …'
+      required:
+      - awarded
+      - skipped
     Equipment:
       type: object
       properties:
@@ -40762,6 +40838,28 @@ components:
           maxLength: 300
       required:
       - reason
+    WalkedOverMatch:
+      type: object
+      properties:
+        match_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          description: 'Where it sits in the draw: "Group A", "Knockout round 2".'
+        opponent:
+          type: string
+        code:
+          type: string
+          description: Why it was left out; empty when awarded.
+        message:
+          type: string
+      required:
+      - code
+      - label
+      - match_id
+      - message
+      - opponent
     WeekdayEnum:
       enum:
       - monday
