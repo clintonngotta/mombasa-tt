@@ -3665,8 +3665,10 @@ paths:
   /api/v1/me/scorecards/:
     get:
       operationId: me_scorecards_list
-      description: Matches the caller is assigned to score and hasn't confirmed, in
-        tournaments still running.
+      description: |-
+        The matches the caller umpires. `open`: assigned and not confirmed, in tournaments still
+        running, by published time. `done`: the sheets they confirmed, latest first, kept as a record
+        even after they stop umpiring there.
       parameters:
       - name: page
         required: false
@@ -3680,6 +3682,15 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - done
+          - open
+        description: 'open (default): to score, soonest first. done: confirmed, latest
+          first.'
       tags:
       - me
       security:
@@ -29672,8 +29683,9 @@ components:
       - status
     MyScorecard:
       type: object
-      description: 'One of the caller''s assignments in a list: the sheet without
-        its event log.'
+      description: |-
+        One of the caller's assignments in a list: the sheet without its event log, with when and where
+        the match is planned once the schedule is published.
       properties:
         id:
           type: string
@@ -29735,6 +29747,18 @@ components:
           allOf:
           - $ref: '#/components/schemas/Device'
           readOnly: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        planned_table:
+          type: string
+          readOnly: true
+        timezone:
+          type: string
+          description: The venue's, in which the time is shown (REQ-007).
+          readOnly: true
       required:
       - a
       - assignment_id
@@ -29747,10 +29771,13 @@ components:
       - id
       - label
       - match_id
+      - planned_table
       - revision
+      - scheduled_at
       - state
       - status
       - table
+      - timezone
       - tournament_id
       - tournament_name
     MySession:
@@ -30404,6 +30431,7 @@ components:
       - feedback
       - squad
       - penalty
+      - umpiring
       type: string
       description: |-
         * `up_next` - Up next
@@ -30422,6 +30450,7 @@ components:
         * `feedback` - Feedback forms
         * `squad` - Squads and selection
         * `penalty` - Penalties
+        * `umpiring` - Matches to umpire
     NullEnum:
       enum:
       - null

@@ -23,6 +23,7 @@ export const CARD_REASON_LABEL: Record<CardReason, string> = {
 
 export const scoringKeys = {
   mine: ["scoring", "mine"] as const,
+  mineIn: (state: UmpiringState) => ["scoring", "mine", state] as const,
   card: (id: string) => ["scoring", "card", id] as const,
   umpires: (eventId: string) => ["scoring", "umpires", eventId] as const,
   overview: (tournamentId: string) => ["scoring", "overview", tournamentId] as const,
@@ -57,7 +58,10 @@ export function deviceLabel(agent = navigator.userAgent): string {
 
 const fromDevice = () => ({ "X-Device-Id": deviceId() })
 
-export const listMyScorecards = () => api<Schemas["PaginatedMyScorecardList"]>("/me/scorecards/")
+/** open: matches to score, soonest first. done: results the umpire confirmed, latest first. */
+export type UmpiringState = "open" | "done"
+export const listMyScorecards = (state: UmpiringState = "open", page = 1) =>
+  api<Schemas["PaginatedMyScorecardList"]>(`/me/scorecards/?state=${state}&page=${page}`)
 export const getScorecard = (id: string) => api<Scorecard>(`/scorecards/${id}/`, { headers: fromDevice() })
 export const sendEvents = (id: string, assignmentId: string, events: Envelope[]) =>
   api<SubmitResult>(`/scorecards/${id}/events/`, { body: { assignment_id: assignmentId, events }, headers: fromDevice() })
