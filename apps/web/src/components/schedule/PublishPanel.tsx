@@ -38,6 +38,7 @@ function versionTitle(version: ScheduleVersionSummary) {
   if (version.kind === "moved") {
     return `Moved later${version.reason === "player_request" ? " at a player's request" : ""}`
   }
+  if (version.kind === "set") return "One match set by hand"
   return "Published"
 }
 

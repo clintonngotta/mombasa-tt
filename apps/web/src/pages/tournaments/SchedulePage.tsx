@@ -10,7 +10,7 @@ import { PublishPanel } from "@/components/schedule/PublishPanel"
 import { SessionsPanel } from "@/components/schedule/SessionsPanel"
 import { ApiError, errorMessage } from "@/lib/api"
 import { formatInstant, fromZonedInput, toZonedInput } from "@/lib/dates"
-import { checkSchedule, conflictsOf, getSchedule, keepSchedule, recommendSchedule, scheduleKeys, type Problem, type Schedule, type Slot } from "@/lib/schedule"
+import { checkSchedule, conflictsOf, getSchedule, keepSchedule, recommendSchedule, scheduleKeys, setMatchTime, type Problem, type Schedule, type Slot } from "@/lib/schedule"
 import { getTournament, tournamentKeys } from "@/lib/tournaments"
 
 type Draft = { table_id: string; local: string }
@@ -90,6 +90,25 @@ export function SchedulePage() {
     },
   })
 
+  // Set time: one match published now, for organizers who schedule match by match.
+  const [setFor, setSetFor] = useState<Record<string, { ok?: string; error?: string; warnings?: Problem[] }>>({})
+  const publishOne = useMutation({
+    mutationFn: (pk: string) => {
+      const draft = drafts[pk]
+      return setMatchTime(id, pk, { table_id: draft.table_id || null, scheduled_at: fromZonedInput(draft.local, timeZone), note: "" })
+    },
+    onSuccess: (done, pk) => {
+      setEdits(({ [pk]: _, ...rest }) => rest)
+      setSetFor((now) => ({ ...now, [pk]: { ok: done.version.changes.some((c) => c.notify) ? "Published. Its players and umpire are told." : "Published.", warnings: done.warnings } }))
+      void queryClient.invalidateQueries({ queryKey: scheduleKeys.detail(id) })
+      void queryClient.invalidateQueries({ queryKey: scheduleKeys.versions(id) })
+    },
+    onError: (error, pk) => {
+      const conflicts = error instanceof ApiError && error.code === "schedule_conflicts" ? conflictsOf(error.body) : []
+      setSetFor((now) => ({ ...now, [pk]: { error: conflicts.length ? conflicts.map((c) => c.message).join(" ") : errorMessage(error) } }))
+    },
+  })
+
   if (refused) return <AccessLost />
 
   const shown = problems ?? (data ? { conflicts: data.conflicts, warnings: data.warnings } : { conflicts: [], warnings: [] })
@@ -114,7 +133,7 @@ export function SchedulePage() {
         <h1 className="text-[32px] leading-9 font-bold">Schedule</h1>
         <p className="text-muted-foreground">
           When and on which table each match is planned, in the venue's time ({timeZone}). Times are estimates from each event's best-of. Keep the plan as you work;
-          players, umpires and the tables board see it once you publish it.
+          players, umpires and the tables board see it once you publish it. Or choose a match's table and start and press <span className="font-semibold">Set time</span> to publish that match now.
         </p>
       </header>
 
@@ -186,6 +205,10 @@ export function SchedulePage() {
                 {rows.map((row) => {
                   const draft = drafts[row.match_id] ?? { table_id: "", local: "" }
                   const own = problemsOf(row.match_id)
+                  const result = setFor[row.match_id]
+                  const published = row.published_at ? toZonedInput(row.published_at, timeZone) : ""
+                  const same = draft.local === published && (draft.table_id || null) === (row.published_table_id ?? null)
+                  const busy = publishOne.isPending && publishOne.variables === row.match_id
                   return (
                     <li key={row.match_id} className={`flex flex-col gap-3 rounded-xl border bg-card p-4 ${own.conflicts.length ? "border-destructive" : ""}`}>
                       <div className="flex flex-col gap-0.5">
@@ -228,6 +251,35 @@ export function SchedulePage() {
                           />
                         </label>
                       </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy || same}
+                          onClick={() => {
+                            setSetFor(({ [row.match_id]: _, ...rest }) => rest)
+                            publishOne.mutate(row.match_id)
+                          }}
+                          aria-label={`Set time for ${row.label} and publish it now`}
+                        >
+                          {busy ? "Setting…" : "Set time"}
+                        </Button>
+                        {result?.ok && (
+                          <span role="status" className="text-sm text-success">
+                            {result.ok}
+                          </span>
+                        )}
+                      </div>
+                      {result?.error && (
+                        <p className="text-sm font-semibold text-destructive" role="alert">
+                          {result.error}
+                        </p>
+                      )}
+                      {result?.warnings?.map((p) => (
+                        <p key={`set-${p.code}`} className="text-sm text-warning">
+                          {p.message}
+                        </p>
+                      ))}
                       {own.conflicts.map((p) => (
                         <p key={p.code + p.message} className="text-sm font-semibold text-destructive" role="alert">
                           {p.message}

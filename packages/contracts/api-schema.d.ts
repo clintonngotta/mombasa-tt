@@ -8297,6 +8297,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/schedule/matches/{match_pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Set one match's table and start by hand and publish it now, without the working plan.
+         *     Refused with `schedule_conflicts` only for conflicts this change makes; its players and
+         *     umpire are told when a published time or table changes.
+         */
+        post: operations["tournaments_schedule_matches_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/schedule/publish/": {
         parameters: {
             query?: never;
@@ -15582,9 +15603,10 @@ export interface components {
          * @description * `published` - Published
          *     * `delay` - Delay
          *     * `moved` - Moved
+         *     * `set` - Set
          * @enum {string}
          */
-        ScheduleVersionKindEnum: "published" | "delay" | "moved";
+        ScheduleVersionKindEnum: "published" | "delay" | "moved" | "set";
         ScheduleVersionSummary: {
             readonly number: number;
             readonly kind: components["schemas"]["ScheduleVersionKindEnum"];
@@ -15881,6 +15903,15 @@ export interface components {
              * @default true
              */
             move: boolean;
+        };
+        /** @description One match's table and start, published at once. A null start takes the time away. */
+        SetTimeRequest: {
+            /** Format: uuid */
+            table_id: string | null;
+            /** Format: date-time */
+            scheduled_at: string | null;
+            /** @default  */
+            note: string;
         };
         /** @description An amount each, or a total split evenly among those going (rounded up to whole units). */
         ShareCostRequest: {
@@ -16457,6 +16488,11 @@ export interface components {
             among: string[];
             measure: components["schemas"]["MeasureEnum"];
             value: string;
+        };
+        TimeSet: {
+            version: components["schemas"]["ScheduleVersion"];
+            /** @description For this match only: they didn't stop it. */
+            warnings: components["schemas"]["Problem"][];
         };
         TokenRequest: {
             token: string;
@@ -34960,6 +34996,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Delayed"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_schedule_matches_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                match_pk: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetTimeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeSet"];
                 };
             };
             /** @description Error envelope */

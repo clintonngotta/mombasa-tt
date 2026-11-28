@@ -41,6 +41,11 @@ export const checkSchedule = (tournamentId: string, slots: Slot[]) =>
 export const keepSchedule = (tournamentId: string, slots: Slot[]) =>
   api<Schedule>(base(tournamentId), { method: "PUT", body: { slots } })
 
+/** Set one match's table and start by hand and publish it now, without the plan. Refused with
+ * `schedule_conflicts` only for conflicts this change makes; warnings come back without stopping it. */
+export const setMatchTime = (tournamentId: string, matchId: string, body: Schemas["SetTimeRequest"]) =>
+  api<Schemas["TimeSet"]>(`${base(tournamentId)}matches/${matchId}/`, { body })
+
 /** Days are built of sessions: hours, tables and (optionally) events. The recommendation fills them. */
 export const addSession = (tournamentId: string, body: SessionInput) => api<Session>(`${base(tournamentId)}sessions/`, { body })
 export const removeSession = (tournamentId: string, sessionId: string) =>
