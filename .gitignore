@@ -13,3 +13,6 @@ __pycache__/
 apps/web/e2e/.auth/
 apps/web/test-results/
 apps/web/playwright-report/
+
+# pytest-testmon: which code each test runs (CI caches it; local runs make their own)
+.testmondata*
