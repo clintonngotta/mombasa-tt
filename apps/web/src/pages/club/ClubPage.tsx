@@ -428,14 +428,14 @@ function InvitationsPanel({ orgId }: { orgId: string }) {
           {items.map((invitation) => (
             <li key={invitation.id} className={ROW}>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-semibold">{invitation.email}</span>
+                <span className="truncate font-semibold">{invitation.invitee_name ?? invitation.email}</span>
                 <span className="text-sm text-muted-foreground">
                   Pending · expires {new Date(invitation.expires_at).toLocaleDateString("en-KE", { day: "numeric", month: "short" })}
                 </span>
               </span>
               <Button
                 variant="outline"
-                aria-label={`Revoke invitation to ${invitation.email}`}
+                aria-label={`Revoke invitation to ${invitation.invitee_name ?? invitation.email}`}
                 disabled={revoke.isPending && revoke.variables === invitation.id}
                 onClick={() => revoke.mutate(invitation.id)}
               >

@@ -2591,8 +2591,9 @@ paths:
   /api/v1/me/invitations/:
     get:
       operationId: me_invitations_list
-      description: Open invitations addressed to the signed-in player's verified email;
-        they accept or decline.
+      description: |-
+        Open invitations addressed to the signed-in player's verified email, or to them as a player found
+        in the directory; they accept or decline.
       parameters:
       - name: page
         required: false
@@ -2626,8 +2627,9 @@ paths:
   /api/v1/me/invitations/{id}/accept/:
     post:
       operationId: me_invitations_accept_create
-      description: Open invitations addressed to the signed-in player's verified email;
-        they accept or decline.
+      description: |-
+        Open invitations addressed to the signed-in player's verified email, or to them as a player found
+        in the directory; they accept or decline.
       parameters:
       - in: path
         name: id
@@ -2656,8 +2658,9 @@ paths:
   /api/v1/me/invitations/{id}/decline/:
     post:
       operationId: me_invitations_decline_create
-      description: Open invitations addressed to the signed-in player's verified email;
-        they accept or decline.
+      description: |-
+        Open invitations addressed to the signed-in player's verified email, or to them as a player found
+        in the directory; they accept or decline.
       parameters:
       - in: path
         name: id
@@ -10347,7 +10350,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/InvitationCreateRequest'
-        required: true
       security:
       - sessionAuth: []
       responses:
@@ -26842,7 +26844,8 @@ components:
       - total_minor
     Invitation:
       type: object
-      description: Staff view of an invitation they sent.
+      description: Staff view of an invitation they sent. An invited player is shown
+        by name; their email isn't.
       properties:
         id:
           type: string
@@ -26851,6 +26854,9 @@ components:
         email:
           type: string
           format: email
+          readOnly: true
+        invitee_name:
+          type: string
           readOnly: true
         status:
           allOf:
@@ -26875,16 +26881,20 @@ components:
       - email
       - expires_at
       - id
+      - invitee_name
       - status
     InvitationCreateRequest:
       type: object
+      description: 'Invite by email, or a player found in the player directory: one
+        of the two.'
       properties:
         email:
           type: string
           format: email
           minLength: 1
-      required:
-      - email
+        player_id:
+          type: string
+          format: uuid
     InvitationDetail:
       type: object
       description: |-

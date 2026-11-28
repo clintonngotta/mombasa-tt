@@ -5,7 +5,16 @@ from .models import Invitation
 
 
 def send_invitation_email(invitation: Invitation) -> None:
-    """Sent whether or not the address has an account, so inviting never reveals who is registered."""
+    """Sent whether or not the address has an account, so inviting never reveals who is registered. An
+    invited player gets it at their own verified address, if they have one; either way the invitation
+    waits for them in the app."""
+    if invitation.invitee is not None:
+        invitee = invitation.invitee
+        to = invitee.email if invitee.email and invitee.email_verified_at else ""
+    else:
+        to = invitation.email
+    if not to:
+        return
     inviter = invitation.invited_by.display_name if invitation.invited_by else "A club admin"
     send_mail(
         f"You're invited to join {invitation.organization.name} on Coast TT",
@@ -15,5 +24,5 @@ def send_invitation_email(invitation: Invitation) -> None:
         f"The invitation expires on {invitation.expires_at:%d %b %Y}. "
         "If you don't want to join, ignore this email.",
         None,
-        [invitation.email],
+        [to],
     )
