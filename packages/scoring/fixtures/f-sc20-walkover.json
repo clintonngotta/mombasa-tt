@@ -1,0 +1,80 @@
+{
+  "name": "F-SC20: a walkover gives the match to the opponent before the start, with no games",
+  "rules": "REQ-043",
+  "config": {
+    "best_of": 5,
+    "doubles": false
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "walkover",
+        "side": "b",
+        "reason": "late"
+      },
+      "error": "invalid_walkover"
+    },
+    {
+      "event": {
+        "type": "walkover",
+        "side": "c",
+        "reason": "no_show"
+      },
+      "error": "unknown_event"
+    },
+    {
+      "event": {
+        "type": "walkover",
+        "side": "b",
+        "reason": "no_show"
+      },
+      "expect": {
+        "status": "completed",
+        "winner": "a",
+        "outcome": "walkover",
+        "points": [
+          0,
+          0
+        ],
+        "games": [],
+        "games_won": [
+          0,
+          0
+        ],
+        "server": null
+      }
+    },
+    {
+      "event": {
+        "type": "point",
+        "side": "a"
+      },
+      "error": "not_in_progress"
+    },
+    {
+      "event": {
+        "type": "undo"
+      },
+      "expect": {
+        "status": "not_started",
+        "winner": null,
+        "outcome": null
+      }
+    },
+    {
+      "event": {
+        "type": "start",
+        "server": "a1",
+        "a_end": "left"
+      }
+    },
+    {
+      "event": {
+        "type": "walkover",
+        "side": "a",
+        "reason": "injury"
+      },
+      "error": "already_started"
+    }
+  ]
+}

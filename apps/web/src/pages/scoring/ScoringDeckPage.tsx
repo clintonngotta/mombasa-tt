@@ -2,12 +2,12 @@ import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, ArrowLeftRight, CircleCheck, CloudOff, LoaderCircle, Undo2, WifiOff } from "lucide-react"
-import { gamesNeeded, partnerOf, sideOf, type End, type Player, type Side, type State } from "@scoring"
+import { gamesNeeded, partnerOf, sideOf, WALKOVER_REASONS, type End, type Player, type ScoreEvent, type Side, type State, type WalkoverReason } from "@scoring"
 import { errorMessage } from "@/lib/api"
 import { describeLog, problemText, useDeck, type LogLine, type Sync } from "@/lib/deck"
 import { useMe } from "@/lib/session"
 import { drawKeys } from "@/lib/draws"
-import { configOf, confirmScorecard, namesOf, scoringKeys, winnersGames, winnersScore, type Names, type Scorecard } from "@/lib/scoring"
+import { configOf, confirmScorecard, namesOf, scoringKeys, WALKOVER_REASON_LABEL, winnersGames, winnersScore, type Names, type Scorecard } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 import { UpdateBanner } from "@/components/layout/UpdateBanner"
 import { CardBadges, ExpediteBar, IncidentMenu, SuspensionBanner, TimeoutBanner } from "@/components/scoring/Incidents"
@@ -128,7 +128,10 @@ function ScoringDeckPage({ id, userId }: { id: string; userId: string }) {
               deck.elsewhere !== null || deck.readOnly ? (
                 <p className="rounded-xl border border-white/20 bg-white/5 p-4 text-white/80">The match hasn't started yet.</p>
               ) : (
-                <Setup card={card} onStart={deck.act} />
+                <>
+                  <Setup card={card} onStart={deck.act} />
+                  <Walkover card={card} onGive={deck.act} />
+                </>
               )
             ) : (
               <Play card={card} state={state} deck={deck} />
@@ -242,6 +245,50 @@ function Setup({ card, onStart }: { card: Scorecard; onStart: (event: { type: "s
         Start the match
       </button>
     </section>
+  )
+}
+
+/** Before the first point (REQ-043): a side isn't playing, so the match goes to the other with no games. */
+function Walkover({ card, onGive }: { card: Scorecard; onGive: (event: ScoreEvent) => void }) {
+  const names = namesOf(card)
+  const [side, setSide] = useState<Side | "">("")
+  const [reason, setReason] = useState<WalkoverReason | "">("")
+  const [note, setNote] = useState("")
+  const winner = side === "a" ? "b" : "a"
+  return (
+    <details className="rounded-xl border border-white/20 bg-white/5">
+      <summary className="min-h-12 cursor-pointer px-4 py-3 font-semibold">A side isn't playing: walkover</summary>
+      <div className="flex flex-col gap-5 px-4 pb-4">
+        <Choice
+          legend="Who isn't playing?"
+          options={[
+            { value: "a" as Side, label: names.a },
+            { value: "b" as Side, label: names.b },
+          ]}
+          value={side}
+          onChange={setSide}
+        />
+        <Choice legend="Why?" options={WALKOVER_REASONS.map((value) => ({ value, label: WALKOVER_REASON_LABEL[value] }))} value={reason} onChange={setReason} />
+        <label className="flex flex-col gap-2">
+          <span className="text-lg font-semibold">Note (optional)</span>
+          <input value={note} maxLength={200} onChange={(event) => setNote(event.target.value)} className="min-h-12 rounded-lg border border-white/30 bg-transparent px-3 text-base outline-none focus-visible:ring-3 focus-visible:ring-brand-cyan" />
+        </label>
+        {side && reason && (
+          <div className="flex flex-col gap-3 rounded-lg border border-brand-gold/60 bg-brand-gold/10 p-3">
+            <p>
+              The match goes to {names[winner]} by walkover, with no games played. You confirm the result next, and can still undo it until then.
+            </p>
+            <button
+              type="button"
+              className={cn(primaryButton, "self-start")}
+              onClick={() => onGive({ type: "walkover", side, reason, ...(note.trim() ? { note: note.trim() } : {}) })}
+            >
+              Give {names[winner]} the walkover
+            </button>
+          </div>
+        )}
+      </div>
+    </details>
   )
 }
 
@@ -385,7 +432,9 @@ function Finish({ card, state, deck }: { card: Scorecard; state: State; deck: Re
       <h1 id="finish-heading" className="text-2xl font-bold">
         {state.winner ? names[state.winner] : "Nobody"} won {endedHow(state, names)}
       </h1>
-      <p className="text-white/80">Check the games above with both sides. Confirming makes the result official; after that only the organizers can correct it.</p>
+      <p className="text-white/80">
+        {state.outcome === "walkover" ? "No games are played in a walkover." : "Check the games above with both sides."} Confirming makes the result official; after that only the organizers can correct it.
+      </p>
       {confirm.isError && <p role="alert" className="text-brand-gold">{errorMessage(confirm.error)}</p>}
       {waiting && <p className="text-sm text-white/80">The last points are still being saved. You can confirm once they are.</p>}
       <div className="flex flex-wrap gap-2">
@@ -393,7 +442,7 @@ function Finish({ card, state, deck }: { card: Scorecard; state: State; deck: Re
           {confirm.isPending ? "Confirming…" : "Confirm result"}
         </button>
         <button type="button" className={deckButton} disabled={confirm.isPending} onClick={() => deck.act({ type: "undo" })}>
-          <Undo2 aria-hidden className="size-5" /> Undo the last point
+          <Undo2 aria-hidden className="size-5" /> {state.outcome === "walkover" ? "Undo the walkover" : "Undo the last point"}
         </button>
       </div>
     </section>
@@ -403,6 +452,7 @@ function Finish({ card, state, deck }: { card: Scorecard; state: State; deck: Re
 /** "3–1", or for an early end "by retirement: Brian couldn't go on, 1–0 in games". */
 function endedHow(state: State, names: Names) {
   const loser = state.winner === "a" ? "b" : "a"
+  if (state.outcome === "walkover") return `by walkover: ${names[loser]} didn't play`
   if (state.outcome === "retired") return `by retirement: ${names[loser]} retired at ${winnersScore(state)} in games`
   if (state.outcome === "disqualified") return `by disqualification of ${names[loser]}, at ${winnersScore(state)} in games`
   return winnersScore(state)

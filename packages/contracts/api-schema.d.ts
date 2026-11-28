@@ -11462,9 +11462,10 @@ export interface components {
          *     * `expedite` - Expedite
          *     * `retired` - Retired
          *     * `disqualified` - Disqualified
+         *     * `walkover` - Walkover
          * @enum {string}
          */
-        IncidentKindEnum: "timeout" | "timeout_end" | "card" | "adviser_card" | "suspension" | "suspension_end" | "expedite" | "retired" | "disqualified";
+        IncidentKindEnum: "timeout" | "timeout_end" | "card" | "adviser_card" | "suspension" | "suspension_end" | "expedite" | "retired" | "disqualified" | "walkover";
         /** @description Money received in the period, per currency: from members, from outside, and outside by source. */
         IncomeTotals: {
             currency: string;
