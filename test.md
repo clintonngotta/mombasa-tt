@@ -161,6 +161,8 @@ Keeping apart and moving by hand (TASK-144, `tests/test_draw_spread.py`): a club
 
 **Four tabs/standings — unit and web/device.** Setup: normal, two-way, multi-way and ultimate-tie fixtures reviewed under TASK-003; withdrawals and exact equal ratios included. Steps: calculate ranks, inspect explanatory values, open all four tabs in each format, navigate bracket round-list. Pass: fixture ranks/qualifiers match exactly; rounded display cannot alter order; non-applicable tabs explain why; unfinished knockout has no invented full ranking. Evidence: fixture source clauses, calculations and navigation recordings.
 
+On a table now (TASK-157): send a match to a table; its entries show that table in the draw to every viewer, not live; after the first point they show live; the other entries show nothing; the result clears it.
+
 ### EVAL-011
 
 **Team ties — integration.** Setup: ordered singles/doubles tie requiring three wins. Steps: submit invalid/unregistered/duplicate-partner lineups, then valid lineup; finish three winning rubbers and try to score surplus rubber. Pass: invalid lineups rejected; one active rubber per tie; first three wins decide tie; surplus rubbers unplayed/unrated; participant conflicts enforced. Evidence: tie/rubber state assertions.

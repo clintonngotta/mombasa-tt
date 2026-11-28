@@ -67,13 +67,13 @@ export function MatchPage() {
   )
 }
 
-function Name({ side, won, align }: { side: DrawSide; won: boolean; align: "left" | "right" }) {
+function Name({ side, won, align, matchId }: { side: DrawSide; won: boolean; align: "left" | "right"; matchId: string }) {
   return (
     <div className={cn("flex min-w-0 flex-col gap-1", align === "right" && "items-end text-right")}>
       {side.entry ? (
         <>
           <span className={cn("text-xl leading-6 break-words", won && "font-bold")}>
-            <EntryNames entry={side.entry} />
+            <EntryNames entry={side.entry} exceptMatch={matchId} />
           </span>
           <span className="flex flex-wrap gap-1 text-sm text-muted-foreground">
             {side.seed && <span>Seed {side.seed}</span>}
@@ -114,7 +114,7 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
           <MatchStateChip match={m} />
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <Name side={m.a} won={won(m.a)} align="left" />
+          <Name matchId={m.id} side={m.a} won={won(m.a)} align="left" />
           <p className="font-display text-[80px] leading-none font-bold tabular-nums max-sm:text-[56px]">
             <span aria-hidden>
               {counted ? `${games.a}–${games.b}` : decided ? "W/O" : <span className="text-2xl font-semibold text-muted-foreground">v</span>}
@@ -122,7 +122,7 @@ function Details({ match: m, second: b, event, tournamentId, timeZone }: { match
             </span>
             <span className="sr-only">{spokenScore(m)}</span>
           </p>
-          <Name side={b} won={won(b)} align="right" />
+          <Name matchId={m.id} side={b} won={won(b)} align="right" />
         </div>
       </header>
 

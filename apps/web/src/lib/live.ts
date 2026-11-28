@@ -45,7 +45,11 @@ function staleKeys(tournamentId: string, message: Changed): (readonly string[])[
   stale.push(tournamentKeys.detail(tournamentId), tournamentKeys.dashboard(tournamentId), [...drawKeys.all, "match"])
   if (message.event) stale.push(drawKeys.event(message.event), drawKeys.standings(message.event))
   // A result frees its table and players on the dispatch board; "board" is a change to the board itself.
-  if (message.topic === "results" || message.topic === "board") stale.push(reservationKeys.board(tournamentId), controlKeys.desk(tournamentId), controlKeys.log(tournamentId))
+  if (message.topic === "results" || message.topic === "board") {
+    stale.push(reservationKeys.board(tournamentId), controlKeys.desk(tournamentId), controlKeys.log(tournamentId))
+    // Draws and tables say who is on a table now, in any event: a player of this event may be playing in another.
+    stale.push([...drawKeys.all, "event"], [...drawKeys.all, "standings"])
+  }
   return stale
 }
 
