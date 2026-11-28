@@ -97,9 +97,29 @@ def test_stages_are_checked_and_kept_only_where_the_format_has_them(staff, club,
     assert league["best_of_by_stage"] == {"group": 5}
 
 
-def test_the_stages_are_frozen_once_the_event_starts(staff, club, hall):  # noqa: F811
-    game = started(staff, club, hall, [["F1"], ["F2"]])
-    frozen = staff.patch(
-        url(game["cup"], event=game["event"]), {"best_of_by_stage": {"final": 7}}, format="json"
-    )
+def test_match_lengths_change_during_a_live_event_and_started_matches_keep_theirs(staff, club, hall):  # noqa: F811
+    from competitions.models import MatchDayLog
+
+    from .test_official_results import correct, knockout
+    from .test_reservations import send, tables
+
+    game = knockout(staff, club, hall, best_of=3)
+    first, second = game["semis"]
+    enter(staff, game, first, first.entry_a, games=straight(3))  # decided, best of 3
+    send(staff, {**game, "match": second}, tables(hall)[0])  # called to its table, best of 3
+    path = url(game["cup"], event=game["event"])
+
+    changed = staff.patch(path, {"best_of": 5, "best_of_by_stage": {"final": 7}}, format="json")
+
+    assert changed.status_code == 200, changed.json()
+    assert (fresh(first).best_of, fresh(second).best_of, fresh(game["final"]).best_of) == (3, 3, None)
+    shown = {m["id"]: m["best_of"] for m in staff.get(path + "draw/").json()["published"]["matches"]}
+    assert (shown[str(first.id)], shown[str(second.id)], shown[str(game["final"].id)]) == (3, 3, 7)
+    # The played semi-final is still checked as best of 3, and the one on its table finishes as such.
+    correct(staff, game, fresh(first), first.entry_b, games=straight(3, a_wins=False))
+    enter(staff, game, fresh(second), second.entry_a, games=straight(3))
+    log = MatchDayLog.objects.get(action="match_length")
+    assert "7 in the final" in log.summary and "2 match(es)" in log.summary
+    # The rest of the structure stays fixed.
+    frozen = staff.patch(path, {"seeding": "none"}, format="json")
     assert (frozen.status_code, frozen.json()["code"]) == (409, "structure_frozen")

@@ -354,7 +354,6 @@ def test_structure_is_frozen_once_an_event_starts(staff, running):
     for body in (
         {"format": "round_robin"},
         {"kind": "doubles"},
-        {"best_of": 7},
         {"seeding": "none"},
         {"format": "groups_knockout", "group_count": 2, "qualifiers_per_group": 1},
         {"name": "Renamed", "format": "round_robin"},  # nothing is applied when part of it is refused

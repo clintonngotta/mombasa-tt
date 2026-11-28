@@ -6,9 +6,9 @@ change. A knockout stage not named plays as the stage before it, so "5 from the 
 only the quarter-finals named; the groups and the first knockout rounds fall back to `best_of`.
 """
 
-from django.db.models import Max
+from django.db.models import Exists, Max, OuterRef, Q
 
-from .models import Event, Match
+from .models import DrawVersion, Event, Match, Rubber
 
 BEST_OF = (3, 5, 7)
 GROUP, EARLY, QUARTER, SEMI, FINAL = "group", "knockout", "quarter_final", "semi_final", "final"
@@ -64,7 +64,10 @@ def knockout_rounds(match: Match) -> int:
 
 
 def best_of_for(match: Match, event: Event | None = None) -> int:
-    """The best of a match (or every rubber of a tie) is played over."""
+    """The best of a match (or every rubber of a tie) is played over: its own, once frozen, or else
+    the event's rule for its stage."""
+    if match.best_of:
+        return match.best_of
     event = event or match.draw.event
     if not event.best_of_by_stage:
         return event.best_of
@@ -88,3 +91,57 @@ def prime(matches) -> None:
     for match in matches:
         if match.stage == Match.Stage.KNOCKOUT:
             match._knockout_rounds = found.get(match.draw_id) or match.round
+
+
+MATCH_LENGTH_FIELDS = {"best_of", "best_of_by_stage"}
+
+
+def freeze_started(event: Event) -> int:
+    """Before an event's match lengths change part-way (a live event, user request 2026-11-28): every
+    match already decided, on a table or being scored keeps the best of it is played over. Call with
+    the event's current (old) rules, inside the transaction that changes them. Returns how many were
+    frozen."""
+    from scoring.models import Scorecard  # scoring builds on competitions
+
+    scored = Scorecard.objects.filter(revision__gt=0).filter(
+        Q(match_id=OuterRef("pk")) | Q(rubber__match_id=OuterRef("pk"))
+    )
+    started = (
+        Match.objects.filter(draw__event=event, best_of__isnull=True)
+        .exclude(draw__status=DrawVersion.Status.SUPERSEDED)
+        .annotate(scored=Exists(scored))
+        .filter(
+            Q(status=Match.Status.COMPLETED)
+            | Q(dispatched_at__isnull=False)
+            | Q(scored=True)
+            | Q(rubbers__status__in=[Rubber.Status.COMPLETED, Rubber.Status.NOT_PLAYED])
+        )
+        .distinct()
+    )
+    frozen = 0
+    for match in started:
+        match.best_of = best_of_for(match, event)
+        match.save(update_fields=["best_of"])
+        frozen += 1
+    return frozen
+
+
+def describe(event: Event) -> str:
+    """ "best of 3, 5 from the quarter-finals, 7 in the final", for the match-day log."""
+    rules = event.best_of_by_stage or {}
+    words = {
+        GROUP: "in the groups",
+        EARLY: "in the knockout",
+        QUARTER: "from the quarter-finals",
+        SEMI: "from the semi-finals",
+        FINAL: "in the final",
+    }
+    parts = [f"best of {event.best_of}"]
+    if rules.get(GROUP, event.best_of) != event.best_of:
+        parts.append(f"{rules[GROUP]} {words[GROUP]}")
+    current = event.best_of
+    for stage in KNOCKOUT_STAGES:
+        if stage in rules and rules[stage] != current:
+            parts.append(f"{rules[stage]} {words[stage]}")
+            current = rules[stage]
+    return ", ".join(parts)

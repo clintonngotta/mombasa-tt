@@ -336,9 +336,11 @@ def test_a_team_group_is_ranked_on_individual_matches_before_games(staff, cup):
 
 def test_the_tie_format_cannot_change_under_a_lineup(staff, tie):
     hand_in(staff, tie, "tudor")
-    for change in ({"tie_rubbers": ["singles"] * 7}, {"tie_wins_needed": 2}, {"best_of": 3}):
+    for change in ({"tie_rubbers": ["singles"] * 7}, {"tie_wins_needed": 2}):
         refused = staff.patch(url(tie["cup"], event=tie["event"]), change, format="json")
         assert (refused.status_code, refused.json()["code"]) == (409, "lineups_in"), change
+    # How many games the rubbers are played over doesn't change who plays them (TASK-158).
+    assert staff.patch(url(tie["cup"], event=tie["event"]), {"best_of": 3}, format="json").status_code == 200
     # Other details still change, and so does the format once the lineups are cleared.
     assert (
         staff.patch(url(tie["cup"], event=tie["event"]), {"rest_minutes": 5}, format="json").status_code
