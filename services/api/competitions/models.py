@@ -4,6 +4,7 @@ import uuid
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import IntegrityError, models, transaction
+from django.db.models.functions import Coalesce
 from django.utils.text import slugify
 
 from attachments.models import Attachment
@@ -43,7 +44,8 @@ class TournamentQuerySet(models.QuerySet):
         """With host, venue and events (each with its number of accepted entries), for serializing."""
         # Ordered explicitly: an aggregate drops the model's default ordering.
         events = Event.objects.annotate(
-            accepted_count=models.Count("entries", filter=models.Q(entries__status="accepted"))
+            accepted_count=models.Count("entries", filter=models.Q(entries__status="accepted")),
+            matches_left=Event.matches_left_subquery(),
         ).order_by("position", "created_at")
         return self.select_related(
             "organization", "organization__coach_organizer__user", "venue"
@@ -273,6 +275,28 @@ class Event(models.Model):
     def is_team(self) -> bool:
         return self.kind == self.Kind.TEAM
 
+    @staticmethod
+    def matches_left_subquery():
+        """For annotating events: matches of the published draw that have no result yet."""
+        left = (
+            Match.objects.filter(
+                draw__event=models.OuterRef("pk"),
+                draw__status=DrawVersion.Status.PUBLISHED,
+                status=Match.Status.SCHEDULED,
+            )
+            .order_by()
+            .values("draw__event")
+            .annotate(n=models.Count("pk"))
+            .values("n")
+        )
+        return Coalesce(models.Subquery(left, output_field=models.IntegerField()), 0)
+
+    def count_matches_left(self) -> int:
+        """Matches of the published draw still without a result. An event isn't over while any is left."""
+        return Match.objects.filter(
+            draw__event=self, draw__status=DrawVersion.Status.PUBLISHED, status=Match.Status.SCHEDULED
+        ).count()
+
 
 class LifecycleEntry(models.Model):
     """Audit trail of a tournament's and its events' state changes (REQ-007): who did what, when and
@@ -288,6 +312,7 @@ class LifecycleEntry(models.Model):
         CANCELLED = "cancelled"
         EVENT_STARTED = "event_started"
         EVENT_COMPLETED = "event_completed"
+        EVENT_REOPENED = "event_reopened"
         EVENT_CANCELLED = "event_cancelled"
         EVENT_REMOVED = "event_removed"
 

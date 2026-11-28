@@ -7998,6 +7998,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournament_pk}/events/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Platform super admins only: put a completed event back in progress, with the reason, when it was
+         *     completed before all its results were in.
+         */
+        post: operations["tournaments_events_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournament_pk}/events/{id}/start/": {
         parameters: {
             query?: never;
@@ -10814,6 +10834,8 @@ export interface components {
             tie_wins_needed: number | null;
             /** @description Entries holding a place. Counted here when the caller didn't annotate it. */
             readonly accepted_count: number;
+            /** @description Matches of the published draw with no result yet. The event can't be completed while any is left. */
+            readonly matches_left: number;
             readonly status: components["schemas"]["EventStatusEnum"];
             readonly revision: number;
             /** Format: date-time */
@@ -11715,11 +11737,12 @@ export interface components {
          *     * `cancelled` - Cancelled
          *     * `event_started` - Event Started
          *     * `event_completed` - Event Completed
+         *     * `event_reopened` - Event Reopened
          *     * `event_cancelled` - Event Cancelled
          *     * `event_removed` - Event Removed
          * @enum {string}
          */
-        LifecycleEntryActionEnum: "published" | "approval_requested" | "approval_rejected" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_cancelled" | "event_removed";
+        LifecycleEntryActionEnum: "published" | "approval_requested" | "approval_rejected" | "updated" | "started" | "completed" | "cancelled" | "event_started" | "event_completed" | "event_reopened" | "event_cancelled" | "event_removed";
         /**
          * @description A team's players for each rubber of the tie, in the template's order: one id for a singles, two
          *     for a doubles.
@@ -34557,6 +34580,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tournament"];
+                };
+            };
+            /** @description Error envelope */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    tournaments_events_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tournament_pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {

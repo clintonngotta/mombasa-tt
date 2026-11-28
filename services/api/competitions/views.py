@@ -525,6 +525,23 @@ class EventViewSet(viewsets.GenericViewSet):
         return self._transition(request, tournament_pk, pk, lifecycle.complete_event)
 
     @extend_schema(request=ReasonSerializer, responses={200: TournamentSerializer})
+    def reopen(self, request, tournament_pk, pk):
+        """Platform super admins only: put a completed event back in progress, with the reason, when it was
+        completed before all its results were in."""
+        if not is_platform_super_admin(request.user):
+            raise Http404  # a platform route: "not found" for everyone else
+        serializer = ReasonSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            tournament = get_object_or_404(
+                Tournament.objects.select_for_update(of=("self",)), pk=tournament_pk
+            )
+            lifecycle.reopen_event(
+                tournament, self._event(tournament, pk), request.user, serializer.validated_data["reason"]
+            )
+        return reply(tournament)
+
+    @extend_schema(request=ReasonSerializer, responses={200: TournamentSerializer})
     def cancel(self, request, tournament_pk, pk):
         serializer = ReasonSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

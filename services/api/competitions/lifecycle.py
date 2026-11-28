@@ -198,9 +198,35 @@ def complete_event(tournament: Tournament, event: Event, actor) -> None:
             "A corrected result left a later match to decide. Settle it before completing the event.",
             409,
         )
+    left = event.count_matches_left()
+    if left:
+        raise ApiException(
+            "matches_left",
+            f"{left} {'match has' if left == 1 else 'matches have'} no result yet. Record every result "
+            "before completing the event.",
+            409,
+        )
     _move(event, E.COMPLETED, "completed_at")
     signals.event_closed.send(sender=Event, event=event, actor=actor)
     record(tournament, A.EVENT_COMPLETED, actor, event=event)
+
+
+def reopen_event(tournament: Tournament, event: Event, actor, reason: str) -> None:
+    """Undo a completion made too early: the event is in progress again, so results can be recorded and
+    corrected. Only a platform super admin may, while the tournament itself is still running."""
+    if not is_platform_super_admin(actor):
+        raise ApiException("permission_denied", "Only a platform super admin can reopen an event.", 403)
+    _require(event, E.COMPLETED, doing="reopened")
+    if tournament.status != T.IN_PROGRESS:
+        raise ApiException(
+            "tournament_not_running",
+            f"This tournament is {tournament.get_status_display().lower()}, so its events can't be reopened.",
+            409,
+        )
+    event.status = E.IN_PROGRESS
+    event.completed_at = None
+    event.save(update_fields=["status", "completed_at"])
+    record(tournament, A.EVENT_REOPENED, actor, event=event, reason=reason)
 
 
 def cancel_event(tournament: Tournament, event: Event, actor, reason: str) -> None:

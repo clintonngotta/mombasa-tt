@@ -332,7 +332,7 @@ def test_closing_an_event_frees_what_its_matches_held(staff, club, hall):
     assert Match.objects.get(pk=first["match"].pk).dispatched_at is None
     # Nobody played, so nobody rests: the table and both players go straight to another tournament.
     send(staff, third, one)
-    do(staff, third["cup"], "complete", event=third["event"])
+    do(staff, third["cup"], "cancel", event=third["event"], reason="Rained off")
     assert not Hold.objects.filter(active=True).exists()
 
 

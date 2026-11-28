@@ -592,6 +592,7 @@ ACCESS: dict[str, dict[str, str]] = {
     "tournament-event-start": {"post": STAFF},
     "tournament-event-complete": {"post": STAFF},
     "tournament-event-cancel": {"post": STAFF},
+    "tournament-event-reopen": {"post": PLATFORM},
     # Entries: accepted ones are for every signed-in player, the rest for their own players and for
     # competition staff. Anyone may enter; only an entry's own players withdraw it themselves.
     "tournament-event-entries": {"get": PUBLIC, "post": SIGNED_IN},
@@ -1023,6 +1024,7 @@ BODIES = {
     ("tournament-events", "post"): {"name": "Doubles", "kind": "doubles", "format": "knockout"},
     ("tournament-event", "patch"): {"capacity": 8},
     ("tournament-event-cancel", "post"): {"reason": "Too few entries"},
+    ("tournament-event-reopen", "post"): {"reason": "Completed too early"},
     ("tournament-event-match-umpire", "post"): {"user_id": None},
     ("scorecard-events", "post"): {
         "assignment_id": "00000000-0000-4000-8000-000000000000",
@@ -2098,6 +2100,7 @@ class World:
             "tournament-event-start": self.running.event.id,
             "tournament-event-complete": self.playing.event.id,
             "tournament-event-cancel": self.published.event.id,
+            "tournament-event-reopen": self.finishing.event.id,
             "tournament-event-entry-accept": self.entry_to_accept.id,
             "tournament-event-entry-waitlist": self.entry_to_waitlist.id,
             "tournament-event-entry-reject": self.entry_to_reject.id,
@@ -2446,6 +2449,7 @@ class World:
             "plan_items": sorted(PlanItem.objects.values_list("title", "completed_at")),
             "ceremonies": sorted(Ceremony.objects.values_list("location", "status")),
             "reviews": sorted(TournamentReview.objects.values_list("went_well", "went_wrong")),
+            "competition_events": sorted(Event.objects.values_list("tournament__name", "name", "status")),
             "awards": sorted(Award.objects.values_list("title", "order", "prize", "presented_at")),
             "agenda": sorted(AgendaItem.objects.values_list("title", "starts_on")),
             "articles": sorted(Article.objects.values_list("title", "summary", "status")),
